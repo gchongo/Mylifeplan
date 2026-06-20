@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/ui/feedback";
 import { Input, Select, Textarea } from "@/components/ui";
+import { ParentPlanSelect } from "@/components/forms/parent-plan-select";
 
 const typeOptions = [
   { value: "goal", label: "长期目标 (goal)" },
@@ -13,11 +14,40 @@ const typeOptions = [
   { value: "daily", label: "日计划 (daily)" },
 ];
 
-export function PlanForm({ defaultType = "goal" }: { defaultType?: string }) {
+const statusOptions = [
+  { value: "not_started", label: "未开始" },
+  { value: "in_progress", label: "进行中" },
+  { value: "done", label: "已完成" },
+];
+
+export interface PlanFormValues {
+  id?: string;
+  title: string;
+  description?: string | null;
+  type: string;
+  parentPlanId?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  status?: string;
+}
+
+export function PlanForm({
+  defaultType = "goal",
+  plan,
+  redirectTo,
+}: {
+  defaultType?: string;
+  plan?: PlanFormValues;
+  redirectTo?: string;
+}) {
   const router = useRouter();
+  const isEdit = Boolean(plan?.id);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [type, setType] = useState(defaultType);
+  const [type, setType] = useState(plan?.type ?? defaultType);
+  const [parentPlanId, setParentPlanId] = useState<string | null>(
+    plan?.parentPlanId ?? null,
+  );
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -28,29 +58,39 @@ export function PlanForm({ defaultType = "goal" }: { defaultType?: string }) {
     const title = String(fd.get("title") ?? "").trim();
     const description = String(fd.get("description") ?? "").trim();
     const planType = String(fd.get("type") ?? type);
-    const parentPlanId = String(fd.get("parentPlanId") ?? "").trim() || null;
     const startDate = String(fd.get("startDate") ?? "") || null;
     const endDate = String(fd.get("endDate") ?? "") || null;
+    const status = String(fd.get("status") ?? "not_started");
+
+    const payload = {
+      title,
+      description: description || null,
+      type: planType,
+      parentPlanId,
+      startDate,
+      endDate,
+      ...(isEdit && { status }),
+    };
 
     try {
-      const res = await fetch("/api/plans", {
-        method: "POST",
+      const res = await fetch(isEdit ? `/api/plans/${plan!.id}` : "/api/plans", {
+        method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          description: description || null,
-          type: planType,
-          parentPlanId,
-          startDate,
-          endDate,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "创建失败");
+        setError(data.error ?? "保存失败");
         return;
       }
-      router.push(planType === "goal" || planType === "phase" ? "/plans/long" : "/plans/short");
+
+      if (redirectTo) {
+        router.push(redirectTo);
+      } else {
+        router.push(
+          planType === "goal" || planType === "phase" ? "/plans/long" : "/plans/short",
+        );
+      }
       router.refresh();
     } catch {
       setError("网络错误");
@@ -62,28 +102,66 @@ export function PlanForm({ defaultType = "goal" }: { defaultType?: string }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && <ErrorMessage message={error} />}
-      <Input name="title" label="标题" placeholder="计划标题（必填）" required />
-      <Textarea name="description" label="描述" placeholder="可选" rows={3} />
-      <Select
-        name="type"
-        label="类型"
-        options={typeOptions}
-        value={type}
-        onChange={(e) => setType(e.target.value)}
+      <Input
+        name="title"
+        label="标题"
+        placeholder="计划标题（必填）"
+        required
+        defaultValue={plan?.title ?? ""}
       />
-      {(type === "phase" || type === "weekly" || type === "daily") && (
-        <Input
-          name="parentPlanId"
-          label="父计划 ID（phase 必填 goal ID；短期可选 phase ID）"
-          placeholder="粘贴父计划 ID"
+      <Textarea
+        name="description"
+        label="描述"
+        placeholder="可选"
+        rows={3}
+        defaultValue={plan?.description ?? ""}
+      />
+      {!isEdit && (
+        <Select
+          name="type"
+          label="类型"
+          options={typeOptions}
+          value={type}
+          onChange={(e) => {
+            setType(e.target.value);
+            setParentPlanId(null);
+          }}
         />
       )}
+      {isEdit && (
+        <Select
+          name="type"
+          label="类型"
+          options={typeOptions.filter((o) => o.value === type)}
+          value={type}
+          disabled
+        />
+      )}
+      <ParentPlanSelect planType={type} value={parentPlanId} onChange={setParentPlanId} />
       <div className="grid gap-4 sm:grid-cols-2">
-        <Input name="startDate" label="开始日期" type="date" />
-        <Input name="endDate" label="结束日期" type="date" />
+        <Input
+          name="startDate"
+          label="开始日期"
+          type="date"
+          defaultValue={plan?.startDate ?? ""}
+        />
+        <Input
+          name="endDate"
+          label="结束日期"
+          type="date"
+          defaultValue={plan?.endDate ?? ""}
+        />
       </div>
+      {isEdit && (
+        <Select
+          name="status"
+          label="状态"
+          options={statusOptions}
+          defaultValue={plan?.status ?? "not_started"}
+        />
+      )}
       <Button type="submit" disabled={loading}>
-        {loading ? "保存中…" : "保存计划"}
+        {loading ? "保存中…" : isEdit ? "保存修改" : "保存计划"}
       </Button>
     </form>
   );
