@@ -1,4 +1,5 @@
-import { EmptyState } from "@/components/ui/feedback";
+import Link from "next/link";
+import { AdminUserDetail } from "@/components/admin/admin-user-detail";
 
 export default async function AdminUserDetailPage({
   params,
@@ -7,6 +8,12 @@ export default async function AdminUserDetailPage({
 }) {
   const { id } = await params;
   return (
-    <EmptyState title={`用户 #${id}`} description="M5 接入用户详情。" />
+    <div>
+      <Link href="/admin/users" className="text-sm text-brand-600 hover:underline">
+        ← 返回用户列表
+      </Link>
+      <h1 className="mb-4 mt-2 text-xl font-semibold">用户详情</h1>
+      <AdminUserDetail userId={id} />
+    </div>
   );
 }

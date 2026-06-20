@@ -30,6 +30,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "邮箱或密码错误" }, { status: 401 });
     }
 
+    if (!user.isActive) {
+      return NextResponse.json({ error: "账号已禁用，请联系管理员" }, { status: 403 });
+    }
+
     const token = await createSessionToken({
       userId: user.id,
       email: user.email,

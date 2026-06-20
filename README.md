@@ -86,9 +86,15 @@ pm2 start npm --name mylifeplan -- start
 - [x] 父计划 / 父任务 / 关联计划下拉选择器
 - [x] 父任务汇总状态展示（展示层推导）
 
-### 下一步（M5）
-- Admin 用户与订阅管理
-- 集成测试 + E2E 冒烟
+### M5 ✅
+- [x] Admin 用户列表 / 详情 / 启用禁用（`is_active`）
+- [x] Admin 订阅列表 / 手动 PATCH
+- [x] 禁用用户无法登录
+- [x] Vitest：memo-sync 集成 + task-rollup + admin 校验
+
+### MVP 完成
+
+M0～M5 全部交付。后续可按需做 UI 优化或 v2 功能（复盘、支付等）。
 
 ## 脚本
 
