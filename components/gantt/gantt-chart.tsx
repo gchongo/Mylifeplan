@@ -40,6 +40,7 @@ import {
   type VisualStatusKey,
 } from "@/lib/task-status-style";
 import type { GanttContribution, GanttItem, PlanStatus } from "@/types";
+import { apiJson } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
 
 const ROW_HEIGHT = 44;
@@ -214,11 +215,16 @@ export const GanttChart = forwardRef<
 
   useEffect(() => {
     setIsLoading(true);
-    fetch(`/api/gantt?from=${from}&to=${to}`)
-      .then((r) => r.json())
+    apiJson<{ items?: GanttItem[]; contributions?: GanttContribution[] }>(
+      `/api/gantt?from=${from}&to=${to}`,
+    )
       .then((data) => {
         setItems(data.items ?? []);
         setContributions(data.contributions ?? []);
+      })
+      .catch(() => {
+        setItems([]);
+        setContributions([]);
       })
       .finally(() => setIsLoading(false));
   }, [from, to]);
@@ -263,12 +269,12 @@ export const GanttChart = forwardRef<
   );
 
   const refetchGantt = useCallback(() => {
-    fetch(`/api/gantt?from=${from}&to=${to}`)
-      .then((r) => r.json())
-      .then((data) => {
-        setItems(data.items ?? []);
-        setContributions(data.contributions ?? []);
-      });
+    apiJson<{ items?: GanttItem[]; contributions?: GanttContribution[] }>(
+      `/api/gantt?from=${from}&to=${to}`,
+    ).then((data) => {
+      setItems(data.items ?? []);
+      setContributions(data.contributions ?? []);
+    });
   }, [from, to]);
 
   useEffect(() => {

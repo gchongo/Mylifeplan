@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { apiJson } from "@/lib/client-api";
 import { CalendarDayDrawer } from "@/components/calendar/calendar-day-drawer";
 import {
   CalendarScrollView,
@@ -126,9 +127,9 @@ export function CalendarPanelLive({
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/calendar?from=${from}&to=${to}`)
-      .then((r) => r.json())
+    apiJson<{ items?: CalendarItem[] }>(`/api/calendar?from=${from}&to=${to}`)
       .then((data) => setItems(data.items ?? []))
+      .catch(() => setItems([]))
       .finally(() => setLoading(false));
   }, [from, to]);
 

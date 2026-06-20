@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Select } from "@/components/ui";
+import { ApiError, apiJson } from "@/lib/client-api";
 
 interface PlanOption {
   id: string;
@@ -36,11 +37,7 @@ export function PlanContributionSelect({
     setLoading(true);
     setLoadError("");
 
-    fetch("/api/plans")
-      .then((r) => {
-        if (!r.ok) throw new Error("加载失败");
-        return r.json();
-      })
+    apiJson<{ plans?: PlanOption[] }>("/api/plans")
       .then((data) => {
         const plans: PlanOption[] = data.plans ?? [];
         setOptions(
@@ -50,7 +47,13 @@ export function PlanContributionSelect({
           })),
         );
       })
-      .catch(() => setLoadError("无法加载计划列表"))
+      .catch((err) => {
+        if (err instanceof ApiError && err.status === 401) {
+          setLoadError("登录已失效，请重新登录");
+          return;
+        }
+        setLoadError("无法加载计划列表");
+      })
       .finally(() => setLoading(false));
   }, []);
 

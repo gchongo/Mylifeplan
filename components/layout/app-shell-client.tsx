@@ -5,6 +5,7 @@ import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 import { SidebarNavDrawer } from "@/components/layout/sidebar-brand";
 import { SidebarNavMenu } from "@/components/layout/sidebar-nav";
 import { TopBar } from "@/components/layout/top-bar";
+import { SessionGuard } from "@/components/auth/session-guard";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "mylifeplan-sidebar-open";
@@ -57,6 +58,7 @@ export function AppShellClient({
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
+      <SessionGuard userEmail={userEmail} />
       <TopBar
         title={title}
         userEmail={userEmail}

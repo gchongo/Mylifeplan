@@ -9,6 +9,7 @@ import { FeedItemCard, type FeedItemCardData } from "@/components/feed/feed-item
 import { PanelExpandButton } from "@/components/home/panel-expand-button";
 import type { FeedActionType, FeedItemType } from "@prisma/client";
 import { cn } from "@/lib/utils";
+import { apiJson } from "@/lib/client-api";
 
 interface FeedRow {
   id: string;
@@ -35,8 +36,9 @@ export function FeedPanelLive({
   const load = useCallback(
     async (cursor?: string | null, append = false) => {
       const qs = cursor ? `?cursor=${cursor}&limit=${pageSize}` : `?limit=${pageSize}`;
-      const res = await fetch(`/api/feed${qs}`);
-      const data = await res.json();
+      const data = await apiJson<{ items?: FeedRow[]; nextCursor?: string | null }>(
+        `/api/feed${qs}`,
+      );
       const rows: FeedRow[] = data.items ?? [];
       setItems((prev) => (append ? [...prev, ...rows] : rows));
       setNextCursor(data.nextCursor ?? null);
