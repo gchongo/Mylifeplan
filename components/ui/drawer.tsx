@@ -10,12 +10,14 @@ export function Drawer({
   title,
   children,
   className,
+  onBack,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: React.ReactNode;
   className?: string;
+  onBack?: () => void;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -38,11 +40,16 @@ export function Drawer({
           className,
         )}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-4 py-3">
-          <h2 id="drawer-title" className="text-base font-semibold text-gray-900">
+        <div className="flex shrink-0 items-center gap-2 border-b border-gray-100 px-4 py-3">
+          {onBack ? (
+            <Button variant="ghost" size="sm" onClick={onBack} className="shrink-0 px-2">
+              ← 返回
+            </Button>
+          ) : null}
+          <h2 id="drawer-title" className="min-w-0 flex-1 truncate text-base font-semibold text-gray-900">
             {title}
           </h2>
-          <Button variant="ghost" size="sm" onClick={onClose} aria-label="关闭">
+          <Button variant="ghost" size="sm" onClick={onClose} aria-label="关闭" className="shrink-0">
             ✕
           </Button>
         </div>

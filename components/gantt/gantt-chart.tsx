@@ -23,6 +23,7 @@ import {
   type GanttScaleId,
   type TimelineLayout,
 } from "@/lib/gantt-scale";
+import { buildColumnColorIndex, GRID_BANDS, spanColorIndex } from "@/lib/gantt-grid-colors";
 import type { GanttItem } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -184,6 +185,23 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
   const taskRows = useMemo(() => buildTaskTreeRows(tasks, expanded), [tasks, expanded]);
   const planRows: GanttRow[] = plans.map((item) => ({ kind: "item", item, depth: 0 }));
   const rows = [...taskRows, ...planRows];
+
+  const columnColors = useMemo(
+    () => buildColumnColorIndex(layout.columns),
+    [layout.columns],
+  );
+
+  const expandableTaskIds = useMemo(() => {
+    return tasks
+      .filter((t) => {
+        const childCount = tasks.filter((c) => c.parentId === t.id).length;
+        return childCount > 0 || taskDepth(t.id, taskById) < 2;
+      })
+      .map((t) => t.id);
+  }, [tasks, taskById]);
+
+  const allSubtasksExpanded =
+    expandableTaskIds.length > 0 && expandableTaskIds.every((id) => expanded.has(id));
   const rowsBodyHeight = rows.length * ROW_HEIGHT + FOOTER_HEIGHT;
   const minBodyHeight = Math.max(
     rowsBodyHeight,
@@ -349,6 +367,14 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     e.preventDefault();
   }
 
+  function toggleExpandAll() {
+    if (allSubtasksExpanded) {
+      setExpanded(new Set());
+    } else {
+      setExpanded(new Set(expandableTaskIds));
+    }
+  }
+
   function toggleExpand(taskId: string) {
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -380,31 +406,52 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     return (
       <div className="sticky top-0 z-30 flex border-b border-gray-200 bg-white shadow-sm">
         <div
-          className="sticky left-0 z-40 shrink-0 border-r border-gray-200 bg-gray-50"
-          style={{ width: LABEL_WIDTH }}
-        />
+          className="sticky left-0 z-40 flex shrink-0 flex-col justify-center border-r border-gray-200 bg-gray-50"
+          style={{ width: LABEL_WIDTH, minHeight: TIMELINE_HEADER_HEIGHT }}
+        >
+          {fullPage && expandableTaskIds.length > 0 && (
+            <button
+              type="button"
+              data-no-pan
+              onClick={toggleExpandAll}
+              className="border-b border-gray-100 px-2 py-1.5 text-left text-xs text-brand-600 hover:bg-gray-100"
+            >
+              {allSubtasksExpanded ? "隐藏所有子任务" : "展开所有子任务"}
+            </button>
+          )}
+        </div>
         <div style={{ width: timelineWidth }} className="relative shrink-0">
           <div className="flex border-b border-gray-100 bg-gray-50 text-xs text-gray-600">
-            {layout.topSpans.map((span) => (
-              <div
-                key={span.key}
-                className="border-r border-dashed border-gray-200 py-1.5 text-center"
-                style={{ width: span.width }}
-              >
-                {span.label}
-              </div>
-            ))}
+            {layout.topSpans.map((span) => {
+              const band = GRID_BANDS[spanColorIndex(layout.columns, span.key) % GRID_BANDS.length]!;
+              return (
+                <div
+                  key={span.key}
+                  className={cn(
+                    "border-r border-dashed py-1.5 text-center",
+                    band.bg,
+                    band.border,
+                  )}
+                  style={{ width: span.width }}
+                >
+                  {span.label}
+                </div>
+              );
+            })}
           </div>
           <div className="flex text-xs">
             {layout.columns.map((col) => {
               const isToday = isTodayInColumn(today, col);
+              const band = GRID_BANDS[columnColors.get(col.key) ?? 0]!;
               return (
                 <div
                   key={col.key}
                   className={cn(
-                    "border-r border-dashed border-gray-200 py-1 text-center",
-                    col.isWeekend && "bg-gray-50/80",
-                    isToday && "bg-red-50",
+                    "border-r border-dashed py-1 text-center",
+                    band.bg,
+                    band.border,
+                    col.isWeekend && "bg-gray-100/80",
+                    isToday && "ring-1 ring-inset ring-red-300",
                   )}
                   style={{ width: col.width }}
                 >
@@ -432,17 +479,22 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
         className="pointer-events-none absolute top-0 flex"
         style={{ left: LABEL_WIDTH, width: timelineWidth, height }}
       >
-        {layout.columns.map((col) => (
-          <div
-            key={col.key}
-            className={cn(
-              "h-full border-r border-dashed border-gray-200",
-              col.isWeekend && "bg-gray-50/70",
-              col.isOtherMonth && "bg-gray-50/40",
-            )}
-            style={{ width: col.width }}
-          />
-        ))}
+        {layout.columns.map((col) => {
+          const band = GRID_BANDS[columnColors.get(col.key) ?? 0]!;
+          return (
+            <div
+              key={col.key}
+              className={cn(
+                "h-full border-r border-dashed",
+                band.bg,
+                band.border,
+                col.isWeekend && "bg-gray-100/70",
+                col.isOtherMonth && "opacity-70",
+              )}
+              style={{ width: col.width }}
+            />
+          );
+        })}
         {todayVisible && (
           <div
             className="absolute bottom-0 top-0 w-px bg-red-400"

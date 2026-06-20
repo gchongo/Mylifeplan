@@ -42,12 +42,27 @@ export function GanttTaskDrawer({
   onEditTask: (taskId: string) => void;
   onCreateSubtask: (parentId: string) => void;
 }) {
+  const [viewStack, setViewStack] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [task, setTask] = useState<(TaskFormValues & { id: string }) | null>(null);
   const [error, setError] = useState("");
 
+  const activeTaskId = viewStack[viewStack.length - 1] ?? taskId;
+  const canGoBack = viewStack.length > 1;
+
   useEffect(() => {
-    if (!open || !taskId) {
+    if (open && taskId) {
+      setViewStack([taskId]);
+    }
+    if (!open) {
+      setViewStack([]);
+      setTask(null);
+      setError("");
+    }
+  }, [open, taskId]);
+
+  useEffect(() => {
+    if (!open || !activeTaskId) {
       setTask(null);
       setError("");
       return;
@@ -56,7 +71,7 @@ export function GanttTaskDrawer({
     let cancelled = false;
     setLoading(true);
     setError("");
-    fetch(`/api/tasks/${taskId}`)
+    fetch(`/api/tasks/${activeTaskId}`)
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
@@ -77,14 +92,22 @@ export function GanttTaskDrawer({
     return () => {
       cancelled = true;
     };
-  }, [open, taskId]);
+  }, [open, activeTaskId]);
 
   async function handleChanged() {
     onChanged();
-    if (!taskId) return;
-    const res = await fetch(`/api/tasks/${taskId}`);
+    if (!activeTaskId) return;
+    const res = await fetch(`/api/tasks/${activeTaskId}`);
     const data = await res.json();
     if (data.task) setTask(data.task);
+  }
+
+  function navigateToTask(id: string) {
+    setViewStack((prev) => [...prev, id]);
+  }
+
+  function goBack() {
+    setViewStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
   }
 
   const inMemo = task
@@ -93,9 +116,9 @@ export function GanttTaskDrawer({
   const gantt = task?.startDate
     ? getEffectiveEndDate({ startDate: task.startDate, dueDate: task.dueDate })
     : null;
-  const childTasks = taskId
+  const childTasks = activeTaskId
     ? allTasks
-        .filter((t) => t.parentId === taskId)
+        .filter((t) => t.parentId === activeTaskId)
         .map((t) => ({ id: t.id, title: t.title, status: t.status ?? "todo" }))
     : [];
   const childStatuses = childTasks.map((c) => asTaskStatus(c.status));
@@ -105,7 +128,12 @@ export function GanttTaskDrawer({
   const hasRollup = childStatuses.length > 0;
 
   return (
-    <Drawer open={open} onClose={onClose} title={task?.title ?? "任务详情"}>
+    <Drawer
+      open={open}
+      onClose={onClose}
+      onBack={canGoBack ? goBack : undefined}
+      title={task?.title ?? "任务详情"}
+    >
       {loading && <Loading label="加载任务…" />}
       {!loading && error && <p className="text-sm text-red-600">{error}</p>}
       {!loading && task && (
@@ -120,13 +148,13 @@ export function GanttTaskDrawer({
           embedded
           onClose={onClose}
           onChanged={handleChanged}
-          onOpenTask={onOpenTask}
+          onOpenTask={navigateToTask}
           onEdit={() => onEditTask(task.id)}
           subtaskTree={
             <DrawerSubtaskTree
               parentTaskId={task.id}
               allTasks={allTasks}
-              onOpenTask={onOpenTask}
+              onOpenTask={navigateToTask}
               onCreateSubtask={onCreateSubtask}
             />
           }
