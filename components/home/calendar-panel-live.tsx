@@ -74,9 +74,6 @@ export function CalendarPanelLive({
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
   const [displayMode, setDisplayMode] = useCalendarDisplayMode();
-  const monthLayoutRef = useRef<HTMLDivElement>(null);
-  const containerWide = useHorizontalCalendarList(monthLayoutRef, viewMode === "month" && !loading);
-  const horizontalList = displayMode === "list" && containerWide;
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [viewYear, setViewYear] = useState(today.getUTCFullYear());
   const [viewMonth, setViewMonth] = useState(today.getUTCMonth());
@@ -85,6 +82,9 @@ export function CalendarPanelLive({
   const [weekAnchor, setWeekAnchor] = useState(today);
   const [items, setItems] = useState<CalendarItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const monthLayoutRef = useRef<HTMLDivElement>(null);
+  const containerWide = useHorizontalCalendarList(monthLayoutRef, viewMode === "month" && !loading);
+  const horizontalList = displayMode === "list" && containerWide;
 
   const { from, to, label } = useMemo(() => {
     if (viewMode === "month") {
