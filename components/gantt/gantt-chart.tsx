@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,9 @@ const STATUS_LABEL: Record<string, string> = {
   not_started: "规划",
   archived: "归档",
 };
+
+const TASK_BAR_BY_DEPTH = ["bg-slate-700/90", "bg-brand-600/90", "bg-teal-600/90"];
+const TASK_LABEL_BY_DEPTH = ["bg-white", "bg-brand-50/90", "bg-teal-50/90"];
 
 type RowKind = "item" | "add-child";
 
@@ -48,9 +51,19 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function defaultTimelineRange() {
+function compactTimelineRange() {
   const today = todayStr();
-  return { from: addDaysUtc(today, -45), to: addDaysUtc(today, 75) };
+  return { from: addDaysUtc(today, -30), to: addDaysUtc(today, 45) };
+}
+
+function fullPageTimelineRange(viewportDays: number) {
+  const today = todayStr();
+  const visible = Math.max(21, viewportDays);
+  const buffer = Math.max(30, Math.ceil(visible * 0.5));
+  return {
+    from: addDaysUtc(today, -(visible + buffer)),
+    to: addDaysUtc(today, visible + buffer),
+  };
 }
 
 function buildDayList(from: string, to: string) {
@@ -125,13 +138,47 @@ function itemHref(item: GanttItem) {
   return item.type === "task" ? `/tasks/${item.id}` : `/plans/${item.id}`;
 }
 
-export function GanttChart({ compact = false }: { compact?: boolean }) {
-  const { from, to } = defaultTimelineRange();
+function taskBarColor(depth: number) {
+  return TASK_BAR_BY_DEPTH[Math.min(depth, TASK_BAR_BY_DEPTH.length - 1)];
+}
+
+function taskLabelBg(depth: number) {
+  return TASK_LABEL_BY_DEPTH[Math.min(depth, TASK_LABEL_BY_DEPTH.length - 1)];
+}
+
+export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrolledToToday = useRef(false);
+  const [viewportDays, setViewportDays] = useState(45);
+
+  const range = useMemo(
+    () => (fullPage ? fullPageTimelineRange(viewportDays) : compactTimelineRange()),
+    [fullPage, viewportDays],
+  );
+  const { from, to } = range;
+
   const [items, setItems] = useState<GanttItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const scrolledToToday = useRef(false);
+
+  useEffect(() => {
+    if (!fullPage) return;
+    const el = containerRef.current;
+    if (!el) return;
+
+    const update = () => {
+      const w = el.clientWidth;
+      if (w <= 0) return;
+      const days = Math.floor((w - LABEL_WIDTH) / DAY_WIDTH);
+      setViewportDays(Math.max(21, days));
+    };
+
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [fullPage]);
 
   useEffect(() => {
     setLoading(true);
@@ -158,17 +205,32 @@ export function GanttChart({ compact = false }: { compact?: boolean }) {
 
   const scrollToToday = useCallback(() => {
     const el = scrollRef.current;
-    if (!el || todayIndex < 0) return;
+    if (!el || todayIndex < 0) return false;
     const offset = LABEL_WIDTH + todayIndex * DAY_WIDTH - el.clientWidth / 2 + DAY_WIDTH / 2;
     el.scrollLeft = Math.max(0, offset);
+    return true;
   }, [todayIndex]);
 
   useEffect(() => {
-    if (!loading && items.length > 0 && !scrolledToToday.current) {
-      scrolledToToday.current = true;
-      requestAnimationFrame(scrollToToday);
-    }
-  }, [loading, items.length, scrollToToday]);
+    scrolledToToday.current = false;
+  }, [from, to]);
+
+  useLayoutEffect(() => {
+    if (loading || items.length === 0 || scrolledToToday.current) return;
+
+    const tryScroll = () => {
+      if (scrollToToday()) scrolledToToday.current = true;
+    };
+
+    tryScroll();
+    const raf = requestAnimationFrame(tryScroll);
+    const timer = window.setTimeout(tryScroll, 150);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(timer);
+    };
+  }, [loading, items.length, scrollToToday, from, to]);
 
   function toggleExpand(taskId: string) {
     setExpanded((prev) => {
@@ -192,7 +254,7 @@ export function GanttChart({ compact = false }: { compact?: boolean }) {
       return (
         <div
           key={`add-${row.parentTaskId}-${idx}`}
-          className="flex items-center border-b border-gray-100 px-2"
+          className="flex items-center border-b border-gray-100 bg-teal-50/50 px-2"
           style={{ height: ROW_HEIGHT, paddingLeft: 12 + row.depth * 16 }}
         >
           <Link
@@ -210,11 +272,13 @@ export function GanttChart({ compact = false }: { compact?: boolean }) {
     const showToggle =
       item.type === "task" && (childCount > 0 || taskDepth(item.id, taskById) < 2);
     const isExpanded = expanded.has(item.id);
+    const labelBg =
+      item.type === "task" ? taskLabelBg(row.depth) : "bg-purple-50/80";
 
     return (
       <div
         key={`label-${item.type}-${item.id}-${idx}`}
-        className="flex items-center gap-1 border-b border-gray-100 bg-white px-2"
+        className={cn("flex items-center gap-1 border-b border-gray-100 px-2", labelBg)}
         style={{ height: ROW_HEIGHT, paddingLeft: 12 + row.depth * 16 }}
       >
         {showToggle ? (
@@ -260,6 +324,8 @@ export function GanttChart({ compact = false }: { compact?: boolean }) {
 
     const item = row.item!;
     const { left, width } = barMetrics(item);
+    const barColor =
+      item.type === "task" ? taskBarColor(row.depth) : "bg-purple-500/85";
 
     return (
       <div
@@ -271,12 +337,7 @@ export function GanttChart({ compact = false }: { compact?: boolean }) {
           className="absolute top-1/2 -translate-y-1/2"
           style={{ left, width: Math.max(width, DAY_WIDTH - 4) }}
         >
-          <div
-            className={cn(
-              "relative h-7 overflow-hidden rounded-full",
-              item.type === "task" ? "bg-slate-600/90" : "bg-purple-500/85",
-            )}
-          >
+          <div className={cn("relative h-7 overflow-hidden rounded-full", barColor)}>
             <span className="block truncate px-3 text-xs leading-7 text-white">{item.title}</span>
           </div>
           {item.isVirtualEnd && (
@@ -304,9 +365,12 @@ export function GanttChart({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white">
-      <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
-        <div style={{ width: totalWidth, minWidth: "100%" }}>
+    <div
+      ref={containerRef}
+      className="flex min-h-0 w-full max-w-full min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white"
+    >
+      <div ref={scrollRef} className="min-h-0 w-full max-w-full min-w-0 flex-1 overflow-auto">
+        <div style={{ width: totalWidth }}>
           {/* 时间轴（sticky 顶） */}
           <div className="sticky top-0 z-30 flex border-b border-gray-200 bg-white shadow-sm">
             <div
@@ -377,17 +441,29 @@ export function GanttChart({ compact = false }: { compact?: boolean }) {
               )}
             </div>
 
-            {rows.map((row, idx) => (
-              <div key={`row-${idx}`} className="flex">
-                <div
-                  className="sticky left-0 z-20 shrink-0 border-r border-gray-200 bg-white"
-                  style={{ width: LABEL_WIDTH }}
-                >
-                  {renderLabel(row, idx)}
+            {rows.map((row, idx) => {
+              const labelBg =
+                row.kind === "item" && row.item?.type === "task"
+                  ? taskLabelBg(row.depth)
+                  : row.kind === "item" && row.item?.type === "plan"
+                    ? "bg-purple-50/80"
+                    : "bg-teal-50/50";
+
+              return (
+                <div key={`row-${idx}`} className="flex">
+                  <div
+                    className={cn(
+                      "sticky left-0 z-20 shrink-0 border-r border-gray-200",
+                      labelBg,
+                    )}
+                    style={{ width: LABEL_WIDTH }}
+                  >
+                    {renderLabel(row, idx)}
+                  </div>
+                  <div className="relative shrink-0">{renderBar(row, idx)}</div>
                 </div>
-                <div className="relative shrink-0">{renderBar(row, idx)}</div>
-              </div>
-            ))}
+              );
+            })}
 
             <div className="flex">
               <div
@@ -406,7 +482,7 @@ export function GanttChart({ compact = false }: { compact?: boolean }) {
         </div>
       </div>
 
-      {!compact && (
+      {fullPage && (
         <div className="flex shrink-0 items-center justify-between border-t border-gray-100 px-3 py-1.5 text-xs text-gray-500">
           <span>左右滑动浏览时间轴</span>
           <Button type="button" size="sm" variant="ghost" onClick={scrollToToday}>

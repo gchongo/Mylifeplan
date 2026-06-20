@@ -16,9 +16,9 @@ export function AppShell({
       <aside className="hidden w-56 shrink-0 border-r border-gray-200 bg-white lg:block">
         <SidebarNav />
       </aside>
-      <div className="flex min-h-screen flex-1 flex-col pb-16 lg:pb-0">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col pb-16 lg:pb-0">
         <TopBar title={title} userEmail={userEmail} />
-        <main className="flex-1 p-4 lg:p-6">{children}</main>
+        <main className="min-w-0 flex-1 overflow-x-hidden p-4 lg:p-6">{children}</main>
       </div>
       <MobileTabBar />
     </div>

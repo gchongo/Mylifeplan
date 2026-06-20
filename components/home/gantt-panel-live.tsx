@@ -14,7 +14,7 @@ export function GanttPanelLive({
   className?: string;
 }) {
   return (
-    <Card className={cn("flex h-full flex-col", className)}>
+    <Card className={cn("flex h-full min-w-0 max-w-full flex-col overflow-hidden", className)}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div className="flex items-center gap-2">
           <CardTitle>{fullPage ? "甘特图" : "甘特图 · 看全局"}</CardTitle>
@@ -23,7 +23,7 @@ export function GanttPanelLive({
         {!fullPage && <PanelExpandButton href="/gantt" label="甘特图" />}
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-3 pt-0">
-        <GanttChart compact={!fullPage} />
+        <GanttChart fullPage={fullPage} />
       </CardContent>
     </Card>
   );

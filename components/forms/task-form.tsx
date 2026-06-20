@@ -7,6 +7,7 @@ import { ErrorMessage } from "@/components/ui/feedback";
 import { Input, Select, Textarea } from "@/components/ui";
 import { ParentTaskSelect } from "@/components/forms/parent-task-select";
 import { PlanSelect } from "@/components/forms/plan-select";
+import type { ParentDateBounds } from "@/lib/task-parent-dates";
 
 const priorityOptions = [
   { value: "", label: "无" },
@@ -38,11 +39,13 @@ export function TaskForm({
   redirectTo = "/tasks",
   defaultPlanId,
   defaultParentTaskId,
+  parentDateBounds,
 }: {
   task?: TaskFormValues;
   redirectTo?: string;
   defaultPlanId?: string | null;
   defaultParentTaskId?: string | null;
+  parentDateBounds?: ParentDateBounds | null;
 }) {
   const router = useRouter();
   const isEdit = Boolean(task?.id);
@@ -51,9 +54,13 @@ export function TaskForm({
   const [parentTaskId, setParentTaskId] = useState<string | null>(
     task?.parentTaskId ?? defaultParentTaskId ?? null,
   );
-  const [planId, setPlanId] = useState<string | null>(
-    task?.planId ?? defaultPlanId ?? null,
-  );
+  const isSubtaskCreate = !isEdit && Boolean(parentDateBounds);
+  const defaultStartDate =
+    task?.startDate ?? (isSubtaskCreate ? parentDateBounds!.defaultStartDate : "");
+  const defaultDueDate =
+    task?.dueDate ?? (isSubtaskCreate ? parentDateBounds!.defaultDueDate : "");
+  const dateMin = parentDateBounds?.startDate;
+  const dateMax = parentDateBounds?.maxEndDate;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -121,15 +128,24 @@ export function TaskForm({
           name="startDate"
           label="开始日期"
           type="date"
-          defaultValue={task?.startDate ?? ""}
+          defaultValue={defaultStartDate}
+          min={dateMin}
+          max={dateMax}
         />
         <Input
           name="dueDate"
           label="截止日期"
           type="date"
-          defaultValue={task?.dueDate ?? ""}
+          defaultValue={defaultDueDate}
+          min={dateMin}
+          max={dateMax}
         />
       </div>
+      {parentDateBounds && (
+        <p className="text-xs text-gray-500">
+          子任务日期需在父任务范围内（{parentDateBounds.startDate} 至 {parentDateBounds.maxEndDate}）。
+        </p>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <Select
           name="priority"
