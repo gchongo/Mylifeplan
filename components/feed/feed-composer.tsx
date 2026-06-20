@@ -53,7 +53,6 @@ function ModeToggle({
       >
         ☑
       </button>
-      <span className="ml-1 text-xs text-gray-400">{mode === "memo" ? "备忘" : "计划"}</span>
     </div>
   );
 }
@@ -91,6 +90,11 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
     }
   }
 
+  function handleTaskCancel() {
+    setMode("memo");
+    setTaskFormKey((k) => k + 1);
+  }
+
   if (mode === "task") {
     return (
       <div className="feed-composer shrink-0 rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
@@ -98,6 +102,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
           key={taskFormKey}
           embedded
           submitLabel="保存"
+          onCancel={handleTaskCancel}
           onSuccess={() => {
             onPublished();
             setTaskFormKey((k) => k + 1);

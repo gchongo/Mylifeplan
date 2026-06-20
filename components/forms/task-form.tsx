@@ -43,6 +43,7 @@ export function TaskForm({
   onSuccess,
   embedded = false,
   submitLabel,
+  onCancel,
 }: {
   task?: TaskFormValues;
   redirectTo?: string;
@@ -52,6 +53,7 @@ export function TaskForm({
   onSuccess?: () => void;
   embedded?: boolean;
   submitLabel?: string;
+  onCancel?: () => void;
 }) {
   const router = useRouter();
   const isEdit = Boolean(task?.id);
@@ -170,12 +172,21 @@ export function TaskForm({
         onChange={setParentTaskId}
       />
       <PlanSelect value={planId} onChange={setPlanId} />
-      <p className="text-xs text-gray-500">
-        无日期 → 备忘录；有开始日期 → 日历 + 甘特图；有开始 + 截止 → 真实截止。
-      </p>
-      <Button type="submit" disabled={loading} size={embedded ? "sm" : "md"}>
-        {loading ? "保存中…" : submitLabel ?? (isEdit ? "保存修改" : "保存任务")}
-      </Button>
+      {!embedded && (
+        <p className="text-xs text-gray-500">
+          无日期 → 备忘录；有开始日期 → 日历 + 甘特图；有开始 + 截止 → 真实截止。
+        </p>
+      )}
+      <div className={embedded ? "flex items-center gap-2" : undefined}>
+        <Button type="submit" disabled={loading} size={embedded ? "sm" : "md"}>
+          {loading ? "保存中…" : submitLabel ?? (isEdit ? "保存修改" : "保存任务")}
+        </Button>
+        {embedded && onCancel && (
+          <Button type="button" variant="secondary" size="sm" disabled={loading} onClick={onCancel}>
+            取消
+          </Button>
+        )}
+      </div>
     </form>
   );
 }
