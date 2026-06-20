@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
+import type { TaskFormValues } from "@/components/forms/task-form";
 import type { GanttItem } from "@/types";
 import { getStatusStyle, statusLabel } from "@/lib/task-status-style";
 import { cn } from "@/lib/utils";
