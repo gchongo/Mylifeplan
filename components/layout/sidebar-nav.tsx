@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 export const sidebarNavItems = [
   { href: "/", label: "首页", icon: "⌂" },
+  { href: "/feed", label: "信息流", icon: "≡" },
   { href: "/gantt", label: "甘特图", icon: "▬" },
   { href: "/calendar", label: "日历", icon: "▦" },
   { href: "/plans", label: "计划", icon: "◎" },
