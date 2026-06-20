@@ -34,7 +34,7 @@ async function validatePlanHierarchy(
     let cur: string | null = parentPlanId;
     while (cur) {
       if (cur === planId) return "不能形成循环层级";
-      const row = await prisma.plan.findFirst({
+      const row: { parentPlanId: string | null } | null = await prisma.plan.findFirst({
         where: { id: cur, userId },
         select: { parentPlanId: true },
       });
