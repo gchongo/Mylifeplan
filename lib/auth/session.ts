@@ -44,9 +44,11 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
 }
 
 export function sessionCookieOptions(maxAgeSeconds = 60 * 60 * 24 * 30) {
+  // HTTP 部署（无 HTTPS）须设 COOKIE_SECURE=false，否则浏览器不保存登录 Cookie
+  const secure = process.env.COOKIE_SECURE === "true";
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure,
     sameSite: "lax" as const,
     path: "/",
     maxAge: maxAgeSeconds,

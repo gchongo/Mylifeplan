@@ -27,4 +27,12 @@ describe("auth validations", () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it("login accepts .local seed emails", () => {
+    const result = loginSchema.safeParse({
+      email: "admin@mylifeplan.local",
+      password: "password123",
+    });
+    expect(result.success).toBe(true);
+  });
 });

@@ -14,15 +14,24 @@ export function LoginForm({
   requireAdmin?: boolean;
 }) {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     setLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const email = String(formData.get("email") ?? "").trim();
+    const password = String(formData.get("password") ?? "");
+
+    if (!email || !password) {
+      setError("请输入邮箱和密码");
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
@@ -52,19 +61,19 @@ export function LoginForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && <ErrorMessage message={error} />}
       <Input
+        name="email"
         label="邮箱"
         type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
+        defaultValue=""
         placeholder="you@example.com"
         required
         autoComplete="email"
       />
       <Input
+        name="password"
         label="密码"
         type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
+        defaultValue=""
         placeholder="••••••••"
         required
         autoComplete="current-password"

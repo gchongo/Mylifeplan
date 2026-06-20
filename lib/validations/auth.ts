@@ -1,8 +1,14 @@
 import { z } from "zod";
 
+/** 接受 demo@mylifeplan.local 等 .local 邮箱 */
+export const emailSchema = z
+  .string()
+  .min(1, "请输入邮箱")
+  .refine((v) => /^[^\s@]+@[^\s@]+$/.test(v), "请输入有效邮箱");
+
 export const registerSchema = z
   .object({
-    email: z.string().email("请输入有效邮箱"),
+    email: emailSchema,
     password: z.string().min(8, "密码至少 8 位"),
     confirmPassword: z.string(),
     name: z.string().max(50).optional(),
@@ -13,7 +19,7 @@ export const registerSchema = z
   });
 
 export const loginSchema = z.object({
-  email: z.string().email("请输入有效邮箱"),
+  email: emailSchema,
   password: z.string().min(1, "请输入密码"),
 });
 

@@ -8,22 +8,30 @@ import { Input } from "@/components/ui/input";
 
 export function RegisterForm() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     setLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const email = String(formData.get("email") ?? "").trim();
+    const password = String(formData.get("password") ?? "");
+    const confirmPassword = String(formData.get("confirmPassword") ?? "");
+    const name = String(formData.get("name") ?? "").trim();
+
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, confirmPassword, name: name || undefined }),
+        body: JSON.stringify({
+          email,
+          password,
+          confirmPassword,
+          name: name || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -43,35 +51,32 @@ export function RegisterForm() {
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && <ErrorMessage message={error} />}
       <Input
+        name="email"
         label="邮箱"
         type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
         placeholder="you@example.com"
         required
         autoComplete="email"
       />
       <Input
+        name="name"
         label="昵称（可选）"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
         placeholder="你的名字"
+        autoComplete="name"
       />
       <Input
+        name="password"
         label="密码"
         type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
         placeholder="至少 8 位"
         required
         minLength={8}
         autoComplete="new-password"
       />
       <Input
+        name="confirmPassword"
         label="确认密码"
         type="password"
-        value={confirmPassword}
-        onChange={(e) => setConfirmPassword(e.target.value)}
         placeholder="再次输入密码"
         required
         autoComplete="new-password"

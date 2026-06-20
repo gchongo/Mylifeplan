@@ -48,8 +48,11 @@ nano .env
 ```env
 DATABASE_URL="postgresql://mylifeplan:你的密码URL编码@localhost:5432/mylifeplan?schema=public"
 AUTH_SECRET="openssl rand -base64 32 生成的字符串"
+COOKIE_SECURE="false"
 NODE_ENV="production"
 ```
+
+> **重要**：用 `http://IP:3000` 访问时，`COOKIE_SECURE` 必须为 `false`。上 HTTPS 后改为 `true`。
 
 验证数据库：
 
