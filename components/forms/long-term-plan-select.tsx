@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Select } from "@/components/ui";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -9,6 +9,13 @@ const TYPE_LABELS: Record<string, string> = {
   phase: "阶段",
   weekly: "周计划",
   daily: "日计划",
+};
+
+const TYPE_ORDER: Record<string, number> = {
+  goal: 0,
+  phase: 1,
+  weekly: 2,
+  daily: 3,
 };
 
 interface PlanOption {
@@ -20,25 +27,38 @@ interface PlanOption {
 
 function formatPlanLabel(p: PlanOption): string {
   const tag = TYPE_LABELS[p.type] ?? p.type;
-  if (p.type === "phase" && p.parentTitle) {
+  if (p.parentTitle) {
     return `${p.parentTitle} › ${p.title}（${tag}）`;
   }
   return `${p.title}（${tag}）`;
 }
 
+function sortPlans(plans: PlanOption[]): PlanOption[] {
+  return [...plans].sort((a, b) => {
+    const typeDiff = (TYPE_ORDER[a.type] ?? 99) - (TYPE_ORDER[b.type] ?? 99);
+    if (typeDiff !== 0) return typeDiff;
+    return a.title.localeCompare(b.title, "zh-CN");
+  });
+}
+
 export function PlanContributionSelect({
   value,
   onChange,
+  refreshKey = 0,
 }: {
   value?: string | null;
   onChange?: (id: string | null) => void;
+  refreshKey?: number;
 }) {
   const [options, setOptions] = useState<{ value: string; label: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
-  useEffect(() => {
-    fetch("/api/plans?for=contribution")
+  const loadPlans = useCallback(() => {
+    setLoading(true);
+    setLoadError("");
+
+    fetch("/api/plans")
       .then((r) => {
         if (!r.ok) throw new Error("加载失败");
         return r.json();
@@ -46,7 +66,7 @@ export function PlanContributionSelect({
       .then((data) => {
         const plans: PlanOption[] = data.plans ?? [];
         setOptions(
-          plans.map((p) => ({
+          sortPlans(plans).map((p) => ({
             value: p.id,
             label: formatPlanLabel(p),
           })),
@@ -56,6 +76,10 @@ export function PlanContributionSelect({
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    loadPlans();
+  }, [loadPlans, refreshKey]);
+
   return (
     <div className="w-full">
       <Select
@@ -63,8 +87,9 @@ export function PlanContributionSelect({
         options={[{ value: "", label: "不关联计划" }, ...options]}
         value={value ?? ""}
         onChange={(e) => onChange?.(e.target.value || null)}
-        disabled={loading}
-        placeholder={loading ? "加载计划…" : undefined}
+        onFocus={loadPlans}
+        disabled={loading && options.length === 0}
+        placeholder={loading && options.length === 0 ? "加载计划…" : undefined}
       />
       {!loading && !loadError && options.length === 0 && (
         <p className="mt-1.5 text-xs text-gray-500">

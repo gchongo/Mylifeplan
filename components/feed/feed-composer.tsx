@@ -67,15 +67,21 @@ function ContributionFields({
   onPlanChange,
   occurredOn,
   onDateChange,
+  planListRefreshKey,
 }: {
   planId: string | null;
   onPlanChange: (id: string | null) => void;
   occurredOn: string;
   onDateChange: (date: string) => void;
+  planListRefreshKey: number;
 }) {
   return (
     <div className="space-y-2 border-t border-gray-100 pt-2">
-      <PlanContributionSelect value={planId} onChange={onPlanChange} />
+      <PlanContributionSelect
+        value={planId}
+        onChange={onPlanChange}
+        refreshKey={planListRefreshKey}
+      />
       {planId && (
         <label className="flex items-center gap-2 text-xs text-gray-500">
           贡献日期
@@ -99,6 +105,11 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
   const [taskFormKey, setTaskFormKey] = useState(0);
   const [contributionPlanId, setContributionPlanId] = useState<string | null>(null);
   const [occurredOn, setOccurredOn] = useState(todayStr);
+  const [planListRefreshKey, setPlanListRefreshKey] = useState(0);
+
+  function bumpPlanList() {
+    setPlanListRefreshKey((k) => k + 1);
+  }
 
   const canSaveMemo = text.trim().length > 0 && !busy;
 
@@ -148,6 +159,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
       setText("");
       setContributionPlanId(null);
       setOccurredOn(todayStr());
+      bumpPlanList();
       onPublished();
     } finally {
       setBusy(false);
@@ -169,6 +181,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
           onPlanChange={setContributionPlanId}
           occurredOn={occurredOn}
           onDateChange={setOccurredOn}
+          planListRefreshKey={planListRefreshKey}
         />
         <div className="mt-3">
           <TaskForm
@@ -181,6 +194,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
             onSuccess={() => {
               setContributionPlanId(null);
               setOccurredOn(todayStr());
+              bumpPlanList();
               onPublished();
               setTaskFormKey((k) => k + 1);
             }}
@@ -208,6 +222,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
         onPlanChange={setContributionPlanId}
         occurredOn={occurredOn}
         onDateChange={setOccurredOn}
+        planListRefreshKey={planListRefreshKey}
       />
 
       <div className="mt-2 flex items-center justify-between gap-2 border-t border-gray-100 pt-2">
