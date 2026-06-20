@@ -1,0 +1,184 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  user
+  admin
+}
+
+enum TaskStatus {
+  todo
+  in_progress
+  done
+}
+
+enum TaskPriority {
+  high
+  medium
+  low
+}
+
+enum PlanType {
+  goal
+  phase
+  weekly
+  daily
+}
+
+enum PlanStatus {
+  not_started
+  in_progress
+  done
+}
+
+enum FeedItemType {
+  task
+  plan
+  memo
+}
+
+enum FeedActionType {
+  create
+  update
+  complete
+  archive
+}
+
+enum SubscriptionStatus {
+  active
+  expired
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String?
+  avatar       String?
+  role         UserRole @default(user)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tasks         Task[]
+  plans         Plan[]
+  memos         Memo[]
+  feeds         Feed[]
+  subscriptions Subscription[]
+
+  @@map("users")
+}
+
+model Task {
+  id           String        @id @default(cuid())
+  userId       String        @map("user_id")
+  title        String
+  description  String?
+  status       TaskStatus    @default(todo)
+  priority     TaskPriority?
+  startDate    DateTime?     @map("start_date") @db.Date
+  dueDate      DateTime?     @map("due_date") @db.Date
+  parentTaskId String?       @map("parent_task_id")
+  planId       String?       @map("plan_id")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentTask Task?  @relation("TaskHierarchy", fields: [parentTaskId], references: [id], onDelete: SetNull)
+  subTasks   Task[] @relation("TaskHierarchy")
+  plan       Plan?  @relation(fields: [planId], references: [id], onDelete: SetNull)
+  linkedMemo Memo?  @relation("TaskMemo")
+
+  @@index([userId])
+  @@index([planId])
+  @@index([parentTaskId])
+  @@map("tasks")
+}
+
+model Plan {
+  id           String     @id @default(cuid())
+  userId       String     @map("user_id")
+  title        String
+  description  String?
+  type         PlanType
+  parentPlanId String?    @map("parent_plan_id")
+  startDate    DateTime?  @map("start_date") @db.Date
+  endDate      DateTime?  @map("end_date") @db.Date
+  status       PlanStatus @default(not_started)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentPlan Plan?  @relation("PlanHierarchy", fields: [parentPlanId], references: [id], onDelete: SetNull)
+  subPlans   Plan[] @relation("PlanHierarchy")
+  tasks      Task[]
+  linkedMemo Memo?  @relation("PlanMemo")
+
+  @@index([userId])
+  @@index([parentPlanId])
+  @@index([type])
+  @@map("plans")
+}
+
+model Memo {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  title        String
+  description  String?
+  linkedTaskId String?  @unique @map("linked_task_id")
+  linkedPlanId String?  @unique @map("linked_plan_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user       User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  linkedTask Task? @relation("TaskMemo", fields: [linkedTaskId], references: [id], onDelete: Cascade)
+  linkedPlan Plan? @relation("PlanMemo", fields: [linkedPlanId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("memos")
+}
+
+model Feed {
+  id         String         @id @default(cuid())
+  userId     String         @map("user_id")
+  itemType   FeedItemType   @map("item_type")
+  itemId     String         @map("item_id")
+  actionType FeedActionType @map("action_type")
+  content    String?
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("feeds")
+}
+
+model Subscription {
+  id            String             @id @default(cuid())
+  userId        String             @map("user_id")
+  planName      String             @map("plan_name")
+  status        SubscriptionStatus @default(active)
+  startAt       DateTime           @map("start_at")
+  endAt         DateTime           @map("end_at")
+  paymentStatus PaymentStatus      @default(pending) @map("payment_status")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("subscriptions")
+}
