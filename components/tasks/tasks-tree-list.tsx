@@ -35,27 +35,27 @@ function buildTree(tasks: TaskTreeNode[]) {
 
 function TreeNode({
   task,
-  children,
+  childTasks,
   allTasks,
   collapsed,
   onToggle,
 }: {
   task: TaskTreeNode;
-  children: TaskTreeNode[];
+  childTasks: TaskTreeNode[];
   allTasks: TaskTreeNode[];
   collapsed: Set<string>;
   onToggle: (id: string) => void;
 }) {
-  const childStatuses = children.map((c) => c.status);
+  const childStatuses = childTasks.map((c) => c.status);
   const displayStatus = deriveParentStatus(task.status, childStatuses);
-  const hasRollup = children.length > 0;
+  const hasRollup = childTasks.length > 0;
   const inMemo = shouldShowInMemo({ startDate: task.startDate, dueDate: task.dueDate });
   const isCollapsed = collapsed.has(task.id);
 
   return (
     <li>
       <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
-        {children.length > 0 ? (
+        {childTasks.length > 0 ? (
           <button
             type="button"
             className="w-5 shrink-0 text-gray-400 hover:text-gray-700"
@@ -84,9 +84,9 @@ function TreeNode({
           </Badge>
         </div>
       </div>
-      {children.length > 0 && !isCollapsed && (
+      {childTasks.length > 0 && !isCollapsed && (
         <ul className="ml-6 mt-1 space-y-1 border-l border-gray-200 pl-2">
-          {children.map((child) => (
+          {childTasks.map((child) => (
             <TreeBranch
               key={child.id}
               task={child}
@@ -115,11 +115,11 @@ function TreeBranch({
   collapsed: Set<string>;
   onToggle: (id: string) => void;
 }) {
-  const children = byParent.get(task.id) ?? [];
+  const childTasks = byParent.get(task.id) ?? [];
   return (
     <TreeNode
       task={task}
-      children={children}
+      childTasks={childTasks}
       allTasks={allTasks}
       collapsed={collapsed}
       onToggle={onToggle}

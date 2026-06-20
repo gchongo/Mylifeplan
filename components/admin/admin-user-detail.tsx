@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ export function AdminUserDetail({ userId }: { userId: string }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function load() {
+  const load = useCallback(async () => {
     const res = await fetch(`/api/admin/users/${userId}`);
     const data = await res.json();
     if (!res.ok) {
@@ -39,11 +39,11 @@ export function AdminUserDetail({ userId }: { userId: string }) {
       return;
     }
     setUser(data.user);
-  }
+  }, [userId]);
 
   useEffect(() => {
     load().finally(() => setLoading(false));
-  }, [userId]);
+  }, [load]);
 
   async function toggleActive() {
     if (!user) return;
