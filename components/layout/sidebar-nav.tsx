@@ -9,7 +9,7 @@ export const sidebarNavItems = [
   { href: "/feed", label: "信息流", icon: "≡" },
   { href: "/gantt", label: "甘特图", icon: "▬" },
   { href: "/calendar", label: "日历", icon: "▦" },
-  { href: "/plans", label: "计划", icon: "◎" },
+  { href: "/plans", label: "看板", icon: "◎" },
   { href: "/memos", label: "备忘录", icon: "✎" },
 ];
 

@@ -5,6 +5,7 @@ import { ParentPlanSelect } from "@/components/forms/parent-plan-select";
 import { PlanContributionSelect } from "@/components/forms/long-term-plan-select";
 import { Button } from "@/components/ui/button";
 import { apiJson } from "@/lib/client-api";
+import { dispatchPlanUpdated } from "@/lib/plan-events";
 import { cn } from "@/lib/utils";
 
 type ComposerMode = "memo" | "plan" | "contribution";
@@ -95,12 +96,18 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
             endDate: endDate || null,
           }),
         });
+        dispatchPlanUpdated();
       } else {
-        await apiJson("/api/memos", {
+        await apiJson("/api/plans", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, description }),
+          body: JSON.stringify({
+            title,
+            description,
+            type: "goal",
+          }),
         });
+        dispatchPlanUpdated();
       }
 
       resetForm();

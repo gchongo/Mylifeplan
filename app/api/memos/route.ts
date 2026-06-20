@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 import { requireSession } from "@/lib/auth/get-session";
 import { handleProtectedRouteError } from "@/lib/api/route-auth";
 import { prisma } from "@/lib/db";
-import { createStandaloneMemo } from "@/lib/services/memo";
+import { createPlan, serializePlan } from "@/lib/services/plan";
 import { z } from "zod";
 
 const createMemoSchema = z.object({
@@ -48,15 +48,22 @@ export async function POST(request: NextRequest) {
       return jsonError(parsed.error.errors[0]?.message ?? "参数错误", 400);
     }
 
-    const memo = await createStandaloneMemo(session.userId, parsed.data);
+    const plan = await createPlan(session.userId, {
+      title: parsed.data.title,
+      description: parsed.data.description,
+      type: "goal",
+    });
+    const memo = await prisma.memo.findUnique({ where: { linkedPlanId: plan.id } });
     return jsonOk(
       {
         memo: {
-          id: memo.id,
-          title: memo.title,
-          description: memo.description,
-          sourceType: "standalone" as const,
-          updatedAt: memo.updatedAt,
+          id: memo?.id ?? plan.id,
+          title: plan.title,
+          description: plan.description,
+          linkedPlanId: plan.id,
+          sourceType: "plan" as const,
+          updatedAt: plan.updatedAt,
+          plan: serializePlan(plan),
         },
       },
       201,
