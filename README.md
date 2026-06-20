@@ -65,9 +65,14 @@ pm2 start npm --name mylifeplan -- start
 - [x] Seed 脚本（admin + demo）
 - [x] Docker Compose PostgreSQL
 
-### 下一步（M2）
-- Task / Plan CRUD API
-- 分流 + Memo 联动 + Feed 写入
+### M2 ✅
+- [x] Task / Plan CRUD API
+- [x] 分流 + Memo 自动创建/删除/同步
+- [x] Feed 写入与首页信息流
+- [x] 新建任务 / 计划表单
+- [x] 备忘录列表与补日期回流
+
+### 下一步（M3）
 
 ## 脚本
 
