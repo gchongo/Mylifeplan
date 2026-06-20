@@ -1,10 +1,7 @@
 export const GANTT_SCALES = [
-  { id: "hour", label: "小时" },
   { id: "day", label: "天" },
   { id: "week", label: "周" },
-  { id: "biweek", label: "双周" },
   { id: "month", label: "月度" },
-  { id: "quarter", label: "季度" },
   { id: "year", label: "年度" },
   { id: "5year", label: "5 年" },
 ] as const;
@@ -16,8 +13,17 @@ export interface TimelineColumn {
   startDate: string;
   endDate: string;
   width: number;
-  headerTop: string;
+  topGroupKey: string;
+  topGroupLabel: string;
   headerBottom: string;
+  isWeekend?: boolean;
+  isOtherMonth?: boolean;
+}
+
+export interface HeaderSpan {
+  key: string;
+  label: string;
+  width: number;
 }
 
 export interface TimelineLayout {
@@ -25,7 +31,37 @@ export interface TimelineLayout {
   to: string;
   columns: TimelineColumn[];
   totalWidth: number;
+  periodLabel: string;
+  topSpans: HeaderSpan[];
 }
+
+export interface LayoutBounds {
+  from?: string;
+  to?: string;
+}
+
+const HOUR_WIDTH = 24;
+const DAY_WIDTH = 36;
+const WEEK_WIDTH = 88;
+const MONTH_DAY_WIDTH = 32;
+const YEAR_WEEK_WIDTH = 28;
+const FIVEY_MONTH_WIDTH = 22;
+
+const WEEKDAY_SHORT = ["日", "一", "二", "三", "四", "五", "六"];
+const MONTH_NAMES = [
+  "一月",
+  "二月",
+  "三月",
+  "四月",
+  "五月",
+  "六月",
+  "七月",
+  "八月",
+  "九月",
+  "十月",
+  "十一月",
+  "十二月",
+];
 
 function parseUtcDate(s: string) {
   const [y, m, d] = s.split("-").map(Number);
@@ -46,11 +82,18 @@ export function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function startOfWeek(date: string) {
+function startOfWeekMonday(date: string) {
   const dt = new Date(parseUtcDate(date));
   const dow = dt.getUTCDay();
   const diff = dow === 0 ? -6 : 1 - dow;
   dt.setUTCDate(dt.getUTCDate() + diff);
+  return dt.toISOString().slice(0, 10);
+}
+
+function startOfWeekSunday(date: string) {
+  const dt = new Date(parseUtcDate(date));
+  const dow = dt.getUTCDay();
+  dt.setUTCDate(dt.getUTCDate() - dow);
   return dt.toISOString().slice(0, 10);
 }
 
@@ -61,282 +104,279 @@ function startOfMonth(date: string) {
 
 function endOfMonth(date: string) {
   const [y, m] = date.split("-").map(Number);
-  const dt = new Date(Date.UTC(y, m, 0));
-  return dt.toISOString().slice(0, 10);
+  return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
 }
 
 function addMonthsUtc(base: string, months: number) {
   const [y, m, d] = base.split("-").map(Number);
-  const dt = new Date(Date.UTC(y, m - 1 + months, d));
-  return dt.toISOString().slice(0, 10);
+  return new Date(Date.UTC(y, m - 1 + months, d)).toISOString().slice(0, 10);
 }
 
-function quarterStart(date: string) {
-  const [y, m] = date.split("-").map(Number);
-  const qMonth = Math.floor((m - 1) / 3) * 3 + 1;
-  return `${y}-${String(qMonth).padStart(2, "0")}-01`;
+function utcDayOfWeek(date: string) {
+  return new Date(parseUtcDate(date)).getUTCDay();
 }
 
-function quarterEnd(date: string) {
-  const [y, m] = date.split("-").map(Number);
-  const qMonth = Math.floor((m - 1) / 3) * 3 + 3;
-  return endOfMonth(`${y}-${String(qMonth).padStart(2, "0")}-01`);
+function isWeekendDate(date: string) {
+  const dow = utcDayOfWeek(date);
+  return dow === 0 || dow === 6;
 }
 
-function yearStart(date: string) {
-  return `${date.slice(0, 4)}-01-01`;
-}
-
-function yearEnd(date: string) {
-  return `${date.slice(0, 4)}-12-31`;
-}
-
-function fiveYearBlockStart(date: string) {
-  const y = parseInt(date.slice(0, 4), 10);
-  const block = Math.floor(y / 5) * 5;
-  return `${block}-01-01`;
-}
-
-function fiveYearBlockEnd(date: string) {
-  const y = parseInt(date.slice(0, 4), 10);
-  const block = Math.floor(y / 5) * 5 + 4;
-  return `${block}-12-31`;
-}
-
-function formatMonthLabel(date: string) {
-  const [y, m] = date.split("-").map(Number);
+function formatPeriodLabel(scale: GanttScaleId, anchor: string): string {
+  const [y, m, d] = anchor.split("-").map(Number);
+  if (scale === "day") return `${y}年${m}月${d}日`;
+  if (scale === "week" || scale === "month") return `${y}年${m}月`;
+  if (scale === "year") return `${y}年`;
+  if (scale === "5year") return `${y - 2}年 – ${y + 2}年`;
   return `${y}年${m}月`;
 }
 
-function formatDayLabel(date: string) {
-  const dt = new Date(parseUtcDate(date));
-  return `${dt.getUTCMonth() + 1}/${dt.getUTCDate()}`;
+function mergeBounds(
+  scaleFrom: string,
+  scaleTo: string,
+  dataBounds?: LayoutBounds | null,
+): { from: string; to: string } {
+  if (!dataBounds?.from && !dataBounds?.to) return { from: scaleFrom, to: scaleTo };
+  let from = scaleFrom;
+  let to = scaleTo;
+  if (dataBounds.from && dataBounds.from < from) from = dataBounds.from;
+  if (dataBounds.to && dataBounds.to > to) to = dataBounds.to;
+  return { from, to };
 }
 
-function formatWeekLabel(start: string) {
-  const end = addDaysUtc(start, 6);
-  return `${formatDayLabel(start)}-${formatDayLabel(end)}`;
+function buildTopSpans(columns: TimelineColumn[]): HeaderSpan[] {
+  const spans: HeaderSpan[] = [];
+  for (const col of columns) {
+    const last = spans[spans.length - 1];
+    if (last?.key === col.topGroupKey) {
+      last.width += col.width;
+    } else {
+      spans.push({
+        key: col.topGroupKey,
+        label: col.topGroupLabel,
+        width: col.width,
+      });
+    }
+  }
+  return spans;
 }
 
-const HOUR_WIDTH = 20;
-const DAY_WIDTH = 32;
-const WEEK_WIDTH = 72;
-const BIWEEK_WIDTH = 88;
-const MONTH_WIDTH = 96;
-const QUARTER_WIDTH = 112;
-const YEAR_WIDTH = 128;
-const FIVE_YEAR_WIDTH = 160;
-
-export function buildTimelineLayout(
+function finalizeLayout(
   scale: GanttScaleId,
   anchor: string,
-  timelineAreaWidth: number,
+  columns: TimelineColumn[],
 ): TimelineLayout {
-  const width = Math.max(timelineAreaWidth, 320);
+  return {
+    from: columns[0]!.startDate,
+    to: columns[columns.length - 1]!.endDate,
+    columns,
+    totalWidth: columns.reduce((s, c) => s + c.width, 0),
+    periodLabel: formatPeriodLabel(scale, anchor),
+    topSpans: buildTopSpans(columns),
+  };
+}
 
-  if (scale === "hour") {
-    const hoursVisible = Math.max(24, Math.floor(width / HOUR_WIDTH));
-    const daysVisible = Math.ceil(hoursVisible / 24);
-    const from = addDaysUtc(anchor, -Math.floor(daysVisible / 2));
-    const to = addDaysUtc(from, daysVisible - 1);
-    const columns: TimelineColumn[] = [];
-    for (let d = 0; d < daysVisible; d++) {
-      const day = addDaysUtc(from, d);
-      for (let h = 0; h < 24; h++) {
-        columns.push({
-          key: `${day}-${h}`,
-          startDate: day,
-          endDate: day,
-          width: HOUR_WIDTH,
-          headerTop: formatDayLabel(day),
-          headerBottom: `${h}`,
-        });
-      }
-    }
-    return { from, to, columns, totalWidth: columns.length * HOUR_WIDTH };
-  }
-
-  if (scale === "day") {
-    const count = Math.max(14, Math.ceil(width / DAY_WIDTH));
-    const past = Math.floor(count * 0.4);
-    const from = addDaysUtc(anchor, -past);
-    const to = addDaysUtc(from, count - 1);
-    const columns: TimelineColumn[] = [];
-    for (let i = 0; i < count; i++) {
-      const day = addDaysUtc(from, i);
+function buildDayColumns(from: string, to: string): TimelineColumn[] {
+  const columns: TimelineColumn[] = [];
+  let day = from;
+  while (day <= to) {
+    const [y, m, d] = day.split("-").map(Number);
+    const dayLabel = `${m}月${d}日`;
+    for (let h = 0; h < 24; h++) {
       columns.push({
-        key: day,
+        key: `${day}-${h}`,
         startDate: day,
         endDate: day,
-        width: DAY_WIDTH,
-        headerTop: formatMonthLabel(day),
-        headerBottom: day.slice(8, 10),
+        width: HOUR_WIDTH,
+        topGroupKey: day,
+        topGroupLabel: dayLabel,
+        headerBottom: `${h}`,
       });
     }
-    return { from, to, columns, totalWidth: count * DAY_WIDTH };
+    day = addDaysUtc(day, 1);
   }
+  return columns;
+}
 
-  if (scale === "week") {
-    const count = Math.max(6, Math.floor(width / WEEK_WIDTH));
-    const weekStart = startOfWeek(anchor);
-    const from = addDaysUtc(weekStart, -Math.floor(count / 2) * 7);
-    const columns: TimelineColumn[] = [];
-    for (let i = 0; i < count; i++) {
-      const start = addDaysUtc(from, i * 7);
-      const end = addDaysUtc(start, 6);
+function buildWeekDayColumns(from: string, to: string): TimelineColumn[] {
+  const columns: TimelineColumn[] = [];
+  let day = from;
+  while (day <= to) {
+    const dow = utcDayOfWeek(day);
+    const dayNum = parseInt(day.slice(8, 10), 10);
+    const [y, m] = day.split("-").map(Number);
+    columns.push({
+      key: day,
+      startDate: day,
+      endDate: day,
+      width: DAY_WIDTH,
+      topGroupKey: `${y}-${m}`,
+      topGroupLabel: `${y}年${m}月`,
+      headerBottom: `${WEEKDAY_SHORT[dow]} ${dayNum}`,
+      isWeekend: isWeekendDate(day),
+    });
+    day = addDaysUtc(day, 1);
+  }
+  return columns;
+}
+
+function buildMonthDayColumns(from: string, to: string): TimelineColumn[] {
+  const columns: TimelineColumn[] = [];
+  let day = from;
+  while (day <= to) {
+    const dayNum = parseInt(day.slice(8, 10), 10);
+    const [y, m] = day.split("-").map(Number);
+    const monthStart = startOfMonth(day);
+    columns.push({
+      key: day,
+      startDate: day,
+      endDate: day,
+      width: MONTH_DAY_WIDTH,
+      topGroupKey: monthStart,
+      topGroupLabel: `${y}年${m}月`,
+      headerBottom: `${dayNum}`,
+      isWeekend: isWeekendDate(day),
+    });
+    day = addDaysUtc(day, 1);
+  }
+  return columns;
+}
+
+function buildYearWeekColumns(from: string, to: string): TimelineColumn[] {
+  const columns: TimelineColumn[] = [];
+  let weekStart = startOfWeekMonday(from);
+  while (weekStart <= to) {
+    const weekEnd = addDaysUtc(weekStart, 6);
+    if (weekEnd >= from) {
+      const [y, m] = weekStart.split("-").map(Number);
+      const monthStart = startOfMonth(weekStart);
+      const dayNum = parseInt(weekStart.slice(8, 10), 10);
       columns.push({
-        key: start,
-        startDate: start,
-        endDate: end,
-        width: WEEK_WIDTH,
-        headerTop: formatMonthLabel(start),
-        headerBottom: formatWeekLabel(start),
+        key: weekStart,
+        startDate: weekStart,
+        endDate: weekEnd,
+        width: YEAR_WEEK_WIDTH,
+        topGroupKey: monthStart,
+        topGroupLabel: MONTH_NAMES[m - 1]!,
+        headerBottom: `${dayNum}`,
       });
     }
-    const to = columns[columns.length - 1]!.endDate;
-    return { from, to, columns, totalWidth: count * WEEK_WIDTH };
+    weekStart = addDaysUtc(weekStart, 7);
   }
+  return columns;
+}
 
-  if (scale === "biweek") {
-    const count = Math.max(4, Math.floor(width / BIWEEK_WIDTH));
-    const weekStart = startOfWeek(anchor);
-    const from = addDaysUtc(weekStart, -Math.floor(count / 2) * 14);
-    const columns: TimelineColumn[] = [];
-    for (let i = 0; i < count; i++) {
-      const start = addDaysUtc(from, i * 14);
-      const end = addDaysUtc(start, 13);
-      columns.push({
-        key: start,
-        startDate: start,
-        endDate: end,
-        width: BIWEEK_WIDTH,
-        headerTop: formatMonthLabel(start),
-        headerBottom: formatWeekLabel(start),
-      });
-    }
-    const to = columns[columns.length - 1]!.endDate;
-    return { from, to, columns, totalWidth: count * BIWEEK_WIDTH };
-  }
-
-  if (scale === "month") {
-    const count = Math.max(6, Math.floor(width / MONTH_WIDTH));
-    const mid = startOfMonth(anchor);
-    const fromMonth = addMonthsUtc(mid, -Math.floor(count / 2));
-    const columns: TimelineColumn[] = [];
-    for (let i = 0; i < count; i++) {
-      const start = startOfMonth(addMonthsUtc(fromMonth, i));
+function buildFiveYearMonthColumns(fromYear: number, toYear: number): TimelineColumn[] {
+  const columns: TimelineColumn[] = [];
+  for (let y = fromYear; y <= toYear; y++) {
+    for (let m = 1; m <= 12; m++) {
+      const start = `${y}-${String(m).padStart(2, "0")}-01`;
       const end = endOfMonth(start);
       columns.push({
         key: start,
         startDate: start,
         endDate: end,
-        width: MONTH_WIDTH,
-        headerTop: start.slice(0, 4),
-        headerBottom: `${parseInt(start.slice(5, 7), 10)}月`,
+        width: FIVEY_MONTH_WIDTH,
+        topGroupKey: `${y}`,
+        topGroupLabel: `${y}年`,
+        headerBottom: `${m}`,
       });
     }
-    return {
-      from: columns[0]!.startDate,
-      to: columns[columns.length - 1]!.endDate,
-      columns,
-      totalWidth: count * MONTH_WIDTH,
-    };
   }
+  return columns;
+}
 
-  if (scale === "quarter") {
-    const count = Math.max(4, Math.floor(width / QUARTER_WIDTH));
-    const mid = quarterStart(anchor);
-    const columns: TimelineColumn[] = [];
-    let start = quarterStart(addMonthsUtc(mid, -Math.floor(count / 2) * 3));
-    for (let i = 0; i < count; i++) {
-      const end = quarterEnd(start);
-      const q = Math.floor((parseInt(start.slice(5, 7), 10) - 1) / 3) + 1;
-      columns.push({
-        key: start,
-        startDate: start,
-        endDate: end,
-        width: QUARTER_WIDTH,
-        headerTop: start.slice(0, 4),
-        headerBottom: `Q${q}`,
-      });
-      start = addMonthsUtc(start, 3);
-      start = quarterStart(start);
+function scaleDefaultRange(scale: GanttScaleId, anchor: string): { from: string; to: string } {
+  switch (scale) {
+    case "day": {
+      const from = addDaysUtc(anchor, -2);
+      const to = addDaysUtc(anchor, 4);
+      return { from, to };
     }
-    return {
-      from: columns[0]!.startDate,
-      to: columns[columns.length - 1]!.endDate,
-      columns,
-      totalWidth: count * QUARTER_WIDTH,
-    };
-  }
-
-  if (scale === "year") {
-    const count = Math.max(3, Math.floor(width / YEAR_WIDTH));
-    const y = parseInt(anchor.slice(0, 4), 10);
-    const fromYear = y - Math.floor(count / 2);
-    const columns: TimelineColumn[] = [];
-    for (let i = 0; i < count; i++) {
-      const year = fromYear + i;
-      const start = `${year}-01-01`;
-      const end = `${year}-12-31`;
-      columns.push({
-        key: start,
-        startDate: start,
-        endDate: end,
-        width: YEAR_WIDTH,
-        headerTop: "",
-        headerBottom: `${year}`,
-      });
+    case "week": {
+      const monday = startOfWeekMonday(anchor);
+      const from = addDaysUtc(monday, -14);
+      const to = addDaysUtc(monday, 27);
+      return { from, to };
     }
-    return {
-      from: columns[0]!.startDate,
-      to: columns[columns.length - 1]!.endDate,
-      columns,
-      totalWidth: count * YEAR_WIDTH,
-    };
+    case "month": {
+      const mid = startOfMonth(anchor);
+      const fromMonth = addMonthsUtc(mid, -1);
+      const toMonth = addMonthsUtc(mid, 2);
+      const from = startOfWeekSunday(startOfMonth(fromMonth));
+      const to = addDaysUtc(startOfWeekSunday(endOfMonth(toMonth)), 6);
+      return { from, to };
+    }
+    case "year": {
+      const y = parseInt(anchor.slice(0, 4), 10);
+      const from = startOfWeekMonday(`${y}-01-01`);
+      const to = endOfMonth(`${y}-12-31`);
+      return { from, to };
+    }
+    case "5year": {
+      const y = parseInt(anchor.slice(0, 4), 10);
+      return {
+        from: `${y - 2}-01-01`,
+        to: `${y + 2}-12-31`,
+      };
+    }
   }
+}
 
-  // 5year
-  const count = Math.max(2, Math.floor(width / FIVE_YEAR_WIDTH));
-  const blockStart = fiveYearBlockStart(anchor);
-  const blockYear = parseInt(blockStart.slice(0, 4), 10);
-  const fromYear = blockYear - Math.floor(count / 2) * 5;
-  const columns: TimelineColumn[] = [];
-  for (let i = 0; i < count; i++) {
-    const y = fromYear + i * 5;
-    const start = `${y}-01-01`;
-    const end = `${y + 4}-12-31`;
-    columns.push({
-      key: start,
-      startDate: start,
-      endDate: end,
-      width: FIVE_YEAR_WIDTH,
-      headerTop: "",
-      headerBottom: `${y}-${y + 4}`,
-    });
+function generateColumns(
+  scale: GanttScaleId,
+  from: string,
+  to: string,
+  anchor: string,
+): TimelineColumn[] {
+  switch (scale) {
+    case "day":
+      return buildDayColumns(from, to);
+    case "week":
+      return buildWeekDayColumns(from, to);
+    case "month": {
+      const gridFrom = startOfWeekSunday(from);
+      const gridTo = addDaysUtc(startOfWeekSunday(to), 6);
+      const cols = buildMonthDayColumns(gridFrom, gridTo);
+      const focusMonth = startOfMonth(anchor);
+      for (const col of cols) {
+        col.isOtherMonth = startOfMonth(col.startDate) !== focusMonth;
+      }
+      return cols;
+    }
+    case "year":
+      return buildYearWeekColumns(from, to);
+    case "5year": {
+      const y = parseInt(anchor.slice(0, 4), 10);
+      let fromYear = y - 2;
+      let toYear = y + 2;
+      const fromY = parseInt(from.slice(0, 4), 10);
+      const toY = parseInt(to.slice(0, 4), 10);
+      if (fromY < fromYear) fromYear = fromY;
+      if (toY > toYear) toYear = toY;
+      return buildFiveYearMonthColumns(fromYear, toYear);
+    }
   }
-  return {
-    from: columns[0]!.startDate,
-    to: columns[columns.length - 1]!.endDate,
-    columns,
-    totalWidth: count * FIVE_YEAR_WIDTH,
-  };
+}
+
+export function buildTimelineLayout(
+  scale: GanttScaleId,
+  anchor: string,
+  dataBounds?: LayoutBounds | null,
+): TimelineLayout {
+  const defaultRange = scaleDefaultRange(scale, anchor);
+  const { from, to } = mergeBounds(defaultRange.from, defaultRange.to, dataBounds);
+  const columns = generateColumns(scale, from, to, anchor);
+  return finalizeLayout(scale, anchor, columns);
 }
 
 export function shiftAnchor(scale: GanttScaleId, anchor: string, direction: -1 | 1): string {
   switch (scale) {
-    case "hour":
-      return addDaysUtc(anchor, direction);
     case "day":
-      return addDaysUtc(anchor, direction * 7);
+      return addDaysUtc(anchor, direction);
     case "week":
       return addDaysUtc(anchor, direction * 7);
-    case "biweek":
-      return addDaysUtc(anchor, direction * 14);
     case "month":
       return addMonthsUtc(anchor, direction);
-    case "quarter":
-      return addMonthsUtc(anchor, direction * 3);
     case "year":
       return addMonthsUtc(anchor, direction * 12);
     case "5year":
@@ -355,16 +395,6 @@ export function dateToX(date: string, layout: TimelineLayout): number {
   return ((dMs - fromMs) / span) * layout.totalWidth;
 }
 
-export function xToDate(x: number, layout: TimelineLayout): string {
-  const fromMs = parseUtcDate(layout.from);
-  const toMs = parseUtcDate(layout.to) + 86400000;
-  const span = toMs - fromMs;
-  const ratio = Math.max(0, Math.min(1, x / layout.totalWidth));
-  const dMs = fromMs + ratio * span;
-  const dt = new Date(dMs);
-  return dt.toISOString().slice(0, 10);
-}
-
 export function barMetricsFromDates(
   startDate: string,
   endDate: string,
@@ -372,10 +402,10 @@ export function barMetricsFromDates(
 ): { left: number; width: number } {
   const left = dateToX(startDate, layout);
   const endX = dateToX(endDate, layout);
-  const dayFraction = layout.totalWidth / (daysBetween(layout.from, layout.to) + 1);
+  const minWidth = layout.totalWidth / Math.max(layout.columns.length, 1);
   return {
-    left,
-    width: Math.max(dayFraction * 0.6, endX - left + dayFraction),
+    left: Math.max(0, left),
+    width: Math.max(minWidth * 0.5, endX - left + minWidth * 0.8),
   };
 }
 
@@ -385,64 +415,16 @@ export function pixelDeltaToDays(deltaX: number, layout: TimelineLayout): number
   return Math.round(deltaX / dayWidth);
 }
 
-export function monthHeaderSpans(columns: TimelineColumn[]) {
-  const spans: { label: string; count: number; width: number }[] = [];
-  for (const col of columns) {
-    const label = col.headerTop || col.headerBottom;
-    const last = spans[spans.length - 1];
-    if (last?.label === label) {
-      last.count++;
-      last.width += col.width;
-    } else {
-      spans.push({ label, count: 1, width: col.width });
-    }
-  }
-  return spans;
-}
-
 export function compactTimelineRange() {
   const today = todayStr();
   return { from: addDaysUtc(today, -30), to: addDaysUtc(today, 45) };
 }
 
-export function buildDayList(from: string, to: string) {
-  const days: string[] = [];
-  let cur = from;
-  while (cur <= to) {
-    days.push(cur);
-    cur = addDaysUtc(cur, 1);
-  }
-  return days;
-}
-
-export function monthSpans(days: string[]) {
-  const spans: { label: string; count: number }[] = [];
-  for (const d of days) {
-    const dt = new Date(parseUtcDate(d));
-    const label = `${dt.getUTCFullYear()}年${dt.getUTCMonth() + 1}月`;
-    const last = spans[spans.length - 1];
-    if (last?.label === label) last.count++;
-    else spans.push({ label, count: 1 });
-  }
-  return spans;
-}
-
-const DAY_WIDTH_COMPACT = 32;
-
 export function buildCompactLayout(from: string, to: string): TimelineLayout {
-  const days = buildDayList(from, to);
-  const columns: TimelineColumn[] = days.map((day) => ({
-    key: day,
-    startDate: day,
-    endDate: day,
-    width: DAY_WIDTH_COMPACT,
-    headerTop: formatMonthLabel(day),
-    headerBottom: day.slice(8, 10),
-  }));
-  return {
-    from,
-    to,
-    columns,
-    totalWidth: days.length * DAY_WIDTH_COMPACT,
-  };
+  const columns = buildWeekDayColumns(from, to);
+  return finalizeLayout("week", todayStr(), columns);
+}
+
+export function isTodayInColumn(today: string, col: TimelineColumn) {
+  return today >= col.startDate && today <= col.endDate;
 }

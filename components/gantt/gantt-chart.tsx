@@ -13,7 +13,7 @@ import {
   buildTimelineLayout,
   compactTimelineRange,
   dateToX,
-  monthHeaderSpans,
+  isTodayInColumn,
   shiftAnchor,
   todayStr,
   type GanttScaleId,
@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 
 const ROW_HEIGHT = 44;
 const LABEL_WIDTH = 200;
+const FOOTER_HEIGHT = 48;
 
 const STATUS_LABEL: Record<string, string> = {
   todo: "待办",
@@ -103,6 +104,21 @@ function taskLabelBg(depth: number) {
   return TASK_LABEL_BY_DEPTH[Math.min(depth, TASK_LABEL_BY_DEPTH.length - 1)];
 }
 
+function dataBoundsFromItems(items: GanttItem[]) {
+  if (items.length === 0) return null;
+  let from = items[0]!.startDate;
+  let to = items[0]!.effectiveEnd;
+  for (const item of items) {
+    if (item.startDate < from) from = item.startDate;
+    if (item.effectiveEnd > to) to = item.effectiveEnd;
+  }
+  return { from, to };
+}
+
+function formatHourLabel(h: number) {
+  return `${h}:00`;
+}
+
 export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -110,14 +126,19 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
 
   const [scale, setScale] = useState<GanttScaleId>("month");
   const [anchor, setAnchor] = useState(todayStr);
-  const [timelineAreaWidth, setTimelineAreaWidth] = useState(800);
 
   const compactRange = useMemo(() => compactTimelineRange(), []);
 
+  const [items, setItems] = useState<GanttItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const dataBounds = useMemo(() => dataBoundsFromItems(items), [items]);
+
   const layout: TimelineLayout = useMemo(() => {
     if (!fullPage) return buildCompactLayout(compactRange.from, compactRange.to);
-    return buildTimelineLayout(scale, anchor, timelineAreaWidth);
-  }, [fullPage, scale, anchor, timelineAreaWidth, compactRange]);
+    return buildTimelineLayout(scale, anchor, dataBounds);
+  }, [fullPage, scale, anchor, dataBounds, compactRange]);
 
   const { from, to } = fullPage ? layout : compactRange;
   const timelineWidth = layout.totalWidth;
@@ -125,26 +146,6 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
   const today = todayStr();
   const todayX = dateToX(today, layout);
   const todayVisible = today >= layout.from && today <= layout.to;
-
-  const [items, setItems] = useState<GanttItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    const update = () => {
-      const w = el.clientWidth;
-      if (w <= 0) return;
-      setTimelineAreaWidth(Math.max(320, w - LABEL_WIDTH));
-    };
-
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -161,8 +162,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
   const taskRows = useMemo(() => buildTaskTreeRows(tasks, expanded), [tasks, expanded]);
   const planRows: GanttRow[] = plans.map((item) => ({ kind: "item", item, depth: 0 }));
   const rows = [...taskRows, ...planRows];
-
-  const headerSpans = useMemo(() => monthHeaderSpans(layout.columns), [layout.columns]);
+  const bodyHeight = rows.length * ROW_HEIGHT + FOOTER_HEIGHT;
 
   const scrollToToday = useCallback(() => {
     const el = scrollRef.current;
@@ -177,7 +177,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
   }, [from, to, scale, anchor]);
 
   useLayoutEffect(() => {
-    if (loading || items.length === 0 || scrolledToToday.current) return;
+    if (loading || scrolledToToday.current) return;
 
     const tryScroll = () => {
       if (scrollToToday()) scrolledToToday.current = true;
@@ -191,7 +191,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
       cancelAnimationFrame(raf);
       window.clearTimeout(timer);
     };
-  }, [loading, items.length, scrollToToday, from, to]);
+  }, [loading, scrollToToday, from, to, layout.totalWidth]);
 
   function goToday() {
     setAnchor(todayStr());
@@ -215,12 +215,106 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     });
   }
 
+  function renderToolbar() {
+    if (!fullPage) return null;
+    return (
+      <GanttToolbar
+        periodLabel={layout.periodLabel}
+        scale={scale}
+        onScaleChange={(s) => {
+          setScale(s);
+          scrolledToToday.current = false;
+        }}
+        onPrev={() => setAnchor((a) => shiftAnchor(scale, a, -1))}
+        onNext={() => setAnchor((a) => shiftAnchor(scale, a, 1))}
+        onToday={goToday}
+      />
+    );
+  }
+
+  function renderTimelineHeader() {
+    return (
+      <div className="sticky top-0 z-30 flex border-b border-gray-200 bg-white shadow-sm">
+        <div
+          className="sticky left-0 z-40 shrink-0 border-r border-gray-200 bg-gray-50"
+          style={{ width: LABEL_WIDTH }}
+        />
+        <div style={{ width: timelineWidth }} className="relative shrink-0">
+          <div className="flex border-b border-gray-100 bg-gray-50 text-xs text-gray-600">
+            {layout.topSpans.map((span) => (
+              <div
+                key={span.key}
+                className="border-r border-dashed border-gray-200 py-1.5 text-center"
+                style={{ width: span.width }}
+              >
+                {span.label}
+              </div>
+            ))}
+          </div>
+          <div className="flex text-xs">
+            {layout.columns.map((col) => {
+              const isToday = isTodayInColumn(today, col);
+              return (
+                <div
+                  key={col.key}
+                  className={cn(
+                    "border-r border-dashed border-gray-200 py-1 text-center",
+                    col.isWeekend && "bg-gray-50/80",
+                    isToday && "bg-red-50",
+                  )}
+                  style={{ width: col.width }}
+                >
+                  {isToday && (scale === "week" || scale === "month") ? (
+                    <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-gray-200 px-1 text-[10px] font-semibold text-gray-800">
+                      {col.headerBottom.replace(/^\S+\s/, "")}
+                    </span>
+                  ) : (
+                    <span className={cn("text-gray-600", isToday && "font-semibold text-red-600")}>
+                      {scale === "day" ? formatHourLabel(parseInt(col.headerBottom, 10)) : col.headerBottom}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderGridBackground() {
+    return (
+      <div
+        className="pointer-events-none absolute top-0 flex"
+        style={{ left: LABEL_WIDTH, width: timelineWidth, height: bodyHeight }}
+      >
+        {layout.columns.map((col) => (
+          <div
+            key={col.key}
+            className={cn(
+              "h-full border-r border-dashed border-gray-200",
+              col.isWeekend && "bg-gray-50/70",
+              col.isOtherMonth && "bg-gray-50/40",
+            )}
+            style={{ width: col.width }}
+          />
+        ))}
+        {todayVisible && (
+          <div
+            className="absolute bottom-0 top-0 w-px bg-red-400"
+            style={{ left: todayX }}
+          />
+        )}
+      </div>
+    );
+  }
+
   function renderLabel(row: GanttRow, idx: number) {
     if (row.kind === "add-child") {
       return (
         <div
           key={`add-${row.parentTaskId}-${idx}`}
-          className="flex items-center border-b border-gray-100 bg-teal-50/50 px-2"
+          className="flex items-center border-b border-dashed border-gray-100 bg-teal-50/50 px-2"
           style={{ height: ROW_HEIGHT, paddingLeft: 12 + row.depth * 16 }}
         >
           <Link
@@ -243,7 +337,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     return (
       <div
         key={`label-${item.type}-${item.id}-${idx}`}
-        className={cn("flex items-center gap-1 border-b border-gray-100 px-2", labelBg)}
+        className={cn("flex items-center gap-1 border-b border-dashed border-gray-100 px-2", labelBg)}
         style={{ height: ROW_HEIGHT, paddingLeft: 12 + row.depth * 16 }}
       >
         {showToggle ? (
@@ -281,7 +375,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
       return (
         <div
           key={`bar-add-${idx}`}
-          className="relative border-b border-gray-100"
+          className="relative border-b border-dashed border-gray-100"
           style={{ height: ROW_HEIGHT, width: timelineWidth }}
         />
       );
@@ -295,7 +389,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
       return (
         <div
           key={`bar-${item.type}-${item.id}-${idx}`}
-          className="relative border-b border-gray-100"
+          className="relative border-b border-dashed border-gray-100"
           style={{ height: ROW_HEIGHT, width: timelineWidth }}
         >
           <GanttDraggableBar
@@ -313,7 +407,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     return (
       <div
         key={`bar-${item.type}-${item.id}-${idx}`}
-        className="relative border-b border-gray-100"
+        className="relative border-b border-dashed border-gray-100"
         style={{ height: ROW_HEIGHT, width: timelineWidth }}
       >
         <div
@@ -336,23 +430,19 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     );
   }
 
-  if (loading) return <Loading label="加载甘特图…" />;
+  if (loading) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        {renderToolbar()}
+        <Loading label="加载甘特图…" />
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        {fullPage && (
-          <GanttToolbar
-            scale={scale}
-            onScaleChange={(s) => {
-              setScale(s);
-              scrolledToToday.current = false;
-            }}
-            onPrev={() => setAnchor((a) => shiftAnchor(scale, a, -1))}
-            onNext={() => setAnchor((a) => shiftAnchor(scale, a, 1))}
-            onToday={goToday}
-          />
-        )}
+        {renderToolbar()}
         <EmptyState
           title="暂无时间条"
           description="创建带开始日期的任务或计划后，会在此展示。"
@@ -366,83 +456,14 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
       ref={containerRef}
       className="flex min-h-0 w-full max-w-full min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white"
     >
-      {fullPage && (
-        <GanttToolbar
-          scale={scale}
-          onScaleChange={(s) => {
-            setScale(s);
-            scrolledToToday.current = false;
-          }}
-          onPrev={() => setAnchor((a) => shiftAnchor(scale, a, -1))}
-          onNext={() => setAnchor((a) => shiftAnchor(scale, a, 1))}
-          onToday={goToday}
-        />
-      )}
+      {renderToolbar()}
 
       <div ref={scrollRef} className="min-h-0 w-full max-w-full min-w-0 flex-1 overflow-auto">
         <div style={{ width: totalWidth }}>
-          <div className="sticky top-0 z-30 flex border-b border-gray-200 bg-white shadow-sm">
-            <div
-              className="sticky left-0 z-40 shrink-0 border-r border-gray-200 bg-gray-50"
-              style={{ width: LABEL_WIDTH }}
-            />
-            <div style={{ width: timelineWidth }} className="relative shrink-0">
-              <div className="flex border-b border-gray-100 bg-gray-50 text-xs text-gray-600">
-                {headerSpans.map((m, i) => (
-                  <div
-                    key={`${m.label}-${i}`}
-                    className="border-r border-gray-100 py-1 text-center"
-                    style={{ width: m.width }}
-                  >
-                    {m.label}
-                  </div>
-                ))}
-              </div>
-              <div className="flex text-xs">
-                {layout.columns.map((col) => {
-                  const isTodayCol =
-                    todayVisible && today >= col.startDate && today <= col.endDate;
-                  return (
-                    <div
-                      key={col.key}
-                      className={cn(
-                        "border-r border-gray-100 py-1 text-center",
-                        isTodayCol && scale === "day" && "bg-red-50",
-                      )}
-                      style={{ width: col.width }}
-                    >
-                      <span className={cn("text-gray-600", isTodayCol && scale === "day" && "font-semibold text-red-600")}>
-                        {col.headerBottom}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+          {renderTimelineHeader()}
 
-          <div className="relative">
-            <div
-              className="pointer-events-none absolute bottom-0 top-0 flex"
-              style={{ left: LABEL_WIDTH, width: timelineWidth }}
-            >
-              {layout.columns.map((col, i) => (
-                <div
-                  key={col.key}
-                  className={cn(
-                    "border-r border-gray-100",
-                    i % 2 === 0 ? "bg-gray-50/40" : "bg-transparent",
-                  )}
-                  style={{ width: col.width }}
-                />
-              ))}
-              {todayVisible && (
-                <div
-                  className="absolute bottom-0 top-0 w-px bg-red-400"
-                  style={{ left: todayX }}
-                />
-              )}
-            </div>
+          <div className="relative" style={{ minHeight: bodyHeight }}>
+            {renderGridBackground()}
 
             {rows.map((row, idx) => {
               const labelBg =
@@ -453,7 +474,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
                     : "bg-teal-50/50";
 
               return (
-                <div key={`row-${idx}`} className="flex">
+                <div key={`row-${idx}`} className="relative flex">
                   <div
                     className={cn(
                       "sticky left-0 z-20 shrink-0 border-r border-gray-200",
@@ -463,12 +484,12 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
                   >
                     {renderLabel(row, idx)}
                   </div>
-                  <div className="relative shrink-0">{renderBar(row, idx)}</div>
+                  <div className="relative z-10 shrink-0">{renderBar(row, idx)}</div>
                 </div>
               );
             })}
 
-            <div className="flex">
+            <div className="relative flex">
               <div
                 className="sticky left-0 z-20 border-r border-gray-200 bg-white p-2"
                 style={{ width: LABEL_WIDTH }}
@@ -479,18 +500,15 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
                   </Button>
                 </Link>
               </div>
-              <div style={{ width: timelineWidth, height: 48 }} />
+              <div style={{ width: timelineWidth, height: FOOTER_HEIGHT }} />
             </div>
           </div>
         </div>
       </div>
 
       {fullPage && (
-        <div className="flex shrink-0 items-center justify-between border-t border-gray-100 px-3 py-1.5 text-xs text-gray-500">
-          <span>拖拽任务条调整时间 · 左右滑动浏览</span>
-          <Button type="button" size="sm" variant="ghost" onClick={goToday}>
-            定位到今天
-          </Button>
+        <div className="shrink-0 border-t border-gray-100 px-3 py-1.5 text-xs text-gray-500">
+          拖拽任务条调整时间 · 虚线网格按时间刻度对齐 · 左右滑动浏览
         </div>
       )}
     </div>
