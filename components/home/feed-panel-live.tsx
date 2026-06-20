@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState, Loading } from "@/components/ui/feedback";
-import { formatFeedSummary } from "@/lib/services/feed";
+import { FeedComposer } from "@/components/feed/feed-composer";
+import { FeedItemCard, type FeedItemCardData } from "@/components/feed/feed-item-card";
 import { PanelExpandButton } from "@/components/home/panel-expand-button";
 import type { FeedActionType, FeedItemType } from "@prisma/client";
 import { cn } from "@/lib/utils";
@@ -17,12 +17,6 @@ interface FeedRow {
   actionType: FeedActionType;
   content: string | null;
   createdAt: string;
-}
-
-function feedHref(item: FeedRow): string | null {
-  if (item.itemType === "task") return `/tasks/${item.itemId}`;
-  if (item.itemType === "plan") return `/plans/${item.itemId}`;
-  return null;
 }
 
 export function FeedPanelLive({
@@ -64,55 +58,54 @@ export function FeedPanelLive({
     }
   }
 
+  function refreshFeed() {
+    setLoading(true);
+    load().finally(() => setLoading(false));
+  }
+
   return (
-    <Card className={cn("flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden", className)}>
-      <CardHeader className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 pb-2">
-        <CardTitle className="min-w-0 truncate">
+    <Card
+      className={cn(
+        "flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden border-0 bg-transparent shadow-none",
+        !fullPage && "rounded-none",
+        className,
+      )}
+    >
+      <CardHeader className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 space-y-0 pb-2">
+        <CardTitle className="min-w-0 truncate text-gray-900">
           {fullPage ? "信息流" : "信息流 · 看动态"}
         </CardTitle>
         {!fullPage && <PanelExpandButton href="/feed" label="信息流" />}
       </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        {loading && <Loading />}
+
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-0">
+        <FeedComposer onPublished={refreshFeed} />
+
+        {loading && <Loading label="加载动态…" />}
         {!loading && items.length === 0 && (
-          <EmptyState title="暂无动态" description="创建任务或计划后，操作会显示在这里。" />
+          <EmptyState
+            title="暂无动态"
+            description="在上方写下想法，发布备忘或带日期的计划。"
+          />
         )}
+
         {!loading && items.length > 0 && (
           <>
             <ul
               className={cn(
-                "min-h-0 flex-1 space-y-3 overflow-auto",
+                "feed-item-list min-h-0 flex-1 space-y-3 overflow-y-auto pr-0.5",
                 fullPage && "space-y-4",
               )}
             >
-              {items.map((item) => {
-                const href = feedHref(item);
-                const summary = formatFeedSummary(item.itemType, item.actionType, item.content);
-                return (
-                  <li
-                    key={item.id}
-                    className={cn(
-                      "rounded-lg border border-gray-100 bg-gray-50 px-3 py-2",
-                      fullPage ? "px-4 py-3 text-base" : "text-sm",
-                    )}
-                  >
-                    {href ? (
-                      <Link href={href} className="font-medium text-gray-900 hover:text-brand-600">
-                        {summary}
-                      </Link>
-                    ) : (
-                      <p className="font-medium text-gray-900">{summary}</p>
-                    )}
-                    <p className={cn("mt-0.5 text-gray-500", fullPage ? "text-sm" : "text-xs")}>
-                      {new Date(item.createdAt).toLocaleString("zh-CN")}
-                    </p>
-                  </li>
-                );
-              })}
+              {items.map((item) => (
+                <li key={item.id}>
+                  <FeedItemCard item={item as FeedItemCardData} />
+                </li>
+              ))}
             </ul>
             {nextCursor && (
               <Button
-                className="mt-3 w-full"
+                className="shrink-0"
                 variant="secondary"
                 size="sm"
                 onClick={loadMore}

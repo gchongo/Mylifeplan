@@ -3,6 +3,34 @@ import { prisma } from "@/lib/db";
 import { syncMemoForPlan, syncMemoForTask } from "@/lib/services/memo-sync";
 import { writeFeed } from "@/lib/services/feed";
 
+export async function createStandaloneMemo(
+  userId: string,
+  data: { title: string; description?: string | null },
+) {
+  const title = data.title.trim();
+  if (!title) throw new Error("标题不能为空");
+
+  return prisma.$transaction(async (tx) => {
+    const memo = await tx.memo.create({
+      data: {
+        userId,
+        title,
+        description: data.description?.trim() || null,
+      },
+    });
+
+    await writeFeed({
+      userId,
+      itemType: "memo",
+      itemId: memo.id,
+      actionType: "create",
+      content: title,
+    });
+
+    return memo;
+  });
+}
+
 export async function updateMemoById(
   userId: string,
   memoId: string,
@@ -77,6 +105,30 @@ export async function updateMemoById(
     });
   }
 
+  if (!memo.linkedTaskId && !memo.linkedPlanId) {
+    return prisma.$transaction(async (tx) => {
+      const updated = await tx.memo.update({
+        where: { id: memo.id },
+        data: {
+          ...(data.title !== undefined && { title: data.title.trim() }),
+          ...(data.description !== undefined && {
+            description: data.description?.trim() || null,
+          }),
+        },
+      });
+
+      await writeFeed({
+        userId,
+        itemType: "memo",
+        itemId: updated.id,
+        actionType: "update",
+        content: updated.title,
+      });
+
+      return { type: "memo" as const, item: updated };
+    });
+  }
+
   throw new Error("INVALID_MEMO");
 }
 
@@ -94,7 +146,16 @@ export async function archiveMemoById(userId: string, memoId: string) {
     return updatePlan(userId, memo.linkedPlanId, { status: "archived" });
   }
 
-  throw new Error("INVALID_MEMO");
+  return prisma.$transaction(async (tx) => {
+    await tx.memo.delete({ where: { id: memoId } });
+    await writeFeed({
+      userId,
+      itemType: "memo",
+      itemId: memoId,
+      actionType: "archive",
+      content: memo.title,
+    });
+  });
 }
 
 export async function deleteMemoById(userId: string, memoId: string) {
