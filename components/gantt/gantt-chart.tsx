@@ -6,7 +6,8 @@ import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
 import { GanttTaskDrawer } from "@/components/gantt/gantt-task-drawer";
 import { GanttToolbar } from "@/components/gantt/gantt-toolbar";
 import { TaskFormModal } from "@/components/gantt/task-form-modal";
-import { TaskStatusIndicator, StatusLegend } from "@/components/tasks/task-status-indicator";
+import { GanttTaskListControls } from "@/components/gantt/gantt-task-list-controls";
+import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
 import type { TaskFormValues } from "@/components/forms/task-form";
 import { Button, EmptyState, Loading as LoadingView } from "@/components/ui";
 import {
@@ -22,12 +23,15 @@ import {
   type GanttScaleId,
   type TimelineLayout,
 } from "@/lib/gantt-scale";
+import { filterGanttTasksByStatus } from "@/lib/gantt-task-filter";
 import { buildColumnColorIndex, GRID_BANDS, spanColorIndex } from "@/lib/gantt-grid-colors";
 import { deriveParentStatus } from "@/lib/services/task-rollup";
 import {
   asTaskStatusForRollup,
+  getGanttBarStyle,
   getStatusStyle,
-  statusBarClass,
+  STATUS_LEGEND,
+  type VisualStatusKey,
 } from "@/lib/task-status-style";
 import type { GanttItem } from "@/types";
 import { cn } from "@/lib/utils";
@@ -117,9 +121,9 @@ interface TaskModalState {
   defaultParentTaskId?: string | null;
 }
 
-function taskBarColor(item: GanttItem, allTasks: GanttItem[]): string {
+function taskBarStyle(item: GanttItem, allTasks: GanttItem[], depth: number) {
   const displayStatus = itemDisplayStatus(item, allTasks);
-  return statusBarClass(item.status, item.dueDate, displayStatus);
+  return getGanttBarStyle(item.status, item.dueDate, displayStatus, depth);
 }
 
 function taskLabelStyle(item: GanttItem, allTasks: GanttItem[]) {
@@ -163,6 +167,9 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
   const [items, setItems] = useState<GanttItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<Set<VisualStatusKey>>(
+    () => new Set(STATUS_LEGEND),
+  );
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [scrollViewportHeight, setScrollViewportHeight] = useState(480);
 
@@ -192,7 +199,20 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
   const plans = useMemo(() => items.filter((i) => i.type === "plan"), [items]);
   const taskById = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);
 
-  const taskRows = useMemo(() => buildTaskTreeRows(tasks, expanded), [tasks, expanded]);
+  const getDisplayStatus = useCallback(
+    (item: GanttItem) => itemDisplayStatus(item, tasks),
+    [tasks],
+  );
+
+  const filteredTasks = useMemo(
+    () => filterGanttTasksByStatus(tasks, statusFilter, getDisplayStatus),
+    [tasks, statusFilter, getDisplayStatus],
+  );
+
+  const taskRows = useMemo(
+    () => buildTaskTreeRows(filteredTasks, expanded),
+    [filteredTasks, expanded],
+  );
   const planRows: GanttRow[] = plans.map((item) => ({ kind: "item", item, depth: 0 }));
   const rows = [...taskRows, ...planRows];
 
@@ -202,13 +222,13 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
   );
 
   const expandableTaskIds = useMemo(() => {
-    return tasks
+    return filteredTasks
       .filter((t) => {
-        const childCount = tasks.filter((c) => c.parentId === t.id).length;
+        const childCount = filteredTasks.filter((c) => c.parentId === t.id).length;
         return childCount > 0 || taskDepth(t.id, taskById) < 2;
       })
       .map((t) => t.id);
-  }, [tasks, taskById]);
+  }, [filteredTasks, taskById]);
 
   const allSubtasksExpanded =
     expandableTaskIds.length > 0 && expandableTaskIds.every((id) => expanded.has(id));
@@ -410,10 +430,20 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
           onNext={navigateNext}
           onToday={goToday}
         />
-        <div className="border-t border-gray-100 px-3 py-1.5">
-          <StatusLegend />
-        </div>
       </div>
+    );
+  }
+
+  function renderListHeaderControls() {
+    if (!fullPage) return null;
+    return (
+      <GanttTaskListControls
+        allExpanded={allSubtasksExpanded}
+        onToggleExpandAll={toggleExpandAll}
+        showExpandToggle={expandableTaskIds.length > 0}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+      />
     );
   }
 
@@ -421,19 +451,10 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     return (
       <div className="sticky top-0 z-30 flex border-b border-gray-200 bg-white shadow-sm">
         <div
-          className="sticky left-0 z-40 flex shrink-0 flex-col justify-center border-r border-gray-200 bg-gray-50"
+          className="sticky left-0 z-40 flex shrink-0 flex-col border-r border-gray-200 bg-gray-50"
           style={{ width: LABEL_WIDTH, minHeight: TIMELINE_HEADER_HEIGHT }}
         >
-          {fullPage && expandableTaskIds.length > 0 && (
-            <button
-              type="button"
-              data-no-pan
-              onClick={toggleExpandAll}
-              className="border-b border-gray-100 px-2 py-1.5 text-left text-xs text-brand-600 hover:bg-gray-100"
-            >
-              {allSubtasksExpanded ? "隐藏所有子任务" : "展开所有子任务"}
-            </button>
-          )}
+          {renderListHeaderControls()}
         </div>
         <div style={{ width: timelineWidth }} className="relative shrink-0">
           <div className="flex border-b border-gray-100 bg-gray-50 text-xs text-gray-600">
@@ -540,7 +561,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     }
 
     const item = row.item!;
-    const childCount = tasks.filter((t) => t.parentId === item.id).length;
+    const childCount = filteredTasks.filter((t) => t.parentId === item.id).length;
     const showToggle =
       item.type === "task" && (childCount > 0 || taskDepth(item.id, taskById) < 2);
     const isExpanded = expanded.has(item.id);
@@ -619,10 +640,15 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
 
     const item = row.item!;
     const { left, width } = barMetricsFromDates(item.startDate, item.effectiveEnd, layout);
-    const barColor =
+    const barStyle =
       item.type === "task"
-        ? taskBarColor(item, tasks)
-        : statusBarClass(item.status, item.dueDate, itemDisplayStatus(item, tasks));
+        ? taskBarStyle(item, tasks, row.depth)
+        : getGanttBarStyle(
+            item.status,
+            item.dueDate,
+            itemDisplayStatus(item, tasks),
+            row.depth,
+          );
 
     if (fullPage && item.type === "task") {
       return (
@@ -636,7 +662,8 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
             layout={layout}
             left={left}
             width={width}
-            barColor={barColor}
+            barShell={barStyle.shell}
+            barText={barStyle.text}
             onUpdated={handleItemUpdated}
             onTaskClick={() => openTask(item.id)}
           />
@@ -654,8 +681,15 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
           className="absolute top-1/2 -translate-y-1/2"
           style={{ left, width: Math.max(width, 8) }}
         >
-          <div className={cn("relative h-7 overflow-hidden rounded-full", barColor)}>
-            <span className="block truncate px-3 text-xs leading-7 text-white">{item.title}</span>
+          <div
+            className={cn(
+              "relative h-7 overflow-hidden rounded-md",
+              barStyle.shell,
+            )}
+          >
+            <span className={cn("block truncate px-2 text-xs leading-7", barStyle.text)}>
+              {item.title}
+            </span>
           </div>
           {item.isVirtualEnd && (
             <div

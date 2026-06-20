@@ -26,7 +26,8 @@ export function GanttDraggableBar({
   layout,
   left,
   width,
-  barColor,
+  barShell,
+  barText,
   onUpdated,
   onTaskClick,
 }: {
@@ -34,7 +35,8 @@ export function GanttDraggableBar({
   layout: TimelineLayout;
   left: number;
   width: number;
-  barColor: string;
+  barShell: string;
+  barText: string;
   onUpdated: (updated: GanttItem) => void;
   onTaskClick?: () => void;
 }) {
@@ -203,8 +205,8 @@ export function GanttDraggableBar({
     >
       <div
         className={cn(
-          "group relative h-7 overflow-hidden rounded-full",
-          barColor,
+          "group relative h-7 overflow-hidden rounded-md",
+          barShell,
           saving && "opacity-60",
           dragging && "ring-2 ring-brand-400 ring-offset-1",
         )}
@@ -217,7 +219,12 @@ export function GanttDraggableBar({
           className="absolute inset-0 cursor-grab active:cursor-grabbing"
           onMouseDown={(e) => startDrag(e, "move")}
         >
-          <span className="pointer-events-none block truncate px-3 text-xs leading-7 text-white">
+          <span
+            className={cn(
+              "pointer-events-none block truncate px-2 text-xs leading-7",
+              barText,
+            )}
+          >
             {item.title}
           </span>
         </div>

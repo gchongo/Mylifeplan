@@ -8,13 +8,75 @@ export interface StatusStyle {
   label: string;
   /** 列表/详情中的小圆点 */
   dot: string;
-  /** 甘特条背景 */
+  /** @deprecated 实心条，甘特图请用 getGanttBarStyle */
   bar: string;
   /** 浅色行背景（可选） */
   rowBg: string;
   /** 左侧强调条 */
   stripe: string;
 }
+
+/** 甘特条：描边 + 文字色，区分父/子任务 */
+export interface GanttBarStyle {
+  shell: string;
+  text: string;
+}
+
+const GANTT_BAR_STYLES: Record<
+  VisualStatusKey,
+  { parent: GanttBarStyle; child: GanttBarStyle }
+> = {
+  todo: {
+    parent: {
+      shell: "border-2 border-solid border-amber-500 bg-white/95",
+      text: "text-amber-700 font-semibold",
+    },
+    child: {
+      shell: "border-2 border-dashed border-amber-400 bg-amber-50/60",
+      text: "text-amber-600",
+    },
+  },
+  in_progress: {
+    parent: {
+      shell: "border-2 border-solid border-blue-600 bg-white/95",
+      text: "text-blue-700 font-semibold",
+    },
+    child: {
+      shell: "border-2 border-dashed border-blue-500 bg-blue-50/60",
+      text: "text-blue-600",
+    },
+  },
+  done: {
+    parent: {
+      shell: "border-2 border-solid border-emerald-600 bg-white/95",
+      text: "text-emerald-700 font-semibold",
+    },
+    child: {
+      shell: "border-2 border-dashed border-emerald-500 bg-emerald-50/60",
+      text: "text-emerald-600",
+    },
+  },
+  archived: {
+    parent: {
+      shell: "border-2 border-solid border-gray-400 bg-white/95",
+      text: "text-gray-600 font-semibold",
+    },
+    child: {
+      shell: "border-2 border-dashed border-gray-400 bg-gray-50/80",
+      text: "text-gray-500",
+    },
+  },
+  overdue: {
+    parent: {
+      shell: "border-2 border-solid border-red-600 bg-white/95",
+      text: "text-red-700 font-semibold",
+    },
+    child: {
+      shell: "border-2 border-dashed border-red-500 bg-red-50/60",
+      text: "text-red-600",
+    },
+  },
+};
 
 export const STATUS_STYLES: Record<VisualStatusKey, StatusStyle> = {
   todo: {
@@ -115,12 +177,24 @@ export function getStatusStyle(
   return STATUS_STYLES[resolveVisualStatus(status, dueDate, displayStatus)];
 }
 
+export function getGanttBarStyle(
+  status: string | undefined | null,
+  dueDate?: string | null,
+  displayStatus?: string | null,
+  depth = 0,
+): GanttBarStyle {
+  const visual = resolveVisualStatus(status, dueDate, displayStatus);
+  return GANTT_BAR_STYLES[visual][depth > 0 ? "child" : "parent"];
+}
+
 export function statusBarClass(
   status: string | undefined | null,
   dueDate?: string | null,
   displayStatus?: string | null,
+  depth = 0,
 ): string {
-  return getStatusStyle(status, dueDate, displayStatus).bar;
+  const { shell, text } = getGanttBarStyle(status, dueDate, displayStatus, depth);
+  return `${shell} ${text}`;
 }
 
 export function statusLabel(
