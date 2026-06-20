@@ -1,10 +1,13 @@
+import { NextRequest } from "next/server";
 import { jsonError, jsonOk } from "@/lib/api-response";
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 import { requireAdmin } from "@/lib/auth/get-session";
 import { listAdminUsers } from "@/lib/services/admin";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    await requireAdmin();
+    await requireAdmin(request);
     const users = await listAdminUsers();
     return jsonOk({ users });
   } catch (e) {

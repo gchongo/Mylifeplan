@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import { jsonError, jsonOk } from "@/lib/api-response";
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 import { requireAdmin } from "@/lib/auth/get-session";
 import { updateAdminSubscription } from "@/lib/services/admin";
 import { adminSubscriptionPatchSchema } from "@/lib/validations/admin";
@@ -8,7 +10,7 @@ type Params = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
-    await requireAdmin();
+    await requireAdmin(request);
     const { id } = await params;
     const body = await request.json();
     const parsed = adminSubscriptionPatchSchema.safeParse(body);

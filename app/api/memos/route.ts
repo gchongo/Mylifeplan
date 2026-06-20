@@ -1,4 +1,7 @@
+import { NextRequest } from "next/server";
 import { jsonError, jsonOk } from "@/lib/api-response";
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 import { requireSession } from "@/lib/auth/get-session";
 import { prisma } from "@/lib/db";
 import { createStandaloneMemo } from "@/lib/services/memo";
@@ -9,9 +12,9 @@ const createMemoSchema = z.object({
   description: z.string().max(5000).optional().nullable(),
 });
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await requireSession();
+    const session = await requireSession(request);
     const memos = await prisma.memo.findMany({
       where: { userId: session.userId },
       orderBy: { updatedAt: "desc" },
@@ -35,9 +38,9 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const session = await requireSession();
+    const session = await requireSession(request);
     const body = await request.json();
     const parsed = createMemoSchema.safeParse(body);
     if (!parsed.success) {

@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { jsonError, jsonOk } from "@/lib/api-response";
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 import { requireSession } from "@/lib/auth/get-session";
 import { deleteMemoById, updateMemoById, archiveMemoById } from "@/lib/services/memo";
 import { validateDateFields } from "@/lib/content-router";
@@ -27,7 +29,7 @@ const updateMemoSchema = z
 
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
-    const session = await requireSession();
+    const session = await requireSession(request);
     const { id } = await params;
     const body = await request.json();
 
@@ -54,9 +56,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 }
 
-export async function DELETE(_request: NextRequest, { params }: Params) {
+export async function DELETE(request: NextRequest, { params }: Params) {
   try {
-    const session = await requireSession();
+    const session = await requireSession(request);
     const { id } = await params;
     await deleteMemoById(session.userId, id);
     return jsonOk({ ok: true });

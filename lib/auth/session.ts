@@ -10,7 +10,7 @@ export interface SessionPayload {
 }
 
 function getSecret(): Uint8Array {
-  const secret = process.env.AUTH_SECRET;
+  const secret = process.env.AUTH_SECRET?.trim();
   if (!secret || secret.length < 32) {
     throw new Error("AUTH_SECRET must be set and at least 32 characters");
   }
@@ -44,7 +44,7 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
 }
 
 export function sessionCookieOptions(maxAgeSeconds = 60 * 60 * 24 * 30) {
-  // HTTP 部署（无 HTTPS）须设 COOKIE_SECURE=false，否则浏览器不保存登录 Cookie
+  // HTTP 部署（无 HTTPS）必须 secure=false，否则浏览器不会保存 Cookie
   const secure = process.env.COOKIE_SECURE === "true";
   return {
     httpOnly: true,

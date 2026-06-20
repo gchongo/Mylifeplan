@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import { jsonError, jsonOk } from "@/lib/api-response";
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 import { requireSession } from "@/lib/auth/get-session";
 import {
   createContribution,
@@ -10,7 +12,7 @@ import { createContributionSchema } from "@/lib/validations/contribution";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await requireSession();
+    const session = await requireSession(request);
     const { searchParams } = request.nextUrl;
     const from = searchParams.get("from");
     const to = searchParams.get("to");
@@ -25,9 +27,9 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const session = await requireSession();
+    const session = await requireSession(request);
     const body = await request.json();
     const parsed = createContributionSchema.safeParse(body);
     if (!parsed.success) {

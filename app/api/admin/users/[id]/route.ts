@@ -1,14 +1,16 @@
 import { NextRequest } from "next/server";
 import { jsonError, jsonOk } from "@/lib/api-response";
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 import { requireAdmin } from "@/lib/auth/get-session";
 import { getAdminUser, setUserActive } from "@/lib/services/admin";
 import { adminUserPatchSchema } from "@/lib/validations/admin";
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function GET(_request: NextRequest, { params }: Params) {
+export async function GET(request: NextRequest, { params }: Params) {
   try {
-    await requireAdmin();
+    await requireAdmin(request);
     const { id } = await params;
     const user = await getAdminUser(id);
     if (!user) return jsonError("用户不存在", 404);
@@ -26,7 +28,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
-    const session = await requireAdmin();
+    const session = await requireAdmin(request);
     const { id } = await params;
     const body = await request.json();
     const parsed = adminUserPatchSchema.safeParse(body);

@@ -8,6 +8,9 @@ import {
 } from "@/lib/auth/session";
 import { loginSchema } from "@/lib/validations/auth";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();

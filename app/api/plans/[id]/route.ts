@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import { jsonError, jsonOk } from "@/lib/api-response";
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 import { requireSession } from "@/lib/auth/get-session";
 import { prisma } from "@/lib/db";
 import { deletePlan, serializePlan, updatePlan } from "@/lib/services/plan";
@@ -7,9 +9,9 @@ import { updatePlanSchema } from "@/lib/validations/plan";
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function GET(_request: NextRequest, { params }: Params) {
+export async function GET(request: NextRequest, { params }: Params) {
   try {
-    const session = await requireSession();
+    const session = await requireSession(request);
     const { id } = await params;
     const plan = await prisma.plan.findFirst({
       where: { id, userId: session.userId },
@@ -31,7 +33,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
-    const session = await requireSession();
+    const session = await requireSession(request);
     const { id } = await params;
     const body = await request.json();
     const parsed = updatePlanSchema.safeParse(body);
@@ -62,9 +64,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 }
 
-export async function DELETE(_request: NextRequest, { params }: Params) {
+export async function DELETE(request: NextRequest, { params }: Params) {
   try {
-    const session = await requireSession();
+    const session = await requireSession(request);
     const { id } = await params;
     await deletePlan(session.userId, id);
     return jsonOk({ ok: true });

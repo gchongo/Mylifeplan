@@ -1,11 +1,13 @@
 import { NextRequest } from "next/server";
 import { jsonError, jsonOk } from "@/lib/api-response";
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 import { requireSession } from "@/lib/auth/get-session";
 import { prisma } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await requireSession();
+    const session = await requireSession(request);
     const { searchParams } = request.nextUrl;
     const limit = Math.min(Number(searchParams.get("limit") ?? 20), 100);
     const cursor = searchParams.get("cursor");
