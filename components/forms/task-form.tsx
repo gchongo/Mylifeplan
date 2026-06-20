@@ -54,6 +54,9 @@ export function TaskForm({
   const [parentTaskId, setParentTaskId] = useState<string | null>(
     task?.parentTaskId ?? defaultParentTaskId ?? null,
   );
+  const [planId, setPlanId] = useState<string | null>(
+    task?.planId ?? defaultPlanId ?? null,
+  );
   const isSubtaskCreate = !isEdit && Boolean(parentDateBounds);
   const defaultStartDate =
     task?.startDate ?? (isSubtaskCreate ? parentDateBounds!.defaultStartDate : "");
