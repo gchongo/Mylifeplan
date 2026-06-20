@@ -6,65 +6,55 @@ import { Select } from "@/components/ui";
 interface PlanOption {
   id: string;
   title: string;
-  type: string;
+  parentTitle?: string | null;
+}
+
+function formatPlanLabel(p: PlanOption): string {
+  if (p.parentTitle) return `${p.parentTitle} › ${p.title}`;
+  return p.title;
 }
 
 export function ParentPlanSelect({
-  planType,
   value,
   onChange,
+  excludePlanId,
   name = "parentPlanId",
 }: {
-  planType: string;
   value?: string | null;
   onChange?: (id: string | null) => void;
+  excludePlanId?: string;
   name?: string;
 }) {
   const [options, setOptions] = useState<{ value: string; label: string }[]>([]);
   const [loading, setLoading] = useState(true);
-  const required = planType === "phase";
 
   useEffect(() => {
-    if (planType === "goal") {
-      setOptions([]);
-      setLoading(false);
-      return;
-    }
-
-    const parentType = planType === "phase" ? "goal" : "phase";
     setLoading(true);
-    fetch(`/api/plans?type=${parentType}`)
+    fetch("/api/plans")
       .then((r) => r.json())
       .then((data) => {
-        const plans: PlanOption[] = data.plans ?? [];
-        const opts = plans.map((p) => ({
-          value: p.id,
-          label: `${p.title} (${p.type})`,
-        }));
-        if (!required) {
-          opts.unshift({ value: "", label: "无父计划" });
-        }
-        setOptions(opts);
+        const plans: PlanOption[] = (data.plans ?? []).filter(
+          (p: PlanOption & { id: string }) => p.id !== excludePlanId,
+        );
+        setOptions([
+          { value: "", label: "无父计划" },
+          ...plans.map((p) => ({
+            value: p.id,
+            label: formatPlanLabel(p),
+          })),
+        ]);
       })
       .finally(() => setLoading(false));
-  }, [planType, required]);
-
-  if (planType === "goal") return null;
-
-  const placeholder = loading
-    ? "加载中…"
-    : required
-      ? "请选择父计划（必填）"
-      : "无父计划（可选）";
+  }, [excludePlanId]);
 
   return (
     <Select
       name={name}
-      label={planType === "phase" ? "所属长期目标" : "所属阶段计划（可选）"}
+      label="父计划（可选）"
       options={options}
       value={value ?? ""}
       onChange={(e) => onChange?.(e.target.value || null)}
-      placeholder={placeholder}
+      placeholder={loading ? "加载中…" : "无父计划（可选）"}
       disabled={loading}
     />
   );

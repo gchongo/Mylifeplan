@@ -11,7 +11,7 @@ const optionalDate = z
 const planBaseSchema = z.object({
   title: z.string().min(1, "标题必填").max(200),
   description: z.string().max(5000).optional().nullable(),
-  type: z.enum(["goal", "phase", "weekly", "daily"]),
+  type: z.enum(["goal", "phase", "weekly", "daily"]).optional().default("goal"),
   parentPlanId: z.string().optional().nullable(),
   startDate: optionalDate,
   endDate: optionalDate,

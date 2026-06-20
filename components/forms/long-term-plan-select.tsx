@@ -4,41 +4,19 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Select } from "@/components/ui";
 
-const TYPE_LABELS: Record<string, string> = {
-  goal: "长期",
-  phase: "阶段",
-  weekly: "周计划",
-  daily: "日计划",
-};
-
-const TYPE_ORDER: Record<string, number> = {
-  goal: 0,
-  phase: 1,
-  weekly: 2,
-  daily: 3,
-};
-
 interface PlanOption {
   id: string;
   title: string;
-  type: string;
   parentTitle?: string | null;
 }
 
 function formatPlanLabel(p: PlanOption): string {
-  const tag = TYPE_LABELS[p.type] ?? p.type;
-  if (p.parentTitle) {
-    return `${p.parentTitle} › ${p.title}（${tag}）`;
-  }
-  return `${p.title}（${tag}）`;
+  if (p.parentTitle) return `${p.parentTitle} › ${p.title}`;
+  return p.title;
 }
 
 function sortPlans(plans: PlanOption[]): PlanOption[] {
-  return [...plans].sort((a, b) => {
-    const typeDiff = (TYPE_ORDER[a.type] ?? 99) - (TYPE_ORDER[b.type] ?? 99);
-    if (typeDiff !== 0) return typeDiff;
-    return a.title.localeCompare(b.title, "zh-CN");
-  });
+  return [...plans].sort((a, b) => a.title.localeCompare(b.title, "zh-CN"));
 }
 
 export function PlanContributionSelect({
@@ -94,7 +72,7 @@ export function PlanContributionSelect({
       {!loading && !loadError && options.length === 0 && (
         <p className="mt-1.5 text-xs text-gray-500">
           暂无计划。
-          <Link href="/plans/long" className="ml-1 text-brand-600 hover:underline">
+          <Link href="/plans" className="ml-1 text-brand-600 hover:underline">
             去创建计划 →
           </Link>
         </p>

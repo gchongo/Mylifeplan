@@ -29,7 +29,7 @@ export function PlanSelect({
         setOptions(
           plans.map((p) => ({
             value: p.id,
-            label: `${p.title} (${p.type})`,
+            label: p.title,
           })),
         );
       })

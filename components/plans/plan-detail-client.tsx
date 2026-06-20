@@ -51,7 +51,7 @@ export function PlanDetailClient({
         body: JSON.stringify({ status: "archived" }),
       });
       if (res.ok) {
-        router.push(plan.type === "goal" || plan.type === "phase" ? "/plans/long" : "/plans/short");
+        router.push("/plans");
         router.refresh();
       }
     } finally {
@@ -65,7 +65,7 @@ export function PlanDetailClient({
     try {
       const res = await fetch(`/api/plans/${plan.id}`, { method: "DELETE" });
       if (res.ok) {
-        router.push(plan.type === "goal" || plan.type === "phase" ? "/plans/long" : "/plans/short");
+        router.push("/plans");
         router.refresh();
       }
     } finally {
@@ -99,7 +99,6 @@ export function PlanDetailClient({
               <p className="mt-1 text-sm text-gray-500">父计划：{parentTitle}</p>
             )}
           </div>
-          <Badge variant="info">{plan.type}</Badge>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-gray-700">
           {plan.description && <p>{plan.description}</p>}
@@ -174,7 +173,6 @@ export function PlanDetailClient({
                     className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2 hover:bg-gray-50"
                   >
                     <span>{sp.title}</span>
-                    <Badge variant="info">{sp.type}</Badge>
                   </Link>
                 </li>
               ))}

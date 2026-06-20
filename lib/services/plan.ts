@@ -1,4 +1,4 @@
-import type { Plan, PlanType } from "@prisma/client";
+import type { Plan } from "@prisma/client";
 import { validateDateFields } from "@/lib/content-router";
 import { parseDateOnly } from "@/lib/dates";
 import { prisma } from "@/lib/db";
@@ -21,27 +21,27 @@ function feedActionForPlan(
 
 async function validatePlanHierarchy(
   userId: string,
-  type: PlanType,
   parentPlanId: string | null | undefined,
+  planId?: string,
 ): Promise<string | null> {
-  if (type === "goal") {
-    if (parentPlanId) return "长期目标不能有父计划";
-    return null;
-  }
-
-  if (type === "phase") {
-    if (!parentPlanId) return "阶段计划必须关联一个长期目标";
-    const parent = await prisma.plan.findFirst({ where: { id: parentPlanId, userId } });
-    if (!parent) return "父计划不存在";
-    if (parent.type !== "goal") return "阶段计划的父级必须是长期目标";
-    return null;
-  }
-
   if (!parentPlanId) return null;
+  if (planId && parentPlanId === planId) return "不能将自己设为父计划";
 
   const parent = await prisma.plan.findFirst({ where: { id: parentPlanId, userId } });
   if (!parent) return "父计划不存在";
-  if (parent.type !== "phase") return "短期计划的父级必须是阶段计划";
+
+  if (planId) {
+    let cur: string | null = parentPlanId;
+    while (cur) {
+      if (cur === planId) return "不能形成循环层级";
+      const row = await prisma.plan.findFirst({
+        where: { id: cur, userId },
+        select: { parentPlanId: true },
+      });
+      cur = row?.parentPlanId ?? null;
+    }
+  }
+
   return null;
 }
 
@@ -56,7 +56,7 @@ export async function createPlan(userId: string, input: CreatePlanInput): Promis
   const dateError = validateDates(input.startDate, input.endDate);
   if (dateError) throw new Error(dateError);
 
-  const hierarchyError = await validatePlanHierarchy(userId, input.type, input.parentPlanId);
+  const hierarchyError = await validatePlanHierarchy(userId, input.parentPlanId);
   if (hierarchyError) throw new Error(hierarchyError);
 
   return prisma.$transaction(async (tx) => {
@@ -94,11 +94,10 @@ export async function updatePlan(
   const existing = await prisma.plan.findFirst({ where: { id: planId, userId } });
   if (!existing) throw new Error("NOT_FOUND");
 
-  const type = input.type ?? existing.type;
   const parentPlanId =
     input.parentPlanId !== undefined ? input.parentPlanId : existing.parentPlanId;
 
-  const hierarchyError = await validatePlanHierarchy(userId, type, parentPlanId);
+  const hierarchyError = await validatePlanHierarchy(userId, parentPlanId, planId);
   if (hierarchyError) throw new Error(hierarchyError);
 
   const startStr =

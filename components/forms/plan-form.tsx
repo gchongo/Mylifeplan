@@ -7,13 +7,6 @@ import { ErrorMessage } from "@/components/ui/feedback";
 import { Input, Select, Textarea } from "@/components/ui";
 import { ParentPlanSelect } from "@/components/forms/parent-plan-select";
 
-const typeOptions = [
-  { value: "goal", label: "长期目标 (goal)" },
-  { value: "phase", label: "阶段计划 (phase)" },
-  { value: "weekly", label: "周计划 (weekly)" },
-  { value: "daily", label: "日计划 (daily)" },
-];
-
 const statusOptions = [
   { value: "not_started", label: "未开始" },
   { value: "in_progress", label: "进行中" },
@@ -32,11 +25,9 @@ export interface PlanFormValues {
 }
 
 export function PlanForm({
-  defaultType = "goal",
   plan,
   redirectTo,
 }: {
-  defaultType?: string;
   plan?: PlanFormValues;
   redirectTo?: string;
 }) {
@@ -44,7 +35,6 @@ export function PlanForm({
   const isEdit = Boolean(plan?.id);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [type, setType] = useState(plan?.type ?? defaultType);
   const [parentPlanId, setParentPlanId] = useState<string | null>(
     plan?.parentPlanId ?? null,
   );
@@ -57,7 +47,6 @@ export function PlanForm({
     const fd = new FormData(e.currentTarget);
     const title = String(fd.get("title") ?? "").trim();
     const description = String(fd.get("description") ?? "").trim();
-    const planType = String(fd.get("type") ?? type);
     const startDate = String(fd.get("startDate") ?? "") || null;
     const endDate = String(fd.get("endDate") ?? "") || null;
     const status = String(fd.get("status") ?? "not_started");
@@ -65,7 +54,7 @@ export function PlanForm({
     const payload = {
       title,
       description: description || null,
-      type: planType,
+      type: plan?.type ?? "goal",
       parentPlanId,
       startDate,
       endDate,
@@ -84,13 +73,7 @@ export function PlanForm({
         return;
       }
 
-      if (redirectTo) {
-        router.push(redirectTo);
-      } else {
-        router.push(
-          planType === "goal" || planType === "phase" ? "/plans/long" : "/plans/short",
-        );
-      }
+      router.push(redirectTo ?? "/plans");
       router.refresh();
     } catch {
       setError("网络错误");
@@ -116,28 +99,11 @@ export function PlanForm({
         rows={3}
         defaultValue={plan?.description ?? ""}
       />
-      {!isEdit && (
-        <Select
-          name="type"
-          label="类型"
-          options={typeOptions}
-          value={type}
-          onChange={(e) => {
-            setType(e.target.value);
-            setParentPlanId(null);
-          }}
-        />
-      )}
-      {isEdit && (
-        <Select
-          name="type"
-          label="类型"
-          options={typeOptions.filter((o) => o.value === type)}
-          value={type}
-          disabled
-        />
-      )}
-      <ParentPlanSelect planType={type} value={parentPlanId} onChange={setParentPlanId} />
+      <ParentPlanSelect
+        value={parentPlanId}
+        onChange={setParentPlanId}
+        excludePlanId={plan?.id}
+      />
       <div className="grid gap-4 sm:grid-cols-2">
         <Input
           name="startDate"

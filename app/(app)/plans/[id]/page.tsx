@@ -29,11 +29,8 @@ export default async function PlanDetailPage({
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <Link
-        href={plan.type === "goal" || plan.type === "phase" ? "/plans/long" : "/plans/short"}
-        className="text-sm text-brand-600 hover:underline"
-      >
-        ← 返回规划列表
+      <Link href="/plans" className="text-sm text-brand-600 hover:underline">
+        ← 返回计划列表
       </Link>
       <PlanDetailClient
         plan={{
