@@ -173,7 +173,7 @@ export function TaskForm({
       <p className="text-xs text-gray-500">
         无日期 → 备忘录；有开始日期 → 日历 + 甘特图；有开始 + 截止 → 真实截止。
       </p>
-      <Button type="submit" disabled={loading} size={embedded ? "sm" : "default"}>
+      <Button type="submit" disabled={loading} size={embedded ? "sm" : "md"}>
         {loading ? "保存中…" : submitLabel ?? (isEdit ? "保存修改" : "保存任务")}
       </Button>
     </form>

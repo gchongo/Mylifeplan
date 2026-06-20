@@ -46,13 +46,13 @@ export default async function PlanDetailPage({
           endDate: serialized.endDate,
           status: plan.status,
         }}
-        subPlans={plan.subPlans.map((sp) => ({
+        subPlans={plan.subPlans.map((sp: (typeof plan.subPlans)[number]) => ({
           id: sp.id,
           title: sp.title,
           type: sp.type,
           status: sp.status,
         }))}
-        tasks={plan.tasks.map((t) => {
+        tasks={plan.tasks.map((t: (typeof plan.tasks)[number]) => {
           const s = serializeTask(t);
           return {
             id: t.id,
