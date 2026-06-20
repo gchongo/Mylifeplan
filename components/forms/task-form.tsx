@@ -37,17 +37,19 @@ export function TaskForm({
   task,
   redirectTo = "/tasks",
   defaultPlanId,
+  defaultParentTaskId,
 }: {
   task?: TaskFormValues;
   redirectTo?: string;
   defaultPlanId?: string | null;
+  defaultParentTaskId?: string | null;
 }) {
   const router = useRouter();
   const isEdit = Boolean(task?.id);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [parentTaskId, setParentTaskId] = useState<string | null>(
-    task?.parentTaskId ?? null,
+    task?.parentTaskId ?? defaultParentTaskId ?? null,
   );
   const [planId, setPlanId] = useState<string | null>(
     task?.planId ?? defaultPlanId ?? null,

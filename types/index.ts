@@ -17,6 +17,7 @@ export interface GanttItem {
   isVirtualEnd: boolean;
   type: "task" | "plan";
   parentId?: string | null;
+  status?: string;
 }
 
 export interface CalendarItem {

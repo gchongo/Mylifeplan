@@ -58,6 +58,7 @@ export async function getGanttItems(
       isVirtualEnd,
       type: "task",
       parentId: task.parentTaskId,
+      status: task.status,
     });
   }
 
@@ -81,6 +82,7 @@ export async function getGanttItems(
       isVirtualEnd,
       type: "plan",
       parentId: plan.parentPlanId,
+      status: plan.status,
     });
   }
 
