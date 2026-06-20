@@ -75,6 +75,7 @@ describe("memo-sync integration", () => {
     description: "说明",
     startDate: null as Date | null,
     dueDate: null as Date | null,
+    status: "todo" as const,
   };
 
   it("无日期任务自动创建 Memo", async () => {
@@ -110,5 +111,13 @@ describe("memo-sync integration", () => {
 
     await syncMemoForTask(baseTask, store.db as never);
     expect(store.memos).toHaveLength(1);
+  });
+
+  it("归档任务时删除 Memo", async () => {
+    await syncMemoForTask(baseTask, store.db as never);
+    expect(store.memos).toHaveLength(1);
+
+    await syncMemoForTask({ ...baseTask, status: "archived" }, store.db as never);
+    expect(store.memos).toHaveLength(0);
   });
 });

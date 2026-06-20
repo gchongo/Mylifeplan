@@ -22,6 +22,15 @@ async function getTaskDepth(taskId: string, userId: string): Promise<number> {
   return depth;
 }
 
+function feedActionForTask(
+  prev: Task["status"],
+  next: Task["status"],
+): "archive" | "complete" | "update" {
+  if (next === "archived" && prev !== "archived") return "archive";
+  if (next === "done" && prev !== "done") return "complete";
+  return "update";
+}
+
 async function validateParentTask(
   userId: string,
   parentTaskId: string | null | undefined,
@@ -130,7 +139,7 @@ export async function updateTask(
   if (planError) throw new Error(planError);
 
   const newStatus = input.status ?? existing.status;
-  const actionType = newStatus === "done" && existing.status !== "done" ? "complete" : "update";
+  const actionType = feedActionForTask(existing.status, newStatus);
 
   return prisma.$transaction(async (tx) => {
     const task = await tx.task.update({

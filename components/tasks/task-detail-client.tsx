@@ -11,7 +11,7 @@ import { TaskForm, type TaskFormValues } from "@/components/forms/task-form";
 const statusLabels: Record<string, string> = {
   todo: "待办",
   in_progress: "进行中",
-  done: "已完成",
+  archived: "已归档",
 };
 
 interface ChildTask {
@@ -124,19 +124,32 @@ export function TaskDetailClient({
           </dl>
 
           <div className="flex flex-wrap gap-2">
-            {task.status !== "in_progress" && (
-              <Button size="sm" variant="secondary" onClick={() => quickStatus("in_progress")}>
-                开始
-              </Button>
+            {task.status !== "archived" && (
+              <>
+                {task.status !== "in_progress" && (
+                  <Button size="sm" variant="secondary" onClick={() => quickStatus("in_progress")}>
+                    开始
+                  </Button>
+                )}
+                {task.status !== "done" && (
+                  <Button size="sm" onClick={() => quickStatus("done")}>
+                    完成
+                  </Button>
+                )}
+                {task.status !== "todo" && (
+                  <Button size="sm" variant="ghost" onClick={() => quickStatus("todo")}>
+                    重置为待办
+                  </Button>
+                )}
+              </>
             )}
-            {task.status !== "done" && (
-              <Button size="sm" onClick={() => quickStatus("done")}>
-                完成
+            {task.status === "archived" ? (
+              <Button size="sm" variant="secondary" onClick={() => quickStatus("todo")}>
+                取消归档
               </Button>
-            )}
-            {task.status !== "todo" && (
-              <Button size="sm" variant="ghost" onClick={() => quickStatus("todo")}>
-                重置为待办
+            ) : (
+              <Button size="sm" variant="ghost" onClick={() => quickStatus("archived")}>
+                归档
               </Button>
             )}
             <Button size="sm" variant="secondary" onClick={() => setShowEdit(true)}>

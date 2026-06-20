@@ -17,7 +17,13 @@ export default async function LongPlansPage() {
       subPlans: {
         where: { type: "phase" },
         orderBy: { createdAt: "asc" },
-        include: { _count: { select: { tasks: true } } },
+        include: {
+          tasks: {
+            where: { status: { not: "archived" } },
+            orderBy: { updatedAt: "desc" },
+            select: { id: true, title: true, status: true },
+          },
+        },
       },
     },
   });
@@ -29,7 +35,13 @@ export default async function LongPlansPage() {
       parentPlanId: null,
     },
     orderBy: { updatedAt: "desc" },
-    include: { _count: { select: { tasks: true } } },
+    include: {
+      tasks: {
+        where: { status: { not: "archived" } },
+        orderBy: { updatedAt: "desc" },
+        select: { id: true, title: true, status: true },
+      },
+    },
   });
 
   const tree = goals.map((goal) => ({
@@ -42,7 +54,7 @@ export default async function LongPlansPage() {
       title: phase.title,
       type: phase.type,
       status: phase.status,
-      taskCount: phase._count.tasks,
+      tasks: phase.tasks,
     })),
   }));
 
@@ -74,12 +86,22 @@ export default async function LongPlansPage() {
             {orphanPhases.map((phase) => (
               <li
                 key={phase.id}
-                className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3"
+                className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3"
               >
                 <Link href={`/plans/${phase.id}`} className="font-medium hover:text-brand-600">
                   {phase.title}
                 </Link>
-                <span className="text-xs text-gray-500">{phase._count.tasks} 个任务</span>
+                {phase.tasks.length > 0 && (
+                  <ul className="mt-2 space-y-1 pl-2">
+                    {phase.tasks.map((task) => (
+                      <li key={task.id}>
+                        <Link href={`/tasks/${task.id}`} className="text-sm text-gray-700 hover:text-brand-600">
+                          · {task.title}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ))}
           </ul>

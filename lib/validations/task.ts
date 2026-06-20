@@ -11,7 +11,7 @@ const optionalDate = z
 const taskBaseSchema = z.object({
   title: z.string().min(1, "标题必填").max(200),
   description: z.string().max(5000).optional().nullable(),
-  status: z.enum(["todo", "in_progress", "done"]).optional(),
+  status: z.enum(["todo", "in_progress", "done", "archived"]).optional(),
   priority: z.enum(["high", "medium", "low"]).optional().nullable(),
   startDate: optionalDate,
   dueDate: optionalDate,

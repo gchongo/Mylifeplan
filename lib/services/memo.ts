@@ -80,6 +80,23 @@ export async function updateMemoById(
   throw new Error("INVALID_MEMO");
 }
 
+export async function archiveMemoById(userId: string, memoId: string) {
+  const memo = await prisma.memo.findFirst({ where: { id: memoId, userId } });
+  if (!memo) throw new Error("NOT_FOUND");
+
+  if (memo.linkedTaskId) {
+    const { updateTask } = await import("@/lib/services/task");
+    return updateTask(userId, memo.linkedTaskId, { status: "archived" });
+  }
+
+  if (memo.linkedPlanId) {
+    const { updatePlan } = await import("@/lib/services/plan");
+    return updatePlan(userId, memo.linkedPlanId, { status: "archived" });
+  }
+
+  throw new Error("INVALID_MEMO");
+}
+
 export async function deleteMemoById(userId: string, memoId: string) {
   const memo = await prisma.memo.findFirst({ where: { id: memoId, userId } });
   if (!memo) throw new Error("NOT_FOUND");

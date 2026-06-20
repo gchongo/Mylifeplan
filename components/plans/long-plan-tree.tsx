@@ -1,12 +1,18 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 
+interface TaskNode {
+  id: string;
+  title: string;
+  status: string;
+}
+
 interface PhaseNode {
   id: string;
   title: string;
   type: string;
   status: string;
-  taskCount: number;
+  tasks: TaskNode[];
 }
 
 interface GoalNode {
@@ -35,19 +41,32 @@ export function LongPlanTree({ goals }: { goals: GoalNode[] }) {
           {goal.phases.length === 0 ? (
             <p className="mt-2 text-sm text-gray-400">暂无阶段计划</p>
           ) : (
-            <ul className="mt-3 space-y-2 border-l-2 border-brand-100 pl-4">
+            <ul className="mt-3 space-y-3 border-l-2 border-brand-100 pl-4">
               {goal.phases.map((phase) => (
-                <li
-                  key={phase.id}
-                  className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2"
-                >
-                  <Link href={`/plans/${phase.id}`} className="font-medium hover:text-brand-600">
-                    {phase.title}
-                  </Link>
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <span>{phase.taskCount} 个任务</span>
+                <li key={phase.id}>
+                  <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
+                    <Link href={`/plans/${phase.id}`} className="font-medium hover:text-brand-600">
+                      {phase.title}
+                    </Link>
                     <Badge variant="info">{phase.type}</Badge>
                   </div>
+                  {phase.tasks.length === 0 ? (
+                    <p className="mt-1 pl-2 text-xs text-gray-400">暂无关联任务</p>
+                  ) : (
+                    <ul className="mt-1 space-y-1 border-l border-gray-200 pl-4">
+                      {phase.tasks.map((task) => (
+                        <li key={task.id}>
+                          <Link
+                            href={`/tasks/${task.id}`}
+                            className="flex items-center justify-between rounded px-2 py-1 text-sm hover:bg-gray-50"
+                          >
+                            <span>{task.title}</span>
+                            <Badge variant="info">{task.status}</Badge>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </li>
               ))}
             </ul>

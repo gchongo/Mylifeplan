@@ -15,7 +15,7 @@ const planBaseSchema = z.object({
   parentPlanId: z.string().optional().nullable(),
   startDate: optionalDate,
   endDate: optionalDate,
-  status: z.enum(["not_started", "in_progress", "done"]).optional(),
+  status: z.enum(["not_started", "in_progress", "done", "archived"]).optional(),
 });
 
 function refinePlanDates(

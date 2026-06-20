@@ -41,6 +41,23 @@ export function PlanDetailClient({
   const [showNewTask, setShowNewTask] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  async function archivePlan() {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/plans/${plan.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "archived" }),
+      });
+      if (res.ok) {
+        router.push(plan.type === "goal" || plan.type === "phase" ? "/plans/long" : "/plans/short");
+        router.refresh();
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   async function handleDelete() {
     if (!confirm("确定删除此计划？")) return;
     setDeleting(true);
@@ -94,12 +111,36 @@ export function PlanDetailClient({
             <dd>{plan.status ?? "not_started"}</dd>
           </dl>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="secondary" onClick={() => setShowEdit(true)}>
-              编辑计划
-            </Button>
-            <Button size="sm" onClick={() => setShowNewTask((v) => !v)}>
-              {showNewTask ? "收起新建任务" : "在此计划下新建任务"}
-            </Button>
+            {plan.status !== "archived" && (
+              <>
+                <Button size="sm" variant="secondary" onClick={() => setShowEdit(true)}>
+                  编辑计划
+                </Button>
+                <Button size="sm" onClick={() => setShowNewTask((v) => !v)}>
+                  {showNewTask ? "收起新建任务" : "在此计划下新建任务"}
+                </Button>
+              </>
+            )}
+            {plan.status === "archived" ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={async () => {
+                  await fetch(`/api/plans/${plan.id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status: "not_started" }),
+                  });
+                  router.refresh();
+                }}
+              >
+                取消归档
+              </Button>
+            ) : (
+              <Button size="sm" variant="ghost" onClick={archivePlan} disabled={deleting}>
+                归档
+              </Button>
+            )}
             <Button size="sm" variant="ghost" onClick={handleDelete} disabled={deleting}>
               删除
             </Button>

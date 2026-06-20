@@ -32,11 +32,11 @@ export async function getGanttItems(
 
   const [tasks, plans] = await Promise.all([
     prisma.task.findMany({
-      where: { userId, startDate: { not: null } },
+      where: { userId, startDate: { not: null }, status: { not: "archived" } },
       orderBy: { startDate: "asc" },
     }),
     prisma.plan.findMany({
-      where: { userId, startDate: { not: null } },
+      where: { userId, startDate: { not: null }, status: { not: "archived" } },
       orderBy: { startDate: "asc" },
     }),
   ]);
@@ -97,11 +97,11 @@ export async function getCalendarItems(
 
   const [tasks, plans] = await Promise.all([
     prisma.task.findMany({
-      where: { userId, startDate: { not: null } },
+      where: { userId, startDate: { not: null }, status: { not: "archived" } },
       orderBy: { startDate: "asc" },
     }),
     prisma.plan.findMany({
-      where: { userId, startDate: { not: null } },
+      where: { userId, startDate: { not: null }, status: { not: "archived" } },
       orderBy: { startDate: "asc" },
     }),
   ]);

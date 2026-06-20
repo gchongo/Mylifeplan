@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { jsonError, jsonOk } from "@/lib/api-response";
 import { requireSession } from "@/lib/auth/get-session";
-import { deleteMemoById, updateMemoById } from "@/lib/services/memo";
+import { deleteMemoById, updateMemoById, archiveMemoById } from "@/lib/services/memo";
 import { validateDateFields } from "@/lib/content-router";
 
 type Params = { params: Promise<{ id: string }> };
@@ -30,6 +30,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const session = await requireSession();
     const { id } = await params;
     const body = await request.json();
+
+    if (body?.archive === true) {
+      await archiveMemoById(session.userId, id);
+      return jsonOk({ ok: true });
+    }
+
     const parsed = updateMemoSchema.safeParse(body);
     if (!parsed.success) {
       return jsonError(parsed.error.errors[0]?.message ?? "参数错误", 400);

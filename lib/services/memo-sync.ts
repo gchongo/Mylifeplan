@@ -13,11 +13,20 @@ function planRoutable(plan: Pick<Plan, "startDate" | "endDate">) {
 }
 
 export async function syncMemoForTask(
-  task: Pick<Task, "id" | "userId" | "title" | "description" | "startDate" | "dueDate">,
+  task: Pick<
+    Task,
+    "id" | "userId" | "title" | "description" | "startDate" | "dueDate" | "status"
+  >,
   db: Tx | typeof prisma = prisma,
 ) {
-  const inMemo = shouldShowInMemo(taskRoutable(task));
   const existing = await db.memo.findUnique({ where: { linkedTaskId: task.id } });
+
+  if (task.status === "archived") {
+    if (existing) await db.memo.delete({ where: { id: existing.id } });
+    return;
+  }
+
+  const inMemo = shouldShowInMemo(taskRoutable(task));
 
   if (inMemo) {
     if (existing) {
@@ -44,11 +53,20 @@ export async function syncMemoForTask(
 }
 
 export async function syncMemoForPlan(
-  plan: Pick<Plan, "id" | "userId" | "title" | "description" | "startDate" | "endDate">,
+  plan: Pick<
+    Plan,
+    "id" | "userId" | "title" | "description" | "startDate" | "endDate" | "status"
+  >,
   db: Tx | typeof prisma = prisma,
 ) {
-  const inMemo = shouldShowInMemo(planRoutable(plan));
   const existing = await db.memo.findUnique({ where: { linkedPlanId: plan.id } });
+
+  if (plan.status === "archived") {
+    if (existing) await db.memo.delete({ where: { id: existing.id } });
+    return;
+  }
+
+  const inMemo = shouldShowInMemo(planRoutable(plan));
 
   if (inMemo) {
     if (existing) {

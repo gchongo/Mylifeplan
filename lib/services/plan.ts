@@ -10,6 +10,15 @@ import type { z } from "zod";
 type CreatePlanInput = z.infer<typeof createPlanSchema>;
 type UpdatePlanInput = Partial<CreatePlanInput>;
 
+function feedActionForPlan(
+  prev: Plan["status"],
+  next: Plan["status"],
+): "archive" | "complete" | "update" {
+  if (next === "archived" && prev !== "archived") return "archive";
+  if (next === "done" && prev !== "done") return "complete";
+  return "update";
+}
+
 async function validatePlanHierarchy(
   userId: string,
   type: PlanType,
@@ -103,7 +112,7 @@ export async function updatePlan(
   if (dateError) throw new Error(dateError);
 
   const newStatus = input.status ?? existing.status;
-  const actionType = newStatus === "done" && existing.status !== "done" ? "complete" : "update";
+  const actionType = feedActionForPlan(existing.status, newStatus);
 
   return prisma.$transaction(async (tx) => {
     const plan = await tx.plan.update({
