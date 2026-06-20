@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { CalendarDayDrawer } from "@/components/calendar/calendar-day-drawer";
-import { CalendarMonthView } from "@/components/calendar/calendar-month-view";
+import {
+  CalendarScrollView,
+  type CalendarScrollViewHandle,
+} from "@/components/calendar/calendar-scroll-view";
 import {
   CalendarDisplayPicker,
   useCalendarDisplayMode,
@@ -18,6 +21,13 @@ import {
   itemAccent,
   itemsOnDate,
 } from "@/lib/calendar-display";
+import {
+  formatMonthTitle,
+  initialMonthWindow,
+  monthKeyFromDate,
+  rangeForMonths,
+  type MonthKey,
+} from "@/lib/calendar-month-grid";
 import type { CalendarItem } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -74,21 +84,37 @@ export function CalendarPanelLive({
 }) {
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
+  const todayMonth = monthKeyFromDate(today);
   const [displayMode, setDisplayMode] = useCalendarDisplayMode();
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [viewYear, setViewYear] = useState(today.getUTCFullYear());
   const [viewMonth, setViewMonth] = useState(today.getUTCMonth());
   const [viewDay, setViewDay] = useState(today.getUTCDate());
+  const [visibleMonth, setVisibleMonth] = useState<MonthKey>(todayMonth);
+  const [loadedMonths, setLoadedMonths] = useState<MonthKey[]>(() =>
+    initialMonthWindow(todayMonth),
+  );
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const [drawerDate, setDrawerDate] = useState<string | null>(null);
   const [weekAnchor, setWeekAnchor] = useState(today);
   const [items, setItems] = useState<CalendarItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const scrollRef = useRef<CalendarScrollViewHandle>(null);
+
+  const handleMonthsChange = useCallback((months: MonthKey[]) => {
+    setLoadedMonths(months);
+  }, []);
+
+  const handleVisibleMonthChange = useCallback((key: MonthKey) => {
+    setVisibleMonth(key);
+    setViewYear(key.year);
+    setViewMonth(key.month);
+  }, []);
 
   const { from, to, label } = useMemo(() => {
     if (viewMode === "month") {
-      const r = monthRange(viewYear, viewMonth);
-      return { ...r, label: `${viewYear}年${viewMonth + 1}月` };
+      const r = rangeForMonths(loadedMonths);
+      return { ...r, label: formatMonthTitle(visibleMonth, true) };
     }
     if (viewMode === "week") {
       const r = weekRange(weekAnchor);
@@ -96,7 +122,7 @@ export function CalendarPanelLive({
     }
     const ds = toDateStr(viewYear, viewMonth, viewDay);
     return { from: ds, to: ds, label: ds };
-  }, [viewMode, viewYear, viewMonth, viewDay, weekAnchor]);
+  }, [viewMode, loadedMonths, visibleMonth, viewYear, viewMonth, viewDay, weekAnchor]);
 
   useEffect(() => {
     setLoading(true);
@@ -117,15 +143,16 @@ export function CalendarPanelLive({
     setViewDay(now.getUTCDate());
     setWeekAnchor(now);
     setSelectedDate(now.toISOString().slice(0, 10));
+    setVisibleMonth(monthKeyFromDate(now));
+    if (viewMode === "month") scrollRef.current?.scrollToToday();
   }
 
   function prev() {
     if (viewMode === "month") {
-      if (viewMonth === 0) {
-        setViewYear((y) => y - 1);
-        setViewMonth(11);
-      } else setViewMonth((m) => m - 1);
-    } else if (viewMode === "week") {
+      scrollRef.current?.scrollByMonth(-1);
+      return;
+    }
+    if (viewMode === "week") {
       const d = new Date(weekAnchor);
       d.setUTCDate(d.getUTCDate() - 7);
       setWeekAnchor(d);
@@ -141,11 +168,10 @@ export function CalendarPanelLive({
 
   function next() {
     if (viewMode === "month") {
-      if (viewMonth === 11) {
-        setViewYear((y) => y + 1);
-        setViewMonth(0);
-      } else setViewMonth((m) => m + 1);
-    } else if (viewMode === "week") {
+      scrollRef.current?.scrollByMonth(1);
+      return;
+    }
+    if (viewMode === "week") {
       const d = new Date(weekAnchor);
       d.setUTCDate(d.getUTCDate() + 7);
       setWeekAnchor(d);
@@ -203,13 +229,20 @@ export function CalendarPanelLive({
               <Button type="button" variant="ghost" size="sm" onClick={goToday}>
                 今天
               </Button>
-              <Button type="button" variant="ghost" size="sm" onClick={prev}>
-                ‹
-              </Button>
-              <span className="text-sm font-medium">{label}</span>
-              <Button type="button" variant="ghost" size="sm" onClick={next}>
-                ›
-              </Button>
+              {viewMode !== "month" && (
+                <>
+                  <Button type="button" variant="ghost" size="sm" onClick={prev}>
+                    ‹
+                  </Button>
+                  <span className="text-sm font-medium">{label}</span>
+                  <Button type="button" variant="ghost" size="sm" onClick={next}>
+                    ›
+                  </Button>
+                </>
+              )}
+              {viewMode === "month" && (
+                <span className="text-sm font-medium text-gray-600">{label}</span>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -241,30 +274,38 @@ export function CalendarPanelLive({
                 onToday={goToday}
               />
             )}
-            {loading && <Loading label="加载日历…" />}
+            {loading && viewMode !== "month" && <Loading label="加载日历…" />}
+            {loading && viewMode === "month" && items.length === 0 && (
+              <Loading label="加载日历…" />
+            )}
             {!loading && items.length === 0 && viewMode !== "month" && (
               <EmptyState title="暂无安排" description="创建带开始日期的任务或计划后会显示在这里。" />
             )}
-            {!loading && viewMode === "month" && (
+            {viewMode === "month" && (
               <div
                 className={cn(
-                  "flex min-h-0 flex-1 flex-col overflow-hidden bg-white",
+                  "relative flex min-h-0 flex-1 flex-col overflow-hidden bg-white",
                   fullPage ? "" : "rounded-xl border border-gray-200",
                 )}
               >
-                {items.length === 0 && (
-                  <p className="shrink-0 px-3 py-2 text-xs text-gray-400">本月暂无安排</p>
-                )}
-                <CalendarMonthView
-                  year={viewYear}
-                  month={viewMonth}
+                <CalendarScrollView
+                  ref={scrollRef}
                   items={items}
                   displayMode={displayMode}
                   todayStr={todayStr}
                   selectedDate={selectedDate}
                   onSelectDate={openDayDrawer}
+                  onVisibleMonthChange={handleVisibleMonthChange}
+                  onMonthsChange={handleMonthsChange}
                   fullPage={fullPage}
                 />
+                {loading && items.length > 0 && (
+                  <div className="pointer-events-none absolute inset-x-0 top-10 z-20 flex justify-center">
+                    <span className="rounded-full bg-white/90 px-3 py-1 text-xs text-gray-500 shadow-sm">
+                      更新中…
+                    </span>
+                  </div>
+                )}
               </div>
             )}
             {!loading && viewMode === "week" && (
@@ -275,10 +316,7 @@ export function CalendarPanelLive({
                   const isToday = ds === todayStr;
                   const isSelected = ds === selectedDate;
                   return (
-                    <div
-                      key={ds}
-                      className={cn("flex flex-col bg-white p-1", weekCellMin)}
-                    >
+                    <div key={ds} className={cn("flex flex-col bg-white p-1", weekCellMin)}>
                       <div className="mb-1 flex justify-center">
                         <button
                           type="button"

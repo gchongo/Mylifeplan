@@ -7,16 +7,9 @@ import {
   itemsOnDate,
   type CalendarDisplayMode,
 } from "@/lib/calendar-display";
+import { toDateStr } from "@/lib/calendar-month-grid";
 import type { CalendarItem } from "@/types";
 import { cn } from "@/lib/utils";
-
-const WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"];
-
-/** Monday-based offset (0 = Mon … 6 = Sun) */
-function mondayOffset(year: number, month: number) {
-  const dow = new Date(Date.UTC(year, month, 1)).getUTCDay();
-  return dow === 0 ? 6 : dow - 1;
-}
 
 function DayNumber({
   day,
@@ -73,10 +66,7 @@ function StackedBars({ items, limit }: { items: CalendarItem[]; limit: number })
     <ul className="mt-1 space-y-0.5">
       {shown.map((item) => (
         <li key={`${item.type}-${item.id}`}>
-          <span
-            className={cn("block h-1.5 rounded-full", itemAccent(item).bar)}
-            title={item.title}
-          />
+          <span className={cn("block h-1.5 rounded-full", itemAccent(item).bar)} title={item.title} />
         </li>
       ))}
       {rest > 0 && <li className="text-[10px] leading-none text-gray-400">+{rest}</li>}
@@ -107,76 +97,58 @@ function DetailedBlocks({ items, limit }: { items: CalendarItem[]; limit: number
   );
 }
 
-export function CalendarMonthView({
+export function CalendarDayCell({
   year,
   month,
+  day,
   items,
   displayMode,
+  fullPage,
   todayStr,
   selectedDate,
   onSelectDate,
-  fullPage,
 }: {
   year: number;
   month: number;
+  day: number;
   items: CalendarItem[];
   displayMode: CalendarDisplayMode;
+  fullPage: boolean;
   todayStr: string;
   selectedDate: string;
   onSelectDate: (dateStr: string) => void;
-  fullPage: boolean;
 }) {
   const { show, cellMin } = displayLimits(displayMode, fullPage);
-  const leading = mondayOffset(year, month);
-  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-  const cells: (number | null)[] = [];
-  for (let i = 0; i < leading; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
-  function dateStr(day: number) {
-    return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-  }
+  const ds = toDateStr(year, month, day);
+  const dayItems = itemsOnDate(items, ds);
+  const isToday = ds === todayStr;
+  const isSelected = ds === selectedDate;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="grid grid-cols-7 border-b border-gray-100 text-center text-[11px] text-gray-500">
-        {WEEKDAYS.map((w) => (
-          <div key={w} className="py-1 font-medium">
-            {w}
-          </div>
-        ))}
+    <button
+      type="button"
+      data-date={ds}
+      onClick={() => onSelectDate(ds)}
+      className={cn(
+        "flex flex-col bg-white p-1 text-left transition-colors hover:bg-gray-50/80",
+        cellMin,
+        isSelected && "ring-1 ring-inset ring-brand-400",
+      )}
+    >
+      <div className="flex justify-end">
+        <DayNumber day={day} isToday={isToday} isSelected={isSelected && !isToday} />
       </div>
-      <div className="min-h-0 flex-1 grid grid-cols-7 gap-px overflow-y-auto bg-gray-100">
-        {cells.map((day, idx) => {
-          if (day === null) {
-            return <div key={`e-${idx}`} className={cn("bg-white", cellMin)} />;
-          }
-          const ds = dateStr(day);
-          const dayItems = itemsOnDate(items, ds);
-          const isToday = ds === todayStr;
-          const isSelected = ds === selectedDate;
-
-          return (
-            <button
-              key={day}
-              type="button"
-              onClick={() => onSelectDate(ds)}
-              className={cn(
-                "flex flex-col bg-white p-1 text-left transition-colors hover:bg-gray-50/80",
-                cellMin,
-                isSelected && "ring-1 ring-inset ring-brand-400",
-              )}
-            >
-              <div className="flex justify-end">
-                <DayNumber day={day} isToday={isToday} isSelected={isSelected && !isToday} />
-              </div>
-              {displayMode === "compact" && <CompactIndicators items={dayItems} />}
-              {displayMode === "stacked" && <StackedBars items={dayItems} limit={show} />}
-              {displayMode === "detailed" && <DetailedBlocks items={dayItems} limit={show} />}
-            </button>
-          );
-        })}
-      </div>
-    </div>
+      {displayMode === "compact" && <CompactIndicators items={dayItems} />}
+      {displayMode === "stacked" && <StackedBars items={dayItems} limit={show} />}
+      {displayMode === "detailed" && <DetailedBlocks items={dayItems} limit={show} />}
+    </button>
   );
+}
+
+export function CalendarEmptyDayCell({ cellMin }: { cellMin: string }) {
+  return <div className={cn("bg-white", cellMin)} />;
+}
+
+export function useCalendarCellMin(displayMode: CalendarDisplayMode, fullPage: boolean) {
+  return displayLimits(displayMode, fullPage).cellMin;
 }
