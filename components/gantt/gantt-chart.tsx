@@ -14,6 +14,7 @@ import {
   buildTimelineLayout,
   compactTimelineRange,
   dateToX,
+  HOUR_WIDTH,
   isTodayInColumn,
   shiftAnchor,
   todayStr,
@@ -83,7 +84,7 @@ function buildTaskTreeRows(tasks: GanttItem[], expanded: Set<string>): GanttRow[
 
       if (expanded.has(item.id)) {
         if (childCount > 0) walk(item.id, depth + 1);
-        else if (canHaveChildren) {
+        if (canHaveChildren) {
           rows.push({ kind: "add-child", depth: depth + 1, parentTaskId: item.id });
         }
       }
@@ -125,6 +126,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrolledToToday = useRef(false);
+  const scrollTarget = useRef<"today" | "anchor">("today");
 
   const [scale, setScale] = useState<GanttScaleId>("month");
   const [anchor, setAnchor] = useState(todayStr);
@@ -208,6 +210,15 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     return true;
   }, [todayVisible, todayX]);
 
+  const scrollToAnchor = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return false;
+    const anchorX = dateToX(anchor, layout);
+    const offset = LABEL_WIDTH + anchorX - el.clientWidth / 2;
+    el.scrollLeft = Math.max(0, offset);
+    return true;
+  }, [anchor, layout]);
+
   useEffect(() => {
     scrolledToToday.current = false;
   }, [from, to, scale, anchor]);
@@ -216,7 +227,9 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     if (loading || scrolledToToday.current) return;
 
     const tryScroll = () => {
-      if (scrollToToday()) scrolledToToday.current = true;
+      const ok =
+        scrollTarget.current === "today" ? scrollToToday() : scrollToAnchor();
+      if (ok) scrolledToToday.current = true;
     };
 
     tryScroll();
@@ -227,15 +240,36 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
       cancelAnimationFrame(raf);
       window.clearTimeout(timer);
     };
-  }, [loading, scrollToToday, from, to, layout.totalWidth]);
+  }, [loading, scrollToToday, scrollToAnchor, from, to, layout.totalWidth]);
 
   function goToday() {
+    scrollTarget.current = "today";
     setAnchor(todayStr());
     scrolledToToday.current = false;
     requestAnimationFrame(() => {
       scrollToToday();
       scrolledToToday.current = true;
     });
+  }
+
+  function navigatePrev() {
+    if (scale === "day") {
+      scrollRef.current?.scrollBy({ left: -HOUR_WIDTH, behavior: "smooth" });
+      return;
+    }
+    scrollTarget.current = "anchor";
+    scrolledToToday.current = false;
+    setAnchor((a) => shiftAnchor(scale, a, -1));
+  }
+
+  function navigateNext() {
+    if (scale === "day") {
+      scrollRef.current?.scrollBy({ left: HOUR_WIDTH, behavior: "smooth" });
+      return;
+    }
+    scrollTarget.current = "anchor";
+    scrolledToToday.current = false;
+    setAnchor((a) => shiftAnchor(scale, a, 1));
   }
 
   function handleItemUpdated(updated: GanttItem) {
@@ -267,10 +301,11 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
         scale={scale}
         onScaleChange={(s) => {
           setScale(s);
+          scrollTarget.current = "today";
           scrolledToToday.current = false;
         }}
-        onPrev={() => setAnchor((a) => shiftAnchor(scale, a, -1))}
-        onNext={() => setAnchor((a) => shiftAnchor(scale, a, 1))}
+        onPrev={navigatePrev}
+        onNext={navigateNext}
         onToday={goToday}
       />
     );

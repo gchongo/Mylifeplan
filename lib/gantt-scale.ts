@@ -40,7 +40,7 @@ export interface LayoutBounds {
   to?: string;
 }
 
-const HOUR_WIDTH = 24;
+export const HOUR_WIDTH = 24;
 const DAY_WIDTH = 36;
 const WEEK_WIDTH = 88;
 const MONTH_DAY_WIDTH = 32;
@@ -374,13 +374,11 @@ export function shiftAnchor(scale: GanttScaleId, anchor: string, direction: -1 |
     case "day":
       return addDaysUtc(anchor, direction);
     case "week":
-      return addDaysUtc(anchor, direction * 7);
     case "month":
-      return addMonthsUtc(anchor, direction);
+      return addDaysUtc(anchor, direction);
     case "year":
-      return addMonthsUtc(anchor, direction * 12);
     case "5year":
-      return addMonthsUtc(anchor, direction * 60);
+      return addMonthsUtc(anchor, direction);
     default:
       return anchor;
   }
