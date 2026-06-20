@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getEffectiveEndDate } from "@/lib/content-router";
+import { dispatchPlanUpdated } from "@/lib/plan-events";
 import {
   addDaysUtc,
   daysBetween,
@@ -125,6 +126,7 @@ export function GanttDraggableBar({
           effectiveEnd: effectiveEnd ?? plan.startDate,
           isVirtualEnd,
         });
+        dispatchPlanUpdated();
       } finally {
         setSaving(false);
       }

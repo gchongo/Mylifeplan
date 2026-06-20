@@ -21,13 +21,20 @@ export async function GET(request: NextRequest) {
         ...(parentPlanId && { parentPlanId }),
       },
       orderBy: [{ updatedAt: "desc" }],
-      include: { parentPlan: { select: { title: true } } },
+      include: {
+        parentPlan: { select: { title: true } },
+        subPlans: {
+          where: { status: { not: "archived" } },
+          select: { status: true },
+        },
+      },
     });
 
     return jsonOk({
       plans: plans.map((p) => ({
         ...serializePlan(p),
         parentTitle: p.parentPlan?.title ?? null,
+        childStatuses: p.subPlans.map((c) => c.status),
       })),
     });
   } catch (error) {

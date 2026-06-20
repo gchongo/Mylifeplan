@@ -41,6 +41,7 @@ import {
 } from "@/lib/task-status-style";
 import type { GanttContribution, GanttItem, PlanStatus } from "@/types";
 import { apiJson } from "@/lib/client-api";
+import { dispatchPlanUpdated, PLAN_UPDATED_EVENT } from "@/lib/plan-events";
 import { cn } from "@/lib/utils";
 
 const ROW_HEIGHT = 44;
@@ -276,6 +277,14 @@ export const GanttChart = forwardRef<
       setContributions(data.contributions ?? []);
     });
   }, [from, to]);
+
+  useEffect(() => {
+    function onPlanUpdated() {
+      refetchGantt();
+    }
+    window.addEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
+    return () => window.removeEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
+  }, [refetchGantt]);
 
   useEffect(() => {
     if (!isPanning) return;
@@ -786,7 +795,10 @@ export const GanttChart = forwardRef<
         onClose={closePlanModal}
         title={planModal.title}
         defaultParentPlanId={planModal.defaultParentPlanId}
-        onSuccess={refetchGantt}
+        onSuccess={() => {
+          refetchGantt();
+          dispatchPlanUpdated();
+        }}
       />
     );
   }

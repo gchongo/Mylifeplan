@@ -1,0 +1,63 @@
+import { describe, expect, it } from "vitest";
+import {
+  groupPlansByKanbanColumn,
+  kanbanColumnForPlan,
+  kanbanPatchForColumn,
+  type KanbanPlan,
+} from "@/lib/kanban-board";
+
+function plan(partial: Partial<KanbanPlan> & Pick<KanbanPlan, "id" | "title">): KanbanPlan {
+  return {
+    description: null,
+    type: "goal",
+    status: "not_started",
+    startDate: null,
+    endDate: null,
+    parentPlanId: null,
+    parentTitle: null,
+    childStatuses: [],
+    ...partial,
+  };
+}
+
+describe("kanban-board", () => {
+  it("memo plan goes to unscheduled", () => {
+    expect(kanbanColumnForPlan(plan({ id: "1", title: "A" }))).toBe("unscheduled");
+  });
+
+  it("scheduled not_started goes to not_started column", () => {
+    expect(
+      kanbanColumnForPlan(
+        plan({ id: "1", title: "A", startDate: "2026-06-20T08:00:00.000Z" }),
+      ),
+    ).toBe("not_started");
+  });
+
+  it("done status goes to done even without dates", () => {
+    expect(kanbanColumnForPlan(plan({ id: "1", title: "A", status: "done" }))).toBe("done");
+  });
+
+  it("patch for not_started adds start date when missing", () => {
+    const patch = kanbanPatchForColumn("not_started", plan({ id: "1", title: "A" }));
+    expect(patch.status).toBe("not_started");
+    expect(patch.startDate).toBeTruthy();
+  });
+
+  it("patch for unscheduled clears dates", () => {
+    const patch = kanbanPatchForColumn(
+      "unscheduled",
+      plan({ id: "1", title: "A", startDate: "2026-06-20T08:00:00.000Z" }),
+    );
+    expect(patch.startDate).toBeNull();
+    expect(patch.endDate).toBeNull();
+  });
+
+  it("groups plans into columns", () => {
+    const groups = groupPlansByKanbanColumn([
+      plan({ id: "1", title: "Memo" }),
+      plan({ id: "2", title: "Scheduled", startDate: "2026-06-20T08:00:00.000Z" }),
+    ]);
+    expect(groups.unscheduled).toHaveLength(1);
+    expect(groups.not_started).toHaveLength(1);
+  });
+});

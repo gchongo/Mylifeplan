@@ -1,41 +1,53 @@
 import { getSession } from "@/lib/auth/get-session";
 import { prisma } from "@/lib/db";
-import { buildPlanTree } from "@/lib/plan-tree";
+import { formatPlanDateTime } from "@/lib/dates";
+import { PlanKanbanBoard } from "@/components/plans/plan-kanban-board";
+import type { KanbanPlan } from "@/lib/kanban-board";
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import { PlanTree } from "@/components/plans/plan-tree";
-import { centeredPageWidthClass } from "@/components/layout/centered-layout";
-import { cn } from "@/lib/utils";
 
 export default async function PlansPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const plans = await prisma.plan.findMany({
+  const rows = await prisma.plan.findMany({
     where: { userId: session.userId, status: { not: "archived" } },
     orderBy: { updatedAt: "desc" },
-    select: { id: true, title: true, status: true, parentPlanId: true },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      type: true,
+      status: true,
+      startDate: true,
+      endDate: true,
+      parentPlanId: true,
+      parentPlan: { select: { title: true } },
+      subPlans: {
+        where: { status: { not: "archived" } },
+        select: { status: true },
+      },
+    },
   });
 
-  const tree = buildPlanTree(plans);
+  const initialPlans: KanbanPlan[] = rows.map((p) => ({
+    id: p.id,
+    title: p.title,
+    description: p.description,
+    type: p.type,
+    status: p.status,
+    startDate: formatPlanDateTime(p.startDate),
+    endDate: formatPlanDateTime(p.endDate),
+    parentPlanId: p.parentPlanId,
+    parentTitle: p.parentPlan?.title ?? null,
+    childStatuses: p.subPlans.map((c) => c.status),
+  }));
 
   return (
-    <div className={cn(centeredPageWidthClass, "space-y-6")}>
+    <div className="flex min-h-0 flex-col gap-4 px-4 py-2 lg:px-6">
       <div>
-        <h1 className="text-xl font-semibold text-gray-900">计划</h1>
-        <p className="text-sm text-gray-500">
-          浏览与管理计划树。新建请回到{" "}
-          <Link href="/" className="text-brand-600 hover:underline">
-            首页信息流
-          </Link>
-          ，在发表框选择「计划」发布。
-        </p>
+        <h1 className="text-xl font-semibold text-gray-900">计划看板</h1>
       </div>
-
-      <div>
-        <h2 className="mb-3 text-sm font-semibold text-gray-700">计划树</h2>
-        <PlanTree roots={tree} />
-      </div>
+      <PlanKanbanBoard initialPlans={initialPlans} />
     </div>
   );
 }
