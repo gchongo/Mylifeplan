@@ -82,7 +82,7 @@ export function GanttContributionDrawer({
     }
   }
 
-  const planTitle = item?.plan?.title ?? item?.planTitle ?? "长期计划";
+  const planTitle = item?.plan?.title ?? item?.planTitle ?? "计划";
 
   return (
     <DrawerLayout

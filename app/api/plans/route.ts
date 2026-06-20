@@ -11,17 +11,27 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const type = searchParams.get("type");
     const parentPlanId = searchParams.get("parentPlanId");
+    const forContribution = searchParams.get("for") === "contribution";
 
     const plans = await prisma.plan.findMany({
       where: {
         userId: session.userId,
+        status: { not: "archived" },
         ...(type && { type: type as "goal" | "phase" | "weekly" | "daily" }),
         ...(parentPlanId && { parentPlanId }),
       },
-      orderBy: { updatedAt: "desc" },
+      orderBy: [{ type: "asc" }, { updatedAt: "desc" }],
+      include: forContribution
+        ? { parentPlan: { select: { title: true } } }
+        : undefined,
     });
 
-    return jsonOk({ plans: plans.map(serializePlan) });
+    return jsonOk({
+      plans: plans.map((p) => ({
+        ...serializePlan(p),
+        parentTitle: "parentPlan" in p && p.parentPlan ? p.parentPlan.title : null,
+      })),
+    });
   } catch {
     return jsonError("未登录", 401);
   }

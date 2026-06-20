@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { TaskForm } from "@/components/forms/task-form";
-import { LongTermPlanSelect } from "@/components/forms/long-term-plan-select";
+import { PlanContributionSelect } from "@/components/forms/long-term-plan-select";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -75,7 +75,7 @@ function ContributionFields({
 }) {
   return (
     <div className="space-y-2 border-t border-gray-100 pt-2">
-      <LongTermPlanSelect value={planId} onChange={onPlanChange} />
+      <PlanContributionSelect value={planId} onChange={onPlanChange} />
       {planId && (
         <label className="flex items-center gap-2 text-xs text-gray-500">
           贡献日期

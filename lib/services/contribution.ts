@@ -17,19 +17,16 @@ export function serializeContribution(c: PlanContribution & { plan?: { title: st
   };
 }
 
-async function assertLongTermPlan(userId: string, planId: string) {
+async function assertPlanForContribution(userId: string, planId: string) {
   const plan = await prisma.plan.findFirst({
     where: { id: planId, userId, status: { not: "archived" } },
   });
   if (!plan) throw new Error("计划不存在");
-  if (plan.type !== "goal" && plan.type !== "phase") {
-    throw new Error("仅可关联长期目标或阶段计划");
-  }
   return plan;
 }
 
 export async function createContribution(userId: string, input: CreateContributionInput) {
-  const plan = await assertLongTermPlan(userId, input.planId);
+  const plan = await assertPlanForContribution(userId, input.planId);
 
   const contribution = await prisma.planContribution.create({
     data: {
@@ -61,7 +58,7 @@ export async function updateContribution(
   const existing = await prisma.planContribution.findFirst({ where: { id, userId } });
   if (!existing) throw new Error("NOT_FOUND");
 
-  if (input.planId) await assertLongTermPlan(userId, input.planId);
+  if (input.planId) await assertPlanForContribution(userId, input.planId);
 
   const contribution = await prisma.planContribution.update({
     where: { id },
