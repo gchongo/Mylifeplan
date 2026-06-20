@@ -166,35 +166,37 @@ export function CalendarPanelLive({
   const weekCellMinH = fullPage ? "min-h-[12rem]" : "min-h-[6rem]";
 
   return (
-    <Card className={cn("flex h-full flex-col", className)}>
-      <CardHeader className="flex flex-col gap-2 pb-2">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle>{fullPage ? "日历" : "日历 · 看执行"}</CardTitle>
-          <div className="flex items-center gap-1">
-            <div className="flex gap-1">
-              {(["month", "week", "day"] as ViewMode[]).map((mode) => (
-                <Button
-                  key={mode}
-                  type="button"
-                  size="sm"
-                  variant={viewMode === mode ? "primary" : "ghost"}
-                  onClick={() => setViewMode(mode)}
-                >
-                  {mode === "month" ? "月" : mode === "week" ? "周" : "日"}
-                </Button>
-              ))}
-            </div>
-            {!fullPage && <PanelExpandButton href="/calendar" label="日历" />}
-          </div>
+    <Card className={cn("flex h-full min-h-0 flex-col overflow-hidden", className)}>
+      <CardHeader className="flex shrink-0 flex-col gap-2 pb-2">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="min-w-0 truncate">
+            {fullPage ? "日历" : "日历 · 看执行"}
+          </CardTitle>
+          {!fullPage && <PanelExpandButton href="/calendar" label="日历" />}
         </div>
-        <div className="flex items-center justify-between">
-          <Button type="button" variant="ghost" size="sm" onClick={prev}>
-            ‹
-          </Button>
-          <span className="text-sm font-medium">{label}</span>
-          <Button type="button" variant="ghost" size="sm" onClick={next}>
-            ›
-          </Button>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex gap-1">
+            {(["month", "week", "day"] as ViewMode[]).map((mode) => (
+              <Button
+                key={mode}
+                type="button"
+                size="sm"
+                variant={viewMode === mode ? "primary" : "ghost"}
+                onClick={() => setViewMode(mode)}
+              >
+                {mode === "month" ? "月" : mode === "week" ? "周" : "日"}
+              </Button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1">
+            <Button type="button" variant="ghost" size="sm" onClick={prev}>
+              ‹
+            </Button>
+            <span className="text-sm font-medium">{label}</span>
+            <Button type="button" variant="ghost" size="sm" onClick={next}>
+              ›
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden">

@@ -65,12 +65,16 @@ export function FeedPanelLive({
   }
 
   return (
-    <Card className={cn("flex h-full flex-col", className)}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle>{fullPage ? "信息流" : "信息流 · 看动态"}</CardTitle>
-        {!fullPage && <PanelExpandButton href="/feed" label="信息流" />}
+    <Card className={cn("flex h-full min-h-0 flex-col overflow-hidden", className)}>
+      <CardHeader className="flex shrink-0 flex-col gap-2 pb-2">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="min-w-0 truncate">
+            {fullPage ? "信息流" : "信息流 · 看动态"}
+          </CardTitle>
+          {!fullPage && <PanelExpandButton href="/feed" label="信息流" />}
+        </div>
       </CardHeader>
-      <CardContent className="flex flex-1 flex-col overflow-hidden">
+      <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {loading && <Loading />}
         {!loading && items.length === 0 && (
           <EmptyState title="暂无动态" description="创建任务或计划后，操作会显示在这里。" />

@@ -1,13 +1,22 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-export function PanelExpandButton({ href, label }: { href: string; label: string }) {
+export function PanelExpandButton({
+  href,
+  label,
+  className,
+}: {
+  href: string;
+  label: string;
+  className?: string;
+}) {
   return (
     <Link
       href={href}
       className={cn(
         "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
         "text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900",
+        className,
       )}
       title={`放大查看${label}`}
       aria-label={`放大查看${label}`}
