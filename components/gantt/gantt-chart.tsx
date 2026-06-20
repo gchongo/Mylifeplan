@@ -25,6 +25,7 @@ import {
   dateToX,
   HOUR_WIDTH,
   isTodayInColumn,
+  scaleTimelineToViewport,
   shiftAnchor,
   todayStr,
   type GanttScaleId,
@@ -201,13 +202,17 @@ export const GanttChart = forwardRef<
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [selectedContributionId, setSelectedContributionId] = useState<string | null>(null);
   const [scrollViewportHeight, setScrollViewportHeight] = useState(480);
+  const [timelineViewportWidth, setTimelineViewportWidth] = useState(0);
 
   const dataBounds = useMemo(() => dataBoundsFromItems(items), [items]);
 
-  const layout: TimelineLayout = useMemo(
-    () => buildTimelineLayout(scale, anchor, dataBounds),
-    [scale, anchor, dataBounds],
-  );
+  const layout: TimelineLayout = useMemo(() => {
+    const base = buildTimelineLayout(scale, anchor, dataBounds);
+    if (scale === "5year" && timelineViewportWidth > 0) {
+      return scaleTimelineToViewport(base, timelineViewportWidth);
+    }
+    return base;
+  }, [scale, anchor, dataBounds, timelineViewportWidth]);
 
   const { from, to } = layout;
   const timelineWidth = layout.totalWidth;
@@ -315,7 +320,10 @@ export const GanttChart = forwardRef<
     const el = scrollRef.current;
     if (!el) return;
 
-    const update = () => setScrollViewportHeight(el.clientHeight);
+    const update = () => {
+      setScrollViewportHeight(el.clientHeight);
+      setTimelineViewportWidth(Math.max(0, el.clientWidth - LABEL_WIDTH));
+    };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);

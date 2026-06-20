@@ -427,6 +427,34 @@ export function buildTimelineLayout(
   return finalizeLayout(scale, anchor, columns);
 }
 
+/** 将 5 年尺度列宽拉伸至视口，避免时间轴只占左侧一小段 */
+export function scaleTimelineToViewport(
+  layout: TimelineLayout,
+  viewportWidth: number,
+  minColumnWidth = 140,
+): TimelineLayout {
+  if (layout.scale !== "5year" || viewportWidth <= 0 || layout.columns.length === 0) {
+    return layout;
+  }
+
+  const minTotal = layout.columns.length * minColumnWidth;
+  const targetWidth = Math.max(viewportWidth, minTotal);
+  if (targetWidth <= layout.totalWidth) return layout;
+
+  const factor = targetWidth / layout.totalWidth;
+  const columns = layout.columns.map((col) => ({
+    ...col,
+    width: col.width * factor,
+  }));
+
+  return {
+    ...layout,
+    columns,
+    totalWidth: targetWidth,
+    topSpans: buildTopSpans(columns),
+  };
+}
+
 export function shiftAnchor(scale: GanttScaleId, anchor: string, direction: -1 | 1): string {
   switch (scale) {
     case "day":
