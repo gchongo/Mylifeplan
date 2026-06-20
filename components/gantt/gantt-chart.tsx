@@ -549,11 +549,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     const statusStyle =
       item.type === "task" ? taskLabelStyle(item, tasks) : null;
     const labelBg =
-      item.type === "task" && statusStyle
-        ? statusStyle.rowBg
-        : item.type === "plan"
-          ? "bg-purple-50/80"
-          : "bg-white";
+      item.type === "plan" ? "bg-purple-50/80" : "bg-white";
 
     return (
       <div

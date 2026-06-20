@@ -1,12 +1,12 @@
 import type { TimelineColumn } from "@/lib/gantt-scale";
 
 export const GRID_BANDS = [
-  { bg: "bg-sky-50/60", border: "border-sky-200" },
-  { bg: "bg-amber-50/60", border: "border-amber-200" },
-  { bg: "bg-emerald-50/60", border: "border-emerald-200" },
-  { bg: "bg-violet-50/60", border: "border-violet-200" },
-  { bg: "bg-rose-50/60", border: "border-rose-200" },
-  { bg: "bg-teal-50/60", border: "border-teal-200" },
+  { bg: "bg-sky-50/40", border: "border-sky-300" },
+  { bg: "bg-amber-50/40", border: "border-amber-300" },
+  { bg: "bg-emerald-50/40", border: "border-emerald-300" },
+  { bg: "bg-violet-50/40", border: "border-violet-300" },
+  { bg: "bg-rose-50/40", border: "border-rose-300" },
+  { bg: "bg-teal-50/40", border: "border-teal-300" },
 ];
 
 export function buildColumnColorIndex(columns: TimelineColumn[]): Map<string, number> {
