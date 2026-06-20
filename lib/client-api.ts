@@ -1,7 +1,5 @@
 "use client";
 
-const LOGIN_PATH = "/login";
-
 export class ApiError extends Error {
   status: number;
 
@@ -12,24 +10,12 @@ export class ApiError extends Error {
   }
 }
 
-export function redirectToLogin() {
-  if (typeof window === "undefined") return;
-  const next = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-  window.location.assign(`${LOGIN_PATH}?next=${next}`);
-}
-
 export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const res = await fetch(input, {
+  return fetch(input, {
     credentials: "include",
     ...init,
     headers: init?.headers,
   });
-
-  if (res.status === 401 && typeof window !== "undefined") {
-    redirectToLogin();
-  }
-
-  return res;
 }
 
 export async function apiJson<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
