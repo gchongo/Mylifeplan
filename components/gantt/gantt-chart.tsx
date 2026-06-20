@@ -602,7 +602,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
         ) : (
           <span className="w-5 shrink-0" />
         )}
-        {item.type === "task" && fullPage ? (
+        {item.type === "task" ? (
           <button
             type="button"
             onClick={() => openTask(item.id)}
@@ -655,7 +655,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
             row.depth,
           );
 
-    if (fullPage && item.type === "task") {
+    if (item.type === "task") {
       return (
         <div
           key={`bar-${item.type}-${item.id}-${idx}`}
@@ -710,7 +710,6 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
   }
 
   function wrapWithTaskDrawer(content: React.ReactNode) {
-    if (!fullPage) return content;
     return (
       <GanttTaskDrawer
         taskId={selectedTaskId}
@@ -727,6 +726,20 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     );
   }
 
+  function renderTaskModal() {
+    return (
+      <TaskFormModal
+        open={taskModal.open}
+        onClose={closeTaskModal}
+        title={taskModal.title}
+        task={taskModal.task}
+        defaultParentTaskId={taskModal.defaultParentTaskId}
+        statusRollup={taskModal.statusRollup}
+        onSuccess={refetchGantt}
+      />
+    );
+  }
+
   if (isLoading) {
     return (
       <>
@@ -736,17 +749,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
             <LoadingView label="加载甘特图…" />
           </div>,
         )}
-        {fullPage && (
-          <TaskFormModal
-            open={taskModal.open}
-            onClose={closeTaskModal}
-            title={taskModal.title}
-            task={taskModal.task}
-            defaultParentTaskId={taskModal.defaultParentTaskId}
-            statusRollup={taskModal.statusRollup}
-            onSuccess={refetchGantt}
-          />
-        )}
+        {renderTaskModal()}
       </>
     );
   }
@@ -770,17 +773,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
             )}
           </div>,
         )}
-        {fullPage && (
-          <TaskFormModal
-            open={taskModal.open}
-            onClose={closeTaskModal}
-            title={taskModal.title}
-            task={taskModal.task}
-            defaultParentTaskId={taskModal.defaultParentTaskId}
-            statusRollup={taskModal.statusRollup}
-            onSuccess={refetchGantt}
-          />
-        )}
+        {renderTaskModal()}
       </>
     );
   }
@@ -848,17 +841,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
         </div>,
       )}
 
-      {fullPage && (
-        <TaskFormModal
-          open={taskModal.open}
-          onClose={closeTaskModal}
-          title={taskModal.title}
-          task={taskModal.task}
-          defaultParentTaskId={taskModal.defaultParentTaskId}
-          statusRollup={taskModal.statusRollup}
-          onSuccess={refetchGantt}
-        />
-      )}
+      {renderTaskModal()}
     </>
   );
 }

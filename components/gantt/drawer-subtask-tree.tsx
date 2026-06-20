@@ -23,7 +23,7 @@ function taskDepthInTree(taskId: string, byId: Map<string, GanttItem>): number {
   return depth;
 }
 
-function SubtaskDetailPanel({ detail }: { detail: TaskFormValues & { id: string } }) {
+export function SubtaskDetailPanel({ detail }: { detail: TaskFormValues & { id: string } }) {
   return (
     <div className="space-y-2 text-xs text-gray-600">
       {detail.description ? (

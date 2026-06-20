@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  CALENDAR_DISPLAY_MODES,
+  CALENDAR_MOBILE_BREAKPOINT,
+  displayModesForViewport,
   loadCalendarDisplayMode,
   saveCalendarDisplayMode,
   type CalendarDisplayMode,
@@ -35,6 +36,22 @@ function ModeIcon({ mode }: { mode: CalendarDisplayMode }) {
   }
 }
 
+export function useMobileCalendarViewport() {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < CALENDAR_MOBILE_BREAKPOINT : false,
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${CALENDAR_MOBILE_BREAKPOINT - 1}px)`);
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  return isMobile;
+}
+
 export function CalendarDisplayPicker({
   value,
   onChange,
@@ -44,9 +61,11 @@ export function CalendarDisplayPicker({
   onChange: (mode: CalendarDisplayMode) => void;
   variant?: "default" | "toolbar";
 }) {
+  const isMobile = useMobileCalendarViewport();
+  const modes = displayModesForViewport(isMobile);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const current = CALENDAR_DISPLAY_MODES.find((m) => m.id === value)!;
+  const current = modes.find((m) => m.id === value) ?? modes[0]!;
   const isToolbar = variant === "toolbar";
 
   useEffect(() => {
@@ -56,6 +75,8 @@ export function CalendarDisplayPicker({
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
+
+  if (modes.length <= 1) return null;
 
   return (
     <div ref={ref} className="relative">
@@ -79,7 +100,7 @@ export function CalendarDisplayPicker({
             isToolbar ? "min-w-[140px]" : "w-44 rounded-xl",
           )}
         >
-          {CALENDAR_DISPLAY_MODES.map((mode) => (
+          {modes.map((mode) => (
             <button
               key={mode.id}
               type="button"
@@ -99,9 +120,7 @@ export function CalendarDisplayPicker({
                   <ModeIcon mode={mode.id} />
                 </span>
               )}
-              <span className={cn("flex-1", isToolbar ? "text-gray-800" : "text-gray-800")}>
-                {mode.label}
-              </span>
+              <span className="flex-1 text-gray-800">{mode.label}</span>
               {!isToolbar && value === mode.id && <span className="text-brand-600">✓</span>}
             </button>
           ))}
@@ -112,7 +131,12 @@ export function CalendarDisplayPicker({
 }
 
 export function useCalendarDisplayMode() {
-  const [mode, setMode] = useState<CalendarDisplayMode>("stacked");
-  useEffect(() => setMode(loadCalendarDisplayMode()), []);
+  const isMobile = useMobileCalendarViewport();
+  const [mode, setMode] = useState<CalendarDisplayMode>("detailed");
+
+  useEffect(() => {
+    setMode(loadCalendarDisplayMode(isMobile));
+  }, [isMobile]);
+
   return [mode, setMode] as const;
 }

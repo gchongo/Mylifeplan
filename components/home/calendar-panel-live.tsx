@@ -226,6 +226,7 @@ export function CalendarPanelLive({
           items={items}
           open={drawerDate !== null}
           onClose={closeDayDrawer}
+          detailExpandable={fullPage}
         >
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             {fullPage && (

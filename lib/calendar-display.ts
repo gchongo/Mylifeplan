@@ -22,17 +22,40 @@ export const CALENDAR_DISPLAY_MODES: {
 ];
 
 const STORAGE_KEY = "mylifeplan-calendar-display";
+export const CALENDAR_MOBILE_BREAKPOINT = 768;
 
-export function defaultCalendarDisplayMode(): CalendarDisplayMode {
-  return "stacked";
+export function isMobileCalendarViewport(
+  width = typeof window !== "undefined" ? window.innerWidth : CALENDAR_MOBILE_BREAKPOINT,
+): boolean {
+  return width < CALENDAR_MOBILE_BREAKPOINT;
 }
 
-export function loadCalendarDisplayMode(): CalendarDisplayMode {
-  if (typeof window === "undefined") return "stacked";
+export function displayModesForViewport(isMobile: boolean) {
+  return isMobile
+    ? CALENDAR_DISPLAY_MODES
+    : CALENDAR_DISPLAY_MODES.filter((m) => m.id === "detailed");
+}
+
+export function normalizeDisplayMode(
+  mode: CalendarDisplayMode,
+  isMobile: boolean,
+): CalendarDisplayMode {
+  if (!isMobile && mode !== "detailed") return "detailed";
+  return mode;
+}
+
+export function defaultCalendarDisplayMode(isMobile = isMobileCalendarViewport()): CalendarDisplayMode {
+  return isMobile ? "stacked" : "detailed";
+}
+
+export function loadCalendarDisplayMode(isMobile = isMobileCalendarViewport()): CalendarDisplayMode {
+  if (typeof window === "undefined") return "detailed";
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (raw === "list") return "stacked";
-  if (CALENDAR_DISPLAY_MODES.some((m) => m.id === raw)) return raw as CalendarDisplayMode;
-  return defaultCalendarDisplayMode();
+  if (raw === "list") return defaultCalendarDisplayMode(isMobile);
+  const stored = CALENDAR_DISPLAY_MODES.some((m) => m.id === raw)
+    ? (raw as CalendarDisplayMode)
+    : defaultCalendarDisplayMode(isMobile);
+  return normalizeDisplayMode(stored, isMobile);
 }
 
 export function saveCalendarDisplayMode(mode: CalendarDisplayMode) {
