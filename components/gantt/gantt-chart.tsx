@@ -5,6 +5,8 @@ import Link from "next/link";
 import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
 import { GanttTaskDrawer } from "@/components/gantt/gantt-task-drawer";
 import { GanttToolbar } from "@/components/gantt/gantt-toolbar";
+import { TaskFormModal } from "@/components/gantt/task-form-modal";
+import type { TaskFormValues } from "@/components/forms/task-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState, Loading } from "@/components/ui/feedback";
@@ -99,6 +101,13 @@ function itemHref(item: GanttItem) {
   return item.type === "task" ? `/tasks/${item.id}` : `/plans/${item.id}`;
 }
 
+interface TaskModalState {
+  open: boolean;
+  title: string;
+  task?: TaskFormValues & { id: string };
+  defaultParentTaskId?: string | null;
+}
+
 function taskBarColor(depth: number) {
   return TASK_BAR_BY_DEPTH[Math.min(depth, TASK_BAR_BY_DEPTH.length - 1)];
 }
@@ -127,6 +136,13 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrolledToToday = useRef(false);
   const scrollTarget = useRef<"today" | "anchor">("today");
+  const panRef = useRef<{ startX: number; startScrollLeft: number } | null>(null);
+  const [isPanning, setIsPanning] = useState(false);
+
+  const [taskModal, setTaskModal] = useState<TaskModalState>({
+    open: false,
+    title: "新建任务",
+  });
 
   const [scale, setScale] = useState<GanttScaleId>("month");
   const [anchor, setAnchor] = useState(todayStr);
@@ -180,16 +196,28 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
       .then((data) => setItems(data.items ?? []));
   }, [from, to]);
 
-  const drawerChildTasks = useMemo(() => {
-    if (!selectedTaskId) return [];
-    return tasks
-      .filter((t) => t.parentId === selectedTaskId)
-      .map((t) => ({
-        id: t.id,
-        title: t.title,
-        status: t.status ?? "todo",
-      }));
-  }, [tasks, selectedTaskId]);
+  useEffect(() => {
+    if (!isPanning) return;
+
+    function onMove(e: MouseEvent) {
+      const pan = panRef.current;
+      const el = scrollRef.current;
+      if (!pan || !el) return;
+      el.scrollLeft = pan.startScrollLeft - (e.clientX - pan.startX);
+    }
+
+    function onUp() {
+      panRef.current = null;
+      setIsPanning(false);
+    }
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [isPanning]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -282,6 +310,43 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
 
   function closeTaskDrawer() {
     setSelectedTaskId(null);
+  }
+
+  function openCreateTask(parentTaskId?: string | null) {
+    setTaskModal({
+      open: true,
+      title: parentTaskId ? "新建子任务" : "新建任务",
+      defaultParentTaskId: parentTaskId ?? null,
+    });
+  }
+
+  async function openEditTask(taskId: string) {
+    const res = await fetch(`/api/tasks/${taskId}`);
+    const data = await res.json();
+    if (!data.task) return;
+    setTaskModal({
+      open: true,
+      title: "编辑任务",
+      task: data.task,
+    });
+  }
+
+  function closeTaskModal() {
+    setTaskModal((prev) => ({ ...prev, open: false, task: undefined }));
+  }
+
+  function handlePanStart(e: React.MouseEvent) {
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-gantt-bar]")) return;
+    if (target.closest("button, a, input, textarea, select, [data-no-pan]")) return;
+
+    const el = scrollRef.current;
+    if (!el) return;
+
+    panRef.current = { startX: e.clientX, startScrollLeft: el.scrollLeft };
+    setIsPanning(true);
+    e.preventDefault();
   }
 
   function toggleExpand(taskId: string) {
@@ -396,12 +461,13 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
           className="flex items-center border-b border-dashed border-gray-100 bg-teal-50/50 px-2"
           style={{ height: ROW_HEIGHT, paddingLeft: 12 + row.depth * 16 }}
         >
-          <Link
-            href={`/tasks/new?parentTaskId=${row.parentTaskId}&redirect=/gantt`}
+          <button
+            type="button"
+            onClick={() => openCreateTask(row.parentTaskId)}
             className="text-xs text-brand-600 hover:underline"
           >
             + 添加子任务
-          </Link>
+          </button>
         </div>
       );
     }
@@ -523,22 +589,53 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
 
   if (loading) {
     return (
-      <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-        {renderToolbar()}
-        <Loading label="加载甘特图…" />
-      </div>
+      <>
+        <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+          {renderToolbar()}
+          <Loading label="加载甘特图…" />
+        </div>
+        {fullPage && (
+          <TaskFormModal
+            open={taskModal.open}
+            onClose={closeTaskModal}
+            title={taskModal.title}
+            task={taskModal.task}
+            defaultParentTaskId={taskModal.defaultParentTaskId}
+            onSuccess={refetchGantt}
+          />
+        )}
+      </>
     );
   }
 
   if (items.length === 0) {
     return (
-      <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-        {renderToolbar()}
-        <EmptyState
-          title="暂无时间条"
-          description="创建带开始日期的任务或计划后，会在此展示。"
-        />
-      </div>
+      <>
+        <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+          {renderToolbar()}
+          <EmptyState
+            title="暂无时间条"
+            description="创建带开始日期的任务或计划后，会在此展示。"
+          />
+          {fullPage && (
+            <div className="px-4 pb-4">
+              <Button type="button" onClick={() => openCreateTask()}>
+                + 新建任务
+              </Button>
+            </div>
+          )}
+        </div>
+        {fullPage && (
+          <TaskFormModal
+            open={taskModal.open}
+            onClose={closeTaskModal}
+            title={taskModal.title}
+            task={taskModal.task}
+            defaultParentTaskId={taskModal.defaultParentTaskId}
+            onSuccess={refetchGantt}
+          />
+        )}
+      </>
     );
   }
 
@@ -550,7 +647,14 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
       >
         {renderToolbar()}
 
-        <div ref={scrollRef} className="min-h-0 w-full max-w-full min-w-0 flex-1 overflow-auto">
+        <div
+          ref={scrollRef}
+          onMouseDown={fullPage ? handlePanStart : undefined}
+          className={cn(
+            "min-h-0 w-full max-w-full min-w-0 flex-1 overflow-auto",
+            fullPage && (isPanning ? "cursor-grabbing select-none" : "cursor-grab"),
+          )}
+        >
           <div style={{ width: totalWidth }}>
             {renderTimelineHeader()}
 
@@ -586,11 +690,15 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
                   className="sticky left-0 z-20 border-r border-gray-200 bg-white p-2"
                   style={{ width: LABEL_WIDTH }}
                 >
-                  <Link href="/tasks/new?redirect=/gantt">
-                    <Button size="sm" variant="secondary" type="button">
-                      + 新建
-                    </Button>
-                  </Link>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    type="button"
+                    data-no-pan
+                    onClick={() => openCreateTask()}
+                  >
+                    + 新建
+                  </Button>
                 </div>
                 <div style={{ width: timelineWidth, height: FOOTER_HEIGHT }} />
               </div>
@@ -600,14 +708,26 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
       </div>
 
       {fullPage && (
-        <GanttTaskDrawer
-          taskId={selectedTaskId}
-          open={selectedTaskId !== null}
-          childTasks={drawerChildTasks}
-          onClose={closeTaskDrawer}
-          onOpenTask={openTask}
-          onChanged={refetchGantt}
-        />
+        <>
+          <GanttTaskDrawer
+            taskId={selectedTaskId}
+            open={selectedTaskId !== null}
+            allTasks={tasks}
+            onClose={closeTaskDrawer}
+            onOpenTask={openTask}
+            onChanged={refetchGantt}
+            onEditTask={openEditTask}
+            onCreateSubtask={openCreateTask}
+          />
+          <TaskFormModal
+            open={taskModal.open}
+            onClose={closeTaskModal}
+            title={taskModal.title}
+            task={taskModal.task}
+            defaultParentTaskId={taskModal.defaultParentTaskId}
+            onSuccess={refetchGantt}
+          />
+        </>
       )}
     </>
   );

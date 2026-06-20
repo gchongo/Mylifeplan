@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { TaskForm, type TaskFormValues } from "@/components/forms/task-form";
 const statusLabels: Record<string, string> = {
   todo: "待办",
   in_progress: "进行中",
+  done: "已完成",
   archived: "已归档",
 };
 
@@ -32,6 +33,8 @@ export function TaskDetailClient({
   onClose,
   onChanged,
   onOpenTask,
+  onEdit,
+  subtaskTree,
 }: {
   task: TaskFormValues & { id: string };
   displayStatus: string;
@@ -44,6 +47,8 @@ export function TaskDetailClient({
   onClose?: () => void;
   onChanged?: () => void;
   onOpenTask?: (id: string) => void;
+  onEdit?: () => void;
+  subtaskTree?: ReactNode;
 }) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
@@ -81,7 +86,7 @@ export function TaskDetailClient({
     }
   }
 
-  if (showEdit) {
+  if (showEdit && !onEdit) {
     return (
       <Card>
         <CardHeader>
@@ -173,7 +178,11 @@ export function TaskDetailClient({
                 归档
               </Button>
             )}
-            <Button size="sm" variant="secondary" onClick={() => setShowEdit(true)}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => (onEdit ? onEdit() : setShowEdit(true))}
+            >
               编辑
             </Button>
             <Button size="sm" variant="ghost" onClick={handleDelete} disabled={deleting}>
@@ -183,35 +192,37 @@ export function TaskDetailClient({
         </CardContent>
       </Card>
 
-      {childTasks.length > 0 && (
+      {(subtaskTree || childTasks.length > 0) && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">子任务</CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-2">
-              {childTasks.map((child) => (
-                <li
-                  key={child.id}
-                  className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2"
-                >
-                  {embedded && onOpenTask ? (
-                    <button
-                      type="button"
-                      onClick={() => onOpenTask(child.id)}
-                      className="text-left hover:text-brand-600"
-                    >
-                      {child.title}
-                    </button>
-                  ) : (
-                    <Link href={`/tasks/${child.id}`} className="hover:text-brand-600">
-                      {child.title}
-                    </Link>
-                  )}
-                  <Badge variant="info">{statusLabels[child.status] ?? child.status}</Badge>
-                </li>
-              ))}
-            </ul>
+            {subtaskTree ?? (
+              <ul className="space-y-2">
+                {childTasks.map((child) => (
+                  <li
+                    key={child.id}
+                    className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2"
+                  >
+                    {embedded && onOpenTask ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenTask(child.id)}
+                        className="text-left hover:text-brand-600"
+                      >
+                        {child.title}
+                      </button>
+                    ) : (
+                      <Link href={`/tasks/${child.id}`} className="hover:text-brand-600">
+                        {child.title}
+                      </Link>
+                    )}
+                    <Badge variant="info">{statusLabels[child.status] ?? child.status}</Badge>
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
       )}

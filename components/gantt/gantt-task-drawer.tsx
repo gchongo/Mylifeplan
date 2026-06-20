@@ -4,16 +4,12 @@ import { useEffect, useState } from "react";
 import { Drawer } from "@/components/ui/drawer";
 import { Loading } from "@/components/ui/feedback";
 import { TaskDetailClient } from "@/components/tasks/task-detail-client";
+import { DrawerSubtaskTree } from "@/components/gantt/drawer-subtask-tree";
 import type { TaskFormValues } from "@/components/forms/task-form";
 import type { TaskStatus } from "@prisma/client";
+import type { GanttItem } from "@/types";
 import { getEffectiveEndDate, shouldShowInMemo } from "@/lib/content-router";
 import { deriveParentStatus } from "@/lib/services/task-rollup";
-
-interface ChildTask {
-  id: string;
-  title: string;
-  status: string;
-}
 
 function asTaskStatus(status: string | undefined | null): TaskStatus {
   if (
@@ -30,17 +26,21 @@ function asTaskStatus(status: string | undefined | null): TaskStatus {
 export function GanttTaskDrawer({
   taskId,
   open,
-  childTasks,
+  allTasks,
   onClose,
   onOpenTask,
   onChanged,
+  onEditTask,
+  onCreateSubtask,
 }: {
   taskId: string | null;
   open: boolean;
-  childTasks: ChildTask[];
+  allTasks: GanttItem[];
   onClose: () => void;
   onOpenTask: (id: string) => void;
   onChanged: () => void;
+  onEditTask: (taskId: string) => void;
+  onCreateSubtask: (parentId: string) => void;
 }) {
   const [loading, setLoading] = useState(false);
   const [task, setTask] = useState<(TaskFormValues & { id: string }) | null>(null);
@@ -93,6 +93,11 @@ export function GanttTaskDrawer({
   const gantt = task?.startDate
     ? getEffectiveEndDate({ startDate: task.startDate, dueDate: task.dueDate })
     : null;
+  const childTasks = taskId
+    ? allTasks
+        .filter((t) => t.parentId === taskId)
+        .map((t) => ({ id: t.id, title: t.title, status: t.status ?? "todo" }))
+    : [];
   const childStatuses = childTasks.map((c) => asTaskStatus(c.status));
   const displayStatus = task
     ? deriveParentStatus(asTaskStatus(task.status), childStatuses)
@@ -116,6 +121,15 @@ export function GanttTaskDrawer({
           onClose={onClose}
           onChanged={handleChanged}
           onOpenTask={onOpenTask}
+          onEdit={() => onEditTask(task.id)}
+          subtaskTree={
+            <DrawerSubtaskTree
+              parentTaskId={task.id}
+              allTasks={allTasks}
+              onOpenTask={onOpenTask}
+              onCreateSubtask={onCreateSubtask}
+            />
+          }
         />
       )}
     </Drawer>

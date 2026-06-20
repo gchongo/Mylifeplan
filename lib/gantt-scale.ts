@@ -377,8 +377,9 @@ export function shiftAnchor(scale: GanttScaleId, anchor: string, direction: -1 |
     case "month":
       return addDaysUtc(anchor, direction);
     case "year":
-    case "5year":
       return addMonthsUtc(anchor, direction);
+    case "5year":
+      return addMonthsUtc(anchor, direction * 60);
     default:
       return anchor;
   }

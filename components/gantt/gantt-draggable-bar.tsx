@@ -197,6 +197,7 @@ export function GanttDraggableBar({
 
   return (
     <div
+      data-gantt-bar
       className="absolute top-1/2 -translate-y-1/2"
       style={{ left: metrics.left, width: Math.max(metrics.width, 8) }}
     >
