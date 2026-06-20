@@ -122,17 +122,18 @@ export const CalendarScrollView = forwardRef<
 
   useEffect(() => {
     const outer = outerRef.current;
-    const scroll = scrollRef.current;
-    if (!outer || !scroll) return;
+    if (!outer || !scrollRef.current) return;
 
     function onWheel(e: WheelEvent) {
-      const maxScroll = scroll.scrollHeight - scroll.clientHeight;
+      const el = scrollRef.current;
+      if (!el) return;
+      const maxScroll = el.scrollHeight - el.clientHeight;
       if (maxScroll <= 1) return;
-      const prev = scroll.scrollTop;
+      const prev = el.scrollTop;
       const next = Math.max(0, Math.min(maxScroll, prev + e.deltaY));
       if (next === prev) return;
       e.preventDefault();
-      scroll.scrollTop = next;
+      el.scrollTop = next;
     }
 
     outer.addEventListener("wheel", onWheel, { passive: false });
