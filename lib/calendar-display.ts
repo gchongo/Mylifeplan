@@ -64,7 +64,7 @@ export function saveCalendarDisplayMode(mode: CalendarDisplayMode) {
 
 export function itemsOnDate(items: CalendarItem[], dateStr: string): CalendarItem[] {
   return items.filter((item) => {
-    const end = item.dueDate ?? item.startDate;
+    const end = item.endDate ?? item.startDate;
     return item.startDate <= dateStr && dateStr <= end;
   });
 }
@@ -80,15 +80,7 @@ export function itemAccent(item: CalendarItem): {
   text: string;
   soft: string;
 } {
-  if (item.type === "plan") {
-    return {
-      bar: "bg-violet-500",
-      dot: "bg-violet-500",
-      text: "text-violet-800",
-      soft: "bg-violet-100",
-    };
-  }
-  const key = resolveVisualStatus(item.status, item.dueDate);
+  const key = resolveVisualStatus(item.status, item.endDate);
   switch (key) {
     case "done":
       return { bar: "bg-emerald-500", dot: "bg-emerald-500", text: "text-emerald-800", soft: "bg-emerald-100" };
@@ -104,8 +96,8 @@ export function itemAccent(item: CalendarItem): {
 }
 
 export function formatEventSchedule(item: CalendarItem): string {
-  if (!item.dueDate || item.dueDate === item.startDate) return "全天";
-  return `${item.startDate.slice(5)} → ${item.dueDate.slice(5)}`;
+  if (!item.endDate || item.endDate === item.startDate) return "全天";
+  return `${item.startDate.slice(5)} → ${item.endDate.slice(5)}`;
 }
 
 export function displayLimits(mode: CalendarDisplayMode, fullPage: boolean) {

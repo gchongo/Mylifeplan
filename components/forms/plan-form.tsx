@@ -27,16 +27,20 @@ export interface PlanFormValues {
 export function PlanForm({
   plan,
   redirectTo,
+  defaultParentPlanId,
+  onSuccess,
 }: {
   plan?: PlanFormValues;
   redirectTo?: string;
+  defaultParentPlanId?: string | null;
+  onSuccess?: () => void;
 }) {
   const router = useRouter();
   const isEdit = Boolean(plan?.id);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [parentPlanId, setParentPlanId] = useState<string | null>(
-    plan?.parentPlanId ?? null,
+    plan?.parentPlanId ?? defaultParentPlanId ?? null,
   );
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -73,7 +77,11 @@ export function PlanForm({
         return;
       }
 
-      router.push(redirectTo ?? "/plans");
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        router.push(redirectTo ?? "/plans");
+      }
       router.refresh();
     } catch {
       setError("网络错误");

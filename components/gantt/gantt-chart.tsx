@@ -13,12 +13,10 @@ import {
 import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribution-drawer";
 import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
 import { GanttPlanDrawerPanel } from "@/components/gantt/gantt-plan-drawer";
-import { GanttTaskDrawerPanel } from "@/components/gantt/gantt-task-drawer";
 import { GanttToolbar } from "@/components/gantt/gantt-toolbar";
-import { TaskFormModal } from "@/components/gantt/task-form-modal";
+import { PlanFormModal } from "@/components/gantt/plan-form-modal";
 import { GanttTaskListControls } from "@/components/gantt/gantt-task-list-controls";
 import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
-import type { TaskFormValues } from "@/components/forms/task-form";
 import { Button, EmptyState, Loading as LoadingView } from "@/components/ui";
 import { DrawerLayout } from "@/components/ui/drawer";
 import {
@@ -34,15 +32,14 @@ import {
 } from "@/lib/gantt-scale";
 import { filterGanttTasksByStatus } from "@/lib/gantt-task-filter";
 import { buildColumnColorIndex, GRID_BANDS, GRID_BORDER, spanColorIndex } from "@/lib/gantt-grid-colors";
-import { deriveParentStatus } from "@/lib/services/task-rollup";
+import { deriveParentStatus } from "@/lib/services/plan-rollup";
 import {
-  asTaskStatusForRollup,
   getGanttBarStyle,
   getStatusStyle,
   STATUS_LEGEND,
   type VisualStatusKey,
 } from "@/lib/task-status-style";
-import type { GanttContribution, GanttItem } from "@/types";
+import type { GanttContribution, GanttItem, PlanStatus } from "@/types";
 import { cn } from "@/lib/utils";
 
 const ROW_HEIGHT = 44;
@@ -50,23 +47,27 @@ const LABEL_WIDTH = 200;
 const FOOTER_HEIGHT = 48;
 const TIMELINE_HEADER_HEIGHT = 52;
 
-function itemDisplayStatus(item: GanttItem, allTasks: GanttItem[]): string {
-  if (item.type === "plan") return item.status ?? "not_started";
-  const children = allTasks.filter(
-    (t) => t.parentId === item.id && t.status !== "archived",
+function asPlanStatus(status: string | undefined | null): PlanStatus {
+  if (status === "not_started" || status === "in_progress" || status === "done" || status === "archived") {
+    return status;
+  }
+  if (status === "todo") return "not_started";
+  return "not_started";
+}
+
+function itemDisplayStatus(item: GanttItem, allPlans: GanttItem[]): string {
+  const children = allPlans.filter(
+    (p) => p.parentId === item.id && p.status !== "archived",
   );
-  if (children.length === 0) return item.status ?? "todo";
+  if (children.length === 0) return item.status ?? "not_started";
   return deriveParentStatus(
-    asTaskStatusForRollup(item.status),
-    children.map((c) => asTaskStatusForRollup(c.status)),
+    asPlanStatus(item.status),
+    children.map((c) => asPlanStatus(c.status)),
   );
 }
 
-function itemHasRollup(item: GanttItem, allTasks: GanttItem[]): boolean {
-  return (
-    item.type === "task" &&
-    allTasks.some((t) => t.parentId === item.id && t.status !== "archived")
-  );
+function itemHasRollup(item: GanttItem, allPlans: GanttItem[]): boolean {
+  return allPlans.some((p) => p.parentId === item.id && p.status !== "archived");
 }
 
 type RowKind = "item" | "add-child";
@@ -75,10 +76,10 @@ interface GanttRow {
   kind: RowKind;
   item?: GanttItem;
   depth: number;
-  parentTaskId?: string;
+  parentPlanId?: string;
 }
 
-function taskDepth(itemId: string, byId: Map<string, GanttItem>): number {
+function planDepth(itemId: string, byId: Map<string, GanttItem>): number {
   let depth = 0;
   let cur = byId.get(itemId);
   while (cur?.parentId && byId.has(cur.parentId)) {
@@ -88,15 +89,15 @@ function taskDepth(itemId: string, byId: Map<string, GanttItem>): number {
   return depth;
 }
 
-function buildTaskTreeRows(tasks: GanttItem[], expanded: Set<string>): GanttRow[] {
-  const taskIds = new Set(tasks.map((t) => t.id));
+function buildPlanTreeRows(plans: GanttItem[], expanded: Set<string>): GanttRow[] {
+  const planIds = new Set(plans.map((p) => p.id));
   const byParent = new Map<string | null, GanttItem[]>();
-  const byId = new Map(tasks.map((t) => [t.id, t]));
+  const byId = new Map(plans.map((p) => [p.id, p]));
 
-  for (const t of tasks) {
-    const key = t.parentId && taskIds.has(t.parentId) ? t.parentId : null;
+  for (const plan of plans) {
+    const key = plan.parentId && planIds.has(plan.parentId) ? plan.parentId : null;
     if (!byParent.has(key)) byParent.set(key, []);
-    byParent.get(key)!.push(t);
+    byParent.get(key)!.push(plan);
   }
 
   for (const list of byParent.values()) {
@@ -109,12 +110,12 @@ function buildTaskTreeRows(tasks: GanttItem[], expanded: Set<string>): GanttRow[
     for (const item of byParent.get(parentId) ?? []) {
       rows.push({ kind: "item", item, depth });
       const childCount = byParent.get(item.id)?.length ?? 0;
-      const canHaveChildren = taskDepth(item.id, byId) < 2;
+      const canHaveChildren = planDepth(item.id, byId) < 2;
 
       if (expanded.has(item.id)) {
         if (childCount > 0) walk(item.id, depth + 1);
         if (canHaveChildren) {
-          rows.push({ kind: "add-child", depth: depth + 1, parentTaskId: item.id });
+          rows.push({ kind: "add-child", depth: depth + 1, parentPlanId: item.id });
         }
       }
     }
@@ -124,22 +125,20 @@ function buildTaskTreeRows(tasks: GanttItem[], expanded: Set<string>): GanttRow[
   return rows;
 }
 
-interface TaskModalState {
+interface PlanModalState {
   open: boolean;
   title: string;
-  task?: TaskFormValues & { id: string };
-  defaultParentTaskId?: string | null;
-  statusRollup?: boolean;
+  defaultParentPlanId?: string | null;
 }
 
-function taskBarStyle(item: GanttItem, allTasks: GanttItem[], depth: number) {
-  const displayStatus = itemDisplayStatus(item, allTasks);
-  return getGanttBarStyle(item.status, item.dueDate, displayStatus, depth);
+function planBarStyle(item: GanttItem, allPlans: GanttItem[], depth: number) {
+  const displayStatus = itemDisplayStatus(item, allPlans);
+  return getGanttBarStyle(item.status, item.endDate, displayStatus, depth);
 }
 
-function taskLabelStyle(item: GanttItem, allTasks: GanttItem[]) {
-  const displayStatus = itemDisplayStatus(item, allTasks);
-  return getStatusStyle(item.status, item.dueDate, displayStatus);
+function planLabelStyle(item: GanttItem, allPlans: GanttItem[]) {
+  const displayStatus = itemDisplayStatus(item, allPlans);
+  return getStatusStyle(item.status, item.endDate, displayStatus);
 }
 
 function dataBoundsFromItems(items: GanttItem[]) {
@@ -179,9 +178,9 @@ export const GanttChart = forwardRef<
   const pendingScrollLeft = useRef<number | null>(null);
   const [isPanning, setIsPanning] = useState(false);
 
-  const [taskModal, setTaskModal] = useState<TaskModalState>({
+  const [planModal, setPlanModal] = useState<PlanModalState>({
     open: false,
-    title: "新建任务",
+    title: "新建计划",
   });
 
   const [internalScale, setInternalScale] = useState<GanttScaleId>("month");
@@ -195,7 +194,6 @@ export const GanttChart = forwardRef<
   const [statusFilter, setStatusFilter] = useState<Set<VisualStatusKey>>(
     () => new Set(STATUS_LEGEND),
   );
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [selectedContributionId, setSelectedContributionId] = useState<string | null>(null);
   const [scrollViewportHeight, setScrollViewportHeight] = useState(480);
@@ -225,43 +223,39 @@ export const GanttChart = forwardRef<
       .finally(() => setIsLoading(false));
   }, [from, to]);
 
-  const tasks = useMemo(() => items.filter((i) => i.type === "task"), [items]);
-  const plans = useMemo(() => items.filter((i) => i.type === "plan"), [items]);
-  const taskById = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);
+  const planById = useMemo(() => new Map(items.map((p) => [p.id, p])), [items]);
 
   const getDisplayStatus = useCallback(
-    (item: GanttItem) => itemDisplayStatus(item, tasks),
-    [tasks],
+    (item: GanttItem) => itemDisplayStatus(item, items),
+    [items],
   );
 
-  const filteredTasks = useMemo(
-    () => filterGanttTasksByStatus(tasks, statusFilter, getDisplayStatus),
-    [tasks, statusFilter, getDisplayStatus],
+  const filteredPlans = useMemo(
+    () => filterGanttTasksByStatus(items, statusFilter, getDisplayStatus),
+    [items, statusFilter, getDisplayStatus],
   );
 
-  const taskRows = useMemo(
-    () => buildTaskTreeRows(filteredTasks, expanded),
-    [filteredTasks, expanded],
+  const rows = useMemo(
+    () => buildPlanTreeRows(filteredPlans, expanded),
+    [filteredPlans, expanded],
   );
-  const planRows: GanttRow[] = plans.map((item) => ({ kind: "item", item, depth: 0 }));
-  const rows = [...taskRows, ...planRows];
 
   const columnColors = useMemo(
     () => buildColumnColorIndex(layout.columns),
     [layout.columns],
   );
 
-  const expandableTaskIds = useMemo(() => {
-    return filteredTasks
-      .filter((t) => {
-        const childCount = filteredTasks.filter((c) => c.parentId === t.id).length;
-        return childCount > 0 || taskDepth(t.id, taskById) < 2;
+  const expandablePlanIds = useMemo(() => {
+    return filteredPlans
+      .filter((p) => {
+        const childCount = filteredPlans.filter((c) => c.parentId === p.id).length;
+        return childCount > 0 || planDepth(p.id, planById) < 2;
       })
-      .map((t) => t.id);
-  }, [filteredTasks, taskById]);
+      .map((p) => p.id);
+  }, [filteredPlans, planById]);
 
-  const allSubtasksExpanded =
-    expandableTaskIds.length > 0 && expandableTaskIds.every((id) => expanded.has(id));
+  const allSubplansExpanded =
+    expandablePlanIds.length > 0 && expandablePlanIds.every((id) => expanded.has(id));
   const rowsBodyHeight = rows.length * ROW_HEIGHT + FOOTER_HEIGHT;
   const minBodyHeight = Math.max(
     rowsBodyHeight,
@@ -351,8 +345,7 @@ export const GanttChart = forwardRef<
     };
   }, [isLoading, scrollToToday, scrollToAnchor, from, to, layout.totalWidth]);
 
-  const drawerOpen =
-    selectedContributionId !== null || selectedPlanId !== null || selectedTaskId !== null;
+  const drawerOpen = selectedContributionId !== null || selectedPlanId !== null;
 
   useLayoutEffect(() => {
     if (pendingScrollLeft.current === null) return;
@@ -360,14 +353,13 @@ export const GanttChart = forwardRef<
     if (!el) return;
     el.scrollLeft = pendingScrollLeft.current;
     pendingScrollLeft.current = null;
-  }, [drawerOpen, selectedContributionId, selectedPlanId, selectedTaskId]);
+  }, [drawerOpen, selectedContributionId, selectedPlanId]);
 
   function preserveScrollLeft() {
     pendingScrollLeft.current = scrollRef.current?.scrollLeft ?? 0;
   }
 
   function closeDrawer() {
-    setSelectedTaskId(null);
     setSelectedPlanId(null);
     setSelectedContributionId(null);
   }
@@ -426,20 +418,8 @@ export const GanttChart = forwardRef<
     setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
   }
 
-  function openTask(taskId: string) {
-    preserveScrollLeft();
-    setSelectedPlanId(null);
-    setSelectedContributionId(null);
-    setSelectedTaskId(taskId);
-  }
-
-  function closeTaskDrawer() {
-    setSelectedTaskId(null);
-  }
-
   function openPlan(planId: string) {
     preserveScrollLeft();
-    setSelectedTaskId(null);
     setSelectedContributionId(null);
     setSelectedPlanId(planId);
   }
@@ -450,7 +430,6 @@ export const GanttChart = forwardRef<
 
   function openContribution(contributionId: string) {
     preserveScrollLeft();
-    setSelectedTaskId(null);
     setSelectedPlanId(null);
     setSelectedContributionId(contributionId);
   }
@@ -459,30 +438,16 @@ export const GanttChart = forwardRef<
     setSelectedContributionId(null);
   }
 
-  function openCreateTask(parentTaskId?: string | null) {
-    setTaskModal({
+  function openCreatePlan(parentPlanId?: string | null) {
+    setPlanModal({
       open: true,
-      title: parentTaskId ? "新建子任务" : "新建任务",
-      defaultParentTaskId: parentTaskId ?? null,
+      title: parentPlanId ? "新建子计划" : "新建计划",
+      defaultParentPlanId: parentPlanId ?? null,
     });
   }
 
-  async function openEditTask(taskId: string) {
-    const res = await fetch(`/api/tasks/${taskId}`);
-    const data = await res.json();
-    if (!data.task) return;
-    setTaskModal({
-      open: true,
-      title: "编辑任务",
-      task: data.task,
-      statusRollup: tasks.some(
-        (t) => t.parentId === taskId && t.status !== "archived",
-      ),
-    });
-  }
-
-  function closeTaskModal() {
-    setTaskModal((prev) => ({ ...prev, open: false, task: undefined }));
+  function closePlanModal() {
+    setPlanModal((prev) => ({ ...prev, open: false }));
   }
 
   function handlePanStart(e: React.MouseEvent) {
@@ -500,18 +465,18 @@ export const GanttChart = forwardRef<
   }
 
   function toggleExpandAll() {
-    if (allSubtasksExpanded) {
+    if (allSubplansExpanded) {
       setExpanded(new Set());
     } else {
-      setExpanded(new Set(expandableTaskIds));
+      setExpanded(new Set(expandablePlanIds));
     }
   }
 
-  function toggleExpand(taskId: string) {
+  function toggleExpand(planId: string) {
     setExpanded((prev) => {
       const next = new Set(prev);
-      if (next.has(taskId)) next.delete(taskId);
-      else next.add(taskId);
+      if (next.has(planId)) next.delete(planId);
+      else next.add(planId);
       return next;
     });
   }
@@ -536,9 +501,9 @@ export const GanttChart = forwardRef<
     if (!fullPage) return null;
     return (
       <GanttTaskListControls
-        allExpanded={allSubtasksExpanded}
+        allExpanded={allSubplansExpanded}
         onToggleExpandAll={toggleExpandAll}
-        showExpandToggle={expandableTaskIds.length > 0}
+        showExpandToggle={expandablePlanIds.length > 0}
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
       />
@@ -639,41 +604,36 @@ export const GanttChart = forwardRef<
     if (row.kind === "add-child") {
       return (
         <div
-          key={`add-${row.parentTaskId}-${idx}`}
-          className="flex items-center border-b border-dashed border-gray-100 bg-teal-50/50 px-2"
+          key={`add-${row.parentPlanId}-${idx}`}
+          className="flex items-center border-b border-dashed border-gray-100 bg-purple-50/50 px-2"
           style={{ height: ROW_HEIGHT, paddingLeft: 12 + row.depth * 16 }}
         >
           <button
             type="button"
-            onClick={() => openCreateTask(row.parentTaskId)}
+            onClick={() => openCreatePlan(row.parentPlanId)}
             className="text-xs text-brand-600 hover:underline"
           >
-            + 添加子任务
+            + 添加子计划
           </button>
         </div>
       );
     }
 
     const item = row.item!;
-    const childCount = filteredTasks.filter((t) => t.parentId === item.id).length;
+    const childCount = filteredPlans.filter((p) => p.parentId === item.id).length;
     const showToggle =
-      item.type === "task" && (childCount > 0 || taskDepth(item.id, taskById) < 2);
+      childCount > 0 || planDepth(item.id, planById) < 2;
     const isExpanded = expanded.has(item.id);
-    const displayStatus = itemDisplayStatus(item, tasks);
-    const hasRollup = itemHasRollup(item, tasks);
-    const statusStyle =
-      item.type === "task" ? taskLabelStyle(item, tasks) : null;
-    const labelBg =
-      item.type === "plan" ? "bg-purple-50/80" : "bg-white";
+    const displayStatus = itemDisplayStatus(item, items);
+    const hasRollup = itemHasRollup(item, items);
+    const statusStyle = planLabelStyle(item, items);
 
     return (
       <div
-        key={`label-${item.type}-${item.id}-${idx}`}
+        key={`label-${item.id}-${idx}`}
         className={cn(
-          "flex items-center gap-1 border-b border-dashed border-gray-100 border-l-2 px-2",
-          labelBg,
-          statusStyle?.stripe,
-          item.type === "plan" && "border-l-purple-400",
+          "flex items-center gap-1 border-b border-dashed border-gray-100 border-l-2 border-l-purple-400 bg-purple-50/80 px-2",
+          statusStyle.stripe,
         )}
         style={{ height: ROW_HEIGHT, paddingLeft: 12 + row.depth * 16 }}
       >
@@ -691,29 +651,18 @@ export const GanttChart = forwardRef<
         ) : (
           <span className="w-5 shrink-0" />
         )}
-        {item.type === "task" ? (
-          <button
-            type="button"
-            onClick={() => openTask(item.id)}
-            className="min-w-0 flex-1 truncate text-left text-sm hover:text-brand-600"
-            title={item.title}
-          >
-            {item.title}
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => openPlan(item.id)}
-            className="min-w-0 flex-1 truncate text-left text-sm hover:text-brand-600"
-            title={item.title}
-          >
-            {item.title}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => openPlan(item.id)}
+          className="min-w-0 flex-1 truncate text-left text-sm hover:text-brand-600"
+          title={item.title}
+        >
+          {item.title}
+        </button>
         {item.status && (
           <TaskStatusIndicator
             status={item.status}
-            dueDate={item.dueDate}
+            dueDate={item.endDate}
             displayStatus={displayStatus}
             hasRollup={hasRollup}
           />
@@ -768,23 +717,15 @@ export const GanttChart = forwardRef<
 
     const item = row.item!;
     const { left, width } = barMetricsFromDates(item.startDate, item.effectiveEnd, layout);
-    const barStyle =
-      item.type === "task"
-        ? taskBarStyle(item, tasks, row.depth)
-        : getGanttBarStyle(
-            item.status,
-            item.dueDate,
-            itemDisplayStatus(item, tasks),
-            row.depth,
-          );
+    const barStyle = planBarStyle(item, items, row.depth);
 
-    if (item.type === "task") {
-      return (
-        <div
-          key={`bar-${item.type}-${item.id}-${idx}`}
-          className="relative border-b border-dashed border-gray-100"
-          style={{ height: ROW_HEIGHT, width: timelineWidth }}
-        >
+    return (
+      <div
+        key={`bar-${item.id}-${idx}`}
+        className="relative border-b border-dashed border-gray-100"
+        style={{ height: ROW_HEIGHT, width: timelineWidth }}
+      >
+        {!item.contributionOnly && (
           <GanttDraggableBar
             item={item}
             layout={layout}
@@ -793,45 +734,8 @@ export const GanttChart = forwardRef<
             barShell={barStyle.shell}
             barText={barStyle.text}
             onUpdated={handleItemUpdated}
-            onTaskClick={() => openTask(item.id)}
+            onTaskClick={() => openPlan(item.id)}
           />
-        </div>
-      );
-    }
-
-    return (
-      <div
-        key={`bar-${item.type}-${item.id}-${idx}`}
-        className="relative border-b border-dashed border-gray-100"
-        style={{ height: ROW_HEIGHT, width: timelineWidth }}
-      >
-        {!item.contributionOnly && (
-          <button
-            type="button"
-            data-gantt-bar
-            onClick={() => openPlan(item.id)}
-            className="absolute top-1/2 -translate-y-1/2 cursor-pointer text-left"
-            style={{ left, width: Math.max(width, 8) }}
-          >
-            <div
-              className={cn(
-                "relative h-7 overflow-hidden rounded-md",
-                barStyle.shell,
-              )}
-            >
-              <span className={cn("block truncate px-2 text-xs leading-7", barStyle.text)}>
-                {item.title}
-              </span>
-            </div>
-            {item.isVirtualEnd && (
-              <div
-                className="absolute top-1/2 h-0.5 w-12 -translate-y-1/2 bg-amber-400"
-                style={{ left: "100%" }}
-              >
-                <span className="absolute -right-0.5 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-amber-400" />
-              </div>
-            )}
-          </button>
         )}
         {item.contributionOnly && (
           <div
@@ -859,18 +763,6 @@ export const GanttChart = forwardRef<
         <GanttPlanDrawerPanel planId={selectedPlanId} onClose={closePlanDrawer} />
       );
     }
-    if (selectedTaskId) {
-      return (
-        <GanttTaskDrawerPanel
-          taskId={selectedTaskId}
-          allTasks={tasks}
-          onClose={closeTaskDrawer}
-          onChanged={refetchGantt}
-          onEditTask={openEditTask}
-          onCreateSubtask={openCreateTask}
-        />
-      );
-    }
     return null;
   }
 
@@ -882,15 +774,13 @@ export const GanttChart = forwardRef<
     );
   }
 
-  function renderTaskModal() {
+  function renderPlanModal() {
     return (
-      <TaskFormModal
-        open={taskModal.open}
-        onClose={closeTaskModal}
-        title={taskModal.title}
-        task={taskModal.task}
-        defaultParentTaskId={taskModal.defaultParentTaskId}
-        statusRollup={taskModal.statusRollup}
+      <PlanFormModal
+        open={planModal.open}
+        onClose={closePlanModal}
+        title={planModal.title}
+        defaultParentPlanId={planModal.defaultParentPlanId}
         onSuccess={refetchGantt}
       />
     );
@@ -905,7 +795,7 @@ export const GanttChart = forwardRef<
             <LoadingView label="加载甘特图…" />
           </div>,
         )}
-        {renderTaskModal()}
+        {renderPlanModal()}
       </>
     );
   }
@@ -918,18 +808,18 @@ export const GanttChart = forwardRef<
             {renderToolbar()}
             <EmptyState
               title="暂无时间条"
-              description="创建带开始日期的任务或计划后，会在此展示。"
+              description="创建带开始日期的计划后，会在此展示。"
             />
             {fullPage && (
               <div className="px-4 pb-4">
-                <Button type="button" onClick={() => openCreateTask()}>
-                  + 新建任务
+                <Button type="button" onClick={() => openCreatePlan()}>
+                  + 新建计划
                 </Button>
               </div>
             )}
           </div>,
         )}
-        {renderTaskModal()}
+        {renderPlanModal()}
       </>
     );
   }
@@ -984,7 +874,7 @@ export const GanttChart = forwardRef<
                       variant="secondary"
                       type="button"
                       data-no-pan
-                      onClick={() => openCreateTask()}
+                      onClick={() => openCreatePlan()}
                     >
                       + 新建
                     </Button>
@@ -997,7 +887,7 @@ export const GanttChart = forwardRef<
         </div>,
       )}
 
-      {renderTaskModal()}
+      {renderPlanModal()}
     </>
   );
 });

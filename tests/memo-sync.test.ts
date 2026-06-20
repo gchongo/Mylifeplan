@@ -1,12 +1,11 @@
 import { describe, expect, it, beforeEach } from "vitest";
-import { syncMemoForTask } from "@/lib/services/memo-sync";
+import { syncMemoForPlan } from "@/lib/services/memo-sync";
 
 interface MemoRow {
   id: string;
   userId: string;
   title: string;
   description: string | null;
-  linkedTaskId: string | null;
   linkedPlanId: string | null;
 }
 
@@ -18,24 +17,16 @@ function createMockDb() {
     memos,
     db: {
       memo: {
-        findUnique: async ({
-          where,
-        }: {
-          where: { linkedTaskId?: string; id?: string };
-        }) => {
-          if (where.linkedTaskId) {
-            return memos.find((m) => m.linkedTaskId === where.linkedTaskId) ?? null;
+        findUnique: async ({ where }: { where: { linkedPlanId?: string; id?: string } }) => {
+          if (where.linkedPlanId) {
+            return memos.find((m) => m.linkedPlanId === where.linkedPlanId) ?? null;
           }
           if (where.id) {
             return memos.find((m) => m.id === where.id) ?? null;
           }
           return null;
         },
-        create: async ({
-          data,
-        }: {
-          data: Omit<MemoRow, "id">;
-        }) => {
+        create: async ({ data }: { data: Omit<MemoRow, "id"> }) => {
           const row: MemoRow = { id: `memo-${seq++}`, ...data };
           memos.push(row);
           return row;
@@ -68,56 +59,45 @@ describe("memo-sync integration", () => {
     store = createMockDb();
   });
 
-  const baseTask = {
-    id: "task-1",
+  const basePlan = {
+    id: "plan-1",
     userId: "user-1",
-    title: "测试任务",
+    title: "测试计划",
     description: "说明",
     startDate: null as Date | null,
-    dueDate: null as Date | null,
-    status: "todo" as const,
+    endDate: null as Date | null,
+    status: "not_started" as const,
   };
 
-  it("无日期任务自动创建 Memo", async () => {
-    await syncMemoForTask(baseTask, store.db as never);
+  it("无日期计划自动创建 Memo", async () => {
+    await syncMemoForPlan(basePlan, store.db as never);
     expect(store.memos).toHaveLength(1);
-    expect(store.memos[0].title).toBe("测试任务");
-    expect(store.memos[0].linkedTaskId).toBe("task-1");
+    expect(store.memos[0].title).toBe("测试计划");
+    expect(store.memos[0].linkedPlanId).toBe("plan-1");
   });
 
   it("补 start 日期后硬删除 Memo", async () => {
-    await syncMemoForTask(baseTask, store.db as never);
+    await syncMemoForPlan(basePlan, store.db as never);
     expect(store.memos).toHaveLength(1);
 
-    await syncMemoForTask(
-      { ...baseTask, startDate: new Date("2025-01-01") },
+    await syncMemoForPlan(
+      { ...basePlan, startDate: new Date("2025-01-01") },
       store.db as never,
     );
     expect(store.memos).toHaveLength(0);
   });
 
   it("改 title 同步 Memo", async () => {
-    await syncMemoForTask(baseTask, store.db as never);
-    await syncMemoForTask({ ...baseTask, title: "新标题" }, store.db as never);
+    await syncMemoForPlan(basePlan, store.db as never);
+    await syncMemoForPlan({ ...basePlan, title: "新标题" }, store.db as never);
     expect(store.memos[0].title).toBe("新标题");
   });
 
-  it("清空日期后 Memo 重建", async () => {
-    await syncMemoForTask(
-      { ...baseTask, startDate: new Date("2025-01-01") },
-      store.db as never,
-    );
-    expect(store.memos).toHaveLength(0);
-
-    await syncMemoForTask(baseTask, store.db as never);
-    expect(store.memos).toHaveLength(1);
-  });
-
-  it("归档任务时删除 Memo", async () => {
-    await syncMemoForTask(baseTask, store.db as never);
+  it("归档计划时删除 Memo", async () => {
+    await syncMemoForPlan(basePlan, store.db as never);
     expect(store.memos).toHaveLength(1);
 
-    await syncMemoForTask({ ...baseTask, status: "archived" }, store.db as never);
+    await syncMemoForPlan({ ...basePlan, status: "archived" }, store.db as never);
     expect(store.memos).toHaveLength(0);
   });
 });

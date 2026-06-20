@@ -1,14 +1,36 @@
-import type { Plan } from "@prisma/client";
+import type { Plan, PlanStatus } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { validateDateFields } from "@/lib/content-router";
 import { parseDateOnly } from "@/lib/dates";
 import { prisma } from "@/lib/db";
 import { writeFeed } from "@/lib/services/feed";
 import { deleteMemoForPlan, syncMemoForPlan } from "@/lib/services/memo-sync";
+import {
+  deriveStatusFromDirectChildren,
+  validateManualStatusChange,
+} from "@/lib/services/plan-rollup";
 import type { createPlanSchema } from "@/lib/validations/plan";
 import type { z } from "zod";
 
+type Tx = Prisma.TransactionClient;
 type CreatePlanInput = z.infer<typeof createPlanSchema>;
 type UpdatePlanInput = Partial<CreatePlanInput>;
+
+async function getPlanDepth(planId: string, userId: string): Promise<number> {
+  let depth = 1;
+  let current: { parentPlanId: string | null } | null = await prisma.plan.findFirst({
+    where: { id: planId, userId },
+    select: { parentPlanId: true },
+  });
+  while (current?.parentPlanId) {
+    depth++;
+    current = await prisma.plan.findFirst({
+      where: { id: current.parentPlanId, userId },
+      select: { parentPlanId: true },
+    });
+  }
+  return depth;
+}
 
 function feedActionForPlan(
   prev: Plan["status"],
@@ -29,6 +51,9 @@ async function validatePlanHierarchy(
 
   const parent = await prisma.plan.findFirst({ where: { id: parentPlanId, userId } });
   if (!parent) return "父计划不存在";
+
+  const parentDepth = await getPlanDepth(parentPlanId, userId);
+  if (parentDepth >= 3) return "计划层级最多 3 层";
 
   if (planId) {
     let cur: string | null = parentPlanId;
@@ -52,6 +77,46 @@ function validateDates(startDate: string | null | undefined, endDate: string | n
   });
 }
 
+async function applyPlanStatusIfChanged(
+  userId: string,
+  planId: string,
+  prevStatus: PlanStatus,
+  nextStatus: PlanStatus,
+  tx: Tx,
+) {
+  if (prevStatus === nextStatus) return;
+
+  await writeFeed({
+    userId,
+    itemType: "plan",
+    itemId: planId,
+    actionType: feedActionForPlan(prevStatus, nextStatus),
+    content: undefined,
+  });
+}
+
+async function rollupParentPlan(userId: string, parentPlanId: string | null, tx: Tx) {
+  if (!parentPlanId) return;
+
+  const parent = await tx.plan.findFirst({ where: { id: parentPlanId, userId } });
+  if (!parent) return;
+
+  const children = await tx.plan.findMany({
+    where: { parentPlanId: parent.id, userId },
+    select: { status: true },
+  });
+  const nextStatus = deriveStatusFromDirectChildren(children.map((c) => c.status));
+  if (!nextStatus || nextStatus === parent.status) return;
+
+  const updated = await tx.plan.update({
+    where: { id: parent.id },
+    data: { status: nextStatus },
+  });
+  await syncMemoForPlan(updated, tx);
+  await applyPlanStatusIfChanged(userId, parent.id, parent.status, nextStatus, tx);
+  await rollupParentPlan(userId, parent.parentPlanId, tx);
+}
+
 export async function createPlan(userId: string, input: CreatePlanInput): Promise<Plan> {
   const dateError = validateDates(input.startDate, input.endDate);
   if (dateError) throw new Error(dateError);
@@ -65,11 +130,12 @@ export async function createPlan(userId: string, input: CreatePlanInput): Promis
         userId,
         title: input.title.trim(),
         description: input.description?.trim() || null,
-        type: input.type,
+        type: input.type ?? "goal",
         parentPlanId: input.parentPlanId || null,
         startDate: parseDateOnly(input.startDate),
         endDate: parseDateOnly(input.endDate),
         status: input.status ?? "not_started",
+        priority: input.priority ?? null,
       },
     });
 
@@ -110,8 +176,19 @@ export async function updatePlan(
   const dateError = validateDates(startStr, endStr);
   if (dateError) throw new Error(dateError);
 
-  const newStatus = input.status ?? existing.status;
-  const actionType = feedActionForPlan(existing.status, newStatus);
+  if (input.status !== undefined) {
+    const children = await prisma.plan.findMany({
+      where: { parentPlanId: planId, userId },
+      select: { status: true },
+    });
+    const rollupError = validateManualStatusChange(
+      input.status,
+      children.map((c) => c.status),
+    );
+    if (rollupError) throw new Error(rollupError);
+  }
+
+  const prevParentId = existing.parentPlanId;
 
   return prisma.$transaction(async (tx) => {
     const plan = await tx.plan.update({
@@ -126,17 +203,28 @@ export async function updatePlan(
         ...(input.startDate !== undefined && { startDate: parseDateOnly(input.startDate) }),
         ...(input.endDate !== undefined && { endDate: parseDateOnly(input.endDate) }),
         ...(input.status !== undefined && { status: input.status }),
+        ...(input.priority !== undefined && { priority: input.priority ?? null }),
       },
     });
 
     await syncMemoForPlan(plan, tx);
-    await writeFeed({
-      userId,
-      itemType: "plan",
-      itemId: plan.id,
-      actionType,
-      content: plan.title,
-    });
+
+    if (input.status !== undefined && input.status !== existing.status) {
+      await applyPlanStatusIfChanged(userId, planId, existing.status, plan.status, tx);
+    } else {
+      await writeFeed({
+        userId,
+        itemType: "plan",
+        itemId: plan.id,
+        actionType: "update",
+        content: plan.title,
+      });
+    }
+
+    await rollupParentPlan(userId, plan.parentPlanId, tx);
+    if (prevParentId && prevParentId !== plan.parentPlanId) {
+      await rollupParentPlan(userId, prevParentId, tx);
+    }
 
     return plan;
   });

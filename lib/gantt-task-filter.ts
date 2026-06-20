@@ -18,7 +18,7 @@ export function filterGanttTasksByStatus(
   for (const task of tasks) {
     const visual = resolveVisualStatus(
       task.status,
-      task.dueDate,
+      task.endDate,
       getDisplayStatus(task),
     );
     if (!filter.has(visual)) continue;

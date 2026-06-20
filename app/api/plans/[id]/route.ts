@@ -14,8 +14,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
     const plan = await prisma.plan.findFirst({
       where: { id, userId: session.userId },
       include: {
-        subPlans: { orderBy: { createdAt: "asc" } },
-        tasks: { orderBy: { updatedAt: "desc" } },
+        subPlans: { where: { status: { not: "archived" } }, orderBy: { createdAt: "asc" } },
       },
     });
     if (!plan) return jsonError("计划不存在", 404);
@@ -23,7 +22,6 @@ export async function GET(_request: NextRequest, { params }: Params) {
       plan: {
         ...serializePlan(plan),
         subPlans: plan.subPlans.map(serializePlan),
-        tasks: plan.tasks,
       },
     });
   } catch {

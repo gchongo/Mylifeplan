@@ -1,22 +1,23 @@
 export type UserRole = "user" | "admin";
 
-export type TaskStatus = "todo" | "in_progress" | "done" | "archived";
-export type TaskPriority = "high" | "medium" | "low";
-export type PlanType = "goal" | "phase" | "weekly" | "daily";
 export type PlanStatus = "not_started" | "in_progress" | "done" | "archived";
-export type FeedItemType = "task" | "plan" | "memo" | "contribution";
+export type PlanPriority = "high" | "medium" | "low";
+export type PlanType = "goal" | "phase" | "weekly" | "daily";
+export type FeedItemType = "plan" | "memo" | "contribution";
 export type FeedActionType = "create" | "update" | "complete" | "archive";
 export type SubscriptionStatus = "active" | "expired" | "cancelled";
 export type PaymentStatus = "pending" | "paid" | "failed";
+
+/** @deprecated Use PlanStatus — kept for status style helpers */
+export type TaskStatus = "todo" | "in_progress" | "done" | "archived";
 
 export interface GanttItem {
   id: string;
   title: string;
   startDate: string;
-  dueDate?: string | null;
+  endDate?: string | null;
   effectiveEnd: string;
   isVirtualEnd: boolean;
-  type: "task" | "plan";
   parentId?: string | null;
   status?: string;
   contributionOnly?: boolean;
@@ -35,8 +36,7 @@ export interface CalendarItem {
   id: string;
   title: string;
   startDate: string;
-  dueDate?: string | null;
-  type: "task" | "plan";
+  endDate?: string | null;
   status: string;
 }
 

@@ -9,17 +9,15 @@ export async function GET(request: NextRequest) {
   try {
     const session = await requireSession();
     const { searchParams } = request.nextUrl;
-    const type = searchParams.get("type");
     const parentPlanId = searchParams.get("parentPlanId");
 
     const plans = await prisma.plan.findMany({
       where: {
         userId: session.userId,
         status: { not: "archived" },
-        ...(type && { type: type as "goal" | "phase" | "weekly" | "daily" }),
         ...(parentPlanId && { parentPlanId }),
       },
-      orderBy: [{ type: "asc" }, { updatedAt: "desc" }],
+      orderBy: [{ updatedAt: "desc" }],
       include: { parentPlan: { select: { title: true } } },
     });
 

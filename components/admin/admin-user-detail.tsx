@@ -14,7 +14,7 @@ interface UserDetail {
   role: string;
   isActive: boolean;
   createdAt: string;
-  stats: { tasks: number; plans: number; memos: number };
+  stats: { plans: number; memos: number };
   subscriptions: Array<{
     id: string;
     planName: string;
@@ -87,8 +87,8 @@ export function AdminUserDetail({ userId }: { userId: string }) {
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <p className="text-gray-500">
-            注册于 {new Date(user.createdAt).toLocaleString()} · {user.stats.tasks} 任务 ·{" "}
-            {user.stats.plans} 计划 · {user.stats.memos} 备忘录
+            注册于 {new Date(user.createdAt).toLocaleString()} · {user.stats.plans} 计划 ·{" "}
+            {user.stats.memos} 备忘录
           </p>
           <Button
             size="sm"

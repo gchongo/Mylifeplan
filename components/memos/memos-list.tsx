@@ -12,7 +12,7 @@ interface MemoRow {
   id: string;
   title: string;
   description: string | null;
-  sourceType: "task" | "plan";
+  sourceType: "plan" | "standalone";
   updatedAt: string;
 }
 
@@ -202,7 +202,7 @@ export function MemosList() {
                       <p className="mt-1 text-sm text-gray-500">{memo.description}</p>
                     )}
                     <p className="mt-1 text-xs text-gray-400">
-                      来源：{memo.sourceType === "task" ? "任务" : "计划"}
+                      来源：{memo.sourceType === "plan" ? "计划" : "独立备忘"}
                     </p>
                   </div>
                 </div>
@@ -258,7 +258,7 @@ export function MemosList() {
         <Link href="/" className="text-brand-600 hover:underline">
           首页日历/甘特图
         </Link>
-        。编辑标题/描述会同步到源任务或计划。
+        。编辑标题/描述会同步到关联计划。
       </p>
     </div>
   );

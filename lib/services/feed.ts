@@ -27,7 +27,6 @@ const ACTION_LABELS: Record<FeedActionType, string> = {
 };
 
 const TYPE_LABELS: Record<FeedItemType, string> = {
-  task: "任务",
   plan: "计划",
   memo: "备忘录",
   contribution: "贡献",

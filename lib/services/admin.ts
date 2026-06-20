@@ -34,14 +34,13 @@ export async function listAdminUsers() {
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "desc" },
     include: {
-      _count: { select: { subscriptions: true, tasks: true, plans: true } },
+      _count: { select: { subscriptions: true, plans: true } },
     },
   });
 
   return users.map((u) => ({
     ...serializeAdminUser(u),
     subscriptionCount: u._count.subscriptions,
-    taskCount: u._count.tasks,
     planCount: u._count.plans,
   }));
 }
@@ -51,7 +50,7 @@ export async function getAdminUser(userId: string) {
     where: { id: userId },
     include: {
       subscriptions: { orderBy: { createdAt: "desc" } },
-      _count: { select: { tasks: true, plans: true, memos: true } },
+      _count: { select: { plans: true, memos: true } },
     },
   });
   if (!user) return null;
@@ -59,7 +58,6 @@ export async function getAdminUser(userId: string) {
   return {
     ...serializeAdminUser(user),
     stats: {
-      tasks: user._count.tasks,
       plans: user._count.plans,
       memos: user._count.memos,
     },

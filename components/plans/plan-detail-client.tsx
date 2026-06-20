@@ -3,43 +3,30 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlanForm, type PlanFormValues } from "@/components/forms/plan-form";
-import { TaskForm } from "@/components/forms/task-form";
 import { shouldShowInMemo } from "@/lib/content-router";
 
 interface SubPlan {
   id: string;
   title: string;
-  type: string;
   status: string;
-}
-
-interface LinkedTask {
-  id: string;
-  title: string;
-  status: string;
-  startDate: string | null;
-  dueDate: string | null;
 }
 
 export function PlanDetailClient({
   plan,
   subPlans,
-  tasks,
   parentTitle,
 }: {
   plan: PlanFormValues & { id: string };
   subPlans: SubPlan[];
-  tasks: LinkedTask[];
   parentTitle?: string | null;
 }) {
   const router = useRouter();
   const [showEdit, setShowEdit] = useState(false);
-  const [showNewTask, setShowNewTask] = useState(false);
+  const [showNewSubPlan, setShowNewSubPlan] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   async function archivePlan() {
@@ -73,6 +60,8 @@ export function PlanDetailClient({
     }
   }
 
+  const inMemo = shouldShowInMemo({ startDate: plan.startDate, endDate: plan.endDate });
+
   if (showEdit) {
     return (
       <Card>
@@ -99,6 +88,7 @@ export function PlanDetailClient({
               <p className="mt-1 text-sm text-gray-500">父计划：{parentTitle}</p>
             )}
           </div>
+          <TaskStatusIndicator status={plan.status ?? "not_started"} dueDate={plan.endDate} />
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-gray-700">
           {plan.description && <p>{plan.description}</p>}
@@ -110,14 +100,17 @@ export function PlanDetailClient({
             <dt className="text-gray-500">状态</dt>
             <dd>{plan.status ?? "not_started"}</dd>
           </dl>
+          {inMemo && (
+            <p className="text-xs text-amber-600">无日期时此计划会同步出现在备忘录中。</p>
+          )}
           <div className="flex flex-wrap gap-2">
             {plan.status !== "archived" && (
               <>
                 <Button size="sm" variant="secondary" onClick={() => setShowEdit(true)}>
                   编辑计划
                 </Button>
-                <Button size="sm" onClick={() => setShowNewTask((v) => !v)}>
-                  {showNewTask ? "收起新建任务" : "在此计划下新建任务"}
+                <Button size="sm" onClick={() => setShowNewSubPlan((v) => !v)}>
+                  {showNewSubPlan ? "收起" : "新建子计划"}
                 </Button>
               </>
             )}
@@ -148,13 +141,16 @@ export function PlanDetailClient({
         </CardContent>
       </Card>
 
-      {showNewTask && (
+      {showNewSubPlan && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">新建关联任务</CardTitle>
+            <CardTitle className="text-base">新建子计划</CardTitle>
           </CardHeader>
           <CardContent>
-            <TaskForm defaultPlanId={plan.id} redirectTo={`/plans/${plan.id}`} />
+            <PlanForm
+              defaultParentPlanId={plan.id}
+              redirectTo={`/plans/${plan.id}`}
+            />
           </CardContent>
         </Card>
       )}
@@ -173,6 +169,7 @@ export function PlanDetailClient({
                     className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2 hover:bg-gray-50"
                   >
                     <span>{sp.title}</span>
+                    <TaskStatusIndicator status={sp.status} />
                   </Link>
                 </li>
               ))}
@@ -180,40 +177,6 @@ export function PlanDetailClient({
           </CardContent>
         </Card>
       )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">关联任务</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {tasks.length === 0 ? (
-            <p className="text-sm text-gray-500">暂无关联任务。</p>
-          ) : (
-            <ul className="space-y-2">
-              {tasks.map((t) => {
-                const inMemo = shouldShowInMemo({
-                  startDate: t.startDate,
-                  dueDate: t.dueDate,
-                });
-                return (
-                  <li
-                    key={t.id}
-                    className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2"
-                  >
-                    <Link href={`/tasks/${t.id}`} className="hover:text-brand-600">
-                      {t.title}
-                    </Link>
-                    <div className="flex gap-2">
-                      {inMemo && <Badge variant="warning">备忘录</Badge>}
-                      <TaskStatusIndicator status={t.status} dueDate={t.dueDate} />
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

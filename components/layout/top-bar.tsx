@@ -30,8 +30,8 @@ export function TopBar({
         {userEmail && (
           <span className="hidden text-sm text-gray-500 sm:inline">{userEmail}</span>
         )}
-        <Link href="/tasks/new">
-          <Button size="sm">新建任务</Button>
+        <Link href="/memos">
+          <Button size="sm">新建备忘</Button>
         </Link>
         <LogoutButton />
       </div>

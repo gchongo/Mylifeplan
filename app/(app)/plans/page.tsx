@@ -10,26 +10,21 @@ export default async function PlansPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const [plans, tasks] = await Promise.all([
-    prisma.plan.findMany({
-      where: { userId: session.userId, status: { not: "archived" } },
-      orderBy: { updatedAt: "desc" },
-      select: { id: true, title: true, status: true, parentPlanId: true },
-    }),
-    prisma.task.findMany({
-      where: { userId: session.userId, status: { not: "archived" }, planId: { not: null } },
-      orderBy: { updatedAt: "desc" },
-      select: { id: true, title: true, status: true, planId: true },
-    }),
-  ]);
+  const plans = await prisma.plan.findMany({
+    where: { userId: session.userId, status: { not: "archived" } },
+    orderBy: { updatedAt: "desc" },
+    select: { id: true, title: true, status: true, parentPlanId: true },
+  });
 
-  const tree = buildPlanTree(plans, tasks);
+  const tree = buildPlanTree(plans);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-gray-900">计划</h1>
-        <p className="text-sm text-gray-500">管理所有计划，可设置父计划形成层级，并关联任务与贡献记录。</p>
+        <p className="text-sm text-gray-500">
+          有日期的计划在甘特图与日历中展示；无日期的想法请写在备忘里。
+        </p>
       </div>
 
       <Card>

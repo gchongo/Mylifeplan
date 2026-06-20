@@ -11,7 +11,6 @@ export function formatFeedCardDate(iso: string): string {
 }
 
 export function feedItemHref(itemType: FeedItemType, itemId: string): string | null {
-  if (itemType === "task") return `/tasks/${itemId}`;
   if (itemType === "plan") return `/plans/${itemId}`;
   if (itemType === "memo") return "/memos";
   if (itemType === "contribution") return null;
@@ -31,10 +30,7 @@ export function feedItemMeta(
   if (itemType === "contribution") {
     return { label: "贡献", completed, archived };
   }
-  if (itemType === "plan") {
-    return { label: "计划", completed, archived };
-  }
-  return { label: "任务", completed, archived };
+  return { label: "计划", completed, archived };
 }
 
 const URL_PATTERN = /https?:\/\/[^\s<>"']+/g;
@@ -74,10 +70,8 @@ export function feedDisplayText(
   const type =
     itemType === "memo"
       ? "备忘"
-      : itemType === "plan"
-        ? "计划"
-        : itemType === "contribution"
-          ? "贡献"
-          : "任务";
+      : itemType === "contribution"
+        ? "贡献"
+        : "计划";
   return `${action}了${type}`;
 }

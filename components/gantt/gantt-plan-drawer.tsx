@@ -21,10 +21,7 @@ export function GanttPlanDrawerPanel({
   const [error, setError] = useState("");
   const [plan, setPlan] = useState<PlanPayload | null>(null);
   const [subPlans, setSubPlans] = useState<
-    { id: string; title: string; type: string; status: string }[]
-  >([]);
-  const [tasks, setTasks] = useState<
-    { id: string; title: string; status: string; startDate: string | null; dueDate: string | null }[]
+    { id: string; title: string; status: string }[]
   >([]);
 
   useEffect(() => {
@@ -33,7 +30,6 @@ export function GanttPlanDrawerPanel({
     setError("");
     setPlan(null);
     setSubPlans([]);
-    setTasks([]);
 
     fetch(`/api/plans/${planId}`)
       .then((r) => r.json())
@@ -44,8 +40,15 @@ export function GanttPlanDrawerPanel({
           return;
         }
         setPlan(data.plan);
-        setSubPlans(data.plan.subPlans ?? []);
-        setTasks(data.plan.tasks ?? []);
+        setSubPlans(
+          (data.plan.subPlans ?? []).map(
+            (sp: { id: string; title: string; status: string }) => ({
+              id: sp.id,
+              title: sp.title,
+              status: sp.status,
+            }),
+          ),
+        );
       })
       .catch(() => {
         if (!cancelled) setError("加载失败");
@@ -65,7 +68,7 @@ export function GanttPlanDrawerPanel({
       {!loading && error && <p className="px-4 py-3 text-sm text-red-600">{error}</p>}
       {!loading && plan && (
         <div className="p-4">
-          <PlanDetailClient plan={plan} subPlans={subPlans} tasks={tasks} />
+          <PlanDetailClient plan={plan} subPlans={subPlans} />
         </div>
       )}
     </DrawerPanel>

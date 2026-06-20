@@ -16,7 +16,6 @@ export async function GET() {
       where: { userId: session.userId },
       orderBy: { updatedAt: "desc" },
       include: {
-        linkedTask: true,
         linkedPlan: true,
       },
     });
@@ -26,9 +25,8 @@ export async function GET() {
         id: m.id,
         title: m.title,
         description: m.description,
-        linkedTaskId: m.linkedTaskId,
         linkedPlanId: m.linkedPlanId,
-        sourceType: m.linkedTaskId ? "task" : m.linkedPlanId ? "plan" : "standalone",
+        sourceType: m.linkedPlanId ? "plan" : "standalone",
         updatedAt: m.updatedAt,
       })),
     });

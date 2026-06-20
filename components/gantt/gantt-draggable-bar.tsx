@@ -81,31 +81,31 @@ export function GanttDraggableBar({
       if (deltaDays === 0 && state.mode === "move") return;
 
       let startDate = state.origStart;
-      let dueDate: string | null = state.hadDueDate ? state.origEnd : null;
+      let endDate: string | null = state.hadDueDate ? state.origEnd : null;
 
       if (state.mode === "move") {
         const duration = daysBetween(state.origStart, state.origEnd);
         startDate = addDaysUtc(state.origStart, deltaDays);
         const newEnd = addDaysUtc(startDate, duration);
-        if (state.hadDueDate) dueDate = newEnd;
+        if (state.hadDueDate) endDate = newEnd;
       } else if (state.mode === "resize-start") {
         startDate = addDaysUtc(state.origStart, deltaDays);
         if (startDate > state.origEnd) startDate = state.origEnd;
       } else {
         const newEnd = addDaysUtc(state.origEnd, deltaDays);
-        dueDate = newEnd >= state.origStart ? newEnd : state.origStart;
+        endDate = newEnd >= state.origStart ? newEnd : state.origStart;
       }
 
-      if (startDate === item.startDate && dueDate === (item.dueDate ?? null)) return;
+      if (startDate === item.startDate && endDate === (item.endDate ?? null)) return;
 
       setSaving(true);
       try {
-        const body: { startDate: string; dueDate?: string | null } = { startDate };
+        const body: { startDate: string; endDate?: string | null } = { startDate };
         if (state.hadDueDate || state.mode === "resize-end") {
-          body.dueDate = dueDate;
+          body.endDate = endDate;
         }
 
-        const res = await fetch(`/api/tasks/${item.id}`, {
+        const res = await fetch(`/api/plans/${item.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
@@ -113,16 +113,16 @@ export function GanttDraggableBar({
         const data = await res.json();
         if (!res.ok) return;
 
-        const task = data.task;
+        const plan = data.plan;
         const { effectiveEnd, isVirtualEnd } = getEffectiveEndDate({
-          startDate: task.startDate,
-          dueDate: task.dueDate,
+          startDate: plan.startDate,
+          dueDate: plan.endDate,
         });
         onUpdated({
           ...item,
-          startDate: task.startDate,
-          dueDate: task.dueDate,
-          effectiveEnd: effectiveEnd ?? task.startDate,
+          startDate: plan.startDate,
+          endDate: plan.endDate,
+          effectiveEnd: effectiveEnd ?? plan.startDate,
           isVirtualEnd,
         });
       } finally {
@@ -172,7 +172,7 @@ export function GanttDraggableBar({
       startX: e.clientX,
       origStart: item.startDate,
       origEnd: item.effectiveEnd,
-      hadDueDate: Boolean(item.dueDate),
+      hadDueDate: Boolean(item.endDate),
     };
     dragRef.current = state;
     setDragging(state);

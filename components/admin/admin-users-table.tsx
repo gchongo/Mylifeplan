@@ -14,7 +14,7 @@ interface UserRow {
   isActive: boolean;
   createdAt: string;
   subscriptionCount: number;
-  taskCount: number;
+  planCount: number;
 }
 
 export function AdminUsersTable() {
@@ -95,7 +95,7 @@ export function AdminUsersTable() {
                   </Badge>
                 </td>
                 <td className="px-4 py-3 text-gray-500">
-                  {user.taskCount} 任务 · {user.subscriptionCount} 订阅
+                  {user.planCount} 计划 · {user.subscriptionCount} 订阅
                 </td>
                 <td className="px-4 py-3">
                   <Button

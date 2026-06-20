@@ -12,14 +12,7 @@ enum UserRole {
   admin
 }
 
-enum TaskStatus {
-  todo
-  in_progress
-  done
-  archived
-}
-
-enum TaskPriority {
+enum PlanPriority {
   high
   medium
   low
@@ -40,7 +33,6 @@ enum PlanStatus {
 }
 
 enum FeedItemType {
-  task
   plan
   memo
   contribution
@@ -76,7 +68,6 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  tasks         Task[]
   plans         Plan[]
   memos         Memo[]
   feeds         Feed[]
@@ -86,50 +77,24 @@ model User {
   @@map("users")
 }
 
-model Task {
+model Plan {
   id           String        @id @default(cuid())
   userId       String        @map("user_id")
   title        String
   description  String?
-  status       TaskStatus    @default(todo)
-  priority     TaskPriority?
+  type         PlanType      @default(goal)
+  parentPlanId String?       @map("parent_plan_id")
   startDate    DateTime?     @map("start_date") @db.Date
-  dueDate      DateTime?     @map("due_date") @db.Date
-  parentTaskId String?       @map("parent_task_id")
-  planId       String?       @map("plan_id")
+  endDate      DateTime?     @map("end_date") @db.Date
+  status       PlanStatus    @default(not_started)
+  priority     PlanPriority?
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
 
-  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parentTask Task?  @relation("TaskHierarchy", fields: [parentTaskId], references: [id], onDelete: SetNull)
-  subTasks   Task[] @relation("TaskHierarchy")
-  plan       Plan?  @relation(fields: [planId], references: [id], onDelete: SetNull)
-  linkedMemo Memo?  @relation("TaskMemo")
-
-  @@index([userId])
-  @@index([planId])
-  @@index([parentTaskId])
-  @@map("tasks")
-}
-
-model Plan {
-  id           String     @id @default(cuid())
-  userId       String     @map("user_id")
-  title        String
-  description  String?
-  type         PlanType
-  parentPlanId String?    @map("parent_plan_id")
-  startDate    DateTime?  @map("start_date") @db.Date
-  endDate      DateTime?  @map("end_date") @db.Date
-  status       PlanStatus @default(not_started)
-  createdAt    DateTime   @default(now()) @map("created_at")
-  updatedAt    DateTime   @updatedAt @map("updated_at")
-
-  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parentPlan Plan?  @relation("PlanHierarchy", fields: [parentPlanId], references: [id], onDelete: SetNull)
-  subPlans   Plan[] @relation("PlanHierarchy")
-  tasks      Task[]
-  linkedMemo Memo?  @relation("PlanMemo")
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentPlan    Plan?              @relation("PlanHierarchy", fields: [parentPlanId], references: [id], onDelete: SetNull)
+  subPlans      Plan[]             @relation("PlanHierarchy")
+  linkedMemo    Memo?              @relation("PlanMemo")
   contributions PlanContribution[]
 
   @@index([userId])
@@ -143,13 +108,11 @@ model Memo {
   userId       String   @map("user_id")
   title        String
   description  String?
-  linkedTaskId String?  @unique @map("linked_task_id")
   linkedPlanId String?  @unique @map("linked_plan_id")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   user       User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  linkedTask Task? @relation("TaskMemo", fields: [linkedTaskId], references: [id], onDelete: Cascade)
   linkedPlan Plan? @relation("PlanMemo", fields: [linkedPlanId], references: [id], onDelete: Cascade)
 
   @@index([userId])

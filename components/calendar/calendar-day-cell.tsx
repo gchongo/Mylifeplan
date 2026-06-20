@@ -51,7 +51,7 @@ function CompactIndicators({ items }: { items: CalendarItem[] }) {
     >
       {shown.map((item) => (
         <span
-          key={`${item.type}-${item.id}`}
+          key={`${item.id}`}
           className={cn("h-1 max-w-[0.75rem] min-w-[3px] flex-1", itemAccent(item).bar)}
         />
       ))}
@@ -65,7 +65,7 @@ function StackedBars({ items, limit }: { items: CalendarItem[]; limit: number })
   return (
     <ul className="mt-1 space-y-0.5">
       {shown.map((item) => (
-        <li key={`${item.type}-${item.id}`}>
+        <li key={`${item.id}`}>
           <span className={cn("block h-1.5 rounded-full", itemAccent(item).bar)} title={item.title} />
         </li>
       ))}
@@ -80,7 +80,7 @@ function DetailedBlocks({ items, limit }: { items: CalendarItem[]; limit: number
   return (
     <ul className="mt-1 space-y-0.5">
       {shown.map((item) => (
-        <li key={`${item.type}-${item.id}`}>
+        <li key={`${item.id}`}>
           <span
             className={cn(
               "flex items-center gap-0.5 truncate rounded-md px-1 py-0.5 text-[10px] font-medium leading-tight text-white",

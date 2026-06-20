@@ -31,38 +31,10 @@ export async function getGanttItems(
   const { fromDate, toDate } = parseRange(from, to);
   const items: GanttItem[] = [];
 
-  const [tasks, plans] = await Promise.all([
-    prisma.task.findMany({
-      where: { userId, startDate: { not: null }, status: { not: "archived" } },
-      orderBy: { startDate: "asc" },
-    }),
-    prisma.plan.findMany({
-      where: { userId, startDate: { not: null }, status: { not: "archived" } },
-      orderBy: { startDate: "asc" },
-    }),
-  ]);
-
-  for (const task of tasks) {
-    const startDate = formatDateOnly(task.startDate);
-    const dueDate = formatDateOnly(task.dueDate);
-    const routable = { startDate, dueDate };
-    if (!shouldShowInGantt(routable) || !startDate) continue;
-
-    const { effectiveEnd, isVirtualEnd } = getEffectiveEndDate(routable);
-    if (!effectiveEnd || !overlapsRange(startDate, effectiveEnd, fromDate, toDate)) continue;
-
-    items.push({
-      id: task.id,
-      title: task.title,
-      startDate,
-      dueDate,
-      effectiveEnd,
-      isVirtualEnd,
-      type: "task",
-      parentId: task.parentTaskId,
-      status: task.status,
-    });
-  }
+  const plans = await prisma.plan.findMany({
+    where: { userId, startDate: { not: null }, status: { not: "archived" } },
+    orderBy: { startDate: "asc" },
+  });
 
   for (const plan of plans) {
     const startDate = formatDateOnly(plan.startDate);
@@ -80,9 +52,9 @@ export async function getGanttItems(
       id: plan.id,
       title: plan.title,
       startDate,
+      endDate,
       effectiveEnd,
       isVirtualEnd,
-      type: "plan",
       parentId: plan.parentPlanId,
       status: plan.status,
     });
@@ -99,7 +71,7 @@ export async function getGanttData(
   const items = await getGanttItems(userId, from, to);
   const contributions = await getContributionsInRange(userId, from, to);
 
-  const planIds = new Set(items.filter((i) => i.type === "plan").map((i) => i.id));
+  const planIds = new Set(items.map((i) => i.id));
 
   for (const c of contributions) {
     if (planIds.has(c.planId)) continue;
@@ -120,7 +92,6 @@ export async function getGanttData(
       startDate,
       effectiveEnd: endDate,
       isVirtualEnd: startDate === endDate,
-      type: "plan",
       parentId: plan.parentPlanId,
       status: plan.status,
       contributionOnly: true,
@@ -142,34 +113,10 @@ export async function getCalendarItems(
   const { fromDate, toDate } = parseRange(from, to);
   const items: CalendarItem[] = [];
 
-  const [tasks, plans] = await Promise.all([
-    prisma.task.findMany({
-      where: { userId, startDate: { not: null }, status: { not: "archived" } },
-      orderBy: { startDate: "asc" },
-    }),
-    prisma.plan.findMany({
-      where: { userId, startDate: { not: null }, status: { not: "archived" } },
-      orderBy: { startDate: "asc" },
-    }),
-  ]);
-
-  for (const task of tasks) {
-    const startDate = formatDateOnly(task.startDate);
-    const dueDate = formatDateOnly(task.dueDate);
-    if (!startDate || !shouldShowInCalendar({ startDate, dueDate })) continue;
-
-    const endForRange = dueDate ?? startDate;
-    if (!overlapsRange(startDate, endForRange, fromDate, toDate)) continue;
-
-    items.push({
-      id: task.id,
-      title: task.title,
-      startDate,
-      dueDate,
-      type: "task",
-      status: task.status,
-    });
-  }
+  const plans = await prisma.plan.findMany({
+    where: { userId, startDate: { not: null }, status: { not: "archived" } },
+    orderBy: { startDate: "asc" },
+  });
 
   for (const plan of plans) {
     const startDate = formatDateOnly(plan.startDate);
@@ -183,8 +130,7 @@ export async function getCalendarItems(
       id: plan.id,
       title: plan.title,
       startDate,
-      dueDate: endDate,
-      type: "plan",
+      endDate,
       status: plan.status,
     });
   }

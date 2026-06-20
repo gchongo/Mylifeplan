@@ -72,7 +72,7 @@ function weekRange(anchor: Date) {
 }
 
 function itemHref(item: CalendarItem) {
-  return item.type === "task" ? `/tasks/${item.id}` : `/plans/${item.id}`;
+  return `/plans/${item.id}`;
 }
 
 export function CalendarPanelLive({
@@ -308,7 +308,7 @@ export function CalendarPanelLive({
                         {list.map((item) => {
                           const accent = itemAccent(item);
                           return (
-                            <li key={`${item.type}-${item.id}`}>
+                            <li key={item.id}>
                               <button
                                 type="button"
                                 onClick={() => openDayDrawer(ds)}
@@ -336,7 +336,7 @@ export function CalendarPanelLive({
                   dayItems.map((item) => {
                     const accent = itemAccent(item);
                     return (
-                      <li key={`${item.type}-${item.id}`} className="border-b border-gray-100 last:border-0">
+                      <li key={item.id} className="border-b border-gray-100 last:border-0">
                         <Link
                           href={itemHref(item)}
                           className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50"
