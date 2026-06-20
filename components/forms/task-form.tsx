@@ -44,6 +44,8 @@ export function TaskForm({
   embedded = false,
   submitLabel,
   onCancel,
+  contributionPlanId,
+  contributionDate,
 }: {
   task?: TaskFormValues;
   redirectTo?: string;
@@ -54,6 +56,8 @@ export function TaskForm({
   embedded?: boolean;
   submitLabel?: string;
   onCancel?: () => void;
+  contributionPlanId?: string | null;
+  contributionDate?: string;
 }) {
   const router = useRouter();
   const isEdit = Boolean(task?.id);
@@ -101,6 +105,29 @@ export function TaskForm({
         setError(data.error ?? "保存失败");
         return;
       }
+
+      if (contributionPlanId) {
+        const occurredOn =
+          contributionDate ||
+          startDate ||
+          new Date().toISOString().slice(0, 10);
+        const contribRes = await fetch("/api/contributions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            planId: contributionPlanId,
+            title,
+            description: description || null,
+            occurredOn,
+          }),
+        });
+        if (!contribRes.ok) {
+          const contribData = await contribRes.json();
+          setError(contribData.error ?? "任务已保存，但贡献记录失败");
+          return;
+        }
+      }
+
       if (onSuccess) {
         onSuccess();
         return;

@@ -5,7 +5,8 @@ import {
 } from "@/lib/content-router";
 import { formatDateOnly } from "@/lib/dates";
 import { prisma } from "@/lib/db";
-import type { GanttItem, CalendarItem } from "@/types";
+import { getContributionsInRange } from "@/lib/services/contribution";
+import type { GanttContribution, GanttItem, CalendarItem } from "@/types";
 
 function parseRange(from?: string | null, to?: string | null) {
   const today = new Date();
@@ -88,6 +89,49 @@ export async function getGanttItems(
   }
 
   return items.sort((a, b) => a.startDate.localeCompare(b.startDate));
+}
+
+export async function getGanttData(
+  userId: string,
+  from?: string | null,
+  to?: string | null,
+): Promise<{ items: GanttItem[]; contributions: GanttContribution[] }> {
+  const items = await getGanttItems(userId, from, to);
+  const contributions = await getContributionsInRange(userId, from, to);
+
+  const planIds = new Set(items.filter((i) => i.type === "plan").map((i) => i.id));
+
+  for (const c of contributions) {
+    if (planIds.has(c.planId)) continue;
+
+    const plan = await prisma.plan.findFirst({
+      where: { id: c.planId, userId, status: { not: "archived" } },
+    });
+    if (!plan) continue;
+
+    const planContribs = contributions.filter((x) => x.planId === c.planId);
+    const dates = planContribs.map((x) => x.occurredOn).sort();
+    const startDate = dates[0]!;
+    const endDate = dates[dates.length - 1]!;
+
+    items.push({
+      id: plan.id,
+      title: plan.title,
+      startDate,
+      effectiveEnd: endDate,
+      isVirtualEnd: startDate === endDate,
+      type: "plan",
+      parentId: plan.parentPlanId,
+      status: plan.status,
+      contributionOnly: true,
+    });
+    planIds.add(plan.id);
+  }
+
+  return {
+    items: items.sort((a, b) => a.startDate.localeCompare(b.startDate)),
+    contributions,
+  };
 }
 
 export async function getCalendarItems(

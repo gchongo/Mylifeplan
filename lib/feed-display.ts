@@ -14,6 +14,7 @@ export function feedItemHref(itemType: FeedItemType, itemId: string): string | n
   if (itemType === "task") return `/tasks/${itemId}`;
   if (itemType === "plan") return `/plans/${itemId}`;
   if (itemType === "memo") return "/memos";
+  if (itemType === "contribution") return null;
   return null;
 }
 
@@ -26,6 +27,9 @@ export function feedItemMeta(
 
   if (itemType === "memo") {
     return { label: "备忘", completed, archived };
+  }
+  if (itemType === "contribution") {
+    return { label: "贡献", completed, archived };
   }
   if (itemType === "plan") {
     return { label: "计划", completed, archived };
@@ -67,6 +71,13 @@ export function feedDisplayText(
         : actionType === "complete"
           ? "完成"
           : "归档";
-  const type = itemType === "memo" ? "备忘" : itemType === "plan" ? "计划" : "任务";
+  const type =
+    itemType === "memo"
+      ? "备忘"
+      : itemType === "plan"
+        ? "计划"
+        : itemType === "contribution"
+          ? "贡献"
+          : "任务";
   return `${action}了${type}`;
 }

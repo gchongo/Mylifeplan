@@ -43,6 +43,7 @@ enum FeedItemType {
   task
   plan
   memo
+  contribution
 }
 
 enum FeedActionType {
@@ -79,6 +80,7 @@ model User {
   plans         Plan[]
   memos         Memo[]
   feeds         Feed[]
+  contributions PlanContribution[]
   subscriptions Subscription[]
 
   @@map("users")
@@ -128,6 +130,7 @@ model Plan {
   subPlans   Plan[] @relation("PlanHierarchy")
   tasks      Task[]
   linkedMemo Memo?  @relation("PlanMemo")
+  contributions PlanContribution[]
 
   @@index([userId])
   @@index([parentPlanId])
@@ -166,6 +169,24 @@ model Feed {
 
   @@index([userId, createdAt(sort: Desc)])
   @@map("feeds")
+}
+
+model PlanContribution {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  planId      String   @map("plan_id")
+  title       String
+  description String?
+  occurredOn  DateTime @map("occurred_on") @db.Date
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([userId, planId, occurredOn])
+  @@index([userId, occurredOn])
+  @@map("plan_contributions")
 }
 
 model Subscription {

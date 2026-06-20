@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { GanttContributionDrawer } from "@/components/gantt/gantt-contribution-drawer";
 import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
 import { GanttPlanDrawer } from "@/components/gantt/gantt-plan-drawer";
 import { GanttTaskDrawer } from "@/components/gantt/gantt-task-drawer";
@@ -40,7 +41,7 @@ import {
   STATUS_LEGEND,
   type VisualStatusKey,
 } from "@/lib/task-status-style";
-import type { GanttItem } from "@/types";
+import type { GanttContribution, GanttItem } from "@/types";
 import { cn } from "@/lib/utils";
 
 const ROW_HEIGHT = 44;
@@ -186,6 +187,7 @@ export const GanttChart = forwardRef<
   const [anchor, setAnchor] = useState(todayStr);
 
   const [items, setItems] = useState<GanttItem[]>([]);
+  const [contributions, setContributions] = useState<GanttContribution[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<Set<VisualStatusKey>>(
@@ -193,6 +195,7 @@ export const GanttChart = forwardRef<
   );
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [selectedContributionId, setSelectedContributionId] = useState<string | null>(null);
   const [scrollViewportHeight, setScrollViewportHeight] = useState(480);
 
   const dataBounds = useMemo(() => dataBoundsFromItems(items), [items]);
@@ -213,7 +216,10 @@ export const GanttChart = forwardRef<
     setIsLoading(true);
     fetch(`/api/gantt?from=${from}&to=${to}`)
       .then((r) => r.json())
-      .then((data) => setItems(data.items ?? []))
+      .then((data) => {
+        setItems(data.items ?? []);
+        setContributions(data.contributions ?? []);
+      })
       .finally(() => setIsLoading(false));
   }, [from, to]);
 
@@ -263,7 +269,10 @@ export const GanttChart = forwardRef<
   const refetchGantt = useCallback(() => {
     fetch(`/api/gantt?from=${from}&to=${to}`)
       .then((r) => r.json())
-      .then((data) => setItems(data.items ?? []));
+      .then((data) => {
+        setItems(data.items ?? []);
+        setContributions(data.contributions ?? []);
+      });
   }, [from, to]);
 
   useEffect(() => {
@@ -396,6 +405,7 @@ export const GanttChart = forwardRef<
 
   function openTask(taskId: string) {
     setSelectedPlanId(null);
+    setSelectedContributionId(null);
     setSelectedTaskId(taskId);
   }
 
@@ -405,11 +415,22 @@ export const GanttChart = forwardRef<
 
   function openPlan(planId: string) {
     setSelectedTaskId(null);
+    setSelectedContributionId(null);
     setSelectedPlanId(planId);
   }
 
   function closePlanDrawer() {
     setSelectedPlanId(null);
+  }
+
+  function openContribution(contributionId: string) {
+    setSelectedTaskId(null);
+    setSelectedPlanId(null);
+    setSelectedContributionId(contributionId);
+  }
+
+  function closeContributionDrawer() {
+    setSelectedContributionId(null);
   }
 
   function openCreateTask(parentTaskId?: string | null) {
@@ -675,6 +696,39 @@ export const GanttChart = forwardRef<
     );
   }
 
+  function renderContributionMarkers(planId: string) {
+    const byDate = new Map<string, GanttContribution[]>();
+    for (const c of contributions) {
+      if (c.planId !== planId) continue;
+      const list = byDate.get(c.occurredOn) ?? [];
+      list.push(c);
+      byDate.set(c.occurredOn, list);
+    }
+
+    return [...byDate.entries()].map(([date, list]) => {
+      const x = dateToX(date, layout);
+      const primary = list[list.length - 1]!;
+      return (
+        <button
+          key={`${planId}-${date}`}
+          type="button"
+          data-gantt-bar
+          onClick={() => openContribution(primary.id)}
+          className="absolute top-1/2 z-20 flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-brand-500 ring-2 ring-white hover:bg-brand-600"
+          style={{ left: x }}
+          title={list.map((c) => c.title).join("、")}
+          aria-label={`${date} 贡献：${primary.title}`}
+        >
+          {list.length > 1 && (
+            <span className="absolute -right-1.5 -top-1.5 flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full bg-gray-900 px-0.5 text-[9px] font-medium text-white">
+              {list.length}
+            </span>
+          )}
+        </button>
+      );
+    });
+  }
+
   function renderBar(row: GanttRow, idx: number) {
     if (row.kind === "add-child") {
       return (
@@ -725,37 +779,59 @@ export const GanttChart = forwardRef<
         className="relative border-b border-dashed border-gray-100"
         style={{ height: ROW_HEIGHT, width: timelineWidth }}
       >
-        <button
-          type="button"
-          data-gantt-bar
-          onClick={() => openPlan(item.id)}
-          className="absolute top-1/2 -translate-y-1/2 cursor-pointer text-left"
-          style={{ left, width: Math.max(width, 8) }}
-        >
-          <div
-            className={cn(
-              "relative h-7 overflow-hidden rounded-md",
-              barStyle.shell,
-            )}
+        {!item.contributionOnly && (
+          <button
+            type="button"
+            data-gantt-bar
+            onClick={() => openPlan(item.id)}
+            className="absolute top-1/2 -translate-y-1/2 cursor-pointer text-left"
+            style={{ left, width: Math.max(width, 8) }}
           >
-            <span className={cn("block truncate px-2 text-xs leading-7", barStyle.text)}>
-              {item.title}
-            </span>
-          </div>
-          {item.isVirtualEnd && (
             <div
-              className="absolute top-1/2 h-0.5 w-12 -translate-y-1/2 bg-amber-400"
-              style={{ left: "100%" }}
+              className={cn(
+                "relative h-7 overflow-hidden rounded-md",
+                barStyle.shell,
+              )}
             >
-              <span className="absolute -right-0.5 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-amber-400" />
+              <span className={cn("block truncate px-2 text-xs leading-7", barStyle.text)}>
+                {item.title}
+              </span>
             </div>
-          )}
-        </button>
+            {item.isVirtualEnd && (
+              <div
+                className="absolute top-1/2 h-0.5 w-12 -translate-y-1/2 bg-amber-400"
+                style={{ left: "100%" }}
+              >
+                <span className="absolute -right-0.5 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-amber-400" />
+              </div>
+            )}
+          </button>
+        )}
+        {item.contributionOnly && (
+          <div
+            className="absolute top-1/2 h-px -translate-y-1/2 bg-purple-200"
+            style={{ left: Math.max(left, 0), width: Math.max(width, 24) }}
+          />
+        )}
+        {renderContributionMarkers(item.id)}
       </div>
     );
   }
 
   function wrapWithDrawers(content: React.ReactNode) {
+    if (selectedContributionId) {
+      return (
+        <GanttContributionDrawer
+          contributionId={selectedContributionId}
+          open={selectedContributionId !== null}
+          onClose={closeContributionDrawer}
+          onDeleted={refetchGantt}
+        >
+          {content}
+        </GanttContributionDrawer>
+      );
+    }
+
     if (selectedPlanId) {
       return (
         <GanttPlanDrawer
