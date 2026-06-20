@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import {
   CALENDAR_DISPLAY_MODES,
+  CALENDAR_WIDE_BREAKPOINT,
   loadCalendarDisplayMode,
   saveCalendarDisplayMode,
   type CalendarDisplayMode,
@@ -101,7 +102,38 @@ export function CalendarDisplayPicker({
 }
 
 export function useCalendarDisplayMode() {
-  const [mode, setMode] = useState<CalendarDisplayMode>("stacked");
+  const [mode, setMode] = useState<CalendarDisplayMode>("list");
   useEffect(() => setMode(loadCalendarDisplayMode()), []);
   return [mode, setMode] as const;
+}
+
+/** Minimum content width to place calendar and day list side by side. */
+export const CALENDAR_HORIZONTAL_LIST_MIN_WIDTH = 640;
+
+export function useHorizontalCalendarList(
+  containerRef: RefObject<HTMLElement | null>,
+  active: boolean,
+) {
+  const [horizontal, setHorizontal] = useState(false);
+
+  useEffect(() => {
+    if (!active) {
+      setHorizontal(false);
+      return;
+    }
+
+    const el = containerRef.current;
+    if (!el) return;
+
+    const update = (width: number) => {
+      setHorizontal(width >= CALENDAR_HORIZONTAL_LIST_MIN_WIDTH);
+    };
+
+    update(el.getBoundingClientRect().width);
+    const ro = new ResizeObserver(([entry]) => update(entry.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [containerRef, active]);
+
+  return horizontal;
 }

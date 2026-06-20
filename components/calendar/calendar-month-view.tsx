@@ -146,6 +146,7 @@ export function CalendarMonthView({
   selectedDate,
   onSelectDate,
   fullPage,
+  horizontalList = false,
 }: {
   year: number;
   month: number;
@@ -155,8 +156,9 @@ export function CalendarMonthView({
   selectedDate: string;
   onSelectDate: (dateStr: string) => void;
   fullPage: boolean;
+  horizontalList?: boolean;
 }) {
-  const { show, cellMin } = displayLimits(displayMode, fullPage);
+  const { show, cellMin } = displayLimits(displayMode, fullPage, horizontalList);
   const leading = mondayOffset(year, month);
   const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
   const cells: (number | null)[] = [];
@@ -168,7 +170,7 @@ export function CalendarMonthView({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div className={cn("flex min-h-0 flex-col overflow-hidden", horizontalList ? "min-w-0 flex-1" : "flex-1")}>
       <div className="grid grid-cols-7 border-b border-gray-100 text-center text-[11px] text-gray-500">
         {WEEKDAYS.map((w) => (
           <div key={w} className="py-1 font-medium">
@@ -179,7 +181,7 @@ export function CalendarMonthView({
       <div
         className={cn(
           "min-h-0 flex-1 grid grid-cols-7 gap-px overflow-y-auto bg-gray-100",
-          displayMode === "list" && "shrink-0",
+          displayMode === "list" && !horizontalList && "shrink-0",
         )}
       >
         {cells.map((day, idx) => {
@@ -221,18 +223,22 @@ export function CalendarDayListPanel({
   dateStr,
   items,
   fullPage,
+  horizontal = false,
 }: {
   dateStr: string;
   items: CalendarItem[];
   fullPage: boolean;
+  horizontal?: boolean;
 }) {
   const dayItems = itemsOnDate(items, dateStr);
 
   return (
     <div
       className={cn(
-        "flex min-h-0 flex-col overflow-hidden border-t border-gray-200 bg-gray-50/50",
-        fullPage ? "flex-1" : "h-40 shrink-0",
+        "flex min-h-0 flex-col overflow-hidden bg-gray-50/50",
+        horizontal
+          ? "w-64 shrink-0 border-l border-gray-200 sm:w-72 lg:w-80 xl:w-96"
+          : cn("border-t border-gray-200", fullPage ? "flex-1" : "h-40 shrink-0"),
       )}
     >
       <div className="shrink-0 border-b border-gray-100 px-3 py-2 text-xs font-medium text-gray-600">

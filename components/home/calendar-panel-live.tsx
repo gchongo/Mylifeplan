@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { CalendarDayListPanel, CalendarMonthView } from "@/components/calendar/calendar-month-view";
 import {
   CalendarDisplayPicker,
   useCalendarDisplayMode,
+  useHorizontalCalendarList,
 } from "@/components/calendar/calendar-display-picker";
 import { PanelExpandButton } from "@/components/home/panel-expand-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -73,6 +74,9 @@ export function CalendarPanelLive({
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
   const [displayMode, setDisplayMode] = useCalendarDisplayMode();
+  const monthLayoutRef = useRef<HTMLDivElement>(null);
+  const containerWide = useHorizontalCalendarList(monthLayoutRef, viewMode === "month" && !loading);
+  const horizontalList = displayMode === "list" && containerWide;
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [viewYear, setViewYear] = useState(today.getUTCFullYear());
   const [viewMonth, setViewMonth] = useState(today.getUTCMonth());
@@ -213,7 +217,13 @@ export function CalendarPanelLive({
           <EmptyState title="暂无安排" description="创建带开始日期的任务或计划后会显示在这里。" />
         )}
         {!loading && viewMode === "month" && (
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white">
+          <div
+            ref={monthLayoutRef}
+            className={cn(
+              "flex min-h-0 flex-1 overflow-hidden rounded-xl border border-gray-200 bg-white",
+              horizontalList ? "flex-row" : "flex-col",
+            )}
+          >
             {items.length === 0 && displayMode !== "list" && (
               <p className="shrink-0 px-3 py-2 text-xs text-gray-400">本月暂无安排</p>
             )}
@@ -226,9 +236,15 @@ export function CalendarPanelLive({
               selectedDate={selectedDate}
               onSelectDate={handleSelectDate}
               fullPage={fullPage}
+              horizontalList={horizontalList}
             />
             {displayMode === "list" && (
-              <CalendarDayListPanel dateStr={selectedDate} items={items} fullPage={fullPage} />
+              <CalendarDayListPanel
+                dateStr={selectedDate}
+                items={items}
+                fullPage={fullPage}
+                horizontal={horizontalList}
+              />
             )}
           </div>
         )}

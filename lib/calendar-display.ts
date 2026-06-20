@@ -11,16 +11,26 @@ export const CALENDAR_DISPLAY_MODES: {
   { id: "compact", label: "紧凑", hint: "底部色点/细条，占用最少空间" },
   { id: "stacked", label: "叠放", hint: "彩色条目叠放，适合浏览整月" },
   { id: "detailed", label: "详细信息", hint: "显示标题与时间" },
-  { id: "list", label: "列表", hint: "上方月历 + 下方当日列表" },
+  { id: "list", label: "列表", hint: "月历 + 当日列表（宽屏左右并排）" },
 ];
 
 const STORAGE_KEY = "mylifeplan-calendar-display";
+/** Viewport width at which list mode uses side-by-side layout and becomes the default. */
+export const CALENDAR_WIDE_BREAKPOINT = 768;
+
+export function isWideCalendarViewport(width = typeof window !== "undefined" ? window.innerWidth : 0): boolean {
+  return width >= CALENDAR_WIDE_BREAKPOINT;
+}
+
+export function defaultCalendarDisplayMode(width = typeof window !== "undefined" ? window.innerWidth : CALENDAR_WIDE_BREAKPOINT): CalendarDisplayMode {
+  return isWideCalendarViewport(width) ? "list" : "stacked";
+}
 
 export function loadCalendarDisplayMode(): CalendarDisplayMode {
-  if (typeof window === "undefined") return "stacked";
+  if (typeof window === "undefined") return "list";
   const raw = localStorage.getItem(STORAGE_KEY);
   if (CALENDAR_DISPLAY_MODES.some((m) => m.id === raw)) return raw as CalendarDisplayMode;
-  return "stacked";
+  return defaultCalendarDisplayMode();
 }
 
 export function saveCalendarDisplayMode(mode: CalendarDisplayMode) {
@@ -68,7 +78,7 @@ export function formatEventSchedule(item: CalendarItem): string {
   return `${item.startDate.slice(5)} → ${item.dueDate.slice(5)}`;
 }
 
-export function displayLimits(mode: CalendarDisplayMode, fullPage: boolean) {
+export function displayLimits(mode: CalendarDisplayMode, fullPage: boolean, horizontalList = false) {
   switch (mode) {
     case "compact":
       return { show: 4, cellMin: fullPage ? "min-h-[3.25rem]" : "min-h-[2.75rem]" };
@@ -77,6 +87,15 @@ export function displayLimits(mode: CalendarDisplayMode, fullPage: boolean) {
     case "detailed":
       return { show: fullPage ? 4 : 3, cellMin: fullPage ? "min-h-[5.5rem]" : "min-h-[4.5rem]" };
     case "list":
-      return { show: 0, cellMin: fullPage ? "min-h-[2.75rem]" : "min-h-[2.25rem]" };
+      return {
+        show: 0,
+        cellMin: horizontalList
+          ? fullPage
+            ? "min-h-[3.5rem]"
+            : "min-h-[2.75rem]"
+          : fullPage
+            ? "min-h-[2.75rem]"
+            : "min-h-[2.25rem]",
+      };
   }
 }
