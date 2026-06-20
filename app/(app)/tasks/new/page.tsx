@@ -3,8 +3,6 @@ import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TaskForm } from "@/components/forms/task-form";
 import { getSession } from "@/lib/auth/get-session";
-import { prisma } from "@/lib/db";
-import { getParentDateBounds } from "@/lib/task-parent-dates";
 
 export default async function NewTaskPage({
   searchParams,
@@ -17,14 +15,6 @@ export default async function NewTaskPage({
   const params = await searchParams;
   const redirectTo = params.redirect === "/gantt" ? "/gantt" : "/tasks";
   const backHref = params.redirect === "/gantt" ? "/gantt" : "/tasks";
-
-  let parentDateBounds = null;
-  if (params.parentTaskId) {
-    const parent = await prisma.task.findFirst({
-      where: { id: params.parentTaskId, userId: session.userId },
-    });
-    if (parent) parentDateBounds = getParentDateBounds(parent);
-  }
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -42,7 +32,6 @@ export default async function NewTaskPage({
           <TaskForm
             defaultParentTaskId={params.parentTaskId ?? null}
             redirectTo={redirectTo}
-            parentDateBounds={parentDateBounds}
           />
         </CardContent>
       </Card>

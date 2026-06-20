@@ -2,13 +2,26 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
+import { GanttToolbar } from "@/components/gantt/gantt-toolbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState, Loading } from "@/components/ui/feedback";
+import {
+  barMetricsFromDates,
+  buildCompactLayout,
+  buildTimelineLayout,
+  compactTimelineRange,
+  dateToX,
+  monthHeaderSpans,
+  shiftAnchor,
+  todayStr,
+  type GanttScaleId,
+  type TimelineLayout,
+} from "@/lib/gantt-scale";
 import type { GanttItem } from "@/types";
 import { cn } from "@/lib/utils";
 
-const DAY_WIDTH = 32;
 const ROW_HEIGHT = 44;
 const LABEL_WIDTH = 200;
 
@@ -30,62 +43,6 @@ interface GanttRow {
   item?: GanttItem;
   depth: number;
   parentTaskId?: string;
-}
-
-function parseUtcDate(s: string) {
-  const [y, m, d] = s.split("-").map(Number);
-  return Date.UTC(y, m - 1, d);
-}
-
-function addDaysUtc(base: string, days: number) {
-  const dt = new Date(parseUtcDate(base));
-  dt.setUTCDate(dt.getUTCDate() + days);
-  return dt.toISOString().slice(0, 10);
-}
-
-function daysBetween(from: string, to: string) {
-  return Math.round((parseUtcDate(to) - parseUtcDate(from)) / 86400000);
-}
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function compactTimelineRange() {
-  const today = todayStr();
-  return { from: addDaysUtc(today, -30), to: addDaysUtc(today, 45) };
-}
-
-function fullPageTimelineRange(viewportDays: number) {
-  const today = todayStr();
-  const visible = Math.max(21, viewportDays);
-  const buffer = Math.max(30, Math.ceil(visible * 0.5));
-  return {
-    from: addDaysUtc(today, -(visible + buffer)),
-    to: addDaysUtc(today, visible + buffer),
-  };
-}
-
-function buildDayList(from: string, to: string) {
-  const days: string[] = [];
-  let cur = from;
-  while (cur <= to) {
-    days.push(cur);
-    cur = addDaysUtc(cur, 1);
-  }
-  return days;
-}
-
-function monthSpans(days: string[]) {
-  const spans: { label: string; count: number }[] = [];
-  for (const d of days) {
-    const dt = new Date(parseUtcDate(d));
-    const label = `${dt.getUTCFullYear()}年${dt.getUTCMonth() + 1}月`;
-    const last = spans[spans.length - 1];
-    if (last?.label === label) last.count++;
-    else spans.push({ label, count: 1 });
-  }
-  return spans;
 }
 
 function taskDepth(itemId: string, byId: Map<string, GanttItem>): number {
@@ -150,35 +107,44 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrolledToToday = useRef(false);
-  const [viewportDays, setViewportDays] = useState(45);
 
-  const range = useMemo(
-    () => (fullPage ? fullPageTimelineRange(viewportDays) : compactTimelineRange()),
-    [fullPage, viewportDays],
-  );
-  const { from, to } = range;
+  const [scale, setScale] = useState<GanttScaleId>("month");
+  const [anchor, setAnchor] = useState(todayStr);
+  const [timelineAreaWidth, setTimelineAreaWidth] = useState(800);
+
+  const compactRange = useMemo(() => compactTimelineRange(), []);
+
+  const layout: TimelineLayout = useMemo(() => {
+    if (!fullPage) return buildCompactLayout(compactRange.from, compactRange.to);
+    return buildTimelineLayout(scale, anchor, timelineAreaWidth);
+  }, [fullPage, scale, anchor, timelineAreaWidth, compactRange]);
+
+  const { from, to } = fullPage ? layout : compactRange;
+  const timelineWidth = layout.totalWidth;
+  const totalWidth = LABEL_WIDTH + timelineWidth;
+  const today = todayStr();
+  const todayX = dateToX(today, layout);
+  const todayVisible = today >= layout.from && today <= layout.to;
 
   const [items, setItems] = useState<GanttItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!fullPage) return;
     const el = containerRef.current;
     if (!el) return;
 
     const update = () => {
       const w = el.clientWidth;
       if (w <= 0) return;
-      const days = Math.floor((w - LABEL_WIDTH) / DAY_WIDTH);
-      setViewportDays(Math.max(21, days));
+      setTimelineAreaWidth(Math.max(320, w - LABEL_WIDTH));
     };
 
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [fullPage]);
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -188,13 +154,6 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
       .finally(() => setLoading(false));
   }, [from, to]);
 
-  const days = useMemo(() => buildDayList(from, to), [from, to]);
-  const months = useMemo(() => monthSpans(days), [days]);
-  const timelineWidth = days.length * DAY_WIDTH;
-  const totalWidth = LABEL_WIDTH + timelineWidth;
-  const today = todayStr();
-  const todayIndex = days.indexOf(today);
-
   const tasks = useMemo(() => items.filter((i) => i.type === "task"), [items]);
   const plans = useMemo(() => items.filter((i) => i.type === "plan"), [items]);
   const taskById = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);
@@ -203,17 +162,19 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
   const planRows: GanttRow[] = plans.map((item) => ({ kind: "item", item, depth: 0 }));
   const rows = [...taskRows, ...planRows];
 
+  const headerSpans = useMemo(() => monthHeaderSpans(layout.columns), [layout.columns]);
+
   const scrollToToday = useCallback(() => {
     const el = scrollRef.current;
-    if (!el || todayIndex < 0) return false;
-    const offset = LABEL_WIDTH + todayIndex * DAY_WIDTH - el.clientWidth / 2 + DAY_WIDTH / 2;
+    if (!el || !todayVisible) return false;
+    const offset = LABEL_WIDTH + todayX - el.clientWidth / 2;
     el.scrollLeft = Math.max(0, offset);
     return true;
-  }, [todayIndex]);
+  }, [todayVisible, todayX]);
 
   useEffect(() => {
     scrolledToToday.current = false;
-  }, [from, to]);
+  }, [from, to, scale, anchor]);
 
   useLayoutEffect(() => {
     if (loading || items.length === 0 || scrolledToToday.current) return;
@@ -232,6 +193,19 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     };
   }, [loading, items.length, scrollToToday, from, to]);
 
+  function goToday() {
+    setAnchor(todayStr());
+    scrolledToToday.current = false;
+    requestAnimationFrame(() => {
+      scrollToToday();
+      scrolledToToday.current = true;
+    });
+  }
+
+  function handleItemUpdated(updated: GanttItem) {
+    setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+  }
+
   function toggleExpand(taskId: string) {
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -239,14 +213,6 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
       else next.add(taskId);
       return next;
     });
-  }
-
-  function barMetrics(item: GanttItem) {
-    const startIdx = Math.max(0, daysBetween(from, item.startDate));
-    const endIdx = Math.min(days.length - 1, daysBetween(from, item.effectiveEnd));
-    const left = startIdx * DAY_WIDTH;
-    const width = Math.max(DAY_WIDTH, (endIdx - startIdx + 1) * DAY_WIDTH);
-    return { left, width };
   }
 
   function renderLabel(row: GanttRow, idx: number) {
@@ -272,8 +238,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     const showToggle =
       item.type === "task" && (childCount > 0 || taskDepth(item.id, taskById) < 2);
     const isExpanded = expanded.has(item.id);
-    const labelBg =
-      item.type === "task" ? taskLabelBg(row.depth) : "bg-purple-50/80";
+    const labelBg = item.type === "task" ? taskLabelBg(row.depth) : "bg-purple-50/80";
 
     return (
       <div
@@ -323,9 +288,27 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     }
 
     const item = row.item!;
-    const { left, width } = barMetrics(item);
-    const barColor =
-      item.type === "task" ? taskBarColor(row.depth) : "bg-purple-500/85";
+    const { left, width } = barMetricsFromDates(item.startDate, item.effectiveEnd, layout);
+    const barColor = item.type === "task" ? taskBarColor(row.depth) : "bg-purple-500/85";
+
+    if (fullPage && item.type === "task") {
+      return (
+        <div
+          key={`bar-${item.type}-${item.id}-${idx}`}
+          className="relative border-b border-gray-100"
+          style={{ height: ROW_HEIGHT, width: timelineWidth }}
+        >
+          <GanttDraggableBar
+            item={item}
+            layout={layout}
+            left={left}
+            width={width}
+            barColor={barColor}
+            onUpdated={handleItemUpdated}
+          />
+        </div>
+      );
+    }
 
     return (
       <div
@@ -335,7 +318,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
       >
         <div
           className="absolute top-1/2 -translate-y-1/2"
-          style={{ left, width: Math.max(width, DAY_WIDTH - 4) }}
+          style={{ left, width: Math.max(width, 8) }}
         >
           <div className={cn("relative h-7 overflow-hidden rounded-full", barColor)}>
             <span className="block truncate px-3 text-xs leading-7 text-white">{item.title}</span>
@@ -357,10 +340,24 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
 
   if (items.length === 0) {
     return (
-      <EmptyState
-        title="暂无时间条"
-        description="创建带开始日期的任务或计划后，会在此展示。"
-      />
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        {fullPage && (
+          <GanttToolbar
+            scale={scale}
+            onScaleChange={(s) => {
+              setScale(s);
+              scrolledToToday.current = false;
+            }}
+            onPrev={() => setAnchor((a) => shiftAnchor(scale, a, -1))}
+            onNext={() => setAnchor((a) => shiftAnchor(scale, a, 1))}
+            onToday={goToday}
+          />
+        )}
+        <EmptyState
+          title="暂无时间条"
+          description="创建带开始日期的任务或计划后，会在此展示。"
+        />
+      </div>
     );
   }
 
@@ -369,9 +366,21 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
       ref={containerRef}
       className="flex min-h-0 w-full max-w-full min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white"
     >
+      {fullPage && (
+        <GanttToolbar
+          scale={scale}
+          onScaleChange={(s) => {
+            setScale(s);
+            scrolledToToday.current = false;
+          }}
+          onPrev={() => setAnchor((a) => shiftAnchor(scale, a, -1))}
+          onNext={() => setAnchor((a) => shiftAnchor(scale, a, 1))}
+          onToday={goToday}
+        />
+      )}
+
       <div ref={scrollRef} className="min-h-0 w-full max-w-full min-w-0 flex-1 overflow-auto">
         <div style={{ width: totalWidth }}>
-          {/* 时间轴（sticky 顶） */}
           <div className="sticky top-0 z-30 flex border-b border-gray-200 bg-white shadow-sm">
             <div
               className="sticky left-0 z-40 shrink-0 border-r border-gray-200 bg-gray-50"
@@ -379,36 +388,32 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
             />
             <div style={{ width: timelineWidth }} className="relative shrink-0">
               <div className="flex border-b border-gray-100 bg-gray-50 text-xs text-gray-600">
-                {months.map((m, i) => (
+                {headerSpans.map((m, i) => (
                   <div
                     key={`${m.label}-${i}`}
                     className="border-r border-gray-100 py-1 text-center"
-                    style={{ width: m.count * DAY_WIDTH }}
+                    style={{ width: m.width }}
                   >
                     {m.label}
                   </div>
                 ))}
               </div>
               <div className="flex text-xs">
-                {days.map((d) => {
-                  const isToday = d === today;
-                  const dayNum = parseInt(d.slice(8, 10), 10);
+                {layout.columns.map((col) => {
+                  const isTodayCol =
+                    todayVisible && today >= col.startDate && today <= col.endDate;
                   return (
                     <div
-                      key={d}
+                      key={col.key}
                       className={cn(
                         "border-r border-gray-100 py-1 text-center",
-                        isToday && "bg-red-50",
+                        isTodayCol && scale === "day" && "bg-red-50",
                       )}
-                      style={{ width: DAY_WIDTH }}
+                      style={{ width: col.width }}
                     >
-                      {isToday ? (
-                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold text-white">
-                          {dayNum}
-                        </span>
-                      ) : (
-                        <span className="text-gray-600">{dayNum}</span>
-                      )}
+                      <span className={cn("text-gray-600", isTodayCol && scale === "day" && "font-semibold text-red-600")}>
+                        {col.headerBottom}
+                      </span>
                     </div>
                   );
                 })}
@@ -416,27 +421,25 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
             </div>
           </div>
 
-          {/* 数据行 */}
           <div className="relative">
-            {/* 背景网格 + 今日线 */}
             <div
               className="pointer-events-none absolute bottom-0 top-0 flex"
               style={{ left: LABEL_WIDTH, width: timelineWidth }}
             >
-              {days.map((d, i) => (
+              {layout.columns.map((col, i) => (
                 <div
-                  key={d}
+                  key={col.key}
                   className={cn(
                     "border-r border-gray-100",
-                    i % 7 < 2 ? "bg-gray-50/50" : "bg-transparent",
+                    i % 2 === 0 ? "bg-gray-50/40" : "bg-transparent",
                   )}
-                  style={{ width: DAY_WIDTH }}
+                  style={{ width: col.width }}
                 />
               ))}
-              {todayIndex >= 0 && (
+              {todayVisible && (
                 <div
                   className="absolute bottom-0 top-0 w-px bg-red-400"
-                  style={{ left: todayIndex * DAY_WIDTH + DAY_WIDTH / 2 }}
+                  style={{ left: todayX }}
                 />
               )}
             </div>
@@ -484,8 +487,8 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
 
       {fullPage && (
         <div className="flex shrink-0 items-center justify-between border-t border-gray-100 px-3 py-1.5 text-xs text-gray-500">
-          <span>左右滑动浏览时间轴</span>
-          <Button type="button" size="sm" variant="ghost" onClick={scrollToToday}>
+          <span>拖拽任务条调整时间 · 左右滑动浏览</span>
+          <Button type="button" size="sm" variant="ghost" onClick={goToday}>
             定位到今天
           </Button>
         </div>

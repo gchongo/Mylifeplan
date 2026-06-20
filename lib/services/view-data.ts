@@ -54,6 +54,7 @@ export async function getGanttItems(
       id: task.id,
       title: task.title,
       startDate,
+      dueDate,
       effectiveEnd,
       isVirtualEnd,
       type: "task",

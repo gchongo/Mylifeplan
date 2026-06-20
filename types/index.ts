@@ -13,6 +13,7 @@ export interface GanttItem {
   id: string;
   title: string;
   startDate: string;
+  dueDate?: string | null;
   effectiveEnd: string;
   isVirtualEnd: boolean;
   type: "task" | "plan";

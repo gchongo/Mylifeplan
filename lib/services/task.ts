@@ -35,8 +35,6 @@ async function validateParentTask(
   userId: string,
   parentTaskId: string | null | undefined,
   taskId?: string,
-  childStart?: string | null,
-  childDue?: string | null,
 ): Promise<string | null> {
   if (!parentTaskId) return null;
   if (taskId && parentTaskId === taskId) return "不能将任务设为自己的父任务";
@@ -55,17 +53,6 @@ async function validateParentTask(
         where: { id: cursor, userId },
       });
       cursor = node?.parentTaskId ?? null;
-    }
-  }
-
-  if (childStart !== undefined) {
-    const { getParentDateBounds, validateChildDatesWithinParent } = await import(
-      "@/lib/task-parent-dates"
-    );
-    const bounds = getParentDateBounds(parent);
-    if (bounds) {
-      const boundError = validateChildDatesWithinParent(bounds, childStart, childDue);
-      if (boundError) return boundError;
     }
   }
 
@@ -90,13 +77,7 @@ export async function createTask(userId: string, input: CreateTaskInput): Promis
   const dateError = validateDates(input.startDate, input.dueDate);
   if (dateError) throw new Error(dateError);
 
-  const parentError = await validateParentTask(
-    userId,
-    input.parentTaskId,
-    undefined,
-    input.startDate,
-    input.dueDate,
-  );
+  const parentError = await validateParentTask(userId, input.parentTaskId);
   if (parentError) throw new Error(parentError);
 
   const planError = await validatePlanRef(userId, input.planId);
@@ -150,7 +131,7 @@ export async function updateTask(
 
   const parentId =
     input.parentTaskId !== undefined ? input.parentTaskId : existing.parentTaskId;
-  const parentError = await validateParentTask(userId, parentId, taskId, startStr, dueStr);
+  const parentError = await validateParentTask(userId, parentId, taskId);
   if (parentError) throw new Error(parentError);
 
   const planId = input.planId !== undefined ? input.planId : existing.planId;
