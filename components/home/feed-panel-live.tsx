@@ -87,7 +87,7 @@ export function FeedPanelLive({
         {!loading && items.length === 0 && (
           <EmptyState
             title="暂无动态"
-            description="在上方写下想法，发布备忘或带日期的计划。"
+            description="在上方发表框选择备忘、计划或贡献后发布。"
           />
         )}
 

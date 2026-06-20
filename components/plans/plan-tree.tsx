@@ -52,7 +52,15 @@ function PlanTreeBranch({ node, depth = 0 }: { node: PlanTreeNode; depth?: numbe
 
 export function PlanTree({ roots }: { roots: PlanTreeNode[] }) {
   if (roots.length === 0) {
-    return <p className="text-sm text-gray-500">暂无计划，请在上方新建。</p>;
+    return (
+      <p className="text-sm text-gray-500">
+        暂无计划，请回到{" "}
+        <Link href="/" className="text-brand-600 hover:underline">
+          首页
+        </Link>
+        在信息流发表框选择「计划」发布。
+      </p>
+    );
   }
 
   return (

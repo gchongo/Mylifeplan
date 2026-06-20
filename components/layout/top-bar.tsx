@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { SidebarBrand } from "@/components/layout/sidebar-brand";
-import { Button } from "@/components/ui/button";
 
 export function TopBar({
   title,
@@ -30,9 +28,6 @@ export function TopBar({
         {userEmail && (
           <span className="hidden text-sm text-gray-500 sm:inline">{userEmail}</span>
         )}
-        <Link href="/memos">
-          <Button size="sm">新建备忘</Button>
-        </Link>
         <LogoutButton />
       </div>
     </header>

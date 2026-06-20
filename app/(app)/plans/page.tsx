@@ -2,8 +2,7 @@ import { getSession } from "@/lib/auth/get-session";
 import { prisma } from "@/lib/db";
 import { buildPlanTree } from "@/lib/plan-tree";
 import { redirect } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlanForm } from "@/components/forms/plan-form";
+import Link from "next/link";
 import { PlanTree } from "@/components/plans/plan-tree";
 
 export default async function PlansPage() {
@@ -23,18 +22,13 @@ export default async function PlansPage() {
       <div>
         <h1 className="text-xl font-semibold text-gray-900">计划</h1>
         <p className="text-sm text-gray-500">
-          有日期的计划在甘特图与日历中展示；无日期的想法请写在备忘里。
+          浏览与管理计划树。新建请回到{" "}
+          <Link href="/" className="text-brand-600 hover:underline">
+            首页信息流
+          </Link>
+          ，在发表框选择「计划」发布。
         </p>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>新建计划</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <PlanForm />
-        </CardContent>
-      </Card>
 
       <div>
         <h2 className="mb-3 text-sm font-semibold text-gray-700">计划树</h2>

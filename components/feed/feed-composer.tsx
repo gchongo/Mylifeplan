@@ -1,8 +1,27 @@
 "use client";
 
 import { useState } from "react";
+import { ParentPlanSelect } from "@/components/forms/parent-plan-select";
 import { PlanContributionSelect } from "@/components/forms/long-term-plan-select";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui";
+import { apiJson } from "@/lib/client-api";
+import { cn } from "@/lib/utils";
+
+type ComposerMode = "memo" | "plan" | "contribution";
+
+const MODES: { id: ComposerMode; label: string; hint: string }[] = [
+  { id: "memo", label: "备忘", hint: "无日期想法，保存在备忘录" },
+  { id: "plan", label: "计划", hint: "可设日期，出现在甘特图与日历" },
+  { id: "contribution", label: "贡献", hint: "记录某一天的计划进展" },
+];
+
+const PLAN_TYPE_OPTIONS = [
+  { value: "goal", label: "长期目标" },
+  { value: "phase", label: "阶段" },
+  { value: "weekly", label: "周计划" },
+  { value: "daily", label: "日计划" },
+];
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -17,25 +36,52 @@ function splitContent(text: string): { title: string; description: string | null
   return { title, description: rest || null };
 }
 
+const PLACEHOLDERS: Record<ComposerMode, string> = {
+  memo: "此刻的想法…",
+  plan: "计划做什么？第一行作为标题，换行可写描述",
+  contribution: "今天对计划做了什么？第一行作为标题",
+};
+
 export function FeedComposer({ onPublished }: { onPublished: () => void }) {
+  const [mode, setMode] = useState<ComposerMode>("memo");
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  const [planType, setPlanType] = useState("goal");
+  const [parentPlanId, setParentPlanId] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
   const [contributionPlanId, setContributionPlanId] = useState<string | null>(null);
   const [occurredOn, setOccurredOn] = useState(todayStr);
   const [planListRefreshKey, setPlanListRefreshKey] = useState(0);
 
-  const canSave = text.trim().length > 0 && !busy;
+  const canPublish = text.trim().length > 0 && !busy;
 
-  async function handleSave() {
+  function resetForm() {
+    setText("");
+    setParentPlanId(null);
+    setStartDate("");
+    setEndDate("");
+    setContributionPlanId(null);
+    setOccurredOn(todayStr());
+    setPlanListRefreshKey((k) => k + 1);
+  }
+
+  async function handlePublish() {
     const { title, description } = splitContent(text);
     if (!title) return;
 
     setBusy(true);
     setError("");
     try {
-      if (contributionPlanId) {
-        const res = await fetch("/api/contributions", {
+      if (mode === "contribution") {
+        if (!contributionPlanId) {
+          setError("请选择要关联的计划");
+          return;
+        }
+        await apiJson("/api/contributions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -45,51 +91,87 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
             occurredOn,
           }),
         });
-        if (!res.ok) {
-          const data = await res.json();
-          setError(data.error ?? "贡献记录失败");
-          return;
-        }
+      } else if (mode === "plan") {
+        await apiJson("/api/plans", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title,
+            description,
+            type: planType,
+            parentPlanId,
+            startDate: startDate || null,
+            endDate: endDate || null,
+          }),
+        });
       } else {
-        const res = await fetch("/api/memos", {
+        await apiJson("/api/memos", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title, description }),
         });
-        const data = await res.json();
-        if (!res.ok) {
-          setError(data.error ?? "发布失败");
-          return;
-        }
       }
 
-      setText("");
-      setContributionPlanId(null);
-      setOccurredOn(todayStr());
-      setPlanListRefreshKey((k) => k + 1);
+      resetForm();
       onPublished();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "发布失败");
     } finally {
       setBusy(false);
     }
   }
 
+  const activeHint = MODES.find((m) => m.id === mode)?.hint ?? "";
+
   return (
-    <div className="feed-composer shrink-0 rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+    <div className="feed-composer shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm">
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="此刻的想法…（无日期时保存为备忘；关联计划则记为贡献）"
+        placeholder={PLACEHOLDERS[mode]}
         rows={3}
-        className="w-full resize-none border-0 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"
+        className="w-full resize-none rounded-t-xl border-0 bg-transparent px-3 pt-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"
       />
 
-      <div className="space-y-2 border-t border-gray-100 pt-2">
-        <PlanContributionSelect
-          value={contributionPlanId}
-          onChange={setContributionPlanId}
-          refreshKey={planListRefreshKey}
-        />
-        {contributionPlanId && (
+      {mode === "plan" && (
+        <div className="space-y-2 border-t border-gray-100 px-3 py-2">
+          <Select
+            label="计划类型"
+            options={PLAN_TYPE_OPTIONS}
+            value={planType}
+            onChange={(e) => setPlanType(e.target.value)}
+          />
+          <ParentPlanSelect value={parentPlanId} onChange={setParentPlanId} />
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className="block text-xs text-gray-500">
+              开始日期
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="mt-1 w-full rounded-md border border-gray-200 px-2 py-1.5 text-sm text-gray-800"
+              />
+            </label>
+            <label className="block text-xs text-gray-500">
+              结束日期
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="mt-1 w-full rounded-md border border-gray-200 px-2 py-1.5 text-sm text-gray-800"
+              />
+            </label>
+          </div>
+        </div>
+      )}
+
+      {mode === "contribution" && (
+        <div className="space-y-2 border-t border-gray-100 px-3 py-2">
+          <PlanContributionSelect
+            value={contributionPlanId}
+            onChange={setContributionPlanId}
+            refreshKey={planListRefreshKey}
+          />
           <label className="flex items-center gap-2 text-xs text-gray-500">
             贡献日期
             <input
@@ -99,15 +181,41 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
               className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-800"
             />
           </label>
-        )}
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 px-3 py-2">
+        <div className="flex flex-wrap items-center gap-1">
+          {MODES.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => {
+                setMode(m.id);
+                setError("");
+              }}
+              className={cn(
+                "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                mode === m.id
+                  ? "bg-brand-100 text-brand-700"
+                  : "text-gray-500 hover:bg-gray-100 hover:text-gray-800",
+              )}
+            >
+              {m.label}
+            </button>
+          ))}
+          <span className="hidden text-xs text-gray-400 sm:inline">· {activeHint}</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {error && <span className="max-w-[12rem] truncate text-xs text-red-500">{error}</span>}
+          <Button type="button" size="sm" disabled={!canPublish} onClick={handlePublish}>
+            {busy ? "发布中…" : "发布"}
+          </Button>
+        </div>
       </div>
 
-      <div className="mt-2 flex items-center justify-end gap-2 border-t border-gray-100 pt-2">
-        {error && <span className="text-xs text-red-500">{error}</span>}
-        <Button type="button" size="sm" disabled={!canSave} onClick={handleSave}>
-          {busy ? "保存中…" : "保存"}
-        </Button>
-      </div>
+      <p className="border-t border-gray-50 px-3 py-1.5 text-xs text-gray-400 sm:hidden">{activeHint}</p>
     </div>
   );
 }
