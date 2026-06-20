@@ -23,16 +23,16 @@ export function HomeDashboard() {
   }, []);
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] flex-col lg:h-[calc(100vh-5.5rem)]">
+    <div className="flex h-[calc(100vh-8rem)] w-full min-w-0 max-w-full flex-col overflow-hidden lg:h-[calc(100vh-5.5rem)]">
       <MobileHomeTabs active={mobileTab} onChange={handleTabChange} />
 
       {/* 桌面：可拖拽调整宽/高 */}
-      <div className="hidden min-h-0 flex-1 lg:flex">
+      <div className="hidden min-h-0 min-w-0 w-full max-w-full flex-1 overflow-hidden lg:flex">
         <ResizableHomeLayout />
       </div>
 
       {/* 移动：单 Tab */}
-      <div className="flex-1 min-h-0 lg:hidden">
+      <div className="min-h-0 min-w-0 flex-1 overflow-hidden lg:hidden">
         {mobileTab === "feed" && <FeedPanelLive />}
         {mobileTab === "gantt" && <GanttPanelLive />}
         {mobileTab === "calendar" && <CalendarPanelLive />}

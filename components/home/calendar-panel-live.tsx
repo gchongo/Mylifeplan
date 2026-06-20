@@ -166,9 +166,9 @@ export function CalendarPanelLive({
   const weekCellMinH = fullPage ? "min-h-[12rem]" : "min-h-[6rem]";
 
   return (
-    <Card className={cn("flex h-full min-h-0 flex-col overflow-hidden", className)}>
-      <CardHeader className="flex shrink-0 flex-col gap-2 pb-2">
-        <div className="flex items-center justify-between gap-2">
+    <Card className={cn("flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden", className)}>
+      <CardHeader className="shrink-0 space-y-2 pb-2">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
           <CardTitle className="min-w-0 truncate">
             {fullPage ? "日历" : "日历 · 看执行"}
           </CardTitle>

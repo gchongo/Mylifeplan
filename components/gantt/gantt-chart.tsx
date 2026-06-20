@@ -767,7 +767,12 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     <>
       <div
         ref={containerRef}
-        className="flex h-full min-h-0 w-full max-w-full min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white"
+        className={cn(
+          "flex h-full min-h-0 w-full max-w-full min-w-0 flex-1 flex-col overflow-hidden",
+          fullPage
+            ? "rounded-lg border border-gray-200 bg-white"
+            : "rounded-none border-0 bg-transparent shadow-none",
+        )}
       >
         {renderToolbar()}
 
@@ -775,7 +780,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
           ref={scrollRef}
           onMouseDown={fullPage ? handlePanStart : undefined}
           className={cn(
-            "min-h-0 w-full max-w-full min-w-0 flex-1 overflow-auto",
+            "min-h-0 w-full max-w-full min-w-0 flex-1 overflow-x-auto overflow-y-auto",
             fullPage && (isPanning ? "cursor-grabbing select-none" : "cursor-grab"),
           )}
         >

@@ -11,12 +11,13 @@ const STORAGE_GANTT_HEIGHT = "mylifeplan-home-gantt-height";
 
 const RESIZE_HANDLE_SIZE = 12;
 
-const DEFAULT_FEED_WIDTH = 360;
+const DEFAULT_FEED_WIDTH = 320;
 const DEFAULT_GANTT_RATIO = 0.58;
 
-const MIN_FEED_WIDTH = 260;
-const MAX_FEED_WIDTH = 560;
-const MAX_FEED_WIDTH_RATIO = 0.45;
+const MIN_FEED_WIDTH = 240;
+const MAX_FEED_WIDTH = 480;
+const MAX_FEED_WIDTH_RATIO = 0.38;
+const MIN_RIGHT_COLUMN_WIDTH = 380;
 
 const MIN_GANTT_HEIGHT = 160;
 const MIN_CALENDAR_HEIGHT = 180;
@@ -37,22 +38,28 @@ export function ResizableHomeLayout() {
   const [ganttHeight, setGanttHeight] = useState<number | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
-  const clampFeedWidth = useCallback((width: number) => {
-    const total = layoutRef.current?.clientWidth ?? 1200;
-    const maxW = Math.min(MAX_FEED_WIDTH, Math.floor(total * MAX_FEED_WIDTH_RATIO));
-    return Math.min(maxW, Math.max(MIN_FEED_WIDTH, width));
+  const maxFeedWidthFor = useCallback((totalWidth: number) => {
+    const byRatio = Math.floor(totalWidth * MAX_FEED_WIDTH_RATIO);
+    const byRight = totalWidth - MIN_RIGHT_COLUMN_WIDTH - RESIZE_HANDLE_SIZE;
+    return Math.min(MAX_FEED_WIDTH, byRatio, byRight);
   }, []);
 
-  const clampGanttHeight = useCallback(
-    (height: number, colHeight?: number) => {
-      const colH = colHeight ?? rightColRef.current?.clientHeight ?? 600;
-      const maxByCalendar = colH - MIN_CALENDAR_HEIGHT - RESIZE_HANDLE_SIZE;
-      const maxByRatio = Math.floor(colH * MAX_GANTT_HEIGHT_RATIO);
-      const max = Math.min(maxByCalendar, maxByRatio);
-      return Math.min(max, Math.max(MIN_GANTT_HEIGHT, height));
+  const clampFeedWidth = useCallback(
+    (width: number) => {
+      const total = layoutRef.current?.clientWidth ?? 1200;
+      const maxW = maxFeedWidthFor(total);
+      return Math.min(maxW, Math.max(MIN_FEED_WIDTH, width));
     },
-    [],
+    [maxFeedWidthFor],
   );
+
+  const clampGanttHeight = useCallback((height: number, colHeight?: number) => {
+    const colH = colHeight ?? rightColRef.current?.clientHeight ?? 600;
+    const maxByCalendar = colH - MIN_CALENDAR_HEIGHT - RESIZE_HANDLE_SIZE;
+    const maxByRatio = Math.floor(colH * MAX_GANTT_HEIGHT_RATIO);
+    const max = Math.min(maxByCalendar, maxByRatio);
+    return Math.min(max, Math.max(MIN_GANTT_HEIGHT, height));
+  }, []);
 
   useEffect(() => {
     const w = readNumber(STORAGE_FEED_WIDTH);
@@ -139,22 +146,31 @@ export function ResizableHomeLayout() {
   const ganttH = hydrated ? resolveGanttHeight() : undefined;
 
   return (
-    <div ref={layoutRef} className="flex min-h-0 flex-1">
-      <div className="min-h-0 shrink-0 overflow-hidden" style={{ width: feedWidth }}>
+    <div
+      ref={layoutRef}
+      className="flex h-full min-h-0 w-full min-w-0 max-w-full overflow-hidden"
+    >
+      <div
+        className="h-full min-h-0 min-w-0 shrink-0 overflow-hidden"
+        style={{ width: feedWidth, maxWidth: "100%" }}
+      >
         <FeedPanelLive />
       </div>
 
       <PanelResizeHandle orientation="vertical" onMouseDown={startFeedWidthDrag} />
 
-      <div ref={rightColRef} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <div className="min-h-0 shrink-0 overflow-hidden" style={{ height: ganttH }}>
+      <div
+        ref={rightColRef}
+        className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+      >
+        <div className="min-h-0 min-w-0 shrink-0 overflow-hidden" style={{ height: ganttH }}>
           <GanttPanelLive />
         </div>
 
         <PanelResizeHandle orientation="horizontal" onMouseDown={startGanttHeightDrag} />
 
         <div
-          className="min-h-0 flex-1 overflow-hidden"
+          className="min-h-0 min-w-0 flex-1 overflow-hidden"
           style={{ minHeight: MIN_CALENDAR_HEIGHT }}
         >
           <CalendarPanelLive />

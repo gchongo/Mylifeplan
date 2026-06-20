@@ -14,12 +14,12 @@ export function GanttPanelLive({
   className?: string;
 }) {
   return (
-      <Card className={cn("flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden", className)}>
+    <Card className={cn("flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden", className)}>
       {!fullPage && (
-        <CardHeader className="flex shrink-0 flex-row items-center justify-between gap-2 space-y-0 pb-2">
-          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+        <CardHeader className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 space-y-0 pb-2">
+          <div className="flex min-w-0 items-center gap-2 overflow-hidden">
             <CardTitle className="truncate">甘特图 · 看全局</CardTitle>
-            <Badge variant="info" className="hidden shrink-0 lg:inline-flex">
+            <Badge variant="info" className="hidden shrink-0 xl:inline-flex">
               黄线 = 预估截止
             </Badge>
           </div>
@@ -28,8 +28,8 @@ export function GanttPanelLive({
       )}
       <CardContent
         className={cn(
-          "flex min-h-0 flex-1 flex-col overflow-hidden",
-          fullPage ? "p-0" : "p-3 pt-0",
+          "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
+          fullPage ? "p-0" : "px-2 pb-2 pt-0",
         )}
       >
         <GanttChart fullPage={fullPage} />
