@@ -12,7 +12,7 @@ type UpdateTaskInput = Partial<CreateTaskInput>;
 
 async function getTaskDepth(taskId: string, userId: string): Promise<number> {
   let depth = 1;
-  let current = await prisma.task.findFirst({ where: { id: taskId, userId } });
+  let current: Task | null = await prisma.task.findFirst({ where: { id: taskId, userId } });
   while (current?.parentTaskId) {
     depth++;
     current = await prisma.task.findFirst({
@@ -40,7 +40,9 @@ async function validateParentTask(
     let cursor: string | null = parentTaskId;
     while (cursor) {
       if (cursor === taskId) return "不能将子任务设为父任务";
-      const node = await prisma.task.findFirst({ where: { id: cursor, userId } });
+      const node: Task | null = await prisma.task.findFirst({
+        where: { id: cursor, userId },
+      });
       cursor = node?.parentTaskId ?? null;
     }
   }
