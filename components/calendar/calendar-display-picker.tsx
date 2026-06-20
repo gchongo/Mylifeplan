@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CALENDAR_DISPLAY_MODES,
-  CALENDAR_WIDE_BREAKPOINT,
   loadCalendarDisplayMode,
   saveCalendarDisplayMode,
   type CalendarDisplayMode,
@@ -31,14 +30,6 @@ function ModeIcon({ mode }: { mode: CalendarDisplayMode }) {
         <span className="flex h-4 w-5 flex-col gap-0.5 p-0.5">
           <span className={cn(cls, "h-2.5 w-full bg-current")} />
           <span className="h-0.5 w-2/3 rounded bg-current opacity-50" />
-        </span>
-      );
-    case "list":
-      return (
-        <span className="flex h-4 w-5 flex-col gap-0.5 p-0.5">
-          <span className="h-0.5 w-full rounded bg-current" />
-          <span className="h-0.5 w-full rounded bg-current opacity-60" />
-          <span className="h-0.5 w-full rounded bg-current opacity-40" />
         </span>
       );
   }
@@ -121,38 +112,7 @@ export function CalendarDisplayPicker({
 }
 
 export function useCalendarDisplayMode() {
-  const [mode, setMode] = useState<CalendarDisplayMode>("list");
+  const [mode, setMode] = useState<CalendarDisplayMode>("stacked");
   useEffect(() => setMode(loadCalendarDisplayMode()), []);
   return [mode, setMode] as const;
-}
-
-/** Minimum content width to place calendar and day list side by side. */
-export const CALENDAR_HORIZONTAL_LIST_MIN_WIDTH = 640;
-
-export function useHorizontalCalendarList(
-  containerRef: RefObject<HTMLElement | null>,
-  active: boolean,
-) {
-  const [horizontal, setHorizontal] = useState(false);
-
-  useEffect(() => {
-    if (!active) {
-      setHorizontal(false);
-      return;
-    }
-
-    const el = containerRef.current;
-    if (!el) return;
-
-    const update = (width: number) => {
-      setHorizontal(width >= CALENDAR_HORIZONTAL_LIST_MIN_WIDTH);
-    };
-
-    update(el.getBoundingClientRect().width);
-    const ro = new ResizeObserver(([entry]) => update(entry.contentRect.width));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [containerRef, active]);
-
-  return horizontal;
 }

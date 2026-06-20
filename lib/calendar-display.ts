@@ -1,7 +1,7 @@
 import { resolveVisualStatus } from "@/lib/task-status-style";
 import type { CalendarItem } from "@/types";
 
-export type CalendarDisplayMode = "compact" | "stacked" | "detailed" | "list";
+export type CalendarDisplayMode = "compact" | "stacked" | "detailed";
 
 export type CalendarViewMode = "month" | "week" | "day";
 
@@ -19,24 +19,18 @@ export const CALENDAR_DISPLAY_MODES: {
   { id: "compact", label: "紧凑", hint: "底部色点/细条，占用最少空间" },
   { id: "stacked", label: "叠放", hint: "彩色条目叠放，适合浏览整月" },
   { id: "detailed", label: "详细信息", hint: "显示标题与时间" },
-  { id: "list", label: "列表", hint: "月历 + 当日列表（宽屏左右并排）" },
 ];
 
 const STORAGE_KEY = "mylifeplan-calendar-display";
-/** Viewport width at which list mode uses side-by-side layout and becomes the default. */
-export const CALENDAR_WIDE_BREAKPOINT = 768;
 
-export function isWideCalendarViewport(width = typeof window !== "undefined" ? window.innerWidth : 0): boolean {
-  return width >= CALENDAR_WIDE_BREAKPOINT;
-}
-
-export function defaultCalendarDisplayMode(width = typeof window !== "undefined" ? window.innerWidth : CALENDAR_WIDE_BREAKPOINT): CalendarDisplayMode {
-  return isWideCalendarViewport(width) ? "list" : "stacked";
+export function defaultCalendarDisplayMode(): CalendarDisplayMode {
+  return "stacked";
 }
 
 export function loadCalendarDisplayMode(): CalendarDisplayMode {
-  if (typeof window === "undefined") return "list";
+  if (typeof window === "undefined") return "stacked";
   const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw === "list") return "stacked";
   if (CALENDAR_DISPLAY_MODES.some((m) => m.id === raw)) return raw as CalendarDisplayMode;
   return defaultCalendarDisplayMode();
 }
@@ -50,6 +44,11 @@ export function itemsOnDate(items: CalendarItem[], dateStr: string): CalendarIte
     const end = item.dueDate ?? item.startDate;
     return item.startDate <= dateStr && dateStr <= end;
   });
+}
+
+export function formatDayDrawerTitle(dateStr: string, count: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return `${y}年${m}月${d}日 · ${count} 项`;
 }
 
 export function itemAccent(item: CalendarItem): {
@@ -86,7 +85,7 @@ export function formatEventSchedule(item: CalendarItem): string {
   return `${item.startDate.slice(5)} → ${item.dueDate.slice(5)}`;
 }
 
-export function displayLimits(mode: CalendarDisplayMode, fullPage: boolean, horizontalList = false) {
+export function displayLimits(mode: CalendarDisplayMode, fullPage: boolean) {
   switch (mode) {
     case "compact":
       return { show: 4, cellMin: fullPage ? "min-h-[3.25rem]" : "min-h-[2.75rem]" };
@@ -94,16 +93,5 @@ export function displayLimits(mode: CalendarDisplayMode, fullPage: boolean, hori
       return { show: fullPage ? 3 : 2, cellMin: fullPage ? "min-h-[5.5rem]" : "min-h-[4.5rem]" };
     case "detailed":
       return { show: fullPage ? 4 : 3, cellMin: fullPage ? "min-h-[5.5rem]" : "min-h-[4.5rem]" };
-    case "list":
-      return {
-        show: 0,
-        cellMin: horizontalList
-          ? fullPage
-            ? "min-h-[3.5rem]"
-            : "min-h-[2.75rem]"
-          : fullPage
-            ? "min-h-[2.75rem]"
-            : "min-h-[2.25rem]",
-      };
   }
 }

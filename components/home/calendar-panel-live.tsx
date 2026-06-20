@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarDayListPanel, CalendarMonthView } from "@/components/calendar/calendar-month-view";
+import { CalendarDayDrawer } from "@/components/calendar/calendar-day-drawer";
+import { CalendarMonthView } from "@/components/calendar/calendar-month-view";
 import {
   CalendarDisplayPicker,
   useCalendarDisplayMode,
-  useHorizontalCalendarList,
 } from "@/components/calendar/calendar-display-picker";
 import { CalendarToolbar } from "@/components/calendar/calendar-toolbar";
 import { PanelExpandButton } from "@/components/home/panel-expand-button";
@@ -80,12 +80,10 @@ export function CalendarPanelLive({
   const [viewMonth, setViewMonth] = useState(today.getUTCMonth());
   const [viewDay, setViewDay] = useState(today.getUTCDate());
   const [selectedDate, setSelectedDate] = useState(todayStr);
+  const [drawerDate, setDrawerDate] = useState<string | null>(null);
   const [weekAnchor, setWeekAnchor] = useState(today);
   const [items, setItems] = useState<CalendarItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const monthLayoutRef = useRef<HTMLDivElement>(null);
-  const containerWide = useHorizontalCalendarList(monthLayoutRef, viewMode === "month" && !loading);
-  const horizontalList = displayMode === "list" && containerWide;
 
   const { from, to, label } = useMemo(() => {
     if (viewMode === "month") {
@@ -161,12 +159,17 @@ export function CalendarPanelLive({
     }
   }
 
-  function handleSelectDate(ds: string) {
+  function openDayDrawer(ds: string) {
     setSelectedDate(ds);
     const d = parseDate(ds);
     setViewYear(d.getUTCFullYear());
     setViewMonth(d.getUTCMonth());
     setViewDay(d.getUTCDate());
+    setDrawerDate(ds);
+  }
+
+  function closeDayDrawer() {
+    setDrawerDate(null);
   }
 
   const weekCellMin = fullPage ? "min-h-[8rem]" : "min-h-[5rem]";
@@ -236,14 +239,12 @@ export function CalendarPanelLive({
         )}
         {!loading && viewMode === "month" && (
           <div
-            ref={monthLayoutRef}
             className={cn(
-              "flex min-h-0 flex-1 overflow-hidden bg-white",
+              "flex min-h-0 flex-1 flex-col overflow-hidden bg-white",
               fullPage ? "" : "rounded-xl border border-gray-200",
-              horizontalList ? "flex-row" : "flex-col",
             )}
           >
-            {items.length === 0 && displayMode !== "list" && (
+            {items.length === 0 && (
               <p className="shrink-0 px-3 py-2 text-xs text-gray-400">本月暂无安排</p>
             )}
             <CalendarMonthView
@@ -253,18 +254,9 @@ export function CalendarPanelLive({
               displayMode={displayMode}
               todayStr={todayStr}
               selectedDate={selectedDate}
-              onSelectDate={handleSelectDate}
+              onSelectDate={openDayDrawer}
               fullPage={fullPage}
-              horizontalList={horizontalList}
             />
-            {displayMode === "list" && (
-              <CalendarDayListPanel
-                dateStr={selectedDate}
-                items={items}
-                fullPage={fullPage}
-                horizontal={horizontalList}
-              />
-            )}
           </div>
         )}
         {!loading && viewMode === "week" && (
@@ -273,32 +265,41 @@ export function CalendarPanelLive({
               const list = itemsOnDate(items, ds);
               const d = parseInt(ds.slice(8, 10), 10);
               const isToday = ds === todayStr;
+              const isSelected = ds === selectedDate;
               return (
                 <div
                   key={ds}
                   className={cn("flex flex-col bg-white p-1", weekCellMin)}
                 >
                   <div className="mb-1 flex justify-center">
-                    <span
+                    <button
+                      type="button"
+                      onClick={() => openDayDrawer(ds)}
                       className={cn(
-                        "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold",
-                        isToday ? "bg-red-500 text-white" : "text-gray-800",
+                        "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold hover:ring-2 hover:ring-brand-200",
+                        isToday && "bg-red-500 text-white",
+                        !isToday && isSelected && "bg-gray-900 text-white",
+                        !isToday && !isSelected && "text-gray-800",
                       )}
                     >
                       {d}
-                    </span>
+                    </button>
                   </div>
                   <ul className="space-y-1">
                     {list.map((item) => {
                       const accent = itemAccent(item);
                       return (
                         <li key={`${item.type}-${item.id}`}>
-                          <Link
-                            href={itemHref(item)}
-                            className={cn("block rounded-md px-1 py-0.5 text-[10px] text-white", accent.bar)}
+                          <button
+                            type="button"
+                            onClick={() => openDayDrawer(ds)}
+                            className={cn(
+                              "block w-full rounded-md px-1 py-0.5 text-left text-[10px] text-white",
+                              accent.bar,
+                            )}
                           >
                             <span className="line-clamp-2">{item.title}</span>
-                          </Link>
+                          </button>
                         </li>
                       );
                     })}
@@ -336,6 +337,13 @@ export function CalendarPanelLive({
           </ul>
         )}
       </CardContent>
+
+      <CalendarDayDrawer
+        dateStr={drawerDate}
+        items={items}
+        open={drawerDate !== null}
+        onClose={closeDayDrawer}
+      />
     </Card>
   );
 }
