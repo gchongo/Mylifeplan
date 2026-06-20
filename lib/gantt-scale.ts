@@ -380,7 +380,8 @@ function scaleDefaultRange(scale: GanttScaleId, anchor: string): { from: string;
     }
     case "5year": {
       const y = parseInt(anchor.slice(0, 4), 10);
-      return { from: `${y - 2}-01-01`, to: `${y + 2}-12-31` };
+      // 多 2 年作左右缓冲，便于拖拽平移
+      return { from: `${y - 3}-01-01`, to: `${y + 3}-12-31` };
     }
   }
 }
@@ -427,19 +428,20 @@ export function buildTimelineLayout(
   return finalizeLayout(scale, anchor, columns);
 }
 
-/** 将 5 年尺度列宽拉伸至视口，避免时间轴只占左侧一小段 */
+/** 5 年尺度：列宽填满视口，并保留约 10% 可滚动余量以便拖拽 */
 export function scaleTimelineToViewport(
   layout: TimelineLayout,
   viewportWidth: number,
-  minColumnWidth = 140,
+  minColumnWidth = 120,
 ): TimelineLayout {
   if (layout.scale !== "5year" || viewportWidth <= 0 || layout.columns.length === 0) {
     return layout;
   }
 
   const minTotal = layout.columns.length * minColumnWidth;
-  const targetWidth = Math.max(viewportWidth, minTotal);
-  if (targetWidth <= layout.totalWidth) return layout;
+  const fillWidth = Math.max(viewportWidth, minTotal);
+  const targetWidth = Math.ceil(fillWidth * 1.1);
+  if (Math.abs(targetWidth - layout.totalWidth) < 2) return layout;
 
   const factor = targetWidth / layout.totalWidth;
   const columns = layout.columns.map((col) => ({

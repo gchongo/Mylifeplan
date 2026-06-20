@@ -317,16 +317,18 @@ export const GanttChart = forwardRef<
   }, [isPanning]);
 
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
+    const container = containerRef.current;
+    const scroll = scrollRef.current;
+    if (!container || !scroll) return;
 
     const update = () => {
-      setScrollViewportHeight(el.clientHeight);
-      setTimelineViewportWidth(Math.max(0, el.clientWidth - LABEL_WIDTH));
+      setScrollViewportHeight(scroll.clientHeight);
+      const w = Math.floor(container.clientWidth - LABEL_WIDTH);
+      setTimelineViewportWidth((prev) => (Math.abs(prev - w) > 4 ? w : prev));
     };
     update();
     const ro = new ResizeObserver(update);
-    ro.observe(el);
+    ro.observe(container);
     return () => ro.disconnect();
   }, [isLoading, fullPage]);
 
@@ -368,7 +370,7 @@ export const GanttChart = forwardRef<
       cancelAnimationFrame(raf);
       window.clearTimeout(timer);
     };
-  }, [isLoading, scrollToToday, scrollToAnchor, from, to, layout.totalWidth]);
+  }, [isLoading, scrollToToday, scrollToAnchor, from, to, scale, anchor]);
 
   const drawerOpen = selectedContributionId !== null || selectedPlanId !== null;
 
