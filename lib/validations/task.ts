@@ -8,30 +8,34 @@ const optionalDate = z
   .nullable()
   .or(z.literal(""));
 
-export const createTaskSchema = z
-  .object({
-    title: z.string().min(1, "标题必填").max(200),
-    description: z.string().max(5000).optional().nullable(),
-    status: z.enum(["todo", "in_progress", "done"]).optional(),
-    priority: z.enum(["high", "medium", "low"]).optional().nullable(),
-    startDate: optionalDate,
-    dueDate: optionalDate,
-    parentTaskId: z.string().optional().nullable(),
-    planId: z.string().optional().nullable(),
-  })
-  .superRefine((data, ctx) => {
-    const start = data.startDate || null;
-    const due = data.dueDate || null;
-    const error = validateDateFields({
-      startDate: start ?? undefined,
-      dueDate: due ?? undefined,
-    });
-    if (error) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: error, path: ["dueDate"] });
-    }
-  });
+const taskBaseSchema = z.object({
+  title: z.string().min(1, "标题必填").max(200),
+  description: z.string().max(5000).optional().nullable(),
+  status: z.enum(["todo", "in_progress", "done"]).optional(),
+  priority: z.enum(["high", "medium", "low"]).optional().nullable(),
+  startDate: optionalDate,
+  dueDate: optionalDate,
+  parentTaskId: z.string().optional().nullable(),
+  planId: z.string().optional().nullable(),
+});
 
-export const updateTaskSchema = createTaskSchema.partial();
+function refineTaskDates(
+  data: { startDate?: string | null; dueDate?: string | null },
+  ctx: z.RefinementCtx,
+) {
+  const error = validateDateFields({
+    startDate: data.startDate || undefined,
+    dueDate: data.dueDate || undefined,
+  });
+  if (error) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: error, path: ["dueDate"] });
+  }
+}
+
+export const createTaskSchema = taskBaseSchema.superRefine(refineTaskDates);
+
+/** PATCH 校验字段类型；日期组合由 service 层在合并现有值后校验 */
+export const updateTaskSchema = taskBaseSchema.partial();
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
