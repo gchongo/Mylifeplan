@@ -9,6 +9,7 @@ import { TaskFormModal } from "@/components/gantt/task-form-modal";
 import { TaskStatusIndicator, StatusLegend } from "@/components/tasks/task-status-indicator";
 import type { TaskFormValues } from "@/components/forms/task-form";
 import { Button } from "@/components/ui/button";
+import { EmptyState, Loading } from "@/components/ui/feedback";
 import {
   barMetricsFromDates,
   buildCompactLayout,
