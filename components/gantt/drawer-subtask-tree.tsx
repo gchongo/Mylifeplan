@@ -1,17 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import type { TaskFormValues } from "@/components/forms/task-form";
+import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
 import type { GanttItem } from "@/types";
+import { getStatusStyle, statusLabel } from "@/lib/task-status-style";
 import { cn } from "@/lib/utils";
-
-const STATUS_LABEL: Record<string, string> = {
-  todo: "待办",
-  in_progress: "执行",
-  done: "完成",
-  archived: "归档",
-};
 
 const PRIORITY_LABEL: Record<string, string> = {
   high: "高",
@@ -47,7 +40,10 @@ function SubtaskDetailPanel({ detail }: { detail: TaskFormValues & { id: string 
         <dt className="text-gray-400">优先级</dt>
         <dd>{detail.priority ? (PRIORITY_LABEL[detail.priority] ?? detail.priority) : "—"}</dd>
         <dt className="text-gray-400">状态</dt>
-        <dd>{STATUS_LABEL[detail.status ?? "todo"] ?? detail.status}</dd>
+        <dd className="flex items-center gap-1.5">
+          <TaskStatusIndicator status={detail.status} dueDate={detail.dueDate} />
+          <span className="text-gray-500">{statusLabel(detail.status, detail.dueDate)}</span>
+        </dd>
       </dl>
     </div>
   );
@@ -83,7 +79,13 @@ function SubtaskNode({
 
   return (
     <div className="space-y-1">
-      <div className="flex items-center gap-1 rounded-lg border border-gray-100 px-2 py-2">
+      <div
+        className={cn(
+          "flex items-center gap-1 rounded-lg border border-gray-100 border-l-2 px-2 py-2",
+          getStatusStyle(task.status, task.dueDate).rowBg,
+          getStatusStyle(task.status, task.dueDate).stripe,
+        )}
+      >
         {showToggle ? (
           <button
             type="button"
@@ -106,9 +108,7 @@ function SubtaskNode({
         >
           {task.title}
         </button>
-        <Badge variant="info" className="shrink-0 scale-90">
-          {STATUS_LABEL[task.status ?? "todo"] ?? task.status}
-        </Badge>
+        <TaskStatusIndicator status={task.status} dueDate={task.dueDate} />
       </div>
 
       {isExpanded && (

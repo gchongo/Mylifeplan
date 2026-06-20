@@ -5,15 +5,10 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TaskForm, type TaskFormValues } from "@/components/forms/task-form";
-
-const statusLabels: Record<string, string> = {
-  todo: "待办",
-  in_progress: "进行中",
-  done: "已完成",
-  archived: "已归档",
-};
+import { statusLabel } from "@/lib/task-status-style";
 
 interface ChildTask {
   id: string;
@@ -119,12 +114,15 @@ export function TaskDetailClient({
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-2">
           <CardTitle className="text-xl">{task.title}</CardTitle>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {inMemo && <Badge variant="warning">备忘录</Badge>}
-            <Badge variant="info">
-              {statusLabels[displayStatus] ?? displayStatus}
-              {hasRollup && "（汇总）"}
-            </Badge>
+            <TaskStatusIndicator
+              status={task.status}
+              dueDate={task.dueDate}
+              displayStatus={displayStatus}
+              hasRollup={hasRollup}
+              showLabel
+            />
           </div>
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-gray-700">
@@ -146,7 +144,10 @@ export function TaskDetailClient({
             <dt className="text-gray-500">优先级</dt>
             <dd>{task.priority ?? "—"}</dd>
             <dt className="text-gray-500">自身状态</dt>
-            <dd>{statusLabels[task.status ?? "todo"] ?? task.status}</dd>
+            <dd className="flex items-center gap-1.5">
+              <TaskStatusIndicator status={task.status} dueDate={task.dueDate} />
+              <span>{statusLabel(task.status, task.dueDate)}</span>
+            </dd>
           </dl>
 
           <div className="flex flex-wrap gap-2">
@@ -218,7 +219,7 @@ export function TaskDetailClient({
                         {child.title}
                       </Link>
                     )}
-                    <Badge variant="info">{statusLabels[child.status] ?? child.status}</Badge>
+                    <TaskStatusIndicator status={child.status} />
                   </li>
                 ))}
               </ul>

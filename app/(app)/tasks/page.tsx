@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/feedback";
 import { TasksTreeList } from "@/components/tasks/tasks-tree-list";
+import { StatusLegend } from "@/components/tasks/task-status-indicator";
 
 export default async function TasksPage() {
   const session = await getSession();
@@ -39,7 +40,12 @@ export default async function TasksPage() {
       {nodes.length === 0 ? (
         <EmptyState title="暂无任务" description="点击「新建任务」开始。" />
       ) : (
-        <TasksTreeList tasks={nodes} />
+        <>
+          <div className="mb-3">
+            <StatusLegend />
+          </div>
+          <TasksTreeList tasks={nodes} />
+        </>
       )}
     </div>
   );

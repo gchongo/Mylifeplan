@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlanForm, type PlanFormValues } from "@/components/forms/plan-form";
 import { TaskForm } from "@/components/forms/task-form";
@@ -206,7 +207,7 @@ export function PlanDetailClient({
                     </Link>
                     <div className="flex gap-2">
                       {inMemo && <Badge variant="warning">备忘录</Badge>}
-                      <Badge variant="info">{t.status}</Badge>
+                      <TaskStatusIndicator status={t.status} dueDate={t.dueDate} />
                     </div>
                   </li>
                 );

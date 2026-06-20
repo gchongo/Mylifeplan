@@ -6,10 +6,9 @@ import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
 import { GanttTaskDrawer } from "@/components/gantt/gantt-task-drawer";
 import { GanttToolbar } from "@/components/gantt/gantt-toolbar";
 import { TaskFormModal } from "@/components/gantt/task-form-modal";
+import { TaskStatusIndicator, StatusLegend } from "@/components/tasks/task-status-indicator";
 import type { TaskFormValues } from "@/components/forms/task-form";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { EmptyState, Loading } from "@/components/ui/feedback";
 import {
   barMetricsFromDates,
   buildCompactLayout,
@@ -24,6 +23,12 @@ import {
   type TimelineLayout,
 } from "@/lib/gantt-scale";
 import { buildColumnColorIndex, GRID_BANDS, spanColorIndex } from "@/lib/gantt-grid-colors";
+import { deriveParentStatus } from "@/lib/services/task-rollup";
+import {
+  asTaskStatusForRollup,
+  getStatusStyle,
+  statusBarClass,
+} from "@/lib/task-status-style";
 import type { GanttItem } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -32,16 +37,19 @@ const LABEL_WIDTH = 200;
 const FOOTER_HEIGHT = 48;
 const TIMELINE_HEADER_HEIGHT = 52;
 
-const STATUS_LABEL: Record<string, string> = {
-  todo: "待办",
-  in_progress: "执行",
-  done: "完成",
-  not_started: "规划",
-  archived: "归档",
-};
+function itemDisplayStatus(item: GanttItem, allTasks: GanttItem[]): string {
+  if (item.type === "plan") return item.status ?? "not_started";
+  const children = allTasks.filter((t) => t.parentId === item.id);
+  if (children.length === 0) return item.status ?? "todo";
+  return deriveParentStatus(
+    asTaskStatusForRollup(item.status),
+    children.map((c) => asTaskStatusForRollup(c.status)),
+  );
+}
 
-const TASK_BAR_BY_DEPTH = ["bg-slate-700/90", "bg-brand-600/90", "bg-teal-600/90"];
-const TASK_LABEL_BY_DEPTH = ["bg-white", "bg-brand-50/90", "bg-teal-50/90"];
+function itemHasRollup(item: GanttItem, allTasks: GanttItem[]): boolean {
+  return item.type === "task" && allTasks.some((t) => t.parentId === item.id);
+}
 
 type RowKind = "item" | "add-child";
 
@@ -109,12 +117,14 @@ interface TaskModalState {
   defaultParentTaskId?: string | null;
 }
 
-function taskBarColor(depth: number) {
-  return TASK_BAR_BY_DEPTH[Math.min(depth, TASK_BAR_BY_DEPTH.length - 1)];
+function taskBarColor(item: GanttItem, allTasks: GanttItem[]): string {
+  const displayStatus = itemDisplayStatus(item, allTasks);
+  return statusBarClass(item.status, item.dueDate, displayStatus);
 }
 
-function taskLabelBg(depth: number) {
-  return TASK_LABEL_BY_DEPTH[Math.min(depth, TASK_LABEL_BY_DEPTH.length - 1)];
+function taskLabelStyle(item: GanttItem, allTasks: GanttItem[]) {
+  const displayStatus = itemDisplayStatus(item, allTasks);
+  return getStatusStyle(item.status, item.dueDate, displayStatus);
 }
 
 function dataBoundsFromItems(items: GanttItem[]) {
@@ -387,18 +397,23 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
   function renderToolbar() {
     if (!fullPage) return null;
     return (
-      <GanttToolbar
-        periodLabel={layout.periodLabel}
-        scale={scale}
-        onScaleChange={(s) => {
-          setScale(s);
-          scrollTarget.current = "today";
-          scrolledToToday.current = false;
-        }}
-        onPrev={navigatePrev}
-        onNext={navigateNext}
-        onToday={goToday}
-      />
+      <div className="shrink-0 border-b border-gray-200 bg-white">
+        <GanttToolbar
+          periodLabel={layout.periodLabel}
+          scale={scale}
+          onScaleChange={(s) => {
+            setScale(s);
+            scrollTarget.current = "today";
+            scrolledToToday.current = false;
+          }}
+          onPrev={navigatePrev}
+          onNext={navigateNext}
+          onToday={goToday}
+        />
+        <div className="border-t border-gray-100 px-3 py-1.5">
+          <StatusLegend />
+        </div>
+      </div>
     );
   }
 
@@ -529,12 +544,26 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     const showToggle =
       item.type === "task" && (childCount > 0 || taskDepth(item.id, taskById) < 2);
     const isExpanded = expanded.has(item.id);
-    const labelBg = item.type === "task" ? taskLabelBg(row.depth) : "bg-purple-50/80";
+    const displayStatus = itemDisplayStatus(item, tasks);
+    const hasRollup = itemHasRollup(item, tasks);
+    const statusStyle =
+      item.type === "task" ? taskLabelStyle(item, tasks) : null;
+    const labelBg =
+      item.type === "task" && statusStyle
+        ? statusStyle.rowBg
+        : item.type === "plan"
+          ? "bg-purple-50/80"
+          : "bg-white";
 
     return (
       <div
         key={`label-${item.type}-${item.id}-${idx}`}
-        className={cn("flex items-center gap-1 border-b border-dashed border-gray-100 px-2", labelBg)}
+        className={cn(
+          "flex items-center gap-1 border-b border-dashed border-gray-100 border-l-2 px-2",
+          labelBg,
+          statusStyle?.stripe,
+          item.type === "plan" && "border-l-purple-400",
+        )}
         style={{ height: ROW_HEIGHT, paddingLeft: 12 + row.depth * 16 }}
       >
         {showToggle ? (
@@ -570,9 +599,12 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
           </Link>
         )}
         {item.status && (
-          <Badge variant="info" className="shrink-0 scale-90">
-            {STATUS_LABEL[item.status] ?? item.status}
-          </Badge>
+          <TaskStatusIndicator
+            status={item.status}
+            dueDate={item.dueDate}
+            displayStatus={displayStatus}
+            hasRollup={hasRollup}
+          />
         )}
       </div>
     );
@@ -591,7 +623,10 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
 
     const item = row.item!;
     const { left, width } = barMetricsFromDates(item.startDate, item.effectiveEnd, layout);
-    const barColor = item.type === "task" ? taskBarColor(row.depth) : "bg-purple-500/85";
+    const barColor =
+      item.type === "task"
+        ? taskBarColor(item, tasks)
+        : statusBarClass(item.status, item.dueDate, itemDisplayStatus(item, tasks));
 
     if (fullPage && item.type === "task") {
       return (
@@ -713,29 +748,17 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
             <div className="relative" style={{ minHeight: minBodyHeight }}>
               {renderGridBackground(minBodyHeight)}
 
-              {rows.map((row, idx) => {
-                const labelBg =
-                  row.kind === "item" && row.item?.type === "task"
-                    ? taskLabelBg(row.depth)
-                    : row.kind === "item" && row.item?.type === "plan"
-                      ? "bg-purple-50/80"
-                      : "bg-teal-50/50";
-
-                return (
-                  <div key={`row-${idx}`} className="relative flex">
-                    <div
-                      className={cn(
-                        "sticky left-0 z-20 shrink-0 border-r border-gray-200",
-                        labelBg,
-                      )}
-                      style={{ width: LABEL_WIDTH }}
-                    >
-                      {renderLabel(row, idx)}
-                    </div>
-                    <div className="relative z-10 shrink-0">{renderBar(row, idx)}</div>
+              {rows.map((row, idx) => (
+                <div key={`row-${idx}`} className="relative flex">
+                  <div
+                    className="sticky left-0 z-20 shrink-0 border-r border-gray-200"
+                    style={{ width: LABEL_WIDTH }}
+                  >
+                    {renderLabel(row, idx)}
                   </div>
-                );
-              })}
+                  <div className="relative z-10 shrink-0">{renderBar(row, idx)}</div>
+                </div>
+              ))}
 
               <div className="relative flex">
                 <div

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
 
 interface TaskNode {
   id: string;
@@ -61,7 +62,7 @@ export function LongPlanTree({ goals }: { goals: GoalNode[] }) {
                             className="flex items-center justify-between rounded px-2 py-1 text-sm hover:bg-gray-50"
                           >
                             <span>{task.title}</span>
-                            <Badge variant="info">{task.status}</Badge>
+                            <TaskStatusIndicator status={task.status} />
                           </Link>
                         </li>
                       ))}

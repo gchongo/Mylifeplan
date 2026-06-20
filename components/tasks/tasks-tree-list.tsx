@@ -3,9 +3,12 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
 import { deriveParentStatus } from "@/lib/services/task-rollup";
+import { getStatusStyle } from "@/lib/task-status-style";
 import type { TaskStatus } from "@prisma/client";
 import { shouldShowInMemo } from "@/lib/content-router";
+import { cn } from "@/lib/utils";
 
 export interface TaskTreeNode {
   id: string;
@@ -15,13 +18,6 @@ export interface TaskTreeNode {
   dueDate: string | null;
   parentTaskId: string | null;
 }
-
-const statusLabels: Record<string, string> = {
-  todo: "待办",
-  in_progress: "进行中",
-  done: "已完成",
-  archived: "已归档",
-};
 
 function buildTree(tasks: TaskTreeNode[]) {
   const byParent = new Map<string | null, TaskTreeNode[]>();
@@ -51,10 +47,17 @@ function TreeNode({
   const hasRollup = childTasks.length > 0;
   const inMemo = shouldShowInMemo({ startDate: task.startDate, dueDate: task.dueDate });
   const isCollapsed = collapsed.has(task.id);
+  const statusStyle = getStatusStyle(task.status, task.dueDate, displayStatus);
 
   return (
     <li>
-      <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
+      <div
+        className={cn(
+          "flex items-center gap-2 rounded-lg border border-gray-200 border-l-2 bg-white px-3 py-2",
+          statusStyle.rowBg,
+          statusStyle.stripe,
+        )}
+      >
         {childTasks.length > 0 ? (
           <button
             type="button"
@@ -78,10 +81,12 @@ function TreeNode({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {inMemo && <Badge variant="warning">备忘录</Badge>}
-          <Badge variant={task.status === "archived" ? "danger" : "info"}>
-            {statusLabels[displayStatus] ?? displayStatus}
-            {hasRollup && "（汇总）"}
-          </Badge>
+          <TaskStatusIndicator
+            status={task.status}
+            dueDate={task.dueDate}
+            displayStatus={displayStatus}
+            hasRollup={hasRollup}
+          />
         </div>
       </div>
       {childTasks.length > 0 && !isCollapsed && (
