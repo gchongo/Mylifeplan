@@ -30,6 +30,14 @@ export interface KanbanPlan {
   parentPlanId: string | null;
   parentTitle: string | null;
   childStatuses: PlanStatus[];
+  contributionCount: number;
+}
+
+export const UNSCHEDULED_BLOCKED_HINT =
+  "该计划已有执行贡献，无法移入「无状态」。请保留排期，或拖到「已完成」归档。";
+
+export function kanbanCanMoveToUnscheduled(plan: KanbanPlan): boolean {
+  return plan.contributionCount === 0;
 }
 
 export function kanbanEffectiveStatus(plan: KanbanPlan): PlanStatus {
@@ -57,6 +65,9 @@ export function kanbanPatchForColumn(
   columnId: KanbanColumnId,
   plan: KanbanPlan,
 ): { status: PlanStatus; startDate?: string | null; endDate?: string | null } {
+  if (columnId === "unscheduled" && !kanbanCanMoveToUnscheduled(plan)) {
+    throw new Error(UNSCHEDULED_BLOCKED_HINT);
+  }
   switch (columnId) {
     case "unscheduled":
       return { status: "not_started", startDate: null, endDate: null };

@@ -1,6 +1,7 @@
 import type { Plan, PlanStatus } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
-import { validateDateFields } from "@/lib/content-router";
+import { shouldShowInMemo, validateDateFields } from "@/lib/content-router";
+import { UNSCHEDULED_BLOCKED_HINT } from "@/lib/kanban-board";
 import { parsePlanDateTime, formatPlanDateTime, toDatetimeLocalInput } from "@/lib/dates";
 import { prisma } from "@/lib/db";
 import { writeFeed } from "@/lib/services/feed";
@@ -181,6 +182,23 @@ export async function updatePlan(
 
   const dateError = validateDates(startStr, endStr);
   if (dateError) throw new Error(dateError);
+
+  const nextStart =
+    input.startDate !== undefined ? input.startDate || null : existing.startDate;
+  const nextEnd = input.endDate !== undefined ? input.endDate || null : existing.endDate;
+  const wasScheduled = !shouldShowInMemo({
+    startDate: existing.startDate,
+    endDate: existing.endDate,
+  });
+  const wouldBeUnscheduled = shouldShowInMemo({ startDate: nextStart, endDate: nextEnd });
+  if (wasScheduled && wouldBeUnscheduled) {
+    const contributionCount = await prisma.planContribution.count({
+      where: { planId, userId },
+    });
+    if (contributionCount > 0) {
+      throw new Error(UNSCHEDULED_BLOCKED_HINT);
+    }
+  }
 
   if (input.status !== undefined) {
     const children = await prisma.plan.findMany({

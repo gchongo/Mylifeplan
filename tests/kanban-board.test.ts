@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   groupPlansByKanbanColumn,
+  kanbanCanMoveToUnscheduled,
   kanbanColumnForPlan,
   kanbanPatchForColumn,
   type KanbanPlan,
@@ -16,6 +17,7 @@ function plan(partial: Partial<KanbanPlan> & Pick<KanbanPlan, "id" | "title">): 
     parentPlanId: null,
     parentTitle: null,
     childStatuses: [],
+    contributionCount: 0,
     ...partial,
   };
 }
@@ -59,5 +61,17 @@ describe("kanban-board", () => {
     ]);
     expect(groups.unscheduled).toHaveLength(1);
     expect(groups.not_started).toHaveLength(1);
+  });
+
+  it("blocks move to unscheduled when plan has contributions", () => {
+    expect(
+      kanbanCanMoveToUnscheduled(plan({ id: "1", title: "A", contributionCount: 2 })),
+    ).toBe(false);
+    expect(() =>
+      kanbanPatchForColumn(
+        "unscheduled",
+        plan({ id: "1", title: "A", contributionCount: 1, startDate: "2026-06-01" }),
+      ),
+    ).toThrow(/贡献/);
   });
 });

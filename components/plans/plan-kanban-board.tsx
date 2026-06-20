@@ -5,10 +5,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   groupPlansByKanbanColumn,
   kanbanCanDrag,
+  kanbanCanMoveToUnscheduled,
   kanbanColumnForPlan,
   kanbanPatchForColumn,
   KANBAN_COLUMNS,
   PLAN_TYPE_LABELS,
+  UNSCHEDULED_BLOCKED_HINT,
   type KanbanColumnId,
   type KanbanPlan,
 } from "@/lib/kanban-board";
@@ -174,7 +176,19 @@ export function PlanKanbanBoard({ initialPlans }: { initialPlans: KanbanPlan[] }
         return;
       }
 
-      const patch = kanbanPatchForColumn(targetColumn, plan);
+      if (targetColumn === "unscheduled" && !kanbanCanMoveToUnscheduled(plan)) {
+        setError(UNSCHEDULED_BLOCKED_HINT);
+        return;
+      }
+
+      let patch;
+      try {
+        patch = kanbanPatchForColumn(targetColumn, plan);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : UNSCHEDULED_BLOCKED_HINT);
+        return;
+      }
+
       setMoving(true);
       setError(null);
 

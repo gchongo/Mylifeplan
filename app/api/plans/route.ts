@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
           where: { status: { not: "archived" } },
           select: { status: true },
         },
+        _count: { select: { contributions: true } },
       },
     });
 
@@ -35,6 +36,7 @@ export async function GET(request: NextRequest) {
         ...serializePlan(p),
         parentTitle: p.parentPlan?.title ?? null,
         childStatuses: p.subPlans.map((c) => c.status),
+        contributionCount: p._count.contributions,
       })),
     });
   } catch (error) {

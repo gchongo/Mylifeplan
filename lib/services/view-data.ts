@@ -79,7 +79,7 @@ export async function getGanttData(
     const plan = await prisma.plan.findFirst({
       where: { id: c.planId, userId, status: { not: "archived" } },
     });
-    if (!plan) continue;
+    if (!plan || !plan.startDate) continue;
 
     const planContribs = contributions.filter((x) => x.planId === c.planId);
     const dates = planContribs.map((x) => x.occurredOn).sort();
@@ -99,9 +99,11 @@ export async function getGanttData(
     planIds.add(plan.id);
   }
 
+  const visiblePlanIds = new Set(items.map((i) => i.id));
+
   return {
     items: items.sort((a, b) => a.startDate.localeCompare(b.startDate)),
-    contributions,
+    contributions: contributions.filter((c) => visiblePlanIds.has(c.planId)),
   };
 }
 

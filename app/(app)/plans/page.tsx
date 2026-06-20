@@ -26,6 +26,7 @@ export default async function PlansPage() {
         where: { status: { not: "archived" } },
         select: { status: true },
       },
+      _count: { select: { contributions: true } },
     },
   });
 
@@ -40,6 +41,7 @@ export default async function PlansPage() {
     parentPlanId: p.parentPlanId,
     parentTitle: p.parentPlan?.title ?? null,
     childStatuses: p.subPlans.map((c) => c.status),
+    contributionCount: p._count.contributions,
   }));
 
   return (
