@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Drawer } from "@/components/ui/drawer";
+import { DrawerLayout, DrawerPanel } from "@/components/ui/drawer";
 import { Loading } from "@/components/ui/feedback";
 import { TaskDetailClient } from "@/components/tasks/task-detail-client";
 import { DrawerSubtaskTree } from "@/components/gantt/drawer-subtask-tree";
@@ -32,6 +32,7 @@ export function GanttTaskDrawer({
   onChanged,
   onEditTask,
   onCreateSubtask,
+  children,
 }: {
   taskId: string | null;
   open: boolean;
@@ -41,6 +42,7 @@ export function GanttTaskDrawer({
   onChanged: () => void;
   onEditTask: (taskId: string) => void;
   onCreateSubtask: (parentId: string) => void;
+  children: React.ReactNode;
 }) {
   const [viewStack, setViewStack] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -129,38 +131,45 @@ export function GanttTaskDrawer({
   const hasRollup = activeChildTasks.length > 0;
 
   return (
-    <Drawer
+    <DrawerLayout
       open={open}
       onClose={onClose}
-      onBack={canGoBack ? goBack : undefined}
-      title={task?.title ?? "任务详情"}
-    >
-      {loading && <Loading label="加载任务…" />}
-      {!loading && error && <p className="text-sm text-red-600">{error}</p>}
-      {!loading && task && (
-        <TaskDetailClient
-          task={task}
-          displayStatus={displayStatus}
-          hasRollup={hasRollup}
-          childTasks={childTasks}
-          inMemo={inMemo}
-          ganttEnd={gantt?.effectiveEnd ?? undefined}
-          ganttVirtual={gantt?.isVirtualEnd}
-          embedded
+      panel={
+        <DrawerPanel
+          title={task?.title ?? "任务详情"}
           onClose={onClose}
-          onChanged={handleChanged}
-          onOpenTask={navigateToTask}
-          onEdit={() => onEditTask(task.id)}
-          subtaskTree={
-            <DrawerSubtaskTree
-              parentTaskId={task.id}
-              allTasks={allTasks}
+          onBack={canGoBack ? goBack : undefined}
+        >
+          {loading && <Loading label="加载任务…" />}
+          {!loading && error && <p className="text-sm text-red-600">{error}</p>}
+          {!loading && task && (
+            <TaskDetailClient
+              task={task}
+              displayStatus={displayStatus}
+              hasRollup={hasRollup}
+              childTasks={childTasks}
+              inMemo={inMemo}
+              ganttEnd={gantt?.effectiveEnd ?? undefined}
+              ganttVirtual={gantt?.isVirtualEnd}
+              embedded
+              onClose={onClose}
+              onChanged={handleChanged}
               onOpenTask={navigateToTask}
-              onCreateSubtask={onCreateSubtask}
+              onEdit={() => onEditTask(task.id)}
+              subtaskTree={
+                <DrawerSubtaskTree
+                  parentTaskId={task.id}
+                  allTasks={allTasks}
+                  onOpenTask={navigateToTask}
+                  onCreateSubtask={onCreateSubtask}
+                />
+              }
             />
-          }
-        />
-      )}
-    </Drawer>
+          )}
+        </DrawerPanel>
+      }
+    >
+      {children}
+    </DrawerLayout>
   );
 }

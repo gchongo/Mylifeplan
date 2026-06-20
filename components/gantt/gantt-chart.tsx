@@ -709,13 +709,33 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     );
   }
 
+  function wrapWithTaskDrawer(content: React.ReactNode) {
+    if (!fullPage) return content;
+    return (
+      <GanttTaskDrawer
+        taskId={selectedTaskId}
+        open={selectedTaskId !== null}
+        allTasks={tasks}
+        onClose={closeTaskDrawer}
+        onOpenTask={openTask}
+        onChanged={refetchGantt}
+        onEditTask={openEditTask}
+        onCreateSubtask={openCreateTask}
+      >
+        {content}
+      </GanttTaskDrawer>
+    );
+  }
+
   if (isLoading) {
     return (
       <>
-        <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-          {renderToolbar()}
-          <LoadingView label="加载甘特图…" />
-        </div>
+        {wrapWithTaskDrawer(
+          <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            {renderToolbar()}
+            <LoadingView label="加载甘特图…" />
+          </div>,
+        )}
         {fullPage && (
           <TaskFormModal
             open={taskModal.open}
@@ -734,20 +754,22 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
   if (items.length === 0) {
     return (
       <>
-        <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-          {renderToolbar()}
-          <EmptyState
-            title="暂无时间条"
-            description="创建带开始日期的任务或计划后，会在此展示。"
-          />
-          {fullPage && (
-            <div className="px-4 pb-4">
-              <Button type="button" onClick={() => openCreateTask()}>
-                + 新建任务
-              </Button>
-            </div>
-          )}
-        </div>
+        {wrapWithTaskDrawer(
+          <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            {renderToolbar()}
+            <EmptyState
+              title="暂无时间条"
+              description="创建带开始日期的任务或计划后，会在此展示。"
+            />
+            {fullPage && (
+              <div className="px-4 pb-4">
+                <Button type="button" onClick={() => openCreateTask()}>
+                  + 新建任务
+                </Button>
+              </div>
+            )}
+          </div>,
+        )}
         {fullPage && (
           <TaskFormModal
             open={taskModal.open}
@@ -765,87 +787,77 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
 
   return (
     <>
-      <div
-        ref={containerRef}
-        className={cn(
-          "flex h-full min-h-0 w-full max-w-full min-w-0 flex-1 flex-col overflow-hidden",
-          fullPage
-            ? "rounded-lg border border-gray-200 bg-white"
-            : "rounded-none border-0 bg-transparent shadow-none",
-        )}
-      >
-        {renderToolbar()}
-
+      {wrapWithTaskDrawer(
         <div
-          ref={scrollRef}
-          onMouseDown={fullPage ? handlePanStart : undefined}
+          ref={containerRef}
           className={cn(
-            "min-h-0 w-full max-w-full min-w-0 flex-1 overflow-x-auto overflow-y-auto",
-            fullPage && (isPanning ? "cursor-grabbing select-none" : "cursor-grab"),
+            "flex h-full min-h-0 w-full max-w-full min-w-0 flex-1 flex-col overflow-hidden",
+            fullPage
+              ? "rounded-lg border border-gray-200 bg-white"
+              : "rounded-none border-0 bg-transparent shadow-none",
           )}
         >
-          <div style={{ width: totalWidth }}>
-            {renderTimelineHeader()}
+          {renderToolbar()}
 
-            <div className="relative" style={{ minHeight: minBodyHeight }}>
-              {renderGridBackground(minBodyHeight)}
+          <div
+            ref={scrollRef}
+            onMouseDown={fullPage ? handlePanStart : undefined}
+            className={cn(
+              "min-h-0 w-full max-w-full min-w-0 flex-1 overflow-x-auto overflow-y-auto",
+              fullPage && (isPanning ? "cursor-grabbing select-none" : "cursor-grab"),
+            )}
+          >
+            <div style={{ width: totalWidth }}>
+              {renderTimelineHeader()}
 
-              {rows.map((row, idx) => (
-                <div key={`row-${idx}`} className="relative flex">
+              <div className="relative" style={{ minHeight: minBodyHeight }}>
+                {renderGridBackground(minBodyHeight)}
+
+                {rows.map((row, idx) => (
+                  <div key={`row-${idx}`} className="relative flex">
+                    <div
+                      className="sticky left-0 z-20 shrink-0 border-r border-gray-200"
+                      style={{ width: LABEL_WIDTH }}
+                    >
+                      {renderLabel(row, idx)}
+                    </div>
+                    <div className="relative z-10 shrink-0">{renderBar(row, idx)}</div>
+                  </div>
+                ))}
+
+                <div className="relative flex">
                   <div
-                    className="sticky left-0 z-20 shrink-0 border-r border-gray-200"
+                    className="sticky left-0 z-20 border-r border-gray-200 bg-white p-2"
                     style={{ width: LABEL_WIDTH }}
                   >
-                    {renderLabel(row, idx)}
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      type="button"
+                      data-no-pan
+                      onClick={() => openCreateTask()}
+                    >
+                      + 新建
+                    </Button>
                   </div>
-                  <div className="relative z-10 shrink-0">{renderBar(row, idx)}</div>
+                  <div style={{ width: timelineWidth, height: FOOTER_HEIGHT }} />
                 </div>
-              ))}
-
-              <div className="relative flex">
-                <div
-                  className="sticky left-0 z-20 border-r border-gray-200 bg-white p-2"
-                  style={{ width: LABEL_WIDTH }}
-                >
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    type="button"
-                    data-no-pan
-                    onClick={() => openCreateTask()}
-                  >
-                    + 新建
-                  </Button>
-                </div>
-                <div style={{ width: timelineWidth, height: FOOTER_HEIGHT }} />
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        </div>,
+      )}
 
       {fullPage && (
-        <>
-          <GanttTaskDrawer
-            taskId={selectedTaskId}
-            open={selectedTaskId !== null}
-            allTasks={tasks}
-            onClose={closeTaskDrawer}
-            onOpenTask={openTask}
-            onChanged={refetchGantt}
-            onEditTask={openEditTask}
-            onCreateSubtask={openCreateTask}
-          />
-          <TaskFormModal
-            open={taskModal.open}
-            onClose={closeTaskModal}
-            title={taskModal.title}
-            task={taskModal.task}
-            defaultParentTaskId={taskModal.defaultParentTaskId}
-            statusRollup={taskModal.statusRollup}
-            onSuccess={refetchGantt}
-          />
-        </>
+        <TaskFormModal
+          open={taskModal.open}
+          onClose={closeTaskModal}
+          title={taskModal.title}
+          task={taskModal.task}
+          defaultParentTaskId={taskModal.defaultParentTaskId}
+          statusRollup={taskModal.statusRollup}
+          onSuccess={refetchGantt}
+        />
       )}
     </>
   );

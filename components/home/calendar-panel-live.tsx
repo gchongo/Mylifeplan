@@ -221,129 +221,131 @@ export function CalendarPanelLive({
           fullPage ? "p-0" : "p-3 pt-0",
         )}
       >
-        {fullPage && (
-          <CalendarToolbar
-            periodLabel={label}
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-            displayMode={displayMode}
-            onDisplayModeChange={setDisplayMode}
-            onPrev={prev}
-            onNext={next}
-            onToday={goToday}
-          />
-        )}
-        {loading && <Loading label="加载日历…" />}
-        {!loading && items.length === 0 && viewMode !== "month" && (
-          <EmptyState title="暂无安排" description="创建带开始日期的任务或计划后会显示在这里。" />
-        )}
-        {!loading && viewMode === "month" && (
-          <div
-            className={cn(
-              "flex min-h-0 flex-1 flex-col overflow-hidden bg-white",
-              fullPage ? "" : "rounded-xl border border-gray-200",
+        <CalendarDayDrawer
+          dateStr={drawerDate}
+          items={items}
+          open={drawerDate !== null}
+          onClose={closeDayDrawer}
+        >
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            {fullPage && (
+              <CalendarToolbar
+                periodLabel={label}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+                displayMode={displayMode}
+                onDisplayModeChange={setDisplayMode}
+                onPrev={prev}
+                onNext={next}
+                onToday={goToday}
+              />
             )}
-          >
-            {items.length === 0 && (
-              <p className="shrink-0 px-3 py-2 text-xs text-gray-400">本月暂无安排</p>
+            {loading && <Loading label="加载日历…" />}
+            {!loading && items.length === 0 && viewMode !== "month" && (
+              <EmptyState title="暂无安排" description="创建带开始日期的任务或计划后会显示在这里。" />
             )}
-            <CalendarMonthView
-              year={viewYear}
-              month={viewMonth}
-              items={items}
-              displayMode={displayMode}
-              todayStr={todayStr}
-              selectedDate={selectedDate}
-              onSelectDate={openDayDrawer}
-              fullPage={fullPage}
-            />
-          </div>
-        )}
-        {!loading && viewMode === "week" && (
-          <div className="grid min-h-0 flex-1 grid-cols-7 gap-px overflow-y-auto bg-gray-100 text-xs">
-            {weekDays.map((ds) => {
-              const list = itemsOnDate(items, ds);
-              const d = parseInt(ds.slice(8, 10), 10);
-              const isToday = ds === todayStr;
-              const isSelected = ds === selectedDate;
-              return (
-                <div
-                  key={ds}
-                  className={cn("flex flex-col bg-white p-1", weekCellMin)}
-                >
-                  <div className="mb-1 flex justify-center">
-                    <button
-                      type="button"
-                      onClick={() => openDayDrawer(ds)}
-                      className={cn(
-                        "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold hover:ring-2 hover:ring-brand-200",
-                        isToday && "bg-red-500 text-white",
-                        !isToday && isSelected && "bg-gray-900 text-white",
-                        !isToday && !isSelected && "text-gray-800",
-                      )}
+            {!loading && viewMode === "month" && (
+              <div
+                className={cn(
+                  "flex min-h-0 flex-1 flex-col overflow-hidden bg-white",
+                  fullPage ? "" : "rounded-xl border border-gray-200",
+                )}
+              >
+                {items.length === 0 && (
+                  <p className="shrink-0 px-3 py-2 text-xs text-gray-400">本月暂无安排</p>
+                )}
+                <CalendarMonthView
+                  year={viewYear}
+                  month={viewMonth}
+                  items={items}
+                  displayMode={displayMode}
+                  todayStr={todayStr}
+                  selectedDate={selectedDate}
+                  onSelectDate={openDayDrawer}
+                  fullPage={fullPage}
+                />
+              </div>
+            )}
+            {!loading && viewMode === "week" && (
+              <div className="grid min-h-0 flex-1 grid-cols-7 gap-px overflow-y-auto bg-gray-100 text-xs">
+                {weekDays.map((ds) => {
+                  const list = itemsOnDate(items, ds);
+                  const d = parseInt(ds.slice(8, 10), 10);
+                  const isToday = ds === todayStr;
+                  const isSelected = ds === selectedDate;
+                  return (
+                    <div
+                      key={ds}
+                      className={cn("flex flex-col bg-white p-1", weekCellMin)}
                     >
-                      {d}
-                    </button>
-                  </div>
-                  <ul className="space-y-1">
-                    {list.map((item) => {
-                      const accent = itemAccent(item);
-                      return (
-                        <li key={`${item.type}-${item.id}`}>
-                          <button
-                            type="button"
-                            onClick={() => openDayDrawer(ds)}
-                            className={cn(
-                              "block w-full rounded-md px-1 py-0.5 text-left text-[10px] text-white",
-                              accent.bar,
-                            )}
-                          >
-                            <span className="line-clamp-2">{item.title}</span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              );
-            })}
-          </div>
-        )}
-        {!loading && viewMode === "day" && (
-          <ul className="min-h-0 flex-1 space-y-0 overflow-y-auto rounded-xl border border-gray-200 bg-white">
-            {dayItems.length === 0 ? (
-              <li className="px-4 py-6 text-sm text-gray-400">当天暂无安排</li>
-            ) : (
-              dayItems.map((item) => {
-                const accent = itemAccent(item);
-                return (
-                  <li key={`${item.type}-${item.id}`} className="border-b border-gray-100 last:border-0">
-                    <Link
-                      href={itemHref(item)}
-                      className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50"
-                    >
-                      <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", accent.dot)} />
-                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">
-                        {item.title}
-                      </span>
-                      <span className="shrink-0 text-xs text-gray-400">
-                        {formatEventSchedule(item)}
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })
+                      <div className="mb-1 flex justify-center">
+                        <button
+                          type="button"
+                          onClick={() => openDayDrawer(ds)}
+                          className={cn(
+                            "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold hover:ring-2 hover:ring-brand-200",
+                            isToday && "bg-red-500 text-white",
+                            !isToday && isSelected && "bg-gray-900 text-white",
+                            !isToday && !isSelected && "text-gray-800",
+                          )}
+                        >
+                          {d}
+                        </button>
+                      </div>
+                      <ul className="space-y-1">
+                        {list.map((item) => {
+                          const accent = itemAccent(item);
+                          return (
+                            <li key={`${item.type}-${item.id}`}>
+                              <button
+                                type="button"
+                                onClick={() => openDayDrawer(ds)}
+                                className={cn(
+                                  "block w-full rounded-md px-1 py-0.5 text-left text-[10px] text-white",
+                                  accent.bar,
+                                )}
+                              >
+                                <span className="line-clamp-2">{item.title}</span>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
             )}
-          </ul>
-        )}
+            {!loading && viewMode === "day" && (
+              <ul className="min-h-0 flex-1 space-y-0 overflow-y-auto rounded-xl border border-gray-200 bg-white">
+                {dayItems.length === 0 ? (
+                  <li className="px-4 py-6 text-sm text-gray-400">当天暂无安排</li>
+                ) : (
+                  dayItems.map((item) => {
+                    const accent = itemAccent(item);
+                    return (
+                      <li key={`${item.type}-${item.id}`} className="border-b border-gray-100 last:border-0">
+                        <Link
+                          href={itemHref(item)}
+                          className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50"
+                        >
+                          <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", accent.dot)} />
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">
+                            {item.title}
+                          </span>
+                          <span className="shrink-0 text-xs text-gray-400">
+                            {formatEventSchedule(item)}
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                  })
+                )}
+              </ul>
+            )}
+          </div>
+        </CalendarDayDrawer>
       </CardContent>
-
-      <CalendarDayDrawer
-        dateStr={drawerDate}
-        items={items}
-        open={drawerDate !== null}
-        onClose={closeDayDrawer}
-      />
     </Card>
   );
 }

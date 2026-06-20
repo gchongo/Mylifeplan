@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Drawer } from "@/components/ui/drawer";
+import { DrawerLayout, DrawerPanel } from "@/components/ui/drawer";
 import {
   formatDayDrawerTitle,
   formatEventSchedule,
@@ -15,26 +15,24 @@ function itemHref(item: CalendarItem) {
   return item.type === "task" ? `/tasks/${item.id}` : `/plans/${item.id}`;
 }
 
-export function CalendarDayDrawer({
+function CalendarDayDrawerPanel({
   dateStr,
   items,
-  open,
   onClose,
 }: {
   dateStr: string | null;
   items: CalendarItem[];
-  open: boolean;
   onClose: () => void;
 }) {
   const dayItems = dateStr ? itemsOnDate(items, dateStr) : [];
 
   return (
-    <Drawer
-      open={open}
-      onClose={onClose}
+    <DrawerPanel
       title={dateStr ? formatDayDrawerTitle(dateStr, dayItems.length) : "当日安排"}
+      onClose={onClose}
+      className="p-0"
     >
-      <ul className="-mx-4 -mb-4 divide-y divide-gray-100">
+      <ul className="divide-y divide-gray-100">
         {dayItems.length === 0 ? (
           <li className="px-4 py-8 text-center text-sm text-gray-400">当天暂无安排</li>
         ) : (
@@ -58,6 +56,30 @@ export function CalendarDayDrawer({
           })
         )}
       </ul>
-    </Drawer>
+    </DrawerPanel>
+  );
+}
+
+export function CalendarDayDrawer({
+  dateStr,
+  items,
+  open,
+  onClose,
+  children,
+}: {
+  dateStr: string | null;
+  items: CalendarItem[];
+  open: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <DrawerLayout
+      open={open}
+      onClose={onClose}
+      panel={<CalendarDayDrawerPanel dateStr={dateStr} items={items} onClose={onClose} />}
+    >
+      {children}
+    </DrawerLayout>
   );
 }
