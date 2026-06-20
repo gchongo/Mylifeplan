@@ -1,13 +1,10 @@
 import type { TimelineColumn } from "@/lib/gantt-scale";
 
-export const GRID_BANDS = [
-  { bg: "bg-sky-50/40", border: "border-sky-300" },
-  { bg: "bg-amber-50/40", border: "border-amber-300" },
-  { bg: "bg-emerald-50/40", border: "border-emerald-300" },
-  { bg: "bg-violet-50/40", border: "border-violet-300" },
-  { bg: "bg-rose-50/40", border: "border-rose-300" },
-  { bg: "bg-teal-50/40", border: "border-teal-300" },
-];
+/** 统一灰色虚线，避免干扰任务条 */
+export const GRID_BORDER = "border-r border-dashed border-gray-200/70";
+
+/** 交替极淡背景，便于对齐大时间范围（无边框色） */
+export const GRID_BANDS = [{ bg: "bg-white" }, { bg: "bg-gray-50/35" }];
 
 export function buildColumnColorIndex(columns: TimelineColumn[]): Map<string, number> {
   const map = new Map<string, number>();

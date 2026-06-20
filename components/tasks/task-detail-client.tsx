@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TaskForm, type TaskFormValues } from "@/components/forms/task-form";
+import { ROLLUP_STATUS_HINT } from "@/lib/services/task-rollup";
 import { statusLabel } from "@/lib/task-status-style";
 
 interface ChildTask {
@@ -48,6 +49,7 @@ export function TaskDetailClient({
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [statusError, setStatusError] = useState("");
 
   async function handleDelete() {
     if (!confirm("确定删除此任务？关联备忘录也会删除。")) return;
@@ -69,11 +71,17 @@ export function TaskDetailClient({
   }
 
   async function quickStatus(status: string) {
-    await fetch(`/api/tasks/${task.id}`, {
+    setStatusError("");
+    const res = await fetch(`/api/tasks/${task.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
+    const data = await res.json();
+    if (!res.ok) {
+      setStatusError(data.error ?? "操作失败");
+      return;
+    }
     if (embedded) {
       onChanged?.();
     } else {
@@ -90,6 +98,7 @@ export function TaskDetailClient({
         <CardContent>
           <TaskForm
             task={task}
+            statusRollup={hasRollup}
             redirectTo={embedded ? "/gantt" : `/tasks/${task.id}`}
             onSuccess={() => {
               setShowEdit(false);
@@ -126,6 +135,14 @@ export function TaskDetailClient({
           </div>
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-gray-700">
+          {hasRollup && (
+            <p className="rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-800">
+              {ROLLUP_STATUS_HINT}
+            </p>
+          )}
+          {statusError && (
+            <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{statusError}</p>
+          )}
           {task.description && <p>{task.description}</p>}
           <dl className="grid grid-cols-2 gap-2">
             <dt className="text-gray-500">开始日期</dt>
@@ -143,15 +160,32 @@ export function TaskDetailClient({
             )}
             <dt className="text-gray-500">优先级</dt>
             <dd>{task.priority ?? "—"}</dd>
-            <dt className="text-gray-500">自身状态</dt>
-            <dd className="flex items-center gap-1.5">
-              <TaskStatusIndicator status={task.status} dueDate={task.dueDate} />
-              <span>{statusLabel(task.status, task.dueDate)}</span>
-            </dd>
+            {hasRollup ? (
+              <>
+                <dt className="text-gray-500">汇总状态</dt>
+                <dd className="flex items-center gap-1.5">
+                  <TaskStatusIndicator
+                    status={task.status}
+                    dueDate={task.dueDate}
+                    displayStatus={displayStatus}
+                    hasRollup
+                  />
+                  <span>{statusLabel(task.status, task.dueDate, displayStatus, true)}</span>
+                </dd>
+              </>
+            ) : (
+              <>
+                <dt className="text-gray-500">状态</dt>
+                <dd className="flex items-center gap-1.5">
+                  <TaskStatusIndicator status={task.status} dueDate={task.dueDate} />
+                  <span>{statusLabel(task.status, task.dueDate)}</span>
+                </dd>
+              </>
+            )}
           </dl>
 
           <div className="flex flex-wrap gap-2">
-            {task.status !== "archived" && (
+            {!hasRollup && task.status !== "archived" && (
               <>
                 {task.status !== "in_progress" && (
                   <Button size="sm" variant="secondary" onClick={() => quickStatus("in_progress")}>
@@ -170,14 +204,16 @@ export function TaskDetailClient({
                 )}
               </>
             )}
-            {task.status === "archived" ? (
-              <Button size="sm" variant="secondary" onClick={() => quickStatus("todo")}>
-                取消归档
-              </Button>
-            ) : (
-              <Button size="sm" variant="ghost" onClick={() => quickStatus("archived")}>
-                归档
-              </Button>
+            {!hasRollup && (
+              task.status === "archived" ? (
+                <Button size="sm" variant="secondary" onClick={() => quickStatus("todo")}>
+                  取消归档
+                </Button>
+              ) : (
+                <Button size="sm" variant="ghost" onClick={() => quickStatus("archived")}>
+                  归档
+                </Button>
+              )
             )}
             <Button
               size="sm"

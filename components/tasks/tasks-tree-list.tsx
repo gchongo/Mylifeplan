@@ -42,9 +42,11 @@ function TreeNode({
   collapsed: Set<string>;
   onToggle: (id: string) => void;
 }) {
-  const childStatuses = childTasks.map((c) => c.status);
+  const childStatuses = childTasks
+    .filter((c) => c.status !== "archived")
+    .map((c) => c.status);
   const displayStatus = deriveParentStatus(task.status, childStatuses);
-  const hasRollup = childTasks.length > 0;
+  const hasRollup = childStatuses.length > 0;
   const inMemo = shouldShowInMemo({ startDate: task.startDate, dueDate: task.dueDate });
   const isCollapsed = collapsed.has(task.id);
   const statusStyle = getStatusStyle(task.status, task.dueDate, displayStatus);

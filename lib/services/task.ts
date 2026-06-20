@@ -1,11 +1,15 @@
 import type { Task } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { validateDateFields } from "@/lib/content-router";
 import { parseDateOnly } from "@/lib/dates";
 import { prisma } from "@/lib/db";
 import { writeFeed } from "@/lib/services/feed";
 import { deleteMemoForTask, syncMemoForTask } from "@/lib/services/memo-sync";
+import { deriveStatusFromDirectChildren, validateManualStatusChange } from "@/lib/services/task-rollup";
 import type { createTaskSchema } from "@/lib/validations/task";
 import type { z } from "zod";
+
+type Tx = Prisma.TransactionClient;
 
 type CreateTaskInput = z.infer<typeof createTaskSchema>;
 type UpdateTaskInput = Partial<CreateTaskInput>;
@@ -73,6 +77,73 @@ function validateDates(startDate: string | null | undefined, dueDate: string | n
   });
 }
 
+async function applyTaskStatusIfChanged(
+  userId: string,
+  taskId: string,
+  prevStatus: Task["status"],
+  nextStatus: Task["status"],
+  tx: Tx,
+): Promise<void> {
+  if (nextStatus === prevStatus) return;
+
+  const updated = await tx.task.update({
+    where: { id: taskId },
+    data: { status: nextStatus },
+  });
+  await syncMemoForTask(updated, tx);
+  await writeFeed({
+    userId,
+    itemType: "task",
+    itemId: updated.id,
+    actionType: feedActionForTask(prevStatus, nextStatus),
+    content: updated.title,
+  });
+}
+
+/** 有子任务时，将自身状态与直接子任务汇总对齐 */
+async function reconcileTaskWithChildren(userId: string, taskId: string, tx: Tx): Promise<void> {
+  const task = await tx.task.findFirst({ where: { id: taskId, userId } });
+  if (!task) return;
+
+  const children = await tx.task.findMany({
+    where: { parentTaskId: taskId, userId },
+    select: { status: true },
+  });
+  if (children.length === 0) return;
+
+  const nextStatus = deriveStatusFromDirectChildren(children.map((c) => c.status));
+  if (!nextStatus) return;
+
+  await applyTaskStatusIfChanged(userId, taskId, task.status, nextStatus, tx);
+}
+
+/** 自底向上：每层只看直接子任务，全部完成则父任务自动完成 */
+async function syncParentStatusesUpward(
+  userId: string,
+  startParentId: string | null | undefined,
+  tx: Tx,
+): Promise<void> {
+  let parentId = startParentId ?? null;
+
+  while (parentId) {
+    const parent = await tx.task.findFirst({ where: { id: parentId, userId } });
+    if (!parent) break;
+
+    const children = await tx.task.findMany({
+      where: { parentTaskId: parent.id, userId },
+      select: { status: true },
+    });
+    if (children.length === 0) break;
+
+    const nextStatus = deriveStatusFromDirectChildren(children.map((c) => c.status));
+    if (nextStatus) {
+      await applyTaskStatusIfChanged(userId, parent.id, parent.status, nextStatus, tx);
+    }
+
+    parentId = parent.parentTaskId;
+  }
+}
+
 export async function createTask(userId: string, input: CreateTaskInput): Promise<Task> {
   const dateError = validateDates(input.startDate, input.dueDate);
   if (dateError) throw new Error(dateError);
@@ -107,6 +178,8 @@ export async function createTask(userId: string, input: CreateTaskInput): Promis
       content: task.title,
     });
 
+    await syncParentStatusesUpward(userId, task.parentTaskId, tx);
+
     return task;
   });
 }
@@ -138,6 +211,18 @@ export async function updateTask(
   const planError = await validatePlanRef(userId, planId);
   if (planError) throw new Error(planError);
 
+  if (input.status !== undefined) {
+    const children = await prisma.task.findMany({
+      where: { parentTaskId: taskId, userId },
+      select: { status: true },
+    });
+    const statusError = validateManualStatusChange(
+      input.status,
+      children.map((c) => c.status),
+    );
+    if (statusError) throw new Error(statusError);
+  }
+
   const newStatus = input.status ?? existing.status;
   const actionType = feedActionForTask(existing.status, newStatus);
 
@@ -167,6 +252,16 @@ export async function updateTask(
       content: task.title,
     });
 
+    await reconcileTaskWithChildren(userId, taskId, tx);
+    await syncParentStatusesUpward(userId, task.parentTaskId, tx);
+    if (
+      input.parentTaskId !== undefined &&
+      input.parentTaskId !== existing.parentTaskId &&
+      existing.parentTaskId
+    ) {
+      await syncParentStatusesUpward(userId, existing.parentTaskId, tx);
+    }
+
     return task;
   });
 }
@@ -176,8 +271,10 @@ export async function deleteTask(userId: string, taskId: string) {
   if (!existing) throw new Error("NOT_FOUND");
 
   await prisma.$transaction(async (tx) => {
+    const parentTaskId = existing.parentTaskId;
     await deleteMemoForTask(taskId, tx);
     await tx.task.delete({ where: { id: taskId } });
+    await syncParentStatusesUpward(userId, parentTaskId, tx);
   });
 }
 

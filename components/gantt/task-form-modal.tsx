@@ -9,6 +9,7 @@ export function TaskFormModal({
   title,
   task,
   defaultParentTaskId,
+  statusRollup = false,
   onSuccess,
 }: {
   open: boolean;
@@ -16,6 +17,7 @@ export function TaskFormModal({
   title: string;
   task?: TaskFormValues & { id: string };
   defaultParentTaskId?: string | null;
+  statusRollup?: boolean;
   onSuccess: () => void;
 }) {
   return (
@@ -24,6 +26,7 @@ export function TaskFormModal({
         key={task?.id ?? defaultParentTaskId ?? "new"}
         task={task}
         defaultParentTaskId={defaultParentTaskId}
+        statusRollup={statusRollup}
         onSuccess={() => {
           onSuccess();
           onClose();

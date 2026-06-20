@@ -7,6 +7,7 @@ import { ErrorMessage } from "@/components/ui/feedback";
 import { Input, Select, Textarea } from "@/components/ui";
 import { ParentTaskSelect } from "@/components/forms/parent-task-select";
 import { PlanSelect } from "@/components/forms/plan-select";
+import { ROLLUP_STATUS_HINT } from "@/lib/services/task-rollup";
 
 const priorityOptions = [
   { value: "", label: "无" },
@@ -38,12 +39,14 @@ export function TaskForm({
   redirectTo = "/tasks",
   defaultPlanId,
   defaultParentTaskId,
+  statusRollup = false,
   onSuccess,
 }: {
   task?: TaskFormValues;
   redirectTo?: string;
   defaultPlanId?: string | null;
   defaultParentTaskId?: string | null;
+  statusRollup?: boolean;
   onSuccess?: () => void;
 }) {
   const router = useRouter();
@@ -76,7 +79,7 @@ export function TaskForm({
       startDate,
       dueDate,
       priority,
-      status,
+      ...(statusRollup && isEdit ? {} : { status }),
       parentTaskId,
       planId,
     };
@@ -143,7 +146,7 @@ export function TaskForm({
           options={priorityOptions}
           defaultValue={task?.priority ?? ""}
         />
-        {isEdit && (
+        {isEdit && !statusRollup && (
           <Select
             name="status"
             label="状态"
@@ -152,6 +155,11 @@ export function TaskForm({
           />
         )}
       </div>
+      {isEdit && statusRollup && (
+        <p className="rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-800">
+          {ROLLUP_STATUS_HINT}
+        </p>
+      )}
       <ParentTaskSelect
         excludeTaskId={task?.id}
         value={parentTaskId}

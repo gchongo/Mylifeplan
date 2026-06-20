@@ -121,11 +121,12 @@ export function GanttTaskDrawer({
         .filter((t) => t.parentId === activeTaskId)
         .map((t) => ({ id: t.id, title: t.title, status: t.status ?? "todo" }))
     : [];
-  const childStatuses = childTasks.map((c) => asTaskStatus(c.status));
+  const activeChildTasks = childTasks.filter((c) => c.status !== "archived");
+  const childStatuses = activeChildTasks.map((c) => asTaskStatus(c.status));
   const displayStatus = task
     ? deriveParentStatus(asTaskStatus(task.status), childStatuses)
     : "todo";
-  const hasRollup = childStatuses.length > 0;
+  const hasRollup = activeChildTasks.length > 0;
 
   return (
     <Drawer

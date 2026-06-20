@@ -36,7 +36,9 @@ export default async function TaskDetailPage({
       })
     : null;
 
-  const childStatuses = task.subTasks.map((c) => c.status);
+  const childStatuses = task.subTasks
+    .filter((c) => c.status !== "archived")
+    .map((c) => c.status);
   const displayStatus = deriveParentStatus(task.status, childStatuses);
   const hasRollup = childStatuses.length > 0;
 

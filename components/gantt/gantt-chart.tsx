@@ -24,7 +24,7 @@ import {
   type TimelineLayout,
 } from "@/lib/gantt-scale";
 import { filterGanttTasksByStatus } from "@/lib/gantt-task-filter";
-import { buildColumnColorIndex, GRID_BANDS, spanColorIndex } from "@/lib/gantt-grid-colors";
+import { buildColumnColorIndex, GRID_BANDS, GRID_BORDER, spanColorIndex } from "@/lib/gantt-grid-colors";
 import { deriveParentStatus } from "@/lib/services/task-rollup";
 import {
   asTaskStatusForRollup,
@@ -43,7 +43,9 @@ const TIMELINE_HEADER_HEIGHT = 52;
 
 function itemDisplayStatus(item: GanttItem, allTasks: GanttItem[]): string {
   if (item.type === "plan") return item.status ?? "not_started";
-  const children = allTasks.filter((t) => t.parentId === item.id);
+  const children = allTasks.filter(
+    (t) => t.parentId === item.id && t.status !== "archived",
+  );
   if (children.length === 0) return item.status ?? "todo";
   return deriveParentStatus(
     asTaskStatusForRollup(item.status),
@@ -52,7 +54,10 @@ function itemDisplayStatus(item: GanttItem, allTasks: GanttItem[]): string {
 }
 
 function itemHasRollup(item: GanttItem, allTasks: GanttItem[]): boolean {
-  return item.type === "task" && allTasks.some((t) => t.parentId === item.id);
+  return (
+    item.type === "task" &&
+    allTasks.some((t) => t.parentId === item.id && t.status !== "archived")
+  );
 }
 
 type RowKind = "item" | "add-child";
@@ -119,6 +124,7 @@ interface TaskModalState {
   title: string;
   task?: TaskFormValues & { id: string };
   defaultParentTaskId?: string | null;
+  statusRollup?: boolean;
 }
 
 function taskBarStyle(item: GanttItem, allTasks: GanttItem[], depth: number) {
@@ -376,6 +382,9 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
       open: true,
       title: "编辑任务",
       task: data.task,
+      statusRollup: tasks.some(
+        (t) => t.parentId === taskId && t.status !== "archived",
+      ),
     });
   }
 
@@ -463,11 +472,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
               return (
                 <div
                   key={span.key}
-                  className={cn(
-                    "border-r border-dashed py-1.5 text-center",
-                    band.bg,
-                    band.border,
-                  )}
+                  className={cn("py-1.5 text-center", GRID_BORDER, band.bg)}
                   style={{ width: span.width }}
                 >
                   {span.label}
@@ -483,11 +488,11 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
                 <div
                   key={col.key}
                   className={cn(
-                    "border-r border-dashed py-1 text-center",
+                    "py-1 text-center",
+                    GRID_BORDER,
                     band.bg,
-                    band.border,
-                    col.isWeekend && "bg-gray-100/80",
-                    isToday && "ring-1 ring-inset ring-red-300",
+                    col.isWeekend && "bg-gray-50/80",
+                    isToday && "ring-1 ring-inset ring-red-200/80",
                   )}
                   style={{ width: col.width }}
                 >
@@ -521,11 +526,11 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
             <div
               key={col.key}
               className={cn(
-                "h-full border-r border-dashed",
+                "h-full",
+                GRID_BORDER,
                 band.bg,
-                band.border,
-                col.isWeekend && "bg-gray-100/70",
-                col.isOtherMonth && "opacity-70",
+                col.isWeekend && "bg-gray-50/60",
+                col.isOtherMonth && "opacity-80",
               )}
               style={{ width: col.width }}
             />
@@ -718,6 +723,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
             title={taskModal.title}
             task={taskModal.task}
             defaultParentTaskId={taskModal.defaultParentTaskId}
+            statusRollup={taskModal.statusRollup}
             onSuccess={refetchGantt}
           />
         )}
@@ -749,6 +755,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
             title={taskModal.title}
             task={taskModal.task}
             defaultParentTaskId={taskModal.defaultParentTaskId}
+            statusRollup={taskModal.statusRollup}
             onSuccess={refetchGantt}
           />
         )}
@@ -830,6 +837,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
             title={taskModal.title}
             task={taskModal.task}
             defaultParentTaskId={taskModal.defaultParentTaskId}
+            statusRollup={taskModal.statusRollup}
             onSuccess={refetchGantt}
           />
         </>
