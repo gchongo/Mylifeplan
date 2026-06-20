@@ -11,7 +11,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const type = searchParams.get("type");
     const parentPlanId = searchParams.get("parentPlanId");
-    const forContribution = searchParams.get("for") === "contribution";
 
     const plans = await prisma.plan.findMany({
       where: {
@@ -21,15 +20,13 @@ export async function GET(request: NextRequest) {
         ...(parentPlanId && { parentPlanId }),
       },
       orderBy: [{ type: "asc" }, { updatedAt: "desc" }],
-      include: forContribution
-        ? { parentPlan: { select: { title: true } } }
-        : undefined,
+      include: { parentPlan: { select: { title: true } } },
     });
 
     return jsonOk({
       plans: plans.map((p) => ({
         ...serializePlan(p),
-        parentTitle: "parentPlan" in p && p.parentPlan ? p.parentPlan.title : null,
+        parentTitle: p.parentPlan?.title ?? null,
       })),
     });
   } catch {
