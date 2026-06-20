@@ -2,16 +2,24 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { CalendarDayListPanel, CalendarMonthView } from "@/components/calendar/calendar-month-view";
+import {
+  CalendarDisplayPicker,
+  useCalendarDisplayMode,
+} from "@/components/calendar/calendar-display-picker";
+import { PanelExpandButton } from "@/components/home/panel-expand-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState, Loading } from "@/components/ui/feedback";
-import { PanelExpandButton } from "@/components/home/panel-expand-button";
+import {
+  formatEventSchedule,
+  itemAccent,
+  itemsOnDate,
+} from "@/lib/calendar-display";
 import type { CalendarItem } from "@/types";
 import { cn } from "@/lib/utils";
 
 type ViewMode = "month" | "week" | "day";
-
-const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
@@ -35,8 +43,9 @@ function monthRange(year: number, month: number) {
 
 function weekRange(anchor: Date) {
   const dow = anchor.getUTCDay();
+  const mondayOffset = dow === 0 ? 6 : dow - 1;
   const start = new Date(anchor);
-  start.setUTCDate(anchor.getUTCDate() - dow);
+  start.setUTCDate(anchor.getUTCDate() - mondayOffset);
   const end = new Date(start);
   end.setUTCDate(start.getUTCDate() + 6);
   return {
@@ -50,34 +59,8 @@ function weekRange(anchor: Date) {
   };
 }
 
-function buildMonthGrid(year: number, month: number) {
-  const firstDow = new Date(Date.UTC(year, month, 1)).getUTCDay();
-  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-  const cells: (number | null)[] = [];
-  for (let i = 0; i < firstDow; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-  while (cells.length % 7 !== 0) cells.push(null);
-  return cells;
-}
-
-function itemOnDate(item: CalendarItem, dateStr: string): boolean {
-  const start = item.startDate;
-  const end = item.dueDate ?? item.startDate;
-  return start <= dateStr && dateStr <= end;
-}
-
-function ItemLink({ item }: { item: CalendarItem }) {
-  return (
-    <Link
-      href={item.type === "task" ? `/tasks/${item.id}` : `/plans/${item.id}`}
-      className={`block truncate rounded px-0.5 ${
-        item.type === "task" ? "bg-brand-100 text-brand-800" : "bg-purple-100 text-purple-800"
-      }`}
-      title={item.title}
-    >
-      {item.title}
-    </Link>
-  );
+function itemHref(item: CalendarItem) {
+  return item.type === "task" ? `/tasks/${item.id}` : `/plans/${item.id}`;
 }
 
 export function CalendarPanelLive({
@@ -89,10 +72,12 @@ export function CalendarPanelLive({
 }) {
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
+  const [displayMode, setDisplayMode] = useCalendarDisplayMode();
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [viewYear, setViewYear] = useState(today.getUTCFullYear());
   const [viewMonth, setViewMonth] = useState(today.getUTCMonth());
   const [viewDay, setViewDay] = useState(today.getUTCDate());
+  const [selectedDate, setSelectedDate] = useState(todayStr);
   const [weekAnchor, setWeekAnchor] = useState(today);
   const [items, setItems] = useState<CalendarItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,10 +103,18 @@ export function CalendarPanelLive({
       .finally(() => setLoading(false));
   }, [from, to]);
 
-  const cells = buildMonthGrid(viewYear, viewMonth);
-  const weekDays = weekRange(weekAnchor).days;
   const dayStr = toDateStr(viewYear, viewMonth, viewDay);
-  const dayItems = items.filter((i) => itemOnDate(i, dayStr));
+  const weekDays = weekRange(weekAnchor).days;
+  const dayItems = itemsOnDate(items, dayStr);
+
+  function goToday() {
+    const now = new Date();
+    setViewYear(now.getUTCFullYear());
+    setViewMonth(now.getUTCMonth());
+    setViewDay(now.getUTCDate());
+    setWeekAnchor(now);
+    setSelectedDate(now.toISOString().slice(0, 10));
+  }
 
   function prev() {
     if (viewMode === "month") {
@@ -139,6 +132,7 @@ export function CalendarPanelLive({
       setViewYear(d.getUTCFullYear());
       setViewMonth(d.getUTCMonth());
       setViewDay(d.getUTCDate());
+      setSelectedDate(d.toISOString().slice(0, 10));
     }
   }
 
@@ -158,12 +152,19 @@ export function CalendarPanelLive({
       setViewYear(d.getUTCFullYear());
       setViewMonth(d.getUTCMonth());
       setViewDay(d.getUTCDate());
+      setSelectedDate(d.toISOString().slice(0, 10));
     }
   }
 
-  const monthItemLimit = fullPage ? 8 : 2;
-  const monthCellMinH = fullPage ? "min-h-[8rem]" : "min-h-[4rem]";
-  const weekCellMinH = fullPage ? "min-h-[12rem]" : "min-h-[6rem]";
+  function handleSelectDate(ds: string) {
+    setSelectedDate(ds);
+    const d = parseDate(ds);
+    setViewYear(d.getUTCFullYear());
+    setViewMonth(d.getUTCMonth());
+    setViewDay(d.getUTCDate());
+  }
+
+  const weekCellMin = fullPage ? "min-h-[8rem]" : "min-h-[5rem]";
 
   return (
     <Card className={cn("flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden", className)}>
@@ -175,7 +176,7 @@ export function CalendarPanelLive({
           {!fullPage && <PanelExpandButton href="/calendar" label="日历" />}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             {(["month", "week", "day"] as ViewMode[]).map((mode) => (
               <Button
                 key={mode}
@@ -187,8 +188,14 @@ export function CalendarPanelLive({
                 {mode === "month" ? "月" : mode === "week" ? "周" : "日"}
               </Button>
             ))}
+            {viewMode === "month" && (
+              <CalendarDisplayPicker value={displayMode} onChange={setDisplayMode} />
+            )}
           </div>
           <div className="flex items-center gap-1">
+            <Button type="button" variant="ghost" size="sm" onClick={goToday}>
+              今天
+            </Button>
             <Button type="button" variant="ghost" size="sm" onClick={prev}>
               ‹
             </Button>
@@ -199,82 +206,67 @@ export function CalendarPanelLive({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden">
+
+      <CardContent className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-3 pt-0">
         {loading && <Loading label="加载日历…" />}
-        {!loading && items.length === 0 && (
+        {!loading && items.length === 0 && viewMode !== "month" && (
           <EmptyState title="暂无安排" description="创建带开始日期的任务或计划后会显示在这里。" />
         )}
         {!loading && viewMode === "month" && (
-          <>
-            <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500">
-              {WEEKDAYS.map((w) => (
-                <div key={w} className="py-1 font-medium">
-                  {w}
-                </div>
-              ))}
-            </div>
-            <div className="mt-1 min-h-0 flex-1 grid grid-cols-7 gap-1 overflow-y-auto text-xs">
-              {cells.map((day, idx) => {
-                if (day === null) {
-                  return (
-                    <div
-                      key={`e-${idx}`}
-                      className={cn("rounded bg-transparent", monthCellMinH)}
-                    />
-                  );
-                }
-                const ds = toDateStr(viewYear, viewMonth, day);
-                const dayItems = items.filter((i) => itemOnDate(i, ds));
-                const isTodayCell = ds === todayStr;
-                return (
-                  <div
-                    key={day}
-                    className={cn(
-                      "rounded border p-1",
-                      monthCellMinH,
-                      isTodayCell ? "border-brand-400 bg-brand-50" : "border-gray-100 bg-gray-50/80",
-                    )}
-                  >
-                    <div className="mb-0.5 text-right font-medium">{day}</div>
-                    <ul className="space-y-0.5">
-                      {dayItems.slice(0, monthItemLimit).map((item) => (
-                        <li key={`${item.type}-${item.id}`}>
-                          <ItemLink item={item} />
-                        </li>
-                      ))}
-                      {dayItems.length > monthItemLimit && (
-                        <li className="text-[10px] text-gray-400">
-                          +{dayItems.length - monthItemLimit}
-                        </li>
-                      )}
-                    </ul>
-                  </div>
-                );
-              })}
-            </div>
-          </>
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white">
+            {items.length === 0 && displayMode !== "list" && (
+              <p className="shrink-0 px-3 py-2 text-xs text-gray-400">本月暂无安排</p>
+            )}
+            <CalendarMonthView
+              year={viewYear}
+              month={viewMonth}
+              items={items}
+              displayMode={displayMode}
+              todayStr={todayStr}
+              selectedDate={selectedDate}
+              onSelectDate={handleSelectDate}
+              fullPage={fullPage}
+            />
+            {displayMode === "list" && (
+              <CalendarDayListPanel dateStr={selectedDate} items={items} fullPage={fullPage} />
+            )}
+          </div>
         )}
         {!loading && viewMode === "week" && (
-          <div className="grid min-h-0 flex-1 grid-cols-7 gap-1 overflow-y-auto text-xs">
+          <div className="grid min-h-0 flex-1 grid-cols-7 gap-px overflow-y-auto bg-gray-100 text-xs">
             {weekDays.map((ds) => {
-              const dayItems = items.filter((i) => itemOnDate(i, ds));
+              const list = itemsOnDate(items, ds);
               const d = parseInt(ds.slice(8, 10), 10);
+              const isToday = ds === todayStr;
               return (
                 <div
                   key={ds}
-                  className={cn(
-                    "rounded border p-1",
-                    weekCellMinH,
-                    ds === todayStr ? "border-brand-400 bg-brand-50" : "border-gray-100",
-                  )}
+                  className={cn("flex flex-col bg-white p-1", weekCellMin)}
                 >
-                  <div className="mb-1 text-center font-medium">{d}</div>
-                  <ul className="space-y-0.5">
-                    {dayItems.map((item) => (
-                      <li key={`${item.type}-${item.id}`}>
-                        <ItemLink item={item} />
-                      </li>
-                    ))}
+                  <div className="mb-1 flex justify-center">
+                    <span
+                      className={cn(
+                        "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold",
+                        isToday ? "bg-red-500 text-white" : "text-gray-800",
+                      )}
+                    >
+                      {d}
+                    </span>
+                  </div>
+                  <ul className="space-y-1">
+                    {list.map((item) => {
+                      const accent = itemAccent(item);
+                      return (
+                        <li key={`${item.type}-${item.id}`}>
+                          <Link
+                            href={itemHref(item)}
+                            className={cn("block rounded-md px-1 py-0.5 text-[10px] text-white", accent.bar)}
+                          >
+                            <span className="line-clamp-2">{item.title}</span>
+                          </Link>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               );
@@ -282,22 +274,29 @@ export function CalendarPanelLive({
           </div>
         )}
         {!loading && viewMode === "day" && (
-          <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto">
+          <ul className="min-h-0 flex-1 space-y-0 overflow-y-auto rounded-xl border border-gray-200 bg-white">
             {dayItems.length === 0 ? (
-              <li className="text-sm text-gray-500">当天暂无安排</li>
+              <li className="px-4 py-6 text-sm text-gray-400">当天暂无安排</li>
             ) : (
-              dayItems.map((item) => (
-                <li
-                  key={`${item.type}-${item.id}`}
-                  className="rounded-lg border border-gray-100 px-3 py-2"
-                >
-                  <ItemLink item={item} />
-                  <p className="mt-1 text-xs text-gray-400">
-                    {item.startDate}
-                    {item.dueDate && item.dueDate !== item.startDate ? ` → ${item.dueDate}` : ""}
-                  </p>
-                </li>
-              ))
+              dayItems.map((item) => {
+                const accent = itemAccent(item);
+                return (
+                  <li key={`${item.type}-${item.id}`} className="border-b border-gray-100 last:border-0">
+                    <Link
+                      href={itemHref(item)}
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50"
+                    >
+                      <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", accent.dot)} />
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">
+                        {item.title}
+                      </span>
+                      <span className="shrink-0 text-xs text-gray-400">
+                        {formatEventSchedule(item)}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })
             )}
           </ul>
         )}
