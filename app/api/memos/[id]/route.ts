@@ -4,6 +4,7 @@ import { jsonError, jsonOk } from "@/lib/api-response";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 import { requireSession } from "@/lib/auth/get-session";
+import { handleProtectedRouteError } from "@/lib/api/route-auth";
 import { deleteMemoById, updateMemoById, archiveMemoById } from "@/lib/services/memo";
 import { validateDateFields } from "@/lib/content-router";
 
