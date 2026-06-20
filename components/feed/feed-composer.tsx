@@ -4,7 +4,6 @@ import { useState } from "react";
 import { ParentPlanSelect } from "@/components/forms/parent-plan-select";
 import { PlanContributionSelect } from "@/components/forms/long-term-plan-select";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui";
 import { apiJson } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
 
@@ -14,13 +13,6 @@ const MODES: { id: ComposerMode; label: string; hint: string }[] = [
   { id: "memo", label: "备忘", hint: "无日期想法，保存在备忘录" },
   { id: "plan", label: "计划", hint: "可设日期，出现在甘特图与日历" },
   { id: "contribution", label: "贡献", hint: "记录某一天的计划进展" },
-];
-
-const PLAN_TYPE_OPTIONS = [
-  { value: "goal", label: "长期目标" },
-  { value: "phase", label: "阶段" },
-  { value: "weekly", label: "周计划" },
-  { value: "daily", label: "日计划" },
 ];
 
 function todayStr() {
@@ -48,7 +40,6 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const [planType, setPlanType] = useState("goal");
   const [parentPlanId, setParentPlanId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -98,7 +89,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
           body: JSON.stringify({
             title,
             description,
-            type: planType,
+            type: "goal",
             parentPlanId,
             startDate: startDate || null,
             endDate: endDate || null,
@@ -167,12 +158,6 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
 
       {mode === "plan" && (
         <div className="space-y-2 border-t border-gray-100 px-3 py-2">
-          <Select
-            label="计划类型"
-            options={PLAN_TYPE_OPTIONS}
-            value={planType}
-            onChange={(e) => setPlanType(e.target.value)}
-          />
           <ParentPlanSelect value={parentPlanId} onChange={setParentPlanId} />
           <div className="grid gap-2 sm:grid-cols-2">
             <label className="block text-xs text-gray-500">
@@ -198,19 +183,20 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
       )}
 
       {mode === "contribution" && (
-        <div className="space-y-2 border-t border-gray-100 px-3 py-2">
+        <div className="grid gap-2 border-t border-gray-100 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
           <PlanContributionSelect
             value={contributionPlanId}
             onChange={setContributionPlanId}
             refreshKey={planListRefreshKey}
+            inline
           />
-          <label className="flex items-center gap-2 text-xs text-gray-500">
+          <label className="flex shrink-0 items-center gap-2 text-xs text-gray-500">
             贡献日期
             <input
               type="date"
               value={occurredOn}
               onChange={(e) => setOccurredOn(e.target.value)}
-              className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-800"
+              className="rounded-md border border-gray-200 px-2 py-1.5 text-sm text-gray-800"
             />
           </label>
         </div>

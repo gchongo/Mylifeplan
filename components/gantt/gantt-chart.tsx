@@ -504,7 +504,6 @@ export const GanttChart = forwardRef<
   }
 
   function renderListHeaderControls() {
-    if (!fullPage) return null;
     return (
       <GanttTaskListControls
         allExpanded={allSubplansExpanded}

@@ -4,6 +4,8 @@ import { buildPlanTree } from "@/lib/plan-tree";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { PlanTree } from "@/components/plans/plan-tree";
+import { centeredPageWidthClass } from "@/components/layout/centered-layout";
+import { cn } from "@/lib/utils";
 
 export default async function PlansPage() {
   const session = await getSession();
@@ -18,7 +20,7 @@ export default async function PlansPage() {
   const tree = buildPlanTree(plans);
 
   return (
-    <div className="space-y-6">
+    <div className={cn(centeredPageWidthClass, "space-y-6")}>
       <div>
         <h1 className="text-xl font-semibold text-gray-900">计划</h1>
         <p className="text-sm text-gray-500">
