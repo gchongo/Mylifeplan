@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { apiJson } from "@/lib/client-api";
+import { CalendarDayCreateActions } from "@/components/calendar/calendar-day-create-actions";
 import { CalendarDayDrawer } from "@/components/calendar/calendar-day-drawer";
-import {
-  CalendarScrollView,
+import { CalendarScrollView,
   type CalendarScrollViewHandle,
 } from "@/components/calendar/calendar-scroll-view";
+import { CalendarYearPicker } from "@/components/calendar/calendar-year-picker";
 import {
   CalendarDisplayPicker,
   useCalendarDisplayMode,
@@ -30,6 +31,7 @@ import {
   rangeForMonths,
   type MonthKey,
 } from "@/lib/calendar-month-grid";
+import { dispatchPlanUpdated } from "@/lib/plan-events";
 import type { CalendarItem } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -114,15 +116,16 @@ export function CalendarPanelLive({
   }, []);
 
   const { from, to, label } = useMemo(() => {
-    if (viewMode === "month" || viewMode === "year") {
-      const months =
-        viewMode === "year"
-          ? Array.from({ length: 12 }, (_, month) => ({ year: viewYear, month }))
-          : loadedMonths;
-      const r = rangeForMonths(months);
-      const monthLabel =
-        viewMode === "year" ? `${viewYear}年` : formatMonthTitle(visibleMonth, true);
-      return { ...r, label: monthLabel };
+    if (viewMode === "year") {
+      return {
+        from: `${viewYear}-01-01`,
+        to: `${viewYear}-12-31`,
+        label: `${viewYear}年`,
+      };
+    }
+    if (viewMode === "month") {
+      const r = rangeForMonths(loadedMonths);
+      return { ...r, label: formatMonthTitle(visibleMonth, true) };
     }
     if (viewMode === "week") {
       const r = weekRange(weekAnchor);
@@ -132,10 +135,14 @@ export function CalendarPanelLive({
     return { from: ds, to: ds, label: ds };
   }, [viewMode, loadedMonths, visibleMonth, viewYear, viewMonth, viewDay, weekAnchor]);
 
-  useEffect(() => {
-    if (viewMode !== "year") return;
-    setLoadedMonths(Array.from({ length: 12 }, (_, month) => ({ year: viewYear, month })));
-  }, [viewMode, viewYear]);
+  const reloadCalendar = useCallback(() => {
+    setLoading(true);
+    apiJson<{ items?: CalendarItem[] }>(`/api/calendar?from=${from}&to=${to}`)
+      .then((data) => setItems(data.items ?? []))
+      .catch(() => setItems([]))
+      .finally(() => setLoading(false));
+    dispatchPlanUpdated();
+  }, [from, to]);
 
   useEffect(() => {
     setLoading(true);
@@ -157,7 +164,17 @@ export function CalendarPanelLive({
     setWeekAnchor(now);
     setSelectedDate(now.toISOString().slice(0, 10));
     setVisibleMonth(monthKeyFromDate(now));
-    if (viewMode === "month" || viewMode === "year") scrollRef.current?.scrollToToday();
+    if (viewMode === "month") scrollRef.current?.scrollToToday();
+  }
+
+  function selectYearMonth(month: number, year: number) {
+    const key = { year, month };
+    setViewYear(year);
+    setViewMonth(month);
+    setVisibleMonth(key);
+    setLoadedMonths(initialMonthWindow(key));
+    setViewMode("month");
+    requestAnimationFrame(() => scrollRef.current?.scrollToMonth(key));
   }
 
   function prev() {
@@ -234,7 +251,7 @@ export function CalendarPanelLive({
               onNext={next}
               onToday={goToday}
             />
-            {(viewMode === "month" || viewMode === "year") && (
+            {(viewMode === "month") && (
               <CalendarDisplayPicker value={displayMode} onChange={setDisplayMode} />
             )}
           </div>
@@ -254,6 +271,7 @@ export function CalendarPanelLive({
           open={drawerDate !== null}
           onClose={closeDayDrawer}
           detailExpandable={fullPage}
+          onDataChange={reloadCalendar}
         >
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             {fullPage && (
@@ -271,13 +289,24 @@ export function CalendarPanelLive({
             {loading && viewMode !== "month" && viewMode !== "year" && (
               <Loading label="加载日历…" />
             )}
-            {loading && (viewMode === "month" || viewMode === "year") && items.length === 0 && (
+            {loading && viewMode === "month" && items.length === 0 && (
               <Loading label="加载日历…" />
             )}
             {!loading && items.length === 0 && viewMode !== "month" && viewMode !== "year" && (
               <EmptyState title="暂无安排" description="创建带开始日期的任务或计划后会显示在这里。" />
             )}
-            {(viewMode === "month" || viewMode === "year") && (
+            {viewMode === "year" && (
+              <CalendarYearPicker
+                year={viewYear}
+                selectedMonth={visibleMonth.month}
+                selectedYear={visibleMonth.year}
+                todayYear={today.getUTCFullYear()}
+                todayMonth={today.getUTCMonth()}
+                onYearChange={setViewYear}
+                onSelectMonth={selectYearMonth}
+              />
+            )}
+            {viewMode === "month" && (
               <div
                 className={cn(
                   "relative flex h-0 min-h-0 flex-1 flex-col overflow-hidden bg-white",
@@ -352,31 +381,38 @@ export function CalendarPanelLive({
               </div>
             )}
             {!loading && viewMode === "day" && (
-              <ul className="min-h-0 flex-1 space-y-0 overflow-y-auto rounded-xl border border-gray-200 bg-white">
-                {dayItems.length === 0 ? (
-                  <li className="px-4 py-6 text-sm text-gray-400">当天暂无安排</li>
-                ) : (
-                  dayItems.map((item) => {
-                    const accent = itemAccent(item);
-                    return (
-                      <li key={item.id} className="border-b border-gray-100 last:border-0">
-                        <Link
-                          href={itemHref(item)}
-                          className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50"
-                        >
-                          <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", accent.dot)} />
-                          <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">
-                            {item.title}
-                          </span>
-                          <span className="shrink-0 text-xs text-gray-400">
-                            {formatEventSchedule(item)}
-                          </span>
-                        </Link>
-                      </li>
-                    );
-                  })
-                )}
-              </ul>
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white">
+                <ul className="min-h-0 flex-1 space-y-0 overflow-y-auto">
+                  {dayItems.length === 0 ? (
+                    <li className="px-4 py-6 text-sm text-gray-400">当天暂无安排</li>
+                  ) : (
+                    dayItems.map((item) => {
+                      const accent = itemAccent(item);
+                      return (
+                        <li key={item.id} className="border-b border-gray-100 last:border-0">
+                          <Link
+                            href={itemHref(item)}
+                            className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50"
+                          >
+                            <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", accent.dot)} />
+                            <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">
+                              {item.title}
+                            </span>
+                            <span className="shrink-0 text-xs text-gray-400">
+                              {formatEventSchedule(item)}
+                            </span>
+                          </Link>
+                        </li>
+                      );
+                    })
+                  )}
+                </ul>
+                <CalendarDayCreateActions
+                  dateStr={dayStr}
+                  dayItems={dayItems}
+                  onSuccess={reloadCalendar}
+                />
+              </div>
             )}
           </div>
         </CalendarDayDrawer>

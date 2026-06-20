@@ -29,11 +29,15 @@ export function PlanForm({
   plan,
   redirectTo,
   defaultParentPlanId,
+  defaultStartDate,
+  defaultEndDate,
   onSuccess,
 }: {
   plan?: PlanFormValues;
   redirectTo?: string;
   defaultParentPlanId?: string | null;
+  defaultStartDate?: string | null;
+  defaultEndDate?: string | null;
   onSuccess?: () => void;
 }) {
   const router = useRouter();
@@ -118,13 +122,13 @@ export function PlanForm({
           name="startDate"
           label="开始时间"
           type="datetime-local"
-          defaultValue={toDatetimeLocalInput(plan?.startDate)}
+          defaultValue={toDatetimeLocalInput(plan?.startDate ?? defaultStartDate)}
         />
         <Input
           name="endDate"
           label="结束时间"
           type="datetime-local"
-          defaultValue={toDatetimeLocalInput(plan?.endDate)}
+          defaultValue={toDatetimeLocalInput(plan?.endDate ?? defaultEndDate)}
         />
       </div>
       {isEdit && (

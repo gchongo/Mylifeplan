@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { DrawerLayout, DrawerPanel } from "@/components/ui/drawer";
 import { CalendarDrawerItemList } from "@/components/calendar/calendar-drawer-item-list";
+import { CalendarDayCreateActions } from "@/components/calendar/calendar-day-create-actions";
 import { formatDayDrawerTitle, itemsOnDate } from "@/lib/calendar-display";
 import type { CalendarItem } from "@/types";
 
@@ -11,11 +12,13 @@ function CalendarDayDrawerPanel({
   items,
   onClose,
   detailExpandable,
+  onDataChange,
 }: {
   dateStr: string | null;
   items: CalendarItem[];
   onClose: () => void;
   detailExpandable: boolean;
+  onDataChange?: () => void;
 }) {
   const dayItems = dateStr ? itemsOnDate(items, dateStr) : [];
 
@@ -26,6 +29,9 @@ function CalendarDayDrawerPanel({
       className="p-0"
     >
       <CalendarDrawerItemList items={dayItems} expandable={detailExpandable} />
+      {dateStr && onDataChange && (
+        <CalendarDayCreateActions dateStr={dateStr} dayItems={dayItems} onSuccess={onDataChange} />
+      )}
     </DrawerPanel>
   );
 }
@@ -36,6 +42,7 @@ export function CalendarDayDrawer({
   open,
   onClose,
   detailExpandable = false,
+  onDataChange,
   children,
 }: {
   dateStr: string | null;
@@ -43,6 +50,7 @@ export function CalendarDayDrawer({
   open: boolean;
   onClose: () => void;
   detailExpandable?: boolean;
+  onDataChange?: () => void;
   children: React.ReactNode;
 }) {
   return (
@@ -55,6 +63,7 @@ export function CalendarDayDrawer({
           items={items}
           onClose={onClose}
           detailExpandable={detailExpandable}
+          onDataChange={onDataChange}
         />
       }
     >

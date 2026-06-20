@@ -3,6 +3,7 @@ export const GANTT_SCALES = [
   { id: "week", label: "周" },
   { id: "month", label: "月" },
   { id: "year", label: "年" },
+  { id: "5year", label: "5年" },
 ] as const;
 
 export type GanttScaleId = (typeof GANTT_SCALES)[number]["id"];
@@ -45,6 +46,7 @@ const DAY_WIDTH = 36;
 const WEEK_WIDTH = 88;
 const MONTH_DAY_WIDTH = 32;
 const YEAR_WEEK_WIDTH = 28;
+const FIVEY_YEAR_WIDTH = 88;
 
 const WEEKDAY_SHORT = ["日", "一", "二", "三", "四", "五", "六"];
 const MONTH_NAMES = [
@@ -111,6 +113,11 @@ function addMonthsUtc(base: string, months: number) {
   return new Date(Date.UTC(y, m - 1 + months, d)).toISOString().slice(0, 10);
 }
 
+function addYearsUtc(base: string, years: number) {
+  const [y, m, d] = base.split("-").map(Number);
+  return new Date(Date.UTC(y + years, m - 1, d)).toISOString().slice(0, 10);
+}
+
 function utcDayOfWeek(date: string) {
   return new Date(parseUtcDate(date)).getUTCDay();
 }
@@ -125,6 +132,11 @@ function formatPeriodLabel(scale: GanttScaleId, anchor: string): string {
   if (scale === "day") return `${y}年${m}月${d}日`;
   if (scale === "week" || scale === "month") return `${y}年${m}月`;
   if (scale === "year") return `${y}年`;
+  if (scale === "5year") {
+    const start = y - 2;
+    const end = y + 2;
+    return `${start}–${end}年`;
+  }
   return `${y}年${m}月`;
 }
 
@@ -264,6 +276,22 @@ function buildYearWeekColumns(from: string, to: string): TimelineColumn[] {
   return columns;
 }
 
+function buildFiveYearYearColumns(fromYear: number, toYear: number): TimelineColumn[] {
+  const columns: TimelineColumn[] = [];
+  for (let y = fromYear; y <= toYear; y++) {
+    columns.push({
+      key: `${y}`,
+      startDate: `${y}-01-01`,
+      endDate: `${y}-12-31`,
+      width: FIVEY_YEAR_WIDTH,
+      topGroupKey: "years",
+      topGroupLabel: "",
+      headerBottom: `${y}`,
+    });
+  }
+  return columns;
+}
+
 function datePartAndLocalTime(date: string): { dateStr: string; hour: number; minute: number } {
   if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return { dateStr: date, hour: 0, minute: 0 };
@@ -350,6 +378,10 @@ function scaleDefaultRange(scale: GanttScaleId, anchor: string): { from: string;
       const to = endOfMonth(`${y}-12-31`);
       return { from, to };
     }
+    case "5year": {
+      const y = parseInt(anchor.slice(0, 4), 10);
+      return { from: `${y - 2}-01-01`, to: `${y + 2}-12-31` };
+    }
   }
 }
 
@@ -376,6 +408,11 @@ function generateColumns(
     }
     case "year":
       return buildYearWeekColumns(from, to);
+    case "5year": {
+      const fromYear = parseInt(from.slice(0, 4), 10);
+      const toYear = parseInt(to.slice(0, 4), 10);
+      return buildFiveYearYearColumns(fromYear, toYear);
+    }
   }
 }
 
@@ -399,6 +436,8 @@ export function shiftAnchor(scale: GanttScaleId, anchor: string, direction: -1 |
       return addDaysUtc(anchor, direction);
     case "year":
       return addMonthsUtc(anchor, direction);
+    case "5year":
+      return addYearsUtc(anchor, direction * 5);
     default:
       return anchor;
   }

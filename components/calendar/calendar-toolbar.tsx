@@ -37,7 +37,7 @@ export function CalendarToolbar({
           onToday={onToday}
         />
 
-        {(viewMode === "month" || viewMode === "year") && (
+        {viewMode === "month" && (
           <CalendarDisplayPicker
             variant="toolbar"
             value={displayMode}

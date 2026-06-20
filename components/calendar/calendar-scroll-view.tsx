@@ -35,6 +35,7 @@ const EDGE_THRESHOLD_PX = 280;
 export type CalendarScrollViewHandle = {
   scrollToToday: () => void;
   scrollByMonth: (delta: number) => void;
+  scrollToMonth: (key: MonthKey) => void;
 };
 
 export const CalendarScrollView = forwardRef<
@@ -184,6 +185,21 @@ export const CalendarScrollView = forwardRef<
         });
       } else {
         monthRefs.current.get(targetId)?.scrollIntoView({ block: "start", behavior: "smooth" });
+      }
+    },
+    scrollToMonth(key: MonthKey) {
+      const targetId = monthKeyId(key);
+      if (!months.some((m) => monthKeyId(m) === targetId)) {
+        setMonths((prev) =>
+          [...prev, key].sort((a, b) => (a.year !== b.year ? a.year - b.year : a.month - b.month)),
+        );
+        requestAnimationFrame(() => {
+          monthRefs.current.get(targetId)?.scrollIntoView({ block: "start", behavior: "auto" });
+          updateVisibleMonth();
+        });
+      } else {
+        monthRefs.current.get(targetId)?.scrollIntoView({ block: "start", behavior: "auto" });
+        updateVisibleMonth();
       }
     },
   }));

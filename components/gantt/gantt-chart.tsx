@@ -11,6 +11,8 @@ import {
   useState,
 } from "react";
 import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribution-drawer";
+import { GanttBarActionModal } from "@/components/gantt/gantt-bar-action-modal";
+import { ContributionFormModal } from "@/components/gantt/contribution-form-modal";
 import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
 import { GanttPlanDrawerPanel } from "@/components/gantt/gantt-plan-drawer";
 import { GanttToolbar } from "@/components/gantt/gantt-toolbar";
@@ -131,6 +133,14 @@ interface PlanModalState {
   open: boolean;
   title: string;
   defaultParentPlanId?: string | null;
+  defaultStartDate?: string | null;
+  defaultEndDate?: string | null;
+}
+
+interface BarActionState {
+  planId: string;
+  title: string;
+  canAddSubPlan: boolean;
 }
 
 function planBarStyle(item: GanttItem, allPlans: GanttItem[], depth: number) {
@@ -184,6 +194,11 @@ export const GanttChart = forwardRef<
     open: false,
     title: "新建计划",
   });
+  const [barAction, setBarAction] = useState<BarActionState | null>(null);
+  const [contributionModal, setContributionModal] = useState<{
+    planId: string;
+    occurredOn: string;
+  } | null>(null);
 
   const [internalScale, setInternalScale] = useState<GanttScaleId>("month");
   const scale = scaleProp ?? internalScale;
@@ -453,12 +468,26 @@ export const GanttChart = forwardRef<
     setSelectedContributionId(null);
   }
 
-  function openCreatePlan(parentPlanId?: string | null) {
+  function openCreatePlan(parentPlanId?: string | null, defaultStartDate?: string | null) {
     setPlanModal({
       open: true,
       title: parentPlanId ? "新建子计划" : "新建计划",
       defaultParentPlanId: parentPlanId ?? null,
+      defaultStartDate: defaultStartDate ?? null,
     });
+  }
+
+  function openBarAction(item: GanttItem) {
+    const depth = planDepth(item.id, planById);
+    setBarAction({
+      planId: item.id,
+      title: item.title,
+      canAddSubPlan: depth < 2,
+    });
+  }
+
+  function closeBarAction() {
+    setBarAction(null);
   }
 
   function closePlanModal() {
@@ -748,7 +777,7 @@ export const GanttChart = forwardRef<
             barShell={barStyle.shell}
             barText={barStyle.text}
             onUpdated={handleItemUpdated}
-            onTaskClick={() => openPlan(item.id)}
+            onTaskClick={() => openBarAction(item)}
           />
         )}
         {item.contributionOnly && (
@@ -790,16 +819,56 @@ export const GanttChart = forwardRef<
 
   function renderPlanModal() {
     return (
-      <PlanFormModal
-        open={planModal.open}
-        onClose={closePlanModal}
-        title={planModal.title}
-        defaultParentPlanId={planModal.defaultParentPlanId}
-        onSuccess={() => {
-          refetchGantt();
-          dispatchPlanUpdated();
-        }}
-      />
+      <>
+        <PlanFormModal
+          open={planModal.open}
+          onClose={closePlanModal}
+          title={planModal.title}
+          defaultParentPlanId={planModal.defaultParentPlanId}
+          defaultStartDate={planModal.defaultStartDate}
+          defaultEndDate={planModal.defaultEndDate}
+          onSuccess={() => {
+            refetchGantt();
+            dispatchPlanUpdated();
+          }}
+        />
+        <GanttBarActionModal
+          open={barAction !== null}
+          onClose={closeBarAction}
+          planTitle={barAction?.title ?? ""}
+          canAddSubPlan={barAction?.canAddSubPlan ?? false}
+          onAddContribution={() => {
+            if (!barAction) return;
+            const occurredOn = todayStr();
+            closeBarAction();
+            setContributionModal({ planId: barAction.planId, occurredOn });
+          }}
+          onAddSubPlan={() => {
+            if (!barAction) return;
+            const parentId = barAction.planId;
+            closeBarAction();
+            openCreatePlan(parentId);
+          }}
+          onViewDetail={() => {
+            if (!barAction) return;
+            const planId = barAction.planId;
+            closeBarAction();
+            openPlan(planId);
+          }}
+        />
+        {contributionModal && (
+          <ContributionFormModal
+            open
+            onClose={() => setContributionModal(null)}
+            planId={contributionModal.planId}
+            occurredOn={contributionModal.occurredOn}
+            onSuccess={() => {
+              refetchGantt();
+              dispatchPlanUpdated();
+            }}
+          />
+        )}
+      </>
     );
   }
 
