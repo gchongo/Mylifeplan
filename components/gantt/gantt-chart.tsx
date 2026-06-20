@@ -1,6 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Link from "next/link";
 import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
 import { GanttTaskDrawer } from "@/components/gantt/gantt-task-drawer";
@@ -12,9 +21,7 @@ import type { TaskFormValues } from "@/components/forms/task-form";
 import { Button, EmptyState, Loading as LoadingView } from "@/components/ui";
 import {
   barMetricsFromDates,
-  buildCompactLayout,
   buildTimelineLayout,
-  compactTimelineRange,
   dateToX,
   HOUR_WIDTH,
   isTodayInColumn,
@@ -152,7 +159,20 @@ function formatHourLabel(h: number) {
   return `${h}:00`;
 }
 
-export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
+export interface GanttChartHandle {
+  navigatePrev: () => void;
+  navigateNext: () => void;
+  goToday: () => void;
+}
+
+export const GanttChart = forwardRef<
+  GanttChartHandle,
+  {
+    fullPage?: boolean;
+    scale?: GanttScaleId;
+    onScaleChange?: (scale: GanttScaleId) => void;
+  }
+>(function GanttChart({ fullPage = false, scale: scaleProp, onScaleChange }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrolledToToday = useRef(false);
@@ -165,10 +185,9 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     title: "新建任务",
   });
 
-  const [scale, setScale] = useState<GanttScaleId>("month");
+  const [internalScale, setInternalScale] = useState<GanttScaleId>("month");
+  const scale = scaleProp ?? internalScale;
   const [anchor, setAnchor] = useState(todayStr);
-
-  const compactRange = useMemo(() => compactTimelineRange(), []);
 
   const [items, setItems] = useState<GanttItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -181,12 +200,12 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
 
   const dataBounds = useMemo(() => dataBoundsFromItems(items), [items]);
 
-  const layout: TimelineLayout = useMemo(() => {
-    if (!fullPage) return buildCompactLayout(compactRange.from, compactRange.to);
-    return buildTimelineLayout(scale, anchor, dataBounds);
-  }, [fullPage, scale, anchor, dataBounds, compactRange]);
+  const layout: TimelineLayout = useMemo(
+    () => buildTimelineLayout(scale, anchor, dataBounds),
+    [scale, anchor, dataBounds],
+  );
 
-  const { from, to } = fullPage ? layout : compactRange;
+  const { from, to } = layout;
   const timelineWidth = layout.totalWidth;
   const totalWidth = LABEL_WIDTH + timelineWidth;
   const today = todayStr();
@@ -324,7 +343,17 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     };
   }, [isLoading, scrollToToday, scrollToAnchor, from, to, layout.totalWidth]);
 
-  function goToday() {
+  const changeScale = useCallback(
+    (next: GanttScaleId) => {
+      onScaleChange?.(next);
+      if (scaleProp === undefined) setInternalScale(next);
+      scrollTarget.current = "today";
+      scrolledToToday.current = false;
+    },
+    [onScaleChange, scaleProp],
+  );
+
+  const goToday = useCallback(() => {
     scrollTarget.current = "today";
     setAnchor(todayStr());
     scrolledToToday.current = false;
@@ -332,9 +361,9 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
       scrollToToday();
       scrolledToToday.current = true;
     });
-  }
+  }, [scrollToToday]);
 
-  function navigatePrev() {
+  const navigatePrev = useCallback(() => {
     if (scale === "day") {
       scrollRef.current?.scrollBy({ left: -HOUR_WIDTH, behavior: "smooth" });
       return;
@@ -342,9 +371,9 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     scrollTarget.current = "anchor";
     scrolledToToday.current = false;
     setAnchor((a) => shiftAnchor(scale, a, -1));
-  }
+  }, [scale]);
 
-  function navigateNext() {
+  const navigateNext = useCallback(() => {
     if (scale === "day") {
       scrollRef.current?.scrollBy({ left: HOUR_WIDTH, behavior: "smooth" });
       return;
@@ -352,7 +381,17 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     scrollTarget.current = "anchor";
     scrolledToToday.current = false;
     setAnchor((a) => shiftAnchor(scale, a, 1));
-  }
+  }, [scale]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      navigatePrev,
+      navigateNext,
+      goToday,
+    }),
+    [navigatePrev, navigateNext, goToday],
+  );
 
   function handleItemUpdated(updated: GanttItem) {
     setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
@@ -430,11 +469,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
         <GanttToolbar
           periodLabel={layout.periodLabel}
           scale={scale}
-          onScaleChange={(s) => {
-            setScale(s);
-            scrollTarget.current = "today";
-            scrolledToToday.current = false;
-          }}
+          onScaleChange={changeScale}
           onPrev={navigatePrev}
           onNext={navigateNext}
           onToday={goToday}
@@ -794,10 +829,10 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
 
           <div
             ref={scrollRef}
-            onMouseDown={fullPage ? handlePanStart : undefined}
+            onMouseDown={handlePanStart}
             className={cn(
               "min-h-0 w-full max-w-full min-w-0 flex-1 overflow-x-auto overflow-y-auto",
-              fullPage && (isPanning ? "cursor-grabbing select-none" : "cursor-grab"),
+              isPanning ? "cursor-grabbing select-none" : "cursor-grab",
             )}
           >
             <div style={{ width: totalWidth }}>
@@ -844,4 +879,4 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
       {renderTaskModal()}
     </>
   );
-}
+});
