@@ -5,6 +5,7 @@ import { Drawer } from "@/components/ui/drawer";
 import { Loading } from "@/components/ui/feedback";
 import { TaskDetailClient } from "@/components/tasks/task-detail-client";
 import type { TaskFormValues } from "@/components/forms/task-form";
+import type { TaskStatus } from "@prisma/client";
 import { getEffectiveEndDate, shouldShowInMemo } from "@/lib/content-router";
 import { deriveParentStatus } from "@/lib/services/task-rollup";
 
@@ -12,6 +13,18 @@ interface ChildTask {
   id: string;
   title: string;
   status: string;
+}
+
+function asTaskStatus(status: string | undefined | null): TaskStatus {
+  if (
+    status === "todo" ||
+    status === "in_progress" ||
+    status === "done" ||
+    status === "archived"
+  ) {
+    return status;
+  }
+  return "todo";
 }
 
 export function GanttTaskDrawer({
@@ -80,9 +93,9 @@ export function GanttTaskDrawer({
   const gantt = task?.startDate
     ? getEffectiveEndDate({ startDate: task.startDate, dueDate: task.dueDate })
     : null;
-  const childStatuses = childTasks.map((c) => c.status);
+  const childStatuses = childTasks.map((c) => asTaskStatus(c.status));
   const displayStatus = task
-    ? deriveParentStatus(task.status ?? "todo", childStatuses)
+    ? deriveParentStatus(asTaskStatus(task.status), childStatuses)
     : "todo";
   const hasRollup = childStatuses.length > 0;
 
