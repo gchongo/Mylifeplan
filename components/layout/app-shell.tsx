@@ -1,6 +1,4 @@
-import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
-import { SidebarNav } from "@/components/layout/sidebar-nav";
-import { TopBar } from "@/components/layout/top-bar";
+import { AppShellClient } from "@/components/layout/app-shell-client";
 
 export function AppShell({
   children,
@@ -12,15 +10,8 @@ export function AppShell({
   userEmail?: string | null;
 }) {
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <aside className="hidden w-56 shrink-0 border-r border-gray-200 bg-white lg:block">
-        <SidebarNav />
-      </aside>
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col pb-16 lg:pb-0">
-        <TopBar title={title} userEmail={userEmail} />
-        <main className="min-w-0 flex-1 overflow-x-hidden p-4 lg:p-6">{children}</main>
-      </div>
-      <MobileTabBar />
-    </div>
+    <AppShellClient title={title} userEmail={userEmail}>
+      {children}
+    </AppShellClient>
   );
 }
