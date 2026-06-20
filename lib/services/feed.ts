@@ -26,17 +26,26 @@ const ACTION_LABELS: Record<FeedActionType, string> = {
   archive: "归档",
 };
 
-const TYPE_LABELS: Record<FeedItemType, string> = {
-  plan: "计划",
-  memo: "备忘录",
-  contribution: "贡献",
-};
+/** Supports legacy `task` feed rows migrated to plans. */
+export function feedTypeLabel(itemType: FeedItemType | "task"): string {
+  switch (itemType) {
+    case "memo":
+      return "备忘录";
+    case "contribution":
+      return "贡献";
+    case "plan":
+    case "task":
+      return "计划";
+    default:
+      return "条目";
+  }
+}
 
 export function formatFeedSummary(
   itemType: FeedItemType,
   actionType: FeedActionType,
   content?: string | null,
 ): string {
-  const prefix = `${ACTION_LABELS[actionType]}${TYPE_LABELS[itemType]}`;
+  const prefix = `${ACTION_LABELS[actionType]}${feedTypeLabel(itemType)}`;
   return content ? `${prefix}：${content}` : prefix;
 }

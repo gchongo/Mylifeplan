@@ -10,8 +10,8 @@ export function formatFeedCardDate(iso: string): string {
   return `${month}月${day}日 ${weekday}`;
 }
 
-export function feedItemHref(itemType: FeedItemType, itemId: string): string | null {
-  if (itemType === "plan") return `/plans/${itemId}`;
+export function feedItemHref(itemType: FeedItemType | "task", itemId: string): string | null {
+  if (itemType === "plan" || itemType === "task") return `/plans/${itemId}`;
   if (itemType === "memo") return "/memos";
   if (itemType === "contribution") return null;
   return null;
