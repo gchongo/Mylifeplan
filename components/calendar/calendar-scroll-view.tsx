@@ -65,6 +65,7 @@ export const CalendarScrollView = forwardRef<
   const todayKey = monthKeyFromDate(new Date(`${todayStr}T12:00:00Z`));
   const [months, setMonths] = useState<MonthKey[]>(() => initialMonthWindow(todayKey));
   const scrollRef = useRef<HTMLDivElement>(null);
+  const outerRef = useRef<HTMLDivElement>(null);
   const monthRefs = useRef<Map<string, HTMLElement>>(new Map());
   const prependingRef = useRef(false);
   const didInitialScroll = useRef(false);
@@ -119,6 +120,25 @@ export const CalendarScrollView = forwardRef<
     if (root.scrollHeight - root.scrollTop - root.clientHeight < EDGE_THRESHOLD_PX) appendMonths();
   }, [appendMonths, prependMonths, updateVisibleMonth]);
 
+  useEffect(() => {
+    const outer = outerRef.current;
+    const scroll = scrollRef.current;
+    if (!outer || !scroll) return;
+
+    function onWheel(e: WheelEvent) {
+      const maxScroll = scroll.scrollHeight - scroll.clientHeight;
+      if (maxScroll <= 1) return;
+      const prev = scroll.scrollTop;
+      const next = Math.max(0, Math.min(maxScroll, prev + e.deltaY));
+      if (next === prev) return;
+      e.preventDefault();
+      scroll.scrollTop = next;
+    }
+
+    outer.addEventListener("wheel", onWheel, { passive: false });
+    return () => outer.removeEventListener("wheel", onWheel);
+  }, [months, displayMode, fullPage]);
+
   useLayoutEffect(() => {
     if (didInitialScroll.current) return;
     const root = scrollRef.current;
@@ -168,7 +188,7 @@ export const CalendarScrollView = forwardRef<
   }));
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div ref={outerRef} className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <div className="sticky top-0 z-10 grid shrink-0 grid-cols-7 border-b border-gray-200 bg-white text-center text-[11px] text-gray-500 shadow-sm">
         {WEEKDAY_LABELS.map((w) => (
           <div key={w} className="py-1.5 font-medium">
@@ -179,7 +199,8 @@ export const CalendarScrollView = forwardRef<
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="min-h-0 flex-1 overflow-y-auto bg-gray-100"
+        className="h-0 min-h-0 flex-1 overflow-y-auto overscroll-contain bg-gray-100"
+        tabIndex={0}
       >
         {months.map((key, index) => {
           const id = monthKeyId(key);

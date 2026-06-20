@@ -284,7 +284,7 @@ export function CalendarPanelLive({
             {viewMode === "month" && (
               <div
                 className={cn(
-                  "relative flex min-h-0 flex-1 flex-col overflow-hidden bg-white",
+                  "relative flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white",
                   fullPage ? "" : "rounded-xl border border-gray-200",
                 )}
               >
