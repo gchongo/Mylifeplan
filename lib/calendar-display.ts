@@ -103,10 +103,10 @@ export function formatEventSchedule(item: CalendarItem): string {
 export function displayLimits(mode: CalendarDisplayMode, fullPage: boolean) {
   switch (mode) {
     case "compact":
-      return { show: 4, cellMin: fullPage ? "min-h-[3.25rem]" : "min-h-[2.75rem]" };
+      return { show: 4, cellMin: fullPage ? "min-h-[4rem]" : "min-h-[3.25rem]" };
     case "stacked":
-      return { show: fullPage ? 3 : 2, cellMin: fullPage ? "min-h-[5.5rem]" : "min-h-[4.5rem]" };
+      return { show: fullPage ? 3 : 2, cellMin: fullPage ? "min-h-[7rem]" : "min-h-[5.5rem]" };
     case "detailed":
-      return { show: fullPage ? 4 : 3, cellMin: fullPage ? "min-h-[5.5rem]" : "min-h-[4.5rem]" };
+      return { show: fullPage ? 4 : 3, cellMin: fullPage ? "min-h-[8rem]" : "min-h-[6rem]" };
   }
 }

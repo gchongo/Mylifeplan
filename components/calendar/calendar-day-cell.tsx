@@ -130,7 +130,7 @@ export function CalendarDayCell({
       data-date={ds}
       onClick={() => onSelectDate(ds)}
       className={cn(
-        "flex flex-col bg-white p-1 text-left transition-colors hover:bg-gray-50/80",
+        "flex flex-col bg-white p-1.5 text-left transition-colors hover:bg-gray-50/80",
         cellMin,
         isSelected && "ring-1 ring-inset ring-brand-400",
       )}

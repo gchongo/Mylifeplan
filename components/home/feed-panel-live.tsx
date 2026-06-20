@@ -73,12 +73,12 @@ export function FeedPanelLive({
         className,
       )}
     >
-      <CardHeader className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 space-y-0 pb-2">
-        <CardTitle className="min-w-0 truncate text-gray-900">
-          {fullPage ? "信息流" : "信息流 · 看动态"}
-        </CardTitle>
-        {!fullPage && <PanelExpandButton href="/feed" label="信息流" />}
-      </CardHeader>
+      {!fullPage && (
+        <CardHeader className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 space-y-0 pb-2">
+          <CardTitle className="min-w-0 truncate text-gray-900">信息流 · 看动态</CardTitle>
+          <PanelExpandButton href="/feed" label="信息流" />
+        </CardHeader>
+      )}
 
       <CardContent className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-0">
         <FeedComposer onPublished={refreshFeed} />

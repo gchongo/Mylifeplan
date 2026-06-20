@@ -3,7 +3,7 @@ import { FeedPanelLive } from "@/components/home/feed-panel-live";
 
 export default function FeedFullPage() {
   return (
-    <FullPanelPage title="信息流 · 看动态">
+    <FullPanelPage title="信息流 · 看动态" centered>
       <FeedPanelLive fullPage />
     </FullPanelPage>
   );
