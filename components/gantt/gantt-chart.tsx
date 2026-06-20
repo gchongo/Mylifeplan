@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
+import { GanttTaskDrawer } from "@/components/gantt/gantt-task-drawer";
 import { GanttToolbar } from "@/components/gantt/gantt-toolbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import { cn } from "@/lib/utils";
 const ROW_HEIGHT = 44;
 const LABEL_WIDTH = 200;
 const FOOTER_HEIGHT = 48;
+const TIMELINE_HEADER_HEIGHT = 52;
 
 const STATUS_LABEL: Record<string, string> = {
   todo: "待办",
@@ -132,6 +134,8 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
   const [items, setItems] = useState<GanttItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [scrollViewportHeight, setScrollViewportHeight] = useState(480);
 
   const dataBounds = useMemo(() => dataBoundsFromItems(items), [items]);
 
@@ -162,7 +166,39 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
   const taskRows = useMemo(() => buildTaskTreeRows(tasks, expanded), [tasks, expanded]);
   const planRows: GanttRow[] = plans.map((item) => ({ kind: "item", item, depth: 0 }));
   const rows = [...taskRows, ...planRows];
-  const bodyHeight = rows.length * ROW_HEIGHT + FOOTER_HEIGHT;
+  const rowsBodyHeight = rows.length * ROW_HEIGHT + FOOTER_HEIGHT;
+  const minBodyHeight = Math.max(
+    rowsBodyHeight,
+    scrollViewportHeight - TIMELINE_HEADER_HEIGHT,
+  );
+
+  const refetchGantt = useCallback(() => {
+    fetch(`/api/gantt?from=${from}&to=${to}`)
+      .then((r) => r.json())
+      .then((data) => setItems(data.items ?? []));
+  }, [from, to]);
+
+  const drawerChildTasks = useMemo(() => {
+    if (!selectedTaskId) return [];
+    return tasks
+      .filter((t) => t.parentId === selectedTaskId)
+      .map((t) => ({
+        id: t.id,
+        title: t.title,
+        status: t.status ?? "todo",
+      }));
+  }, [tasks, selectedTaskId]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const update = () => setScrollViewportHeight(el.clientHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [loading, fullPage]);
 
   const scrollToToday = useCallback(() => {
     const el = scrollRef.current;
@@ -204,6 +240,14 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
 
   function handleItemUpdated(updated: GanttItem) {
     setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+  }
+
+  function openTask(taskId: string) {
+    setSelectedTaskId(taskId);
+  }
+
+  function closeTaskDrawer() {
+    setSelectedTaskId(null);
   }
 
   function toggleExpand(taskId: string) {
@@ -282,11 +326,11 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     );
   }
 
-  function renderGridBackground() {
+  function renderGridBackground(height: number) {
     return (
       <div
         className="pointer-events-none absolute top-0 flex"
-        style={{ left: LABEL_WIDTH, width: timelineWidth, height: bodyHeight }}
+        style={{ left: LABEL_WIDTH, width: timelineWidth, height }}
       >
         {layout.columns.map((col) => (
           <div
@@ -354,13 +398,24 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
         ) : (
           <span className="w-5 shrink-0" />
         )}
-        <Link
-          href={itemHref(item)}
-          className="min-w-0 flex-1 truncate text-sm hover:text-brand-600"
-          title={item.title}
-        >
-          {item.title}
-        </Link>
+        {item.type === "task" && fullPage ? (
+          <button
+            type="button"
+            onClick={() => openTask(item.id)}
+            className="min-w-0 flex-1 truncate text-left text-sm hover:text-brand-600"
+            title={item.title}
+          >
+            {item.title}
+          </button>
+        ) : (
+          <Link
+            href={itemHref(item)}
+            className="min-w-0 flex-1 truncate text-sm hover:text-brand-600"
+            title={item.title}
+          >
+            {item.title}
+          </Link>
+        )}
         {item.status && (
           <Badge variant="info" className="shrink-0 scale-90">
             {STATUS_LABEL[item.status] ?? item.status}
@@ -399,6 +454,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
             width={width}
             barColor={barColor}
             onUpdated={handleItemUpdated}
+            onTaskClick={() => openTask(item.id)}
           />
         </div>
       );
@@ -432,7 +488,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
         {renderToolbar()}
         <Loading label="加载甘特图…" />
       </div>
@@ -441,7 +497,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
 
   if (items.length === 0) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
         {renderToolbar()}
         <EmptyState
           title="暂无时间条"
@@ -452,65 +508,72 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="flex min-h-0 w-full max-w-full min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white"
-    >
-      {renderToolbar()}
+    <>
+      <div
+        ref={containerRef}
+        className="flex h-full min-h-0 w-full max-w-full min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white"
+      >
+        {renderToolbar()}
 
-      <div ref={scrollRef} className="min-h-0 w-full max-w-full min-w-0 flex-1 overflow-auto">
-        <div style={{ width: totalWidth }}>
-          {renderTimelineHeader()}
+        <div ref={scrollRef} className="min-h-0 w-full max-w-full min-w-0 flex-1 overflow-auto">
+          <div style={{ width: totalWidth }}>
+            {renderTimelineHeader()}
 
-          <div className="relative" style={{ minHeight: bodyHeight }}>
-            {renderGridBackground()}
+            <div className="relative" style={{ minHeight: minBodyHeight }}>
+              {renderGridBackground(minBodyHeight)}
 
-            {rows.map((row, idx) => {
-              const labelBg =
-                row.kind === "item" && row.item?.type === "task"
-                  ? taskLabelBg(row.depth)
-                  : row.kind === "item" && row.item?.type === "plan"
-                    ? "bg-purple-50/80"
-                    : "bg-teal-50/50";
+              {rows.map((row, idx) => {
+                const labelBg =
+                  row.kind === "item" && row.item?.type === "task"
+                    ? taskLabelBg(row.depth)
+                    : row.kind === "item" && row.item?.type === "plan"
+                      ? "bg-purple-50/80"
+                      : "bg-teal-50/50";
 
-              return (
-                <div key={`row-${idx}`} className="relative flex">
-                  <div
-                    className={cn(
-                      "sticky left-0 z-20 shrink-0 border-r border-gray-200",
-                      labelBg,
-                    )}
-                    style={{ width: LABEL_WIDTH }}
-                  >
-                    {renderLabel(row, idx)}
+                return (
+                  <div key={`row-${idx}`} className="relative flex">
+                    <div
+                      className={cn(
+                        "sticky left-0 z-20 shrink-0 border-r border-gray-200",
+                        labelBg,
+                      )}
+                      style={{ width: LABEL_WIDTH }}
+                    >
+                      {renderLabel(row, idx)}
+                    </div>
+                    <div className="relative z-10 shrink-0">{renderBar(row, idx)}</div>
                   </div>
-                  <div className="relative z-10 shrink-0">{renderBar(row, idx)}</div>
-                </div>
-              );
-            })}
+                );
+              })}
 
-            <div className="relative flex">
-              <div
-                className="sticky left-0 z-20 border-r border-gray-200 bg-white p-2"
-                style={{ width: LABEL_WIDTH }}
-              >
-                <Link href="/tasks/new?redirect=/gantt">
-                  <Button size="sm" variant="secondary" type="button">
-                    + 新建
-                  </Button>
-                </Link>
+              <div className="relative flex">
+                <div
+                  className="sticky left-0 z-20 border-r border-gray-200 bg-white p-2"
+                  style={{ width: LABEL_WIDTH }}
+                >
+                  <Link href="/tasks/new?redirect=/gantt">
+                    <Button size="sm" variant="secondary" type="button">
+                      + 新建
+                    </Button>
+                  </Link>
+                </div>
+                <div style={{ width: timelineWidth, height: FOOTER_HEIGHT }} />
               </div>
-              <div style={{ width: timelineWidth, height: FOOTER_HEIGHT }} />
             </div>
           </div>
         </div>
       </div>
 
       {fullPage && (
-        <div className="shrink-0 border-t border-gray-100 px-3 py-1.5 text-xs text-gray-500">
-          拖拽任务条调整时间 · 虚线网格按时间刻度对齐 · 左右滑动浏览
-        </div>
+        <GanttTaskDrawer
+          taskId={selectedTaskId}
+          open={selectedTaskId !== null}
+          childTasks={drawerChildTasks}
+          onClose={closeTaskDrawer}
+          onOpenTask={openTask}
+          onChanged={refetchGantt}
+        />
       )}
-    </div>
+    </>
   );
 }

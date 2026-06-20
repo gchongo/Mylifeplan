@@ -14,7 +14,7 @@ export function GanttPanelLive({
   className?: string;
 }) {
   return (
-    <Card className={cn("flex h-full min-w-0 max-w-full flex-col overflow-hidden", className)}>
+      <Card className={cn("flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden", className)}>
       {!fullPage && (
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div className="flex items-center gap-2">

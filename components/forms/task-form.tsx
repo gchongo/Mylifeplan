@@ -38,11 +38,13 @@ export function TaskForm({
   redirectTo = "/tasks",
   defaultPlanId,
   defaultParentTaskId,
+  onSuccess,
 }: {
   task?: TaskFormValues;
   redirectTo?: string;
   defaultPlanId?: string | null;
   defaultParentTaskId?: string | null;
+  onSuccess?: () => void;
 }) {
   const router = useRouter();
   const isEdit = Boolean(task?.id);
@@ -88,6 +90,10 @@ export function TaskForm({
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "保存失败");
+        return;
+      }
+      if (onSuccess) {
+        onSuccess();
         return;
       }
       router.push(redirectTo);

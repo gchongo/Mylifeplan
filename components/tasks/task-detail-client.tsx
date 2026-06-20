@@ -28,6 +28,10 @@ export function TaskDetailClient({
   inMemo,
   ganttEnd,
   ganttVirtual,
+  embedded = false,
+  onClose,
+  onChanged,
+  onOpenTask,
 }: {
   task: TaskFormValues & { id: string };
   displayStatus: string;
@@ -36,6 +40,10 @@ export function TaskDetailClient({
   inMemo: boolean;
   ganttEnd?: string;
   ganttVirtual?: boolean;
+  embedded?: boolean;
+  onClose?: () => void;
+  onChanged?: () => void;
+  onOpenTask?: (id: string) => void;
 }) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
@@ -47,8 +55,13 @@ export function TaskDetailClient({
     try {
       const res = await fetch(`/api/tasks/${task.id}`, { method: "DELETE" });
       if (res.ok) {
-        router.push("/tasks");
-        router.refresh();
+        if (embedded) {
+          onChanged?.();
+          onClose?.();
+        } else {
+          router.push("/tasks");
+          router.refresh();
+        }
       }
     } finally {
       setDeleting(false);
@@ -61,7 +74,11 @@ export function TaskDetailClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
-    router.refresh();
+    if (embedded) {
+      onChanged?.();
+    } else {
+      router.refresh();
+    }
   }
 
   if (showEdit) {
@@ -73,7 +90,11 @@ export function TaskDetailClient({
         <CardContent>
           <TaskForm
             task={task}
-            redirectTo={`/tasks/${task.id}`}
+            redirectTo={embedded ? "/gantt" : `/tasks/${task.id}`}
+            onSuccess={() => {
+              setShowEdit(false);
+              onChanged?.();
+            }}
           />
           <Button
             className="mt-4"
@@ -174,12 +195,19 @@ export function TaskDetailClient({
                   key={child.id}
                   className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2"
                 >
-                  <Link
-                    href={`/tasks/${child.id}`}
-                    className="hover:text-brand-600"
-                  >
-                    {child.title}
-                  </Link>
+                  {embedded && onOpenTask ? (
+                    <button
+                      type="button"
+                      onClick={() => onOpenTask(child.id)}
+                      className="text-left hover:text-brand-600"
+                    >
+                      {child.title}
+                    </button>
+                  ) : (
+                    <Link href={`/tasks/${child.id}`} className="hover:text-brand-600">
+                      {child.title}
+                    </Link>
+                  )}
                   <Badge variant="info">{statusLabels[child.status] ?? child.status}</Badge>
                 </li>
               ))}

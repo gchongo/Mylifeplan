@@ -28,6 +28,7 @@ export function GanttDraggableBar({
   width,
   barColor,
   onUpdated,
+  onTaskClick,
 }: {
   item: GanttItem;
   layout: TimelineLayout;
@@ -35,6 +36,7 @@ export function GanttDraggableBar({
   width: number;
   barColor: string;
   onUpdated: (updated: GanttItem) => void;
+  onTaskClick?: () => void;
 }) {
   const [dragging, setDragging] = useState<DragState | null>(null);
   const [preview, setPreview] = useState<{ start: string; end: string } | null>(null);
@@ -139,7 +141,14 @@ export function GanttDraggableBar({
 
     function onUp(e: MouseEvent) {
       const state = dragRef.current;
-      if (state) void commitDrag(state, e.clientX);
+      if (state) {
+        const moved = Math.abs(e.clientX - state.startX) > 3;
+        if (!moved && state.mode === "move") {
+          onTaskClick?.();
+        } else {
+          void commitDrag(state, e.clientX);
+        }
+      }
       dragRef.current = null;
       setDragging(null);
       setPreview(null);
@@ -151,7 +160,7 @@ export function GanttDraggableBar({
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [dragging, applyDrag, commitDrag]);
+  }, [dragging, applyDrag, commitDrag, onTaskClick]);
 
   function startDrag(e: React.MouseEvent, mode: DragMode) {
     e.preventDefault();
