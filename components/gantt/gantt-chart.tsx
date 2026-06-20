@@ -10,16 +10,17 @@ import {
   useRef,
   useState,
 } from "react";
-import { GanttContributionDrawer } from "@/components/gantt/gantt-contribution-drawer";
+import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribution-drawer";
 import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
-import { GanttPlanDrawer } from "@/components/gantt/gantt-plan-drawer";
-import { GanttTaskDrawer } from "@/components/gantt/gantt-task-drawer";
+import { GanttPlanDrawerPanel } from "@/components/gantt/gantt-plan-drawer";
+import { GanttTaskDrawerPanel } from "@/components/gantt/gantt-task-drawer";
 import { GanttToolbar } from "@/components/gantt/gantt-toolbar";
 import { TaskFormModal } from "@/components/gantt/task-form-modal";
 import { GanttTaskListControls } from "@/components/gantt/gantt-task-list-controls";
 import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
 import type { TaskFormValues } from "@/components/forms/task-form";
 import { Button, EmptyState, Loading as LoadingView } from "@/components/ui";
+import { DrawerLayout } from "@/components/ui/drawer";
 import {
   barMetricsFromDates,
   buildTimelineLayout,
@@ -175,6 +176,7 @@ export const GanttChart = forwardRef<
   const scrolledToToday = useRef(false);
   const scrollTarget = useRef<"today" | "anchor">("today");
   const panRef = useRef<{ startX: number; startScrollLeft: number } | null>(null);
+  const pendingScrollLeft = useRef<number | null>(null);
   const [isPanning, setIsPanning] = useState(false);
 
   const [taskModal, setTaskModal] = useState<TaskModalState>({
@@ -349,6 +351,27 @@ export const GanttChart = forwardRef<
     };
   }, [isLoading, scrollToToday, scrollToAnchor, from, to, layout.totalWidth]);
 
+  const drawerOpen =
+    selectedContributionId !== null || selectedPlanId !== null || selectedTaskId !== null;
+
+  useLayoutEffect(() => {
+    if (pendingScrollLeft.current === null) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollLeft = pendingScrollLeft.current;
+    pendingScrollLeft.current = null;
+  }, [drawerOpen, selectedContributionId, selectedPlanId, selectedTaskId]);
+
+  function preserveScrollLeft() {
+    pendingScrollLeft.current = scrollRef.current?.scrollLeft ?? 0;
+  }
+
+  function closeDrawer() {
+    setSelectedTaskId(null);
+    setSelectedPlanId(null);
+    setSelectedContributionId(null);
+  }
+
   const changeScale = useCallback(
     (next: GanttScaleId) => {
       onScaleChange?.(next);
@@ -404,6 +427,7 @@ export const GanttChart = forwardRef<
   }
 
   function openTask(taskId: string) {
+    preserveScrollLeft();
     setSelectedPlanId(null);
     setSelectedContributionId(null);
     setSelectedTaskId(taskId);
@@ -414,6 +438,7 @@ export const GanttChart = forwardRef<
   }
 
   function openPlan(planId: string) {
+    preserveScrollLeft();
     setSelectedTaskId(null);
     setSelectedContributionId(null);
     setSelectedPlanId(planId);
@@ -424,6 +449,7 @@ export const GanttChart = forwardRef<
   }
 
   function openContribution(contributionId: string) {
+    preserveScrollLeft();
     setSelectedTaskId(null);
     setSelectedPlanId(null);
     setSelectedContributionId(contributionId);
@@ -818,45 +844,41 @@ export const GanttChart = forwardRef<
     );
   }
 
-  function wrapWithDrawers(content: React.ReactNode) {
+  function renderDrawerPanel() {
     if (selectedContributionId) {
       return (
-        <GanttContributionDrawer
+        <GanttContributionDrawerPanel
           contributionId={selectedContributionId}
-          open={selectedContributionId !== null}
           onClose={closeContributionDrawer}
           onDeleted={refetchGantt}
-        >
-          {content}
-        </GanttContributionDrawer>
+        />
       );
     }
-
     if (selectedPlanId) {
       return (
-        <GanttPlanDrawer
-          planId={selectedPlanId}
-          open={selectedPlanId !== null}
-          onClose={closePlanDrawer}
-        >
-          {content}
-        </GanttPlanDrawer>
+        <GanttPlanDrawerPanel planId={selectedPlanId} onClose={closePlanDrawer} />
       );
     }
+    if (selectedTaskId) {
+      return (
+        <GanttTaskDrawerPanel
+          taskId={selectedTaskId}
+          allTasks={tasks}
+          onClose={closeTaskDrawer}
+          onChanged={refetchGantt}
+          onEditTask={openEditTask}
+          onCreateSubtask={openCreateTask}
+        />
+      );
+    }
+    return null;
+  }
 
+  function wrapWithDrawers(content: React.ReactNode) {
     return (
-      <GanttTaskDrawer
-        taskId={selectedTaskId}
-        open={selectedTaskId !== null}
-        allTasks={tasks}
-        onClose={closeTaskDrawer}
-        onOpenTask={openTask}
-        onChanged={refetchGantt}
-        onEditTask={openEditTask}
-        onCreateSubtask={openCreateTask}
-      >
+      <DrawerLayout open={drawerOpen} onClose={closeDrawer} panel={renderDrawerPanel()}>
         {content}
-      </GanttTaskDrawer>
+      </DrawerLayout>
     );
   }
 

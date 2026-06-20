@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { DrawerLayout, DrawerPanel } from "@/components/ui/drawer";
+import { DrawerPanel } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/feedback";
 
@@ -16,18 +16,14 @@ interface ContributionDetail {
   plan?: { id: string; title: string; type: string };
 }
 
-export function GanttContributionDrawer({
+export function GanttContributionDrawerPanel({
   contributionId,
-  open,
   onClose,
   onDeleted,
-  children,
 }: {
-  contributionId: string | null;
-  open: boolean;
+  contributionId: string;
   onClose: () => void;
   onDeleted?: () => void;
-  children: React.ReactNode;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -35,15 +31,10 @@ export function GanttContributionDrawer({
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    if (!open || !contributionId) {
-      setItem(null);
-      setError("");
-      return;
-    }
-
     let cancelled = false;
     setLoading(true);
     setError("");
+    setItem(null);
 
     fetch(`/api/contributions/${contributionId}`)
       .then((r) => r.json())
@@ -51,7 +42,6 @@ export function GanttContributionDrawer({
         if (cancelled) return;
         if (!data.contribution) {
           setError("记录不存在");
-          setItem(null);
           return;
         }
         setItem(data.contribution);
@@ -66,7 +56,7 @@ export function GanttContributionDrawer({
     return () => {
       cancelled = true;
     };
-  }, [open, contributionId]);
+  }, [contributionId]);
 
   async function handleDelete() {
     if (!item || !confirm(`确定删除贡献记录「${item.title}」？`)) return;
@@ -85,49 +75,41 @@ export function GanttContributionDrawer({
   const planTitle = item?.plan?.title ?? item?.planTitle ?? "计划";
 
   return (
-    <DrawerLayout
-      open={open}
-      onClose={onClose}
-      panel={
-        <DrawerPanel title={item?.title ?? "贡献详情"} onClose={onClose}>
-          {loading && <Loading label="加载贡献…" />}
-          {!loading && error && <p className="text-sm text-red-600">{error}</p>}
-          {!loading && item && (
-            <div className="space-y-4 text-sm">
-              <div>
-                <p className="text-xs text-gray-500">贡献日期</p>
-                <p className="font-medium text-gray-900">{item.occurredOn}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">所属计划</p>
-                <Link
-                  href={`/plans/${item.planId}`}
-                  className="font-medium text-brand-600 hover:underline"
-                >
-                  {planTitle}
-                </Link>
-              </div>
-              {item.description && (
-                <div>
-                  <p className="text-xs text-gray-500">详情</p>
-                  <p className="whitespace-pre-wrap text-gray-800">{item.description}</p>
-                </div>
-              )}
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={deleting}
-                onClick={handleDelete}
-              >
-                {deleting ? "删除中…" : "删除记录"}
-              </Button>
+    <DrawerPanel title={item?.title ?? "贡献详情"} onClose={onClose}>
+      {loading && <Loading label="加载贡献…" />}
+      {!loading && error && <p className="text-sm text-red-600">{error}</p>}
+      {!loading && item && (
+        <div className="space-y-4 text-sm">
+          <div>
+            <p className="text-xs text-gray-500">贡献日期</p>
+            <p className="font-medium text-gray-900">{item.occurredOn}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">所属计划</p>
+            <Link
+              href={`/plans/${item.planId}`}
+              className="font-medium text-brand-600 hover:underline"
+            >
+              {planTitle}
+            </Link>
+          </div>
+          {item.description && (
+            <div>
+              <p className="text-xs text-gray-500">详情</p>
+              <p className="whitespace-pre-wrap text-gray-800">{item.description}</p>
             </div>
           )}
-        </DrawerPanel>
-      }
-    >
-      {children}
-    </DrawerLayout>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={deleting}
+            onClick={handleDelete}
+          >
+            {deleting ? "删除中…" : "删除记录"}
+          </Button>
+        </div>
+      )}
+    </DrawerPanel>
   );
 }

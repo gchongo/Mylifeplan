@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DrawerLayout, DrawerPanel } from "@/components/ui/drawer";
+import { DrawerPanel } from "@/components/ui/drawer";
 import { Loading } from "@/components/ui/feedback";
 import { PlanDetailClient } from "@/components/plans/plan-detail-client";
 import type { PlanFormValues } from "@/components/forms/plan-form";
@@ -10,16 +10,12 @@ interface PlanPayload extends PlanFormValues {
   id: string;
 }
 
-export function GanttPlanDrawer({
+export function GanttPlanDrawerPanel({
   planId,
-  open,
   onClose,
-  children,
 }: {
-  planId: string | null;
-  open: boolean;
+  planId: string;
   onClose: () => void;
-  children: React.ReactNode;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -32,17 +28,12 @@ export function GanttPlanDrawer({
   >([]);
 
   useEffect(() => {
-    if (!open || !planId) {
-      setPlan(null);
-      setSubPlans([]);
-      setTasks([]);
-      setError("");
-      return;
-    }
-
     let cancelled = false;
     setLoading(true);
     setError("");
+    setPlan(null);
+    setSubPlans([]);
+    setTasks([]);
 
     fetch(`/api/plans/${planId}`)
       .then((r) => r.json())
@@ -50,7 +41,6 @@ export function GanttPlanDrawer({
         if (cancelled) return;
         if (!data.plan) {
           setError("计划不存在");
-          setPlan(null);
           return;
         }
         setPlan(data.plan);
@@ -67,25 +57,17 @@ export function GanttPlanDrawer({
     return () => {
       cancelled = true;
     };
-  }, [open, planId]);
+  }, [planId]);
 
   return (
-    <DrawerLayout
-      open={open}
-      onClose={onClose}
-      panel={
-        <DrawerPanel title={plan?.title ?? "计划详情"} onClose={onClose} className="p-0">
-          {loading && <Loading label="加载计划…" />}
-          {!loading && error && <p className="px-4 py-3 text-sm text-red-600">{error}</p>}
-          {!loading && plan && (
-            <div className="p-4">
-              <PlanDetailClient plan={plan} subPlans={subPlans} tasks={tasks} />
-            </div>
-          )}
-        </DrawerPanel>
-      }
-    >
-      {children}
-    </DrawerLayout>
+    <DrawerPanel title={plan?.title ?? "计划详情"} onClose={onClose} className="p-0">
+      {loading && <Loading label="加载计划…" />}
+      {!loading && error && <p className="px-4 py-3 text-sm text-red-600">{error}</p>}
+      {!loading && plan && (
+        <div className="p-4">
+          <PlanDetailClient plan={plan} subPlans={subPlans} tasks={tasks} />
+        </div>
+      )}
+    </DrawerPanel>
   );
 }
