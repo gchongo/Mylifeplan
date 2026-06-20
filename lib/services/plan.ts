@@ -1,7 +1,7 @@
 import type { Plan, PlanStatus } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
 import { validateDateFields } from "@/lib/content-router";
-import { parseDateOnly } from "@/lib/dates";
+import { parsePlanDateTime, formatPlanDateTime, toDatetimeLocalInput } from "@/lib/dates";
 import { prisma } from "@/lib/db";
 import { writeFeed } from "@/lib/services/feed";
 import { deleteMemoForPlan, syncMemoForPlan } from "@/lib/services/memo-sync";
@@ -132,8 +132,8 @@ export async function createPlan(userId: string, input: CreatePlanInput): Promis
         description: input.description?.trim() || null,
         type: input.type ?? "goal",
         parentPlanId: input.parentPlanId || null,
-        startDate: parseDateOnly(input.startDate),
-        endDate: parseDateOnly(input.endDate),
+        startDate: parsePlanDateTime(input.startDate),
+        endDate: parsePlanDateTime(input.endDate),
         status: input.status ?? "not_started",
         priority: input.priority ?? null,
       },
@@ -169,9 +169,15 @@ export async function updatePlan(
   const startStr =
     input.startDate !== undefined
       ? input.startDate
-      : existing.startDate?.toISOString().slice(0, 10);
+      : existing.startDate
+        ? toDatetimeLocalInput(existing.startDate)
+        : undefined;
   const endStr =
-    input.endDate !== undefined ? input.endDate : existing.endDate?.toISOString().slice(0, 10);
+    input.endDate !== undefined
+      ? input.endDate
+      : existing.endDate
+        ? toDatetimeLocalInput(existing.endDate)
+        : undefined;
 
   const dateError = validateDates(startStr, endStr);
   if (dateError) throw new Error(dateError);
@@ -200,8 +206,8 @@ export async function updatePlan(
         }),
         ...(input.type !== undefined && { type: input.type }),
         ...(input.parentPlanId !== undefined && { parentPlanId: input.parentPlanId || null }),
-        ...(input.startDate !== undefined && { startDate: parseDateOnly(input.startDate) }),
-        ...(input.endDate !== undefined && { endDate: parseDateOnly(input.endDate) }),
+        ...(input.startDate !== undefined && { startDate: parsePlanDateTime(input.startDate) }),
+        ...(input.endDate !== undefined && { endDate: parsePlanDateTime(input.endDate) }),
         ...(input.status !== undefined && { status: input.status }),
         ...(input.priority !== undefined && { priority: input.priority ?? null }),
       },
@@ -243,7 +249,7 @@ export async function deletePlan(userId: string, planId: string) {
 export function serializePlan(plan: Plan) {
   return {
     ...plan,
-    startDate: plan.startDate?.toISOString().slice(0, 10) ?? null,
-    endDate: plan.endDate?.toISOString().slice(0, 10) ?? null,
+    startDate: formatPlanDateTime(plan.startDate),
+    endDate: formatPlanDateTime(plan.endDate),
   };
 }

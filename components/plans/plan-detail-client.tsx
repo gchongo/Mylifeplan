@@ -8,6 +8,7 @@ import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlanForm, type PlanFormValues } from "@/components/forms/plan-form";
 import { shouldShowInMemo } from "@/lib/content-router";
+import { formatPlanDateTimeDisplay } from "@/lib/dates";
 
 interface SubPlan {
   id: string;
@@ -94,9 +95,9 @@ export function PlanDetailClient({
           {plan.description && <p>{plan.description}</p>}
           <dl className="grid grid-cols-2 gap-2">
             <dt className="text-gray-500">开始</dt>
-            <dd>{plan.startDate ?? "—"}</dd>
+            <dd>{formatPlanDateTimeDisplay(plan.startDate)}</dd>
             <dt className="text-gray-500">结束</dt>
-            <dd>{plan.endDate ?? "—"}</dd>
+            <dd>{formatPlanDateTimeDisplay(plan.endDate)}</dd>
             <dt className="text-gray-500">状态</dt>
             <dd>{plan.status ?? "not_started"}</dd>
           </dl>

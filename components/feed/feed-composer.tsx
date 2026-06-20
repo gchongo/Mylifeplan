@@ -161,18 +161,18 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
           <ParentPlanSelect value={parentPlanId} onChange={setParentPlanId} />
           <div className="grid gap-2 sm:grid-cols-2">
             <label className="block text-xs text-gray-500">
-              开始日期
+              开始时间
               <input
-                type="date"
+                type="datetime-local"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 className="mt-1 w-full rounded-md border border-gray-200 px-2 py-1.5 text-sm text-gray-800"
               />
             </label>
             <label className="block text-xs text-gray-500">
-              结束日期
+              结束时间
               <input
-                type="date"
+                type="datetime-local"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 className="mt-1 w-full rounded-md border border-gray-200 px-2 py-1.5 text-sm text-gray-800"

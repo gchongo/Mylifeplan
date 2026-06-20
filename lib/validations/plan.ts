@@ -1,20 +1,20 @@
 import { z } from "zod";
 import { validateDateFields } from "@/lib/content-router";
 
-const optionalDate = z
+const optionalDateTime = z
   .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "日期格式应为 YYYY-MM-DD")
   .optional()
   .nullable()
-  .or(z.literal(""));
+  .or(z.literal(""))
+  .refine((v) => !v || !Number.isNaN(Date.parse(v)), "时间格式无效");
 
 const planBaseSchema = z.object({
   title: z.string().min(1, "标题必填").max(200),
   description: z.string().max(5000).optional().nullable(),
   type: z.enum(["goal", "phase", "weekly", "daily"]).optional().default("goal"),
   parentPlanId: z.string().optional().nullable(),
-  startDate: optionalDate,
-  endDate: optionalDate,
+  startDate: optionalDateTime,
+  endDate: optionalDateTime,
   status: z.enum(["not_started", "in_progress", "done", "archived"]).optional(),
   priority: z.enum(["high", "medium", "low"]).optional().nullable(),
 });

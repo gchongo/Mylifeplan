@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/ui/feedback";
 import { Input, Select, Textarea } from "@/components/ui";
 import { ParentPlanSelect } from "@/components/forms/parent-plan-select";
+import { toDatetimeLocalInput } from "@/lib/dates";
 
 const statusOptions = [
   { value: "not_started", label: "未开始" },
@@ -115,15 +116,15 @@ export function PlanForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <Input
           name="startDate"
-          label="开始日期"
-          type="date"
-          defaultValue={plan?.startDate ?? ""}
+          label="开始时间"
+          type="datetime-local"
+          defaultValue={toDatetimeLocalInput(plan?.startDate)}
         />
         <Input
           name="endDate"
-          label="结束日期"
-          type="date"
-          defaultValue={plan?.endDate ?? ""}
+          label="结束时间"
+          type="datetime-local"
+          defaultValue={toDatetimeLocalInput(plan?.endDate)}
         />
       </div>
       {isEdit && (

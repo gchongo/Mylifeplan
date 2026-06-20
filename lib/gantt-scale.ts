@@ -1,9 +1,8 @@
 export const GANTT_SCALES = [
   { id: "day", label: "天" },
   { id: "week", label: "周" },
-  { id: "month", label: "月度" },
-  { id: "year", label: "年度" },
-  { id: "5year", label: "5 年" },
+  { id: "month", label: "月" },
+  { id: "year", label: "年" },
 ] as const;
 
 export type GanttScaleId = (typeof GANTT_SCALES)[number]["id"];
@@ -27,6 +26,7 @@ export interface HeaderSpan {
 }
 
 export interface TimelineLayout {
+  scale: GanttScaleId;
   from: string;
   to: string;
   columns: TimelineColumn[];
@@ -40,12 +40,11 @@ export interface LayoutBounds {
   to?: string;
 }
 
-export const HOUR_WIDTH = 24;
+export const HOUR_WIDTH = 56;
 const DAY_WIDTH = 36;
 const WEEK_WIDTH = 88;
 const MONTH_DAY_WIDTH = 32;
 const YEAR_WEEK_WIDTH = 28;
-const FIVEY_MONTH_WIDTH = 22;
 
 const WEEKDAY_SHORT = ["日", "一", "二", "三", "四", "五", "六"];
 const MONTH_NAMES = [
@@ -126,7 +125,6 @@ function formatPeriodLabel(scale: GanttScaleId, anchor: string): string {
   if (scale === "day") return `${y}年${m}月${d}日`;
   if (scale === "week" || scale === "month") return `${y}年${m}月`;
   if (scale === "year") return `${y}年`;
-  if (scale === "5year") return `${y - 2}年 – ${y + 2}年`;
   return `${y}年${m}月`;
 }
 
@@ -166,6 +164,7 @@ function finalizeLayout(
   columns: TimelineColumn[],
 ): TimelineLayout {
   return {
+    scale,
     from: columns[0]!.startDate,
     to: columns[columns.length - 1]!.endDate,
     columns,
@@ -265,24 +264,63 @@ function buildYearWeekColumns(from: string, to: string): TimelineColumn[] {
   return columns;
 }
 
-function buildFiveYearMonthColumns(fromYear: number, toYear: number): TimelineColumn[] {
-  const columns: TimelineColumn[] = [];
-  for (let y = fromYear; y <= toYear; y++) {
-    for (let m = 1; m <= 12; m++) {
-      const start = `${y}-${String(m).padStart(2, "0")}-01`;
-      const end = endOfMonth(start);
-      columns.push({
-        key: start,
-        startDate: start,
-        endDate: end,
-        width: FIVEY_MONTH_WIDTH,
-        topGroupKey: `${y}`,
-        topGroupLabel: `${y}年`,
-        headerBottom: `${m}`,
-      });
-    }
+function datePartAndLocalTime(date: string): { dateStr: string; hour: number; minute: number } {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return { dateStr: date, hour: 0, minute: 0 };
   }
-  return columns;
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) {
+    return { dateStr: date.slice(0, 10), hour: 0, minute: 0 };
+  }
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const dateStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return { dateStr, hour: d.getHours(), minute: d.getMinutes() };
+}
+
+export function dateToX(date: string, layout: TimelineLayout): number {
+  if (layout.scale === "day" && layout.columns.length > 0) {
+    const { dateStr, hour, minute } = datePartAndLocalTime(date);
+    let x = 0;
+    for (const col of layout.columns) {
+      const dash = col.key.lastIndexOf("-");
+      const colDay = col.key.slice(0, dash);
+      const colHour = parseInt(col.key.slice(dash + 1), 10);
+      if (colDay < dateStr || (colDay === dateStr && colHour < hour)) {
+        x += col.width;
+        continue;
+      }
+      if (colDay === dateStr && colHour === hour) {
+        return x + (minute / 60) * col.width;
+      }
+      return x;
+    }
+    return x;
+  }
+
+  const dateStr = datePartAndLocalTime(date).dateStr;
+  const fromMs = parseUtcDate(layout.from);
+  const toMs = parseUtcDate(layout.to) + 86400000;
+  const dMs = parseUtcDate(dateStr);
+  const span = toMs - fromMs;
+  if (span <= 0) return 0;
+  return ((dMs - fromMs) / span) * layout.totalWidth;
+}
+
+export function barMetricsFromDates(
+  startDate: string,
+  endDate: string,
+  layout: TimelineLayout,
+): { left: number; width: number } {
+  const left = dateToX(startDate, layout);
+  const endX = dateToX(endDate, layout);
+  const minWidth =
+    layout.scale === "day"
+      ? HOUR_WIDTH * 0.25
+      : layout.totalWidth / Math.max(layout.columns.length, 1);
+  return {
+    left: Math.max(0, left),
+    width: Math.max(minWidth * 0.5, endX - left + (layout.scale === "day" ? 0 : minWidth * 0.8)),
+  };
 }
 
 function scaleDefaultRange(scale: GanttScaleId, anchor: string): { from: string; to: string } {
@@ -312,13 +350,6 @@ function scaleDefaultRange(scale: GanttScaleId, anchor: string): { from: string;
       const to = endOfMonth(`${y}-12-31`);
       return { from, to };
     }
-    case "5year": {
-      const y = parseInt(anchor.slice(0, 4), 10);
-      return {
-        from: `${y - 2}-01-01`,
-        to: `${y + 2}-12-31`,
-      };
-    }
   }
 }
 
@@ -345,16 +376,6 @@ function generateColumns(
     }
     case "year":
       return buildYearWeekColumns(from, to);
-    case "5year": {
-      const y = parseInt(anchor.slice(0, 4), 10);
-      let fromYear = y - 2;
-      let toYear = y + 2;
-      const fromY = parseInt(from.slice(0, 4), 10);
-      const toY = parseInt(to.slice(0, 4), 10);
-      if (fromY < fromYear) fromYear = fromY;
-      if (toY > toYear) toYear = toY;
-      return buildFiveYearMonthColumns(fromYear, toYear);
-    }
   }
 }
 
@@ -378,34 +399,9 @@ export function shiftAnchor(scale: GanttScaleId, anchor: string, direction: -1 |
       return addDaysUtc(anchor, direction);
     case "year":
       return addMonthsUtc(anchor, direction);
-    case "5year":
-      return addMonthsUtc(anchor, direction * 60);
     default:
       return anchor;
   }
-}
-
-export function dateToX(date: string, layout: TimelineLayout): number {
-  const fromMs = parseUtcDate(layout.from);
-  const toMs = parseUtcDate(layout.to) + 86400000;
-  const dMs = parseUtcDate(date);
-  const span = toMs - fromMs;
-  if (span <= 0) return 0;
-  return ((dMs - fromMs) / span) * layout.totalWidth;
-}
-
-export function barMetricsFromDates(
-  startDate: string,
-  endDate: string,
-  layout: TimelineLayout,
-): { left: number; width: number } {
-  const left = dateToX(startDate, layout);
-  const endX = dateToX(endDate, layout);
-  const minWidth = layout.totalWidth / Math.max(layout.columns.length, 1);
-  return {
-    left: Math.max(0, left),
-    width: Math.max(minWidth * 0.5, endX - left + minWidth * 0.8),
-  };
 }
 
 export function pixelDeltaToDays(deltaX: number, layout: TimelineLayout): number {

@@ -129,8 +129,8 @@ export async function getCalendarItems(
     items.push({
       id: plan.id,
       title: plan.title,
-      startDate,
-      endDate,
+      startDate: plan.startDate?.toISOString() ?? startDate,
+      endDate: plan.endDate?.toISOString() ?? endDate,
       status: plan.status,
     });
   }

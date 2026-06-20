@@ -66,14 +66,14 @@ export function validateDateFields(item: RoutableEntity): string | null {
   const hasEnd = Boolean(item.dueDate ?? item.endDate);
 
   if (!hasStart && hasEnd) {
-    return "填写截止日期前必须先填写开始日期";
+    return "填写结束时间前必须先填写开始时间";
   }
 
   if (hasStart && hasEnd) {
-    const start = toDateOnly(item.startDate!);
-    const end = toDateOnly((item.dueDate ?? item.endDate)!);
+    const start = new Date(item.startDate!);
+    const end = new Date((item.dueDate ?? item.endDate)!);
     if (end < start) {
-      return "截止日期不能早于开始日期";
+      return "结束时间不能早于开始时间";
     }
   }
 

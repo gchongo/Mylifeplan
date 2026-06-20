@@ -1,14 +1,16 @@
 import { resolveVisualStatus } from "@/lib/task-status-style";
+import { datePartOf } from "@/lib/dates";
 import type { CalendarItem } from "@/types";
 
 export type CalendarDisplayMode = "compact" | "stacked" | "detailed";
 
-export type CalendarViewMode = "month" | "week" | "day";
+export type CalendarViewMode = "day" | "week" | "month" | "year";
 
 export const CALENDAR_VIEW_MODES: { id: CalendarViewMode; label: string }[] = [
-  { id: "month", label: "月" },
+  { id: "day", label: "天" },
   { id: "week", label: "周" },
-  { id: "day", label: "日" },
+  { id: "month", label: "月" },
+  { id: "year", label: "年" },
 ];
 
 export const CALENDAR_DISPLAY_MODES: {
@@ -64,8 +66,10 @@ export function saveCalendarDisplayMode(mode: CalendarDisplayMode) {
 
 export function itemsOnDate(items: CalendarItem[], dateStr: string): CalendarItem[] {
   return items.filter((item) => {
-    const end = item.endDate ?? item.startDate;
-    return item.startDate <= dateStr && dateStr <= end;
+    const start = datePartOf(item.startDate);
+    const end = datePartOf(item.endDate ?? item.startDate);
+    if (!start || !end) return false;
+    return start <= dateStr && dateStr <= end;
   });
 }
 
@@ -96,8 +100,21 @@ export function itemAccent(item: CalendarItem): {
 }
 
 export function formatEventSchedule(item: CalendarItem): string {
-  if (!item.endDate || item.endDate === item.startDate) return "全天";
-  return `${item.startDate.slice(5)} → ${item.endDate.slice(5)}`;
+  const start = item.startDate;
+  const end = item.endDate;
+  if (!end || datePartOf(end) === datePartOf(start)) {
+    if (start.includes("T") && !start.endsWith("T00:00:00.000Z")) {
+      try {
+        const d = new Date(start);
+        const pad = (n: number) => String(n).padStart(2, "0");
+        return `${pad(d.getHours())}:${pad(d.getMinutes())} 起`;
+      } catch {
+        return "全天";
+      }
+    }
+    return "全天";
+  }
+  return `${start.slice(5, 16).replace("T", " ")} → ${end.slice(5, 16).replace("T", " ")}`;
 }
 
 export function displayLimits(mode: CalendarDisplayMode, fullPage: boolean) {

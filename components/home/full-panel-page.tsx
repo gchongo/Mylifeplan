@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { centeredPageWidthClass } from "@/components/layout/centered-layout";
 import { cn } from "@/lib/utils";
 
@@ -25,12 +24,7 @@ export function FullPanelPage({
           centered && centeredPageWidthClass,
         )}
       >
-        <div className="flex shrink-0 items-center gap-3 pt-0">
-          <Link href="/" className="shrink-0 text-sm text-brand-600 hover:underline">
-            ← 返回首页
-          </Link>
-          <h1 className="text-lg font-semibold text-gray-900">{title}</h1>
-        </div>
+        <h1 className="shrink-0 text-lg font-semibold text-gray-900">{title}</h1>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
       </div>
     </div>

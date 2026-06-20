@@ -39,6 +39,6 @@ describe("content-router", () => {
   });
 
   it("禁止 due without start", () => {
-    expect(validateDateFields({ dueDate: "2025-03-01" })).toMatch(/开始日期/);
+    expect(validateDateFields({ dueDate: "2025-03-01" })).toMatch(/开始时间/);
   });
 });

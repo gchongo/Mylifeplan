@@ -21,6 +21,7 @@ import {
   formatEventSchedule,
   itemAccent,
   itemsOnDate,
+  type CalendarViewMode,
 } from "@/lib/calendar-display";
 import {
   formatMonthTitle,
@@ -32,7 +33,7 @@ import {
 import type { CalendarItem } from "@/types";
 import { cn } from "@/lib/utils";
 
-type ViewMode = "month" | "week" | "day";
+type ViewMode = CalendarViewMode;
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
@@ -113,9 +114,15 @@ export function CalendarPanelLive({
   }, []);
 
   const { from, to, label } = useMemo(() => {
-    if (viewMode === "month") {
-      const r = rangeForMonths(loadedMonths);
-      return { ...r, label: formatMonthTitle(visibleMonth, true) };
+    if (viewMode === "month" || viewMode === "year") {
+      const months =
+        viewMode === "year"
+          ? Array.from({ length: 12 }, (_, month) => ({ year: viewYear, month }))
+          : loadedMonths;
+      const r = rangeForMonths(months);
+      const monthLabel =
+        viewMode === "year" ? `${viewYear}年` : formatMonthTitle(visibleMonth, true);
+      return { ...r, label: monthLabel };
     }
     if (viewMode === "week") {
       const r = weekRange(weekAnchor);
@@ -124,6 +131,11 @@ export function CalendarPanelLive({
     const ds = toDateStr(viewYear, viewMonth, viewDay);
     return { from: ds, to: ds, label: ds };
   }, [viewMode, loadedMonths, visibleMonth, viewYear, viewMonth, viewDay, weekAnchor]);
+
+  useEffect(() => {
+    if (viewMode !== "year") return;
+    setLoadedMonths(Array.from({ length: 12 }, (_, month) => ({ year: viewYear, month })));
+  }, [viewMode, viewYear]);
 
   useEffect(() => {
     setLoading(true);
@@ -145,10 +157,14 @@ export function CalendarPanelLive({
     setWeekAnchor(now);
     setSelectedDate(now.toISOString().slice(0, 10));
     setVisibleMonth(monthKeyFromDate(now));
-    if (viewMode === "month") scrollRef.current?.scrollToToday();
+    if (viewMode === "month" || viewMode === "year") scrollRef.current?.scrollToToday();
   }
 
   function prev() {
+    if (viewMode === "year") {
+      setViewYear((y) => y - 1);
+      return;
+    }
     if (viewMode === "month") {
       scrollRef.current?.scrollByMonth(-1);
       return;
@@ -168,6 +184,10 @@ export function CalendarPanelLive({
   }
 
   function next() {
+    if (viewMode === "year") {
+      setViewYear((y) => y + 1);
+      return;
+    }
     if (viewMode === "month") {
       scrollRef.current?.scrollByMonth(1);
       return;
@@ -214,7 +234,7 @@ export function CalendarPanelLive({
               onNext={next}
               onToday={goToday}
             />
-            {viewMode === "month" && (
+            {(viewMode === "month" || viewMode === "year") && (
               <CalendarDisplayPicker value={displayMode} onChange={setDisplayMode} />
             )}
           </div>
@@ -248,14 +268,16 @@ export function CalendarPanelLive({
                 onToday={goToday}
               />
             )}
-            {loading && viewMode !== "month" && <Loading label="加载日历…" />}
-            {loading && viewMode === "month" && items.length === 0 && (
+            {loading && viewMode !== "month" && viewMode !== "year" && (
               <Loading label="加载日历…" />
             )}
-            {!loading && items.length === 0 && viewMode !== "month" && (
+            {loading && (viewMode === "month" || viewMode === "year") && items.length === 0 && (
+              <Loading label="加载日历…" />
+            )}
+            {!loading && items.length === 0 && viewMode !== "month" && viewMode !== "year" && (
               <EmptyState title="暂无安排" description="创建带开始日期的任务或计划后会显示在这里。" />
             )}
-            {viewMode === "month" && (
+            {(viewMode === "month" || viewMode === "year") && (
               <div
                 className={cn(
                   "relative flex h-0 min-h-0 flex-1 flex-col overflow-hidden bg-white",
