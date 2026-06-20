@@ -103,7 +103,7 @@ export function CalendarDayCreateActions({
             open={contributionOpen}
             onClose={() => setContributionOpen(false)}
             planId={planId}
-            occurredOn={dateStr}
+            defaultStartDate={dateStr}
             onSuccess={onSuccess}
           />
           <PlanFormModal

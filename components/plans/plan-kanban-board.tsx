@@ -17,6 +17,7 @@ import {
 import { dispatchPlanUpdated, PLAN_UPDATED_EVENT } from "@/lib/plan-events";
 import { apiJson } from "@/lib/client-api";
 import { ROLLUP_STATUS_HINT } from "@/lib/services/plan-rollup";
+import { PlanDetailModal } from "@/components/plans/plan-detail-modal";
 import { cn } from "@/lib/utils";
 
 function PlanKanbanCard({
@@ -24,11 +25,13 @@ function PlanKanbanCard({
   dragging,
   onDragStart,
   onDragEnd,
+  onOpenPlan,
 }: {
   plan: KanbanPlan;
   dragging: boolean;
   onDragStart: () => void;
   onDragEnd: () => void;
+  onOpenPlan: (planId: string) => void;
 }) {
   const draggable = kanbanCanDrag(plan);
 
@@ -55,9 +58,16 @@ function PlanKanbanCard({
       {plan.parentTitle && (
         <p className="mb-1 truncate text-xs text-gray-400">↑ {plan.parentTitle}</p>
       )}
-      <Link href={`/plans/${plan.id}`} className="block font-semibold text-gray-900 hover:text-brand-600">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenPlan(plan.id);
+        }}
+        className="block w-full text-left font-semibold text-gray-900 hover:text-brand-600"
+      >
         {plan.title}
-      </Link>
+      </button>
       {plan.description && (
         <p className="mt-1 line-clamp-2 text-sm text-gray-500">{plan.description}</p>
       )}
@@ -81,6 +91,7 @@ function KanbanColumn({
   onDragOver,
   onDragLeave,
   onDrop,
+  onOpenPlan,
 }: {
   columnId: KanbanColumnId;
   label: string;
@@ -92,6 +103,7 @@ function KanbanColumn({
   onDragOver: (columnId: KanbanColumnId) => void;
   onDragLeave: () => void;
   onDrop: (columnId: KanbanColumnId, planId: string) => void;
+  onOpenPlan: (planId: string) => void;
 }) {
   const isTarget = dropTarget === columnId && draggingId !== null;
 
@@ -127,6 +139,7 @@ function KanbanColumn({
             dragging={draggingId === plan.id}
             onDragStart={() => onDragStart(plan.id)}
             onDragEnd={onDragEnd}
+            onOpenPlan={onOpenPlan}
           />
         ))}
       </div>
@@ -147,6 +160,7 @@ export function PlanKanbanBoard({ initialPlans }: { initialPlans: KanbanPlan[] }
   const [dropTarget, setDropTarget] = useState<KanbanColumnId | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
+  const [planModalId, setPlanModalId] = useState<string | null>(null);
 
   const grouped = useMemo(() => groupPlansByKanbanColumn(plans), [plans]);
 
@@ -264,9 +278,17 @@ export function PlanKanbanBoard({ initialPlans }: { initialPlans: KanbanPlan[] }
             onDrop={(columnId, planId) => {
               void movePlan(planId, columnId);
             }}
+            onOpenPlan={setPlanModalId}
           />
         ))}
       </div>
+
+      <PlanDetailModal
+        planId={planModalId}
+        open={planModalId !== null}
+        onClose={() => setPlanModalId(null)}
+        onChanged={reloadPlans}
+      />
     </div>
   );
 }

@@ -20,8 +20,15 @@ export interface FeedItemCardData {
   createdAt: string;
 }
 
-export function FeedItemCard({ item }: { item: FeedItemCardData }) {
+export function FeedItemCard({
+  item,
+  onPlanClick,
+}: {
+  item: FeedItemCardData;
+  onPlanClick?: (planId: string) => void;
+}) {
   const href = feedItemHref(item.itemType, item.itemId);
+  const isPlan = item.itemType === "plan";
   const meta = feedItemMeta(item.itemType, item.actionType);
   const text = feedDisplayText(item.itemType, item.actionType, item.content);
   const parts = splitTextWithLinks(text);
@@ -72,7 +79,15 @@ export function FeedItemCard({ item }: { item: FeedItemCardData }) {
         </div>
       </header>
       <div className="px-3 py-2.5">
-        {href ? (
+        {isPlan && onPlanClick ? (
+          <button
+            type="button"
+            className="block w-full text-left hover:opacity-90"
+            onClick={() => onPlanClick(item.itemId)}
+          >
+            {body}
+          </button>
+        ) : href ? (
           <Link href={href} className="block hover:opacity-90">
             {body}
           </Link>

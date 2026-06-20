@@ -140,8 +140,9 @@ model PlanContribution {
   planId      String   @map("plan_id")
   title       String
   description String?
-  occurredOn  DateTime @map("occurred_on") @db.Date
-  createdAt   DateTime @default(now()) @map("created_at")
+  occurredOn     DateTime  @map("occurred_on") @db.Date
+  occurredEndOn  DateTime? @map("occurred_end_on") @db.Date
+  createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

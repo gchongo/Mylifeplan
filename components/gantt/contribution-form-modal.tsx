@@ -7,23 +7,24 @@ export function ContributionFormModal({
   open,
   onClose,
   planId,
-  occurredOn,
-  title = "添加贡献",
+  defaultStartDate,
+  defaultEndDate,
   onSuccess,
 }: {
   open: boolean;
   onClose: () => void;
   planId: string;
-  occurredOn: string;
-  title?: string;
+  defaultStartDate: string;
+  defaultEndDate?: string;
   onSuccess: () => void;
 }) {
   return (
-    <Modal open={open} onClose={onClose} title={title} className="max-w-lg">
+    <Modal open={open} onClose={onClose} title="添加贡献" className="max-w-lg">
       <ContributionForm
-        key={`${planId}-${occurredOn}`}
+        key={`${planId}-${defaultStartDate}`}
         planId={planId}
-        occurredOn={occurredOn}
+        defaultStartDate={defaultStartDate}
+        defaultEndDate={defaultEndDate}
         onSuccess={() => {
           onSuccess();
           onClose();

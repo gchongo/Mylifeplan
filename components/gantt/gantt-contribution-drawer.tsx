@@ -13,6 +13,7 @@ interface ContributionDetail {
   title: string;
   description: string | null;
   occurredOn: string;
+  occurredEndOn?: string | null;
   plan?: { id: string; title: string; type: string };
 }
 
@@ -82,7 +83,11 @@ export function GanttContributionDrawerPanel({
         <div className="space-y-4 text-sm">
           <div>
             <p className="text-xs text-gray-500">贡献日期</p>
-            <p className="font-medium text-gray-900">{item.occurredOn}</p>
+            <p className="font-medium text-gray-900">
+              {item.occurredEndOn && item.occurredEndOn !== item.occurredOn
+                ? `${item.occurredOn} ~ ${item.occurredEndOn}`
+                : item.occurredOn}
+            </p>
           </div>
           <div>
             <p className="text-xs text-gray-500">所属计划</p>

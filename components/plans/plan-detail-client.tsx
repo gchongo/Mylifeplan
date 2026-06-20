@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ContributionForm } from "@/components/forms/contribution-form";
 import { PlanForm, type PlanFormValues } from "@/components/forms/plan-form";
 import { shouldShowInMemo } from "@/lib/content-router";
 import { formatPlanDateTimeDisplay } from "@/lib/dates";
+import { dispatchPlanUpdated } from "@/lib/plan-events";
 
 interface SubPlan {
   id: string;
@@ -16,19 +18,46 @@ interface SubPlan {
   status: string;
 }
 
+function todayDateStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export function PlanDetailClient({
   plan,
   subPlans,
   parentTitle,
+  embedded = false,
+  onChanged,
+  onClose,
+  onNavigatePlan,
 }: {
   plan: PlanFormValues & { id: string };
   subPlans: SubPlan[];
   parentTitle?: string | null;
+  embedded?: boolean;
+  onChanged?: () => void;
+  onClose?: () => void;
+  onNavigatePlan?: (planId: string) => void;
 }) {
   const router = useRouter();
   const [showEdit, setShowEdit] = useState(false);
   const [showNewSubPlan, setShowNewSubPlan] = useState(false);
+  const [showNewContribution, setShowNewContribution] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  function afterChange() {
+    dispatchPlanUpdated();
+    onChanged?.();
+  }
+
+  function leaveAfterDelete() {
+    if (embedded) {
+      onClose?.();
+    } else {
+      router.push("/plans");
+      router.refresh();
+    }
+  }
 
   async function archivePlan() {
     setDeleting(true);
@@ -39,8 +68,8 @@ export function PlanDetailClient({
         body: JSON.stringify({ status: "archived" }),
       });
       if (res.ok) {
-        router.push("/plans");
-        router.refresh();
+        afterChange();
+        leaveAfterDelete();
       }
     } finally {
       setDeleting(false);
@@ -53,8 +82,8 @@ export function PlanDetailClient({
     try {
       const res = await fetch(`/api/plans/${plan.id}`, { method: "DELETE" });
       if (res.ok) {
-        router.push("/plans");
-        router.refresh();
+        afterChange();
+        leaveAfterDelete();
       }
     } finally {
       setDeleting(false);
@@ -70,7 +99,14 @@ export function PlanDetailClient({
           <CardTitle>编辑计划</CardTitle>
         </CardHeader>
         <CardContent>
-          <PlanForm plan={plan} redirectTo={`/plans/${plan.id}`} />
+          <PlanForm
+            plan={plan}
+            redirectTo={embedded ? undefined : `/plans/${plan.id}`}
+            onSuccess={() => {
+              setShowEdit(false);
+              afterChange();
+            }}
+          />
           <Button className="mt-4" variant="ghost" size="sm" onClick={() => setShowEdit(false)}>
             取消编辑
           </Button>
@@ -110,8 +146,25 @@ export function PlanDetailClient({
                 <Button size="sm" variant="secondary" onClick={() => setShowEdit(true)}>
                   编辑计划
                 </Button>
-                <Button size="sm" onClick={() => setShowNewSubPlan((v) => !v)}>
-                  {showNewSubPlan ? "收起" : "新建子计划"}
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    setShowNewContribution(false);
+                    setShowNewSubPlan((v) => !v);
+                  }}
+                >
+                  {showNewSubPlan ? "收起" : "添加子计划"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    setShowNewSubPlan(false);
+                    setShowNewContribution((v) => !v);
+                  }}
+                >
+                  {showNewContribution ? "收起" : "添加贡献"}
                 </Button>
               </>
             )}
@@ -125,7 +178,8 @@ export function PlanDetailClient({
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ status: "not_started" }),
                   });
-                  router.refresh();
+                  afterChange();
+                  if (!embedded) router.refresh();
                 }}
               >
                 取消归档
@@ -145,12 +199,33 @@ export function PlanDetailClient({
       {showNewSubPlan && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">新建子计划</CardTitle>
+            <CardTitle className="text-base">添加子计划</CardTitle>
           </CardHeader>
           <CardContent>
             <PlanForm
               defaultParentPlanId={plan.id}
-              redirectTo={`/plans/${plan.id}`}
+              onSuccess={() => {
+                setShowNewSubPlan(false);
+                afterChange();
+              }}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {showNewContribution && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">添加贡献</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ContributionForm
+              planId={plan.id}
+              defaultStartDate={todayDateStr()}
+              onSuccess={() => {
+                setShowNewContribution(false);
+                afterChange();
+              }}
             />
           </CardContent>
         </Card>
@@ -165,13 +240,24 @@ export function PlanDetailClient({
             <ul className="space-y-2">
               {subPlans.map((sp) => (
                 <li key={sp.id}>
-                  <Link
-                    href={`/plans/${sp.id}`}
-                    className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2 hover:bg-gray-50"
-                  >
-                    <span>{sp.title}</span>
-                    <TaskStatusIndicator status={sp.status} />
-                  </Link>
+                  {embedded && onNavigatePlan ? (
+                    <button
+                      type="button"
+                      onClick={() => onNavigatePlan(sp.id)}
+                      className="flex w-full items-center justify-between rounded-lg border border-gray-100 px-3 py-2 text-left hover:bg-gray-50"
+                    >
+                      <span>{sp.title}</span>
+                      <TaskStatusIndicator status={sp.status} />
+                    </button>
+                  ) : (
+                    <Link
+                      href={`/plans/${sp.id}`}
+                      className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2 hover:bg-gray-50"
+                    >
+                      <span>{sp.title}</span>
+                      <TaskStatusIndicator status={sp.status} />
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>

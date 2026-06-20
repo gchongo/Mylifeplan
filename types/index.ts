@@ -30,6 +30,7 @@ export interface GanttContribution {
   title: string;
   description?: string | null;
   occurredOn: string;
+  occurredEndOn?: string | null;
 }
 
 export interface CalendarItem {

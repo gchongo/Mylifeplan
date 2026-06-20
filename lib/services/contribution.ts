@@ -4,6 +4,12 @@ import { prisma } from "@/lib/db";
 import { writeFeed } from "@/lib/services/feed";
 import type { CreateContributionInput } from "@/lib/validations/contribution";
 
+export function contributionEndDate(
+  c: Pick<PlanContribution, "occurredOn" | "occurredEndOn">,
+): string {
+  return formatDateOnly(c.occurredEndOn) ?? formatDateOnly(c.occurredOn) ?? "";
+}
+
 export function serializeContribution(c: PlanContribution & { plan?: { title: string } }) {
   return {
     id: c.id,
@@ -12,9 +18,22 @@ export function serializeContribution(c: PlanContribution & { plan?: { title: st
     title: c.title,
     description: c.description,
     occurredOn: formatDateOnly(c.occurredOn) ?? "",
+    occurredEndOn: formatDateOnly(c.occurredEndOn),
     createdAt: c.createdAt.toISOString(),
     updatedAt: c.updatedAt.toISOString(),
   };
+}
+
+function contributionOverlapsRange(
+  c: Pick<PlanContribution, "occurredOn" | "occurredEndOn">,
+  from: Date | null,
+  to: Date | null,
+): boolean {
+  const start = c.occurredOn;
+  const end = c.occurredEndOn ?? c.occurredOn;
+  if (from && end < from) return false;
+  if (to && start > to) return false;
+  return true;
 }
 
 async function assertPlanForContribution(userId: string, planId: string) {
@@ -27,6 +46,7 @@ async function assertPlanForContribution(userId: string, planId: string) {
 
 export async function createContribution(userId: string, input: CreateContributionInput) {
   const plan = await assertPlanForContribution(userId, input.planId);
+  const endStr = input.occurredEndOn?.trim() || null;
 
   const contribution = await prisma.planContribution.create({
     data: {
@@ -35,6 +55,7 @@ export async function createContribution(userId: string, input: CreateContributi
       title: input.title.trim(),
       description: input.description?.trim() || null,
       occurredOn: parseDateOnly(input.occurredOn)!,
+      occurredEndOn: endStr ? parseDateOnly(endStr) : null,
     },
     include: { plan: { select: { title: true } } },
   });
@@ -60,6 +81,11 @@ export async function updateContribution(
 
   if (input.planId) await assertPlanForContribution(userId, input.planId);
 
+  const endStr =
+    input.occurredEndOn !== undefined
+      ? input.occurredEndOn?.trim() || null
+      : undefined;
+
   const contribution = await prisma.planContribution.update({
     where: { id },
     data: {
@@ -70,6 +96,9 @@ export async function updateContribution(
       }),
       ...(input.occurredOn !== undefined && {
         occurredOn: parseDateOnly(input.occurredOn)!,
+      }),
+      ...(endStr !== undefined && {
+        occurredEndOn: endStr ? parseDateOnly(endStr) : null,
       }),
     },
     include: { plan: { select: { title: true } } },
@@ -110,20 +139,16 @@ export async function getContributionsInRange(
   from?: string | null,
   to?: string | null,
 ) {
-  const where: { userId: string; occurredOn?: { gte?: Date; lte?: Date } } = { userId };
-
-  if (from) {
-    where.occurredOn = { ...where.occurredOn, gte: parseDateOnly(from)! };
-  }
-  if (to) {
-    where.occurredOn = { ...where.occurredOn, lte: parseDateOnly(to)! };
-  }
+  const fromDate = from ? parseDateOnly(from) : null;
+  const toDate = to ? parseDateOnly(to) : null;
 
   const rows = await prisma.planContribution.findMany({
-    where,
+    where: { userId },
     orderBy: [{ occurredOn: "desc" }, { createdAt: "desc" }],
     include: { plan: { select: { title: true, type: true } } },
   });
 
-  return rows.map(serializeContribution);
+  return rows
+    .filter((c) => contributionOverlapsRange(c, fromDate, toDate))
+    .map(serializeContribution);
 }

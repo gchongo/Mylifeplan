@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState, Loading } from "@/components/ui/feedback";
 import { FeedComposer } from "@/components/feed/feed-composer";
 import { FeedItemCard, type FeedItemCardData } from "@/components/feed/feed-item-card";
+import { PlanDetailModal } from "@/components/plans/plan-detail-modal";
 import { PanelExpandButton } from "@/components/home/panel-expand-button";
 import type { FeedActionType, FeedItemType } from "@prisma/client";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ export function FeedPanelLive({
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [planModalId, setPlanModalId] = useState<string | null>(null);
 
   const load = useCallback(
     async (cursor?: string | null, append = false) => {
@@ -101,10 +103,19 @@ export function FeedPanelLive({
             >
               {items.map((item) => (
                 <li key={item.id}>
-                  <FeedItemCard item={item as FeedItemCardData} />
+                  <FeedItemCard
+                    item={item as FeedItemCardData}
+                    onPlanClick={(id) => setPlanModalId(id)}
+                  />
                 </li>
               ))}
             </ul>
+            <PlanDetailModal
+              planId={planModalId}
+              open={planModalId !== null}
+              onClose={() => setPlanModalId(null)}
+              onChanged={refreshFeed}
+            />
             {nextCursor && (
               <Button
                 className="shrink-0"

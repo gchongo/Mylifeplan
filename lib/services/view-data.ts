@@ -82,7 +82,9 @@ export async function getGanttData(
     if (!plan || !plan.startDate) continue;
 
     const planContribs = contributions.filter((x) => x.planId === c.planId);
-    const dates = planContribs.map((x) => x.occurredOn).sort();
+    const dates = planContribs
+      .flatMap((x) => [x.occurredOn, x.occurredEndOn ?? x.occurredOn])
+      .sort();
     const startDate = dates[0]!;
     const endDate = dates[dates.length - 1]!;
 
