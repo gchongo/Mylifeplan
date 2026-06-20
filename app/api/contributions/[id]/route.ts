@@ -3,6 +3,7 @@ import { jsonError, jsonOk } from "@/lib/api-response";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 import { requireSession } from "@/lib/auth/get-session";
+import { handleProtectedRouteError } from "@/lib/api/route-auth";
 import { prisma } from "@/lib/db";
 import {
   deleteContribution,
@@ -28,8 +29,8 @@ export async function GET(request: NextRequest, { params }: Params) {
         plan: contribution.plan,
       },
     });
-  } catch {
-    return jsonError("未登录", 401);
+  } catch (error) {
+    return handleProtectedRouteError(error, "api/contributions/[id] GET");
   }
 }
 

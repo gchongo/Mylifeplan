@@ -3,6 +3,7 @@ import { jsonError, jsonOk } from "@/lib/api-response";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 import { requireSession } from "@/lib/auth/get-session";
+import { handleProtectedRouteError } from "@/lib/api/route-auth";
 import {
   createContribution,
   getContributionsInRange,
@@ -22,8 +23,8 @@ export async function GET(request: NextRequest) {
     if (planId) items = items.filter((c) => c.planId === planId);
 
     return jsonOk({ contributions: items });
-  } catch {
-    return jsonError("未登录", 401);
+  } catch (error) {
+    return handleProtectedRouteError(error, "api/contributions GET");
   }
 }
 

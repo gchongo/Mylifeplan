@@ -3,6 +3,7 @@ import { jsonError, jsonOk } from "@/lib/api-response";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 import { requireSession } from "@/lib/auth/get-session";
+import { handleProtectedRouteError } from "@/lib/api/route-auth";
 import { getGanttData } from "@/lib/services/view-data";
 
 export async function GET(request: NextRequest) {
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     const { items, contributions } = await getGanttData(session.userId, from, to);
     return jsonOk({ items, contributions });
-  } catch {
-    return jsonError("未登录", 401);
+  } catch (error) {
+    return handleProtectedRouteError(error, "api/gantt GET");
   }
 }

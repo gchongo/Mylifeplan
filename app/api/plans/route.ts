@@ -3,6 +3,7 @@ import { jsonError, jsonOk } from "@/lib/api-response";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 import { requireSession } from "@/lib/auth/get-session";
+import { handleProtectedRouteError } from "@/lib/api/route-auth";
 import { prisma } from "@/lib/db";
 import { createPlan, serializePlan } from "@/lib/services/plan";
 import { createPlanSchema } from "@/lib/validations/plan";
@@ -29,8 +30,8 @@ export async function GET(request: NextRequest) {
         parentTitle: p.parentPlan?.title ?? null,
       })),
     });
-  } catch {
-    return jsonError("未登录", 401);
+  } catch (error) {
+    return handleProtectedRouteError(error, "api/plans GET");
   }
 }
 
@@ -51,10 +52,10 @@ export async function POST(request: NextRequest) {
 
     const plan = await createPlan(session.userId, input);
     return jsonOk({ plan: serializePlan(plan) }, 201);
-  } catch (e) {
-    if (e instanceof Error) {
-      return jsonError(e.message, 400);
+  } catch (error) {
+    if (error instanceof Error && error.message !== "UNAUTHORIZED" && error.message !== "FORBIDDEN") {
+      return jsonError(error.message, 400);
     }
-    return jsonError("创建失败", 500);
+    return handleProtectedRouteError(error, "api/plans POST");
   }
 }

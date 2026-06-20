@@ -62,10 +62,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     const { id } = await params;
     await deleteMemoById(session.userId, id);
     return jsonOk({ ok: true });
-  } catch (e) {
-    if (e instanceof Error && e.message === "NOT_FOUND") {
-      return jsonError("备忘录不存在", 404);
-    }
-    return jsonError("未登录", 401);
+  } catch (error) {
+    return handleProtectedRouteError(error, "api/memos/[id] DELETE");
   }
 }

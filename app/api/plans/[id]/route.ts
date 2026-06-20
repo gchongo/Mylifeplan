@@ -3,6 +3,7 @@ import { jsonError, jsonOk } from "@/lib/api-response";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 import { requireSession } from "@/lib/auth/get-session";
+import { handleProtectedRouteError } from "@/lib/api/route-auth";
 import { prisma } from "@/lib/db";
 import { deletePlan, serializePlan, updatePlan } from "@/lib/services/plan";
 import { updatePlanSchema } from "@/lib/validations/plan";
@@ -26,8 +27,8 @@ export async function GET(request: NextRequest, { params }: Params) {
         subPlans: plan.subPlans.map(serializePlan),
       },
     });
-  } catch {
-    return jsonError("未登录", 401);
+  } catch (error) {
+    return handleProtectedRouteError(error, "api/plans/[id] GET");
   }
 }
 
@@ -70,10 +71,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     const { id } = await params;
     await deletePlan(session.userId, id);
     return jsonOk({ ok: true });
-  } catch (e) {
-    if (e instanceof Error && e.message === "NOT_FOUND") {
-      return jsonError("计划不存在", 404);
-    }
-    return jsonError("未登录", 401);
+  } catch (error) {
+    return handleProtectedRouteError(error, "api/plans/[id] DELETE");
   }
 }
