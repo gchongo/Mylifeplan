@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState, Loading } from "@/components/ui/feedback";
+import { PanelExpandButton } from "@/components/home/panel-expand-button";
 import type { GanttItem } from "@/types";
+import { cn } from "@/lib/utils";
 
 function dateToMs(d: string) {
   return new Date(d + "T00:00:00.000Z").getTime();
@@ -17,10 +19,14 @@ function formatShort(d: string) {
   return d.slice(5).replace("-", "/");
 }
 
-function defaultRange() {
+function defaultRange(fullPage: boolean) {
   const now = new Date();
-  const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
-  const to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 3, 0));
+  const from = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (fullPage ? 3 : 1), 1),
+  );
+  const to = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + (fullPage ? 6 : 3), 0),
+  );
   return {
     from: from.toISOString().slice(0, 10),
     to: to.toISOString().slice(0, 10),
@@ -52,8 +58,14 @@ function buildDepthMap(items: GanttItem[]) {
   return cache;
 }
 
-export function GanttPanelLive() {
-  const initial = defaultRange();
+export function GanttPanelLive({
+  fullPage = false,
+  className,
+}: {
+  fullPage?: boolean;
+  className?: string;
+}) {
+  const initial = defaultRange(fullPage);
   const [from, setFrom] = useState(initial.from);
   const [to, setTo] = useState(initial.to);
   const [items, setItems] = useState<GanttItem[]>([]);
@@ -100,11 +112,17 @@ export function GanttPanelLive() {
     };
   }
 
+  const barTrackClass = fullPage ? "h-10" : "h-6";
+  const barFillClass = fullPage ? "top-1.5 h-7" : "top-1 h-4";
+
   return (
-    <Card className="flex h-full flex-col">
-      <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <CardTitle>甘特图 · 看全局</CardTitle>
-        <Badge variant="info">虚线 = 预估截止</Badge>
+    <Card className={cn("flex h-full flex-col", className)}>
+      <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <CardTitle>{fullPage ? "甘特图" : "甘特图 · 看全局"}</CardTitle>
+          <Badge variant="info">虚线 = 预估截止</Badge>
+        </div>
+        {!fullPage && <PanelExpandButton href="/gantt" label="甘特图" />}
       </CardHeader>
       <CardContent className="flex flex-1 flex-col overflow-hidden">
         <div className="mb-3 flex flex-wrap items-end gap-2">
@@ -127,7 +145,7 @@ export function GanttPanelLive() {
             variant="secondary"
             type="button"
             onClick={() => {
-              const d = defaultRange();
+              const d = defaultRange(fullPage);
               setFrom(d.from);
               setTo(d.to);
             }}
@@ -149,16 +167,26 @@ export function GanttPanelLive() {
               <span>{formatShort(rangeStart)}</span>
               <span>{formatShort(rangeEnd)}</span>
             </div>
-            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+            <div
+              className={cn(
+                "min-h-0 flex-1 overflow-y-auto pr-1",
+                fullPage ? "space-y-3" : "space-y-2",
+              )}
+            >
               {sortedItems.map((item) => {
                 const depth = depthMap.get(`${item.type}-${item.id}`) ?? 0;
                 return (
                   <div
                     key={`${item.type}-${item.id}`}
                     className="group"
-                    style={{ paddingLeft: `${depth * 16}px` }}
+                    style={{ paddingLeft: `${depth * (fullPage ? 24 : 16)}px` }}
                   >
-                    <div className="mb-1 flex items-center gap-2 text-xs">
+                    <div
+                      className={cn(
+                        "mb-1 flex items-center gap-2",
+                        fullPage ? "text-sm" : "text-xs",
+                      )}
+                    >
                       <span
                         className={
                           item.type === "task" ? "text-brand-600" : "text-purple-600"
@@ -180,16 +208,20 @@ export function GanttPanelLive() {
                         </Badge>
                       )}
                     </div>
-                    <div className="relative h-6 rounded bg-gray-100">
+                    <div className={cn("relative rounded bg-gray-100", barTrackClass)}>
                       <div
-                        className={`absolute top-1 h-4 rounded ${
-                          item.type === "task" ? "bg-brand-500/80" : "bg-purple-500/80"
-                        } ${item.isVirtualEnd ? "border-2 border-dashed border-amber-500 bg-brand-500/30" : ""}`}
+                        className={cn(
+                          "absolute rounded",
+                          barFillClass,
+                          item.type === "task" ? "bg-brand-500/80" : "bg-purple-500/80",
+                          item.isVirtualEnd &&
+                            "border-2 border-dashed border-amber-500 bg-brand-500/30",
+                        )}
                         style={barStyle(item)}
                         title={`${item.startDate} → ${item.effectiveEnd}`}
                       />
                     </div>
-                    <p className="mt-0.5 text-[10px] text-gray-400">
+                    <p className={cn("mt-0.5 text-gray-400", fullPage ? "text-xs" : "text-[10px]")}>
                       {item.startDate} → {item.effectiveEnd}
                     </p>
                   </div>

@@ -5,7 +5,9 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState, Loading } from "@/components/ui/feedback";
+import { PanelExpandButton } from "@/components/home/panel-expand-button";
 import type { CalendarItem } from "@/types";
+import { cn } from "@/lib/utils";
 
 type ViewMode = "month" | "week" | "day";
 
@@ -78,7 +80,13 @@ function ItemLink({ item }: { item: CalendarItem }) {
   );
 }
 
-export function CalendarPanelLive() {
+export function CalendarPanelLive({
+  fullPage = false,
+  className,
+}: {
+  fullPage?: boolean;
+  className?: string;
+}) {
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
   const [viewMode, setViewMode] = useState<ViewMode>("month");
@@ -153,23 +161,30 @@ export function CalendarPanelLive() {
     }
   }
 
+  const monthItemLimit = fullPage ? 8 : 2;
+  const monthCellMinH = fullPage ? "min-h-[8rem]" : "min-h-[4rem]";
+  const weekCellMinH = fullPage ? "min-h-[12rem]" : "min-h-[6rem]";
+
   return (
-    <Card className="flex h-full flex-col">
+    <Card className={cn("flex h-full flex-col", className)}>
       <CardHeader className="flex flex-col gap-2 pb-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle>日历 · 看执行</CardTitle>
-          <div className="flex gap-1">
-            {(["month", "week", "day"] as ViewMode[]).map((mode) => (
-              <Button
-                key={mode}
-                type="button"
-                size="sm"
-                variant={viewMode === mode ? "primary" : "ghost"}
-                onClick={() => setViewMode(mode)}
-              >
-                {mode === "month" ? "月" : mode === "week" ? "周" : "日"}
-              </Button>
-            ))}
+          <CardTitle>{fullPage ? "日历" : "日历 · 看执行"}</CardTitle>
+          <div className="flex items-center gap-1">
+            <div className="flex gap-1">
+              {(["month", "week", "day"] as ViewMode[]).map((mode) => (
+                <Button
+                  key={mode}
+                  type="button"
+                  size="sm"
+                  variant={viewMode === mode ? "primary" : "ghost"}
+                  onClick={() => setViewMode(mode)}
+                >
+                  {mode === "month" ? "月" : mode === "week" ? "周" : "日"}
+                </Button>
+              ))}
+            </div>
+            {!fullPage && <PanelExpandButton href="/calendar" label="日历" />}
           </div>
         </div>
         <div className="flex items-center justify-between">
@@ -199,7 +214,12 @@ export function CalendarPanelLive() {
             <div className="mt-1 min-h-0 flex-1 grid grid-cols-7 gap-1 overflow-y-auto text-xs">
               {cells.map((day, idx) => {
                 if (day === null) {
-                  return <div key={`e-${idx}`} className="min-h-[4rem] rounded bg-transparent" />;
+                  return (
+                    <div
+                      key={`e-${idx}`}
+                      className={cn("rounded bg-transparent", monthCellMinH)}
+                    />
+                  );
                 }
                 const ds = toDateStr(viewYear, viewMonth, day);
                 const dayItems = items.filter((i) => itemOnDate(i, ds));
@@ -207,19 +227,23 @@ export function CalendarPanelLive() {
                 return (
                   <div
                     key={day}
-                    className={`min-h-[4rem] rounded border p-1 ${
-                      isTodayCell ? "border-brand-400 bg-brand-50" : "border-gray-100 bg-gray-50/80"
-                    }`}
+                    className={cn(
+                      "rounded border p-1",
+                      monthCellMinH,
+                      isTodayCell ? "border-brand-400 bg-brand-50" : "border-gray-100 bg-gray-50/80",
+                    )}
                   >
                     <div className="mb-0.5 text-right font-medium">{day}</div>
                     <ul className="space-y-0.5">
-                      {dayItems.slice(0, 2).map((item) => (
+                      {dayItems.slice(0, monthItemLimit).map((item) => (
                         <li key={`${item.type}-${item.id}`}>
                           <ItemLink item={item} />
                         </li>
                       ))}
-                      {dayItems.length > 2 && (
-                        <li className="text-[10px] text-gray-400">+{dayItems.length - 2}</li>
+                      {dayItems.length > monthItemLimit && (
+                        <li className="text-[10px] text-gray-400">
+                          +{dayItems.length - monthItemLimit}
+                        </li>
                       )}
                     </ul>
                   </div>
@@ -236,9 +260,11 @@ export function CalendarPanelLive() {
               return (
                 <div
                   key={ds}
-                  className={`min-h-[6rem] rounded border p-1 ${
-                    ds === todayStr ? "border-brand-400 bg-brand-50" : "border-gray-100"
-                  }`}
+                  className={cn(
+                    "rounded border p-1",
+                    weekCellMinH,
+                    ds === todayStr ? "border-brand-400 bg-brand-50" : "border-gray-100",
+                  )}
                 >
                   <div className="mb-1 text-center font-medium">{d}</div>
                   <ul className="space-y-0.5">

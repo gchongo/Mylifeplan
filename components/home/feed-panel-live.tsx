@@ -6,7 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState, Loading } from "@/components/ui/feedback";
 import { formatFeedSummary } from "@/lib/services/feed";
+import { PanelExpandButton } from "@/components/home/panel-expand-button";
 import type { FeedActionType, FeedItemType } from "@prisma/client";
+import { cn } from "@/lib/utils";
 
 interface FeedRow {
   id: string;
@@ -23,20 +25,30 @@ function feedHref(item: FeedRow): string | null {
   return null;
 }
 
-export function FeedPanelLive() {
+export function FeedPanelLive({
+  fullPage = false,
+  className,
+}: {
+  fullPage?: boolean;
+  className?: string;
+}) {
+  const pageSize = fullPage ? 50 : 20;
   const [items, setItems] = useState<FeedRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
 
-  const load = useCallback(async (cursor?: string | null, append = false) => {
-    const qs = cursor ? `?cursor=${cursor}&limit=20` : "?limit=20";
-    const res = await fetch(`/api/feed${qs}`);
-    const data = await res.json();
-    const rows: FeedRow[] = data.items ?? [];
-    setItems((prev) => (append ? [...prev, ...rows] : rows));
-    setNextCursor(data.nextCursor ?? null);
-  }, []);
+  const load = useCallback(
+    async (cursor?: string | null, append = false) => {
+      const qs = cursor ? `?cursor=${cursor}&limit=${pageSize}` : `?limit=${pageSize}`;
+      const res = await fetch(`/api/feed${qs}`);
+      const data = await res.json();
+      const rows: FeedRow[] = data.items ?? [];
+      setItems((prev) => (append ? [...prev, ...rows] : rows));
+      setNextCursor(data.nextCursor ?? null);
+    },
+    [pageSize],
+  );
 
   useEffect(() => {
     load().finally(() => setLoading(false));
@@ -53,9 +65,10 @@ export function FeedPanelLive() {
   }
 
   return (
-    <Card className="flex h-full flex-col">
-      <CardHeader>
-        <CardTitle>信息流 · 看动态</CardTitle>
+    <Card className={cn("flex h-full flex-col", className)}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle>{fullPage ? "信息流" : "信息流 · 看动态"}</CardTitle>
+        {!fullPage && <PanelExpandButton href="/feed" label="信息流" />}
       </CardHeader>
       <CardContent className="flex flex-1 flex-col overflow-hidden">
         {loading && <Loading />}
@@ -64,14 +77,22 @@ export function FeedPanelLive() {
         )}
         {!loading && items.length > 0 && (
           <>
-            <ul className="min-h-0 flex-1 space-y-3 overflow-auto">
+            <ul
+              className={cn(
+                "min-h-0 flex-1 space-y-3 overflow-auto",
+                fullPage && "space-y-4",
+              )}
+            >
               {items.map((item) => {
                 const href = feedHref(item);
                 const summary = formatFeedSummary(item.itemType, item.actionType, item.content);
                 return (
                   <li
                     key={item.id}
-                    className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-sm"
+                    className={cn(
+                      "rounded-lg border border-gray-100 bg-gray-50 px-3 py-2",
+                      fullPage ? "px-4 py-3 text-base" : "text-sm",
+                    )}
                   >
                     {href ? (
                       <Link href={href} className="font-medium text-gray-900 hover:text-brand-600">
@@ -80,7 +101,7 @@ export function FeedPanelLive() {
                     ) : (
                       <p className="font-medium text-gray-900">{summary}</p>
                     )}
-                    <p className="mt-0.5 text-xs text-gray-500">
+                    <p className={cn("mt-0.5 text-gray-500", fullPage ? "text-sm" : "text-xs")}>
                       {new Date(item.createdAt).toLocaleString("zh-CN")}
                     </p>
                   </li>
