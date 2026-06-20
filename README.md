@@ -16,33 +16,34 @@
 
 - Node.js 20+
 - npm 10+
-- PostgreSQL 15+（Docker 或本地）
+- PostgreSQL 15+（本机安装或 VPS，**不必 Docker**）
 
-## 快速开始
+详细 VPS 步骤见 **[docs/deploy-vps.md](docs/deploy-vps.md)**。
+
+## 快速开始（本地 Windows）
 
 ```bash
-cd d:\Mylifeplan
-
-# 1. 安装依赖（含 Prisma 等 M1 新增包）
 npm install
-
-# 2. 启动 PostgreSQL（Docker）
-docker compose up -d
-
-# 3. 配置环境变量
 copy .env.example .env
-# 编辑 .env，设置 AUTH_SECRET（至少 32 字符）
-
-# 4. 初始化数据库
 npm run db:generate
 npm run db:push
 npm run db:seed
-
-# 5. 启动开发服务器
 npm run dev
 ```
 
-浏览器打开 [http://localhost:3000](http://localhost:3000)
+## 快速开始（Linux VPS）
+
+```bash
+git clone https://github.com/gchongo/Mylifeplan.git
+cd Mylifeplan
+npm install
+cp .env.example .env   # 编辑 DATABASE_URL 与 AUTH_SECRET
+npm run db:generate && npm run db:push && npm run db:seed
+npm run build
+pm2 start npm --name mylifeplan -- start
+```
+
+完整说明见 [docs/deploy-vps.md](docs/deploy-vps.md)。
 
 ### 种子账号
 
