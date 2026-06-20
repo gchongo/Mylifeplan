@@ -1,8 +1,8 @@
 "use client";
 
-import { CalendarPanel } from "@/components/home/calendar-panel";
+import { CalendarPanelLive } from "@/components/home/calendar-panel-live";
 import { FeedPanelLive } from "@/components/home/feed-panel-live";
-import { GanttPanel } from "@/components/home/gantt-panel";
+import { GanttPanelLive } from "@/components/home/gantt-panel-live";
 import { MobileHomeTabs } from "@/components/layout/mobile-tab-bar";
 import type { HomeTab } from "@/types";
 import { useSearchParams } from "next/navigation";
@@ -31,18 +31,18 @@ export function HomeDashboard() {
           <FeedPanelLive />
         </div>
         <div className="min-h-0">
-          <GanttPanel />
+          <GanttPanelLive />
         </div>
         <div className="min-h-0">
-          <CalendarPanel />
+          <CalendarPanelLive />
         </div>
       </div>
 
       {/* 移动：单 Tab */}
       <div className="flex-1 min-h-0 lg:hidden">
         {mobileTab === "feed" && <FeedPanelLive />}
-        {mobileTab === "gantt" && <GanttPanel />}
-        {mobileTab === "calendar" && <CalendarPanel />}
+        {mobileTab === "gantt" && <GanttPanelLive />}
+        {mobileTab === "calendar" && <CalendarPanelLive />}
       </div>
     </div>
   );
