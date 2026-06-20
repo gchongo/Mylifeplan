@@ -10,8 +10,8 @@ import {
   useRef,
   useState,
 } from "react";
-import Link from "next/link";
 import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
+import { GanttPlanDrawer } from "@/components/gantt/gantt-plan-drawer";
 import { GanttTaskDrawer } from "@/components/gantt/gantt-task-drawer";
 import { GanttToolbar } from "@/components/gantt/gantt-toolbar";
 import { TaskFormModal } from "@/components/gantt/task-form-modal";
@@ -122,10 +122,6 @@ function buildTaskTreeRows(tasks: GanttItem[], expanded: Set<string>): GanttRow[
   return rows;
 }
 
-function itemHref(item: GanttItem) {
-  return item.type === "task" ? `/tasks/${item.id}` : `/plans/${item.id}`;
-}
-
 interface TaskModalState {
   open: boolean;
   title: string;
@@ -196,6 +192,7 @@ export const GanttChart = forwardRef<
     () => new Set(STATUS_LEGEND),
   );
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [scrollViewportHeight, setScrollViewportHeight] = useState(480);
 
   const dataBounds = useMemo(() => dataBoundsFromItems(items), [items]);
@@ -398,11 +395,21 @@ export const GanttChart = forwardRef<
   }
 
   function openTask(taskId: string) {
+    setSelectedPlanId(null);
     setSelectedTaskId(taskId);
   }
 
   function closeTaskDrawer() {
     setSelectedTaskId(null);
+  }
+
+  function openPlan(planId: string) {
+    setSelectedTaskId(null);
+    setSelectedPlanId(planId);
+  }
+
+  function closePlanDrawer() {
+    setSelectedPlanId(null);
   }
 
   function openCreateTask(parentTaskId?: string | null) {
@@ -647,13 +654,14 @@ export const GanttChart = forwardRef<
             {item.title}
           </button>
         ) : (
-          <Link
-            href={itemHref(item)}
-            className="min-w-0 flex-1 truncate text-sm hover:text-brand-600"
+          <button
+            type="button"
+            onClick={() => openPlan(item.id)}
+            className="min-w-0 flex-1 truncate text-left text-sm hover:text-brand-600"
             title={item.title}
           >
             {item.title}
-          </Link>
+          </button>
         )}
         {item.status && (
           <TaskStatusIndicator
@@ -717,8 +725,11 @@ export const GanttChart = forwardRef<
         className="relative border-b border-dashed border-gray-100"
         style={{ height: ROW_HEIGHT, width: timelineWidth }}
       >
-        <div
-          className="absolute top-1/2 -translate-y-1/2"
+        <button
+          type="button"
+          data-gantt-bar
+          onClick={() => openPlan(item.id)}
+          className="absolute top-1/2 -translate-y-1/2 cursor-pointer text-left"
           style={{ left, width: Math.max(width, 8) }}
         >
           <div
@@ -739,12 +750,24 @@ export const GanttChart = forwardRef<
               <span className="absolute -right-0.5 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-amber-400" />
             </div>
           )}
-        </div>
+        </button>
       </div>
     );
   }
 
-  function wrapWithTaskDrawer(content: React.ReactNode) {
+  function wrapWithDrawers(content: React.ReactNode) {
+    if (selectedPlanId) {
+      return (
+        <GanttPlanDrawer
+          planId={selectedPlanId}
+          open={selectedPlanId !== null}
+          onClose={closePlanDrawer}
+        >
+          {content}
+        </GanttPlanDrawer>
+      );
+    }
+
     return (
       <GanttTaskDrawer
         taskId={selectedTaskId}
@@ -778,7 +801,7 @@ export const GanttChart = forwardRef<
   if (isLoading) {
     return (
       <>
-        {wrapWithTaskDrawer(
+        {wrapWithDrawers(
           <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             {renderToolbar()}
             <LoadingView label="加载甘特图…" />
@@ -792,7 +815,7 @@ export const GanttChart = forwardRef<
   if (items.length === 0) {
     return (
       <>
-        {wrapWithTaskDrawer(
+        {wrapWithDrawers(
           <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             {renderToolbar()}
             <EmptyState
@@ -815,7 +838,7 @@ export const GanttChart = forwardRef<
 
   return (
     <>
-      {wrapWithTaskDrawer(
+      {wrapWithDrawers(
         <div
           ref={containerRef}
           className={cn(

@@ -41,6 +41,8 @@ export function TaskForm({
   defaultParentTaskId,
   statusRollup = false,
   onSuccess,
+  embedded = false,
+  submitLabel,
 }: {
   task?: TaskFormValues;
   redirectTo?: string;
@@ -48,6 +50,8 @@ export function TaskForm({
   defaultParentTaskId?: string | null;
   statusRollup?: boolean;
   onSuccess?: () => void;
+  embedded?: boolean;
+  submitLabel?: string;
 }) {
   const router = useRouter();
   const isEdit = Boolean(task?.id);
@@ -109,7 +113,7 @@ export function TaskForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className={embedded ? "space-y-3" : "space-y-4"}>
       {error && <ErrorMessage message={error} />}
       <Input
         name="title"
@@ -169,8 +173,8 @@ export function TaskForm({
       <p className="text-xs text-gray-500">
         无日期 → 备忘录；有开始日期 → 日历 + 甘特图；有开始 + 截止 → 真实截止。
       </p>
-      <Button type="submit" disabled={loading}>
-        {loading ? "保存中…" : isEdit ? "保存修改" : "保存任务"}
+      <Button type="submit" disabled={loading} size={embedded ? "sm" : "default"}>
+        {loading ? "保存中…" : submitLabel ?? (isEdit ? "保存修改" : "保存任务")}
       </Button>
     </form>
   );

@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { TaskForm } from "@/components/forms/task-form";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export type FeedComposerMode = "memo" | "plan";
+export type FeedComposerMode = "memo" | "task";
 
 function splitContent(text: string): { title: string; description: string | null } {
   const trimmed = text.trim();
@@ -15,61 +16,98 @@ function splitContent(text: string): { title: string; description: string | null
   return { title, description: rest || null };
 }
 
+function ModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: FeedComposerMode;
+  onChange: (mode: FeedComposerMode) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        type="button"
+        onClick={() => onChange("memo")}
+        className={cn(
+          "inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-colors",
+          mode === "memo"
+            ? "bg-brand-50 text-brand-700"
+            : "text-gray-400 hover:bg-gray-100 hover:text-gray-600",
+        )}
+        title="发布备忘"
+        aria-label="发布备忘"
+      >
+        ✎
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("task")}
+        className={cn(
+          "inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-colors",
+          mode === "task"
+            ? "bg-brand-50 text-brand-700"
+            : "text-gray-400 hover:bg-gray-100 hover:text-gray-600",
+        )}
+        title="发布计划（任务）"
+        aria-label="发布计划"
+      >
+        ☑
+      </button>
+      <span className="ml-1 text-xs text-gray-400">{mode === "memo" ? "备忘" : "计划"}</span>
+    </div>
+  );
+}
+
 export function FeedComposer({ onPublished }: { onPublished: () => void }) {
-  const [text, setText] = useState("");
   const [mode, setMode] = useState<FeedComposerMode>("memo");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [taskFormKey, setTaskFormKey] = useState(0);
 
-  const canSave = text.trim().length > 0 && !busy;
-  const showDates = mode === "plan";
+  const canSaveMemo = text.trim().length > 0 && !busy;
 
-  async function handleSave() {
+  async function handleMemoSave() {
     const { title, description } = splitContent(text);
     if (!title) return;
 
     setBusy(true);
     setError("");
     try {
-      if (mode === "memo") {
-        const res = await fetch("/api/memos", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, description }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setError(data.error ?? "发布失败");
-          return;
-        }
-      } else {
-        const res = await fetch("/api/plans", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title,
-            description,
-            type: "daily",
-            startDate: startDate || null,
-            endDate: endDate || null,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setError(data.error ?? "发布失败");
-          return;
-        }
+      const res = await fetch("/api/memos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "发布失败");
+        return;
       }
-
       setText("");
-      setStartDate("");
-      setEndDate("");
       onPublished();
     } finally {
       setBusy(false);
     }
+  }
+
+  if (mode === "task") {
+    return (
+      <div className="feed-composer shrink-0 rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+        <TaskForm
+          key={taskFormKey}
+          embedded
+          submitLabel="保存"
+          onSuccess={() => {
+            onPublished();
+            setTaskFormKey((k) => k + 1);
+          }}
+        />
+        <div className="mt-3 flex items-center border-t border-gray-100 pt-2">
+          <ModeToggle mode={mode} onChange={setMode} />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -82,67 +120,11 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
         className="w-full resize-none border-0 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"
       />
 
-      {showDates && (
-        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-2">
-          <label className="flex items-center gap-1.5 text-xs text-gray-500">
-            开始
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-800"
-            />
-          </label>
-          <label className="flex items-center gap-1.5 text-xs text-gray-500">
-            截止
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-800"
-            />
-          </label>
-        </div>
-      )}
-
       <div className="mt-2 flex items-center justify-between gap-2 border-t border-gray-100 pt-2">
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setMode("memo")}
-            className={cn(
-              "inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-colors",
-              mode === "memo"
-                ? "bg-brand-50 text-brand-700"
-                : "text-gray-400 hover:bg-gray-100 hover:text-gray-600",
-            )}
-            title="发布备忘"
-            aria-label="发布备忘"
-          >
-            ✎
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("plan")}
-            className={cn(
-              "inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-colors",
-              mode === "plan"
-                ? "bg-brand-50 text-brand-700"
-                : "text-gray-400 hover:bg-gray-100 hover:text-gray-600",
-            )}
-            title="发布计划"
-            aria-label="发布计划"
-          >
-            ☑
-          </button>
-          <span className="ml-1 text-xs text-gray-400">
-            {mode === "memo" ? "备忘" : "计划"}
-          </span>
-        </div>
-
+        <ModeToggle mode={mode} onChange={setMode} />
         <div className="flex items-center gap-2">
           {error && <span className="text-xs text-red-500">{error}</span>}
-          <Button type="button" size="sm" disabled={!canSave} onClick={handleSave}>
+          <Button type="button" size="sm" disabled={!canSaveMemo} onClick={handleMemoSave}>
             {busy ? "保存中…" : "保存"}
           </Button>
         </div>
