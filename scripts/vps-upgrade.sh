@@ -3,6 +3,8 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
+# shellcheck disable=SC1091
+source scripts/lib/database.sh
 
 if [ ! -f .env ]; then
   echo "Missing .env in $(pwd)"
@@ -20,7 +22,7 @@ if [ -z "${DATABASE_URL:-}" ]; then
 fi
 
 echo "== Before =="
-psql "$DATABASE_URL" -c "
+run_psql -c "
 SELECT 'feeds.task' AS metric, COUNT(*)::text AS n FROM feeds WHERE item_type::text = 'task'
 UNION ALL
 SELECT 'tasks.rows', CASE WHEN to_regclass('public.tasks') IS NULL THEN '0' ELSE (SELECT COUNT(*)::text FROM tasks) END
@@ -30,11 +32,11 @@ SELECT 'plans.rows', COUNT(*)::text FROM plans;
 
 echo
 echo "== SQL migration (feeds + tasks → plans) =="
-psql "$DATABASE_URL" -f prisma/migrations/merge_tasks_into_plans.sql
+run_prisma_sql_file prisma/migrations/merge_tasks_into_plans.sql
 
 echo
 echo "== After migration =="
-psql "$DATABASE_URL" -c "
+run_psql -c "
 SELECT 'feeds.task' AS metric, COUNT(*)::text AS n FROM feeds WHERE item_type::text = 'task'
 UNION ALL
 SELECT 'tasks.table', CASE WHEN to_regclass('public.tasks') IS NULL THEN 'gone' ELSE 'still exists' END

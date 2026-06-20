@@ -3,6 +3,8 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
+# shellcheck disable=SC1091
+source scripts/lib/database.sh
 
 if [ ! -f .env ]; then
   echo "Missing .env"
@@ -15,7 +17,7 @@ source .env
 set +a
 
 echo "== plans table columns =="
-psql "$DATABASE_URL" -c "
+run_psql -c "
 SELECT column_name, data_type, udt_name
 FROM information_schema.columns
 WHERE table_schema = 'public' AND table_name = 'plans'
@@ -23,7 +25,7 @@ ORDER BY ordinal_position;
 "
 
 echo "== row counts =="
-psql "$DATABASE_URL" -c "
+run_psql -c "
 SELECT 'plans' AS tbl, COUNT(*)::text AS n FROM plans
 UNION ALL SELECT 'feeds', COUNT(*)::text FROM feeds
 UNION ALL SELECT 'memos', COUNT(*)::text FROM memos
@@ -31,7 +33,7 @@ UNION ALL SELECT 'users', COUNT(*)::text FROM users;
 "
 
 echo "== tasks table (should not exist after merge) =="
-psql "$DATABASE_URL" -c "
+run_psql -c "
 SELECT EXISTS (
   SELECT 1 FROM information_schema.tables
   WHERE table_schema = 'public' AND table_name = 'tasks'
@@ -40,6 +42,5 @@ SELECT EXISTS (
 
 echo
 echo "If priority/type columns missing or tasks still exists, run:"
-echo "  psql \"\$DATABASE_URL\" -f prisma/migrations/merge_tasks_into_plans.sql   # if tasks has data"
-echo "  npx prisma db push"
-echo "  pm2 restart mylifeplan"
+echo "  bash scripts/vps-upgrade.sh"
+echo "  # or: bash scripts/psql.sh -f prisma/migrations/merge_tasks_into_plans.sql"
