@@ -3,6 +3,14 @@ import type { CalendarItem } from "@/types";
 
 export type CalendarDisplayMode = "compact" | "stacked" | "detailed" | "list";
 
+export type CalendarViewMode = "month" | "week" | "day";
+
+export const CALENDAR_VIEW_MODES: { id: CalendarViewMode; label: string }[] = [
+  { id: "month", label: "月" },
+  { id: "week", label: "周" },
+  { id: "day", label: "日" },
+];
+
 export const CALENDAR_DISPLAY_MODES: {
   id: CalendarDisplayMode;
   label: string;

@@ -47,13 +47,16 @@ function ModeIcon({ mode }: { mode: CalendarDisplayMode }) {
 export function CalendarDisplayPicker({
   value,
   onChange,
+  variant = "default",
 }: {
   value: CalendarDisplayMode;
   onChange: (mode: CalendarDisplayMode) => void;
+  variant?: "default" | "toolbar";
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const current = CALENDAR_DISPLAY_MODES.find((m) => m.id === value)!;
+  const isToolbar = variant === "toolbar";
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
@@ -68,15 +71,23 @@ export function CalendarDisplayPicker({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50",
+          isToolbar ? "px-3 py-1.5 text-sm text-gray-800" : "px-2.5 py-1.5 text-xs text-gray-700",
+        )}
         aria-label="日历显示方式"
       >
-        <ModeIcon mode={value} />
+        {!isToolbar && <ModeIcon mode={value} />}
         <span>{current.label}</span>
         <span className="text-[10px] text-gray-400">▼</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-44 rounded-xl border border-gray-200 bg-white py-1 shadow-lg">
+        <div
+          className={cn(
+            "absolute right-0 top-full z-50 mt-1 rounded-lg border border-gray-200 bg-white py-1 shadow-lg",
+            isToolbar ? "min-w-[140px]" : "w-44 rounded-xl",
+          )}
+        >
           {CALENDAR_DISPLAY_MODES.map((mode) => (
             <button
               key={mode.id}
@@ -86,13 +97,21 @@ export function CalendarDisplayPicker({
                 saveCalendarDisplayMode(mode.id);
                 setOpen(false);
               }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50"
+              className={cn(
+                "flex w-full items-center gap-2 text-left hover:bg-gray-50",
+                isToolbar ? "px-4 py-2 text-sm" : "px-3 py-2 text-sm",
+                isToolbar && mode.id === value && "bg-gray-100 font-medium",
+              )}
             >
-              <span className="text-gray-500">
-                <ModeIcon mode={mode.id} />
+              {!isToolbar && (
+                <span className="text-gray-500">
+                  <ModeIcon mode={mode.id} />
+                </span>
+              )}
+              <span className={cn("flex-1", isToolbar ? "text-gray-800" : "text-gray-800")}>
+                {mode.label}
               </span>
-              <span className="flex-1 text-gray-800">{mode.label}</span>
-              {value === mode.id && <span className="text-brand-600">✓</span>}
+              {!isToolbar && value === mode.id && <span className="text-brand-600">✓</span>}
             </button>
           ))}
         </div>

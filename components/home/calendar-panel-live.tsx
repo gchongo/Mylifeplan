@@ -8,6 +8,7 @@ import {
   useCalendarDisplayMode,
   useHorizontalCalendarList,
 } from "@/components/calendar/calendar-display-picker";
+import { CalendarToolbar } from "@/components/calendar/calendar-toolbar";
 import { PanelExpandButton } from "@/components/home/panel-expand-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -172,46 +173,63 @@ export function CalendarPanelLive({
 
   return (
     <Card className={cn("flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden", className)}>
-      <CardHeader className="shrink-0 space-y-2 pb-2">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-          <CardTitle className="min-w-0 truncate">
-            {fullPage ? "日历" : "日历 · 看执行"}
-          </CardTitle>
-          {!fullPage && <PanelExpandButton href="/calendar" label="日历" />}
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1">
-            {(["month", "week", "day"] as ViewMode[]).map((mode) => (
-              <Button
-                key={mode}
-                type="button"
-                size="sm"
-                variant={viewMode === mode ? "primary" : "ghost"}
-                onClick={() => setViewMode(mode)}
-              >
-                {mode === "month" ? "月" : mode === "week" ? "周" : "日"}
+      {!fullPage && (
+        <CardHeader className="shrink-0 space-y-2 pb-2">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+            <CardTitle className="min-w-0 truncate">日历 · 看执行</CardTitle>
+            <PanelExpandButton href="/calendar" label="日历" />
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1">
+              {(["month", "week", "day"] as ViewMode[]).map((mode) => (
+                <Button
+                  key={mode}
+                  type="button"
+                  size="sm"
+                  variant={viewMode === mode ? "primary" : "ghost"}
+                  onClick={() => setViewMode(mode)}
+                >
+                  {mode === "month" ? "月" : mode === "week" ? "周" : "日"}
+                </Button>
+              ))}
+              {viewMode === "month" && (
+                <CalendarDisplayPicker value={displayMode} onChange={setDisplayMode} />
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              <Button type="button" variant="ghost" size="sm" onClick={goToday}>
+                今天
               </Button>
-            ))}
-            {viewMode === "month" && (
-              <CalendarDisplayPicker value={displayMode} onChange={setDisplayMode} />
-            )}
+              <Button type="button" variant="ghost" size="sm" onClick={prev}>
+                ‹
+              </Button>
+              <span className="text-sm font-medium">{label}</span>
+              <Button type="button" variant="ghost" size="sm" onClick={next}>
+                ›
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <Button type="button" variant="ghost" size="sm" onClick={goToday}>
-              今天
-            </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={prev}>
-              ‹
-            </Button>
-            <span className="text-sm font-medium">{label}</span>
-            <Button type="button" variant="ghost" size="sm" onClick={next}>
-              ›
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
+        </CardHeader>
+      )}
 
-      <CardContent className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-3 pt-0">
+      <CardContent
+        className={cn(
+          "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
+          fullPage ? "p-0" : "p-3 pt-0",
+        )}
+      >
+        {fullPage && (
+          <CalendarToolbar
+            periodLabel={label}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            displayMode={displayMode}
+            onDisplayModeChange={setDisplayMode}
+            onPrev={prev}
+            onNext={next}
+            onToday={goToday}
+          />
+        )}
         {loading && <Loading label="加载日历…" />}
         {!loading && items.length === 0 && viewMode !== "month" && (
           <EmptyState title="暂无安排" description="创建带开始日期的任务或计划后会显示在这里。" />
@@ -220,7 +238,8 @@ export function CalendarPanelLive({
           <div
             ref={monthLayoutRef}
             className={cn(
-              "flex min-h-0 flex-1 overflow-hidden rounded-xl border border-gray-200 bg-white",
+              "flex min-h-0 flex-1 overflow-hidden bg-white",
+              fullPage ? "" : "rounded-xl border border-gray-200",
               horizontalList ? "flex-row" : "flex-col",
             )}
           >
