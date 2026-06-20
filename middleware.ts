@@ -1,49 +1,37 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth/session";
+import { SESSION_COOKIE } from "@/lib/auth/session";
 
 const PUBLIC_PAGES = ["/login", "/register", "/admin/login"];
-const PUBLIC_API = [
-  "/api/auth/login",
-  "/api/auth/register",
-  "/api/auth/logout",
-  "/api/auth/session",
-];
+
+function hasSessionCookie(request: NextRequest): boolean {
+  return Boolean(request.cookies.get(SESSION_COOKIE)?.value);
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (PUBLIC_PAGES.includes(pathname) || PUBLIC_API.includes(pathname)) {
-    const token = request.cookies.get(SESSION_COOKIE)?.value;
-    const session = token ? await verifySessionToken(token) : null;
-    if (session && (pathname === "/login" || pathname === "/register")) {
+  // API auth runs in Node route handlers (runtime AUTH_SECRET). Edge middleware
+  // only sees build-time env and can reject valid cookies after deploy.
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.next();
+  }
+
+  const loggedIn = hasSessionCookie(request);
+
+  if (PUBLIC_PAGES.includes(pathname)) {
+    if (loggedIn && (pathname === "/login" || pathname === "/register")) {
       return NextResponse.redirect(new URL("/", request.url));
     }
-    if (session?.role === "admin" && pathname === "/admin/login") {
+    if (loggedIn && pathname === "/admin/login") {
       return NextResponse.redirect(new URL("/admin/users", request.url));
     }
     return NextResponse.next();
   }
 
-  const token = request.cookies.get(SESSION_COOKIE)?.value;
-  const session = token ? await verifySessionToken(token) : null;
-
-  if (!session) {
-    if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "未登录" }, { status: 401 });
-    }
+  if (!loggedIn) {
     const login = pathname.startsWith("/admin") ? "/admin/login" : "/login";
     return NextResponse.redirect(new URL(login, request.url));
-  }
-
-  const isAdminRoute =
-    pathname.startsWith("/admin") || pathname.startsWith("/api/admin");
-
-  if (isAdminRoute && session.role !== "admin") {
-    if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "无权限" }, { status: 403 });
-    }
-    return NextResponse.redirect(new URL("/", request.url));
   }
 
   return NextResponse.next();

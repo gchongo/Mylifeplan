@@ -47,7 +47,7 @@ export function FeedPanelLive({
   );
 
   useEffect(() => {
-    load().finally(() => setLoading(false));
+    load().catch(() => setItems([])).finally(() => setLoading(false));
   }, [load]);
 
   async function loadMore() {

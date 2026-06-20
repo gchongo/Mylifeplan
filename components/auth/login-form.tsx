@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/input";
@@ -13,7 +12,6 @@ export function LoginForm({
   redirectTo?: string;
   requireAdmin?: boolean;
 }) {
-  const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -45,12 +43,12 @@ export function LoginForm({
         return;
       }
       if (requireAdmin && data.user?.role !== "admin") {
-        await fetch("/api/auth/logout", { method: "POST" });
+        await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
         setError("该账号不是管理员");
         return;
       }
-      router.push(redirectTo);
-      router.refresh();
+      // Full navigation ensures Set-Cookie is applied before protected requests.
+      window.location.assign(redirectTo);
     } catch {
       setError("网络错误，请重试");
     } finally {
