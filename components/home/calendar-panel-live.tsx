@@ -12,9 +12,9 @@ import {
   useCalendarDisplayMode,
 } from "@/components/calendar/calendar-display-picker";
 import { CalendarToolbar } from "@/components/calendar/calendar-toolbar";
+import { CalendarToolbarControls } from "@/components/calendar/calendar-toolbar-controls";
 import { PanelExpandButton } from "@/components/home/panel-expand-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { EmptyState, Loading } from "@/components/ui/feedback";
 import {
   formatEventSchedule,
@@ -203,48 +203,21 @@ export function CalendarPanelLive({
   return (
     <Card className={cn("flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden", className)}>
       {!fullPage && (
-        <CardHeader className="shrink-0 space-y-2 pb-2">
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-            <CardTitle className="min-w-0 truncate">日历 · 看执行</CardTitle>
-            <PanelExpandButton href="/calendar" label="日历" />
+        <CardHeader className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 space-y-0 pb-2">
+          <CardTitle className="min-w-0 truncate">日历 · 看执行</CardTitle>
+          <div className="flex items-center gap-2">
+            <CalendarToolbarControls
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              onPrev={prev}
+              onNext={next}
+              onToday={goToday}
+            />
+            {viewMode === "month" && (
+              <CalendarDisplayPicker value={displayMode} onChange={setDisplayMode} />
+            )}
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-1">
-              {(["month", "week", "day"] as ViewMode[]).map((mode) => (
-                <Button
-                  key={mode}
-                  type="button"
-                  size="sm"
-                  variant={viewMode === mode ? "primary" : "ghost"}
-                  onClick={() => setViewMode(mode)}
-                >
-                  {mode === "month" ? "月" : mode === "week" ? "周" : "日"}
-                </Button>
-              ))}
-              {viewMode === "month" && (
-                <CalendarDisplayPicker value={displayMode} onChange={setDisplayMode} />
-              )}
-            </div>
-            <div className="flex items-center gap-1">
-              <Button type="button" variant="ghost" size="sm" onClick={goToday}>
-                今天
-              </Button>
-              {viewMode !== "month" && (
-                <>
-                  <Button type="button" variant="ghost" size="sm" onClick={prev}>
-                    ‹
-                  </Button>
-                  <span className="text-sm font-medium">{label}</span>
-                  <Button type="button" variant="ghost" size="sm" onClick={next}>
-                    ›
-                  </Button>
-                </>
-              )}
-              {viewMode === "month" && (
-                <span className="text-sm font-medium text-gray-600">{label}</span>
-              )}
-            </div>
-          </div>
+          <PanelExpandButton href="/calendar" label="日历" />
         </CardHeader>
       )}
 
