@@ -29,12 +29,12 @@ export default async function TaskDetailPage({
     startDate: serialized.startDate,
     dueDate: serialized.dueDate,
   });
-  const gantt =
-    serialized.startDate &&
-    getEffectiveEndDate({
-      startDate: serialized.startDate,
-      dueDate: serialized.dueDate,
-    });
+  const gantt = serialized.startDate
+    ? getEffectiveEndDate({
+        startDate: serialized.startDate,
+        dueDate: serialized.dueDate,
+      })
+    : null;
 
   const childStatuses = task.subTasks.map((c) => c.status);
   const displayStatus = deriveParentStatus(task.status, childStatuses);
@@ -65,7 +65,7 @@ export default async function TaskDetailPage({
           status: c.status,
         }))}
         inMemo={inMemo}
-        ganttEnd={gantt?.effectiveEnd}
+        ganttEnd={gantt?.effectiveEnd ?? undefined}
         ganttVirtual={gantt?.isVirtualEnd}
       />
     </div>
