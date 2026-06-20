@@ -8,8 +8,7 @@ import { GanttToolbar } from "@/components/gantt/gantt-toolbar";
 import { TaskFormModal } from "@/components/gantt/task-form-modal";
 import { TaskStatusIndicator, StatusLegend } from "@/components/tasks/task-status-indicator";
 import type { TaskFormValues } from "@/components/forms/task-form";
-import { Button } from "@/components/ui/button";
-import { EmptyState, Loading } from "@/components/ui/feedback";
+import { Button, EmptyState, Loading as LoadingView } from "@/components/ui";
 import {
   barMetricsFromDates,
   buildCompactLayout,
@@ -162,7 +161,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
   const compactRange = useMemo(() => compactTimelineRange(), []);
 
   const [items, setItems] = useState<GanttItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [scrollViewportHeight, setScrollViewportHeight] = useState(480);
@@ -182,11 +181,11 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
   const todayVisible = today >= layout.from && today <= layout.to;
 
   useEffect(() => {
-    setLoading(true);
+    setIsLoading(true);
     fetch(`/api/gantt?from=${from}&to=${to}`)
       .then((r) => r.json())
       .then((data) => setItems(data.items ?? []))
-      .finally(() => setLoading(false));
+      .finally(() => setIsLoading(false));
   }, [from, to]);
 
   const tasks = useMemo(() => items.filter((i) => i.type === "task"), [items]);
@@ -257,7 +256,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [loading, fullPage]);
+  }, [isLoading, fullPage]);
 
   const scrollToToday = useCallback(() => {
     const el = scrollRef.current;
@@ -281,7 +280,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
   }, [from, to, scale, anchor]);
 
   useLayoutEffect(() => {
-    if (loading || scrolledToToday.current) return;
+    if (isLoading || scrolledToToday.current) return;
 
     const tryScroll = () => {
       const ok =
@@ -297,7 +296,7 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
       cancelAnimationFrame(raf);
       window.clearTimeout(timer);
     };
-  }, [loading, scrollToToday, scrollToAnchor, from, to, layout.totalWidth]);
+  }, [isLoading, scrollToToday, scrollToAnchor, from, to, layout.totalWidth]);
 
   function goToday() {
     scrollTarget.current = "today";
@@ -675,12 +674,12 @@ export function GanttChart({ fullPage = false }: { fullPage?: boolean }) {
     );
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <>
         <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
           {renderToolbar()}
-          <Loading label="加载甘特图…" />
+          <LoadingView label="加载甘特图…" />
         </div>
         {fullPage && (
           <TaskFormModal
