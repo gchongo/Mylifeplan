@@ -16,9 +16,11 @@ export interface PlanDetailMenuItem {
 export function PlanDetailActionsMenu({
   items,
   disabled = false,
+  menuClassName,
 }: {
   items: PlanDetailMenuItem[];
   disabled?: boolean;
+  menuClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
@@ -73,7 +75,11 @@ export function PlanDetailActionsMenu({
           <div
             ref={menuRef}
             data-no-pan
-            className="fixed z-[200] w-40 rounded-xl border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900"
+            className={cn(
+              "fixed z-[200] w-44 py-1",
+              menuClassName ??
+                "rounded-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900",
+            )}
             style={{ top: menuPos.top, left: Math.max(8, menuPos.left) }}
           >
             {items.map((item) => (
