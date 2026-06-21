@@ -298,11 +298,8 @@ export function PlanContributionTimeline({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="pb-2">
         <CardTitle className="text-base">执行时间线</CardTitle>
-        <p className="text-xs text-gray-500">
-          共 {contributions.length} 条记录，按计划执行顺序排列
-        </p>
       </CardHeader>
       <CardContent>
         <ol className="relative space-y-0 border-l border-gray-200 pl-4 dark:border-gray-700">

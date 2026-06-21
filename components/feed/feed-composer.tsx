@@ -8,11 +8,13 @@ import {
   type FeedComposeValues,
 } from "@/components/feed/feed-compose-card";
 import { ContributionMarkerColorField } from "@/components/contributions/contribution-marker-color-field";
+import { PlanColorSwatchField } from "@/components/forms/plan-color-swatch-field";
 import { Button } from "@/components/ui/button";
 import { apiJson } from "@/lib/client-api";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import { cn } from "@/lib/utils";
 import { nowDatetimeLocal } from "@/lib/dates";
+import { DEFAULT_PLAN_COLOR } from "@/lib/plan-color";
 
 type ComposerMode = "memo" | "plan" | "contribution";
 
@@ -40,6 +42,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
   );
   const [contributionRelatedId, setContributionRelatedId] = useState<string | null>(null);
   const [contributionMarkerColor, setContributionMarkerColor] = useState<string | null>(null);
+  const [planColor, setPlanColor] = useState(DEFAULT_PLAN_COLOR);
   const [planListRefreshKey, setPlanListRefreshKey] = useState(0);
 
   const canPublish =
@@ -59,6 +62,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
     setContributionValues(emptyCompose(nowDatetimeLocal()));
     setContributionRelatedId(null);
     setContributionMarkerColor(null);
+    setPlanColor(DEFAULT_PLAN_COLOR);
     setPlanListRefreshKey((k) => k + 1);
   }
 
@@ -115,6 +119,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
             parentPlanId: planRelatedId,
             startDate: planValues.startAt || null,
             endDate: planValues.endAt || null,
+            color: planColor,
           }),
         });
         dispatchPlanUpdated();
@@ -189,14 +194,17 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
 
       <div className="p-3">
         {mode === "plan" && (
-          <FeedComposeCard
-            values={planValues}
-            onChange={(patch) => setPlanValues((prev) => ({ ...prev, ...patch }))}
-            timeKind="datetime"
-            titlePlaceholder="计划标题"
-            bodyPlaceholder="描述与细节"
-            relatedPlan={relatedPlanSelect("plan")}
-          />
+          <div className="space-y-3">
+            <FeedComposeCard
+              values={planValues}
+              onChange={(patch) => setPlanValues((prev) => ({ ...prev, ...patch }))}
+              timeKind="datetime"
+              titlePlaceholder="计划标题"
+              bodyPlaceholder="描述与细节"
+              relatedPlan={relatedPlanSelect("plan")}
+            />
+            <PlanColorSwatchField value={planColor} onChange={setPlanColor} disabled={busy} />
+          </div>
         )}
 
         {mode === "contribution" && (

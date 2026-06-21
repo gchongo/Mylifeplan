@@ -51,6 +51,7 @@ export function GanttDraggableBar({
   previewOverride,
   onPreviewDates,
   onDragEnd,
+  shellWidth,
 }: {
   item: GanttItem;
   layout: TimelineLayout;
@@ -73,6 +74,8 @@ export function GanttDraggableBar({
   previewOverride?: { start: string; end: string } | null;
   onPreviewDates?: (planId: string, preview: { start: string; end: string } | null) => void;
   onDragEnd?: () => void;
+  /** 可见条宽度；未设时与 width 相同 */
+  shellWidth?: number;
 }) {
   const [dragging, setDragging] = useState<DragState | null>(null);
   const [preview, setPreview] = useState<{ start: string; end: string } | null>(null);
@@ -261,12 +264,13 @@ export function GanttDraggableBar({
 
   const rowHeight = hitRowHeight ?? 28;
   const textLeading = Math.max(barHeightPx - 2, 18);
+  const visibleShellWidth = Math.min(Math.max(shellWidth ?? metrics.width, 8), metrics.width);
 
   return (
     <div
       data-gantt-bar
       data-no-pan
-      className="absolute top-0"
+      className="absolute top-0 z-[5]"
       style={{
         left: metrics.left,
         width: Math.max(metrics.width, 8),
@@ -275,18 +279,23 @@ export function GanttDraggableBar({
     >
       <div
         className={cn(
-          "group absolute top-1/2 w-full -translate-y-1/2 overflow-hidden rounded-full transition-[box-shadow,filter] duration-300 ease-out motion-reduce:transition-none",
+          "group absolute top-1/2 -translate-y-1/2 overflow-hidden rounded-full transition-[box-shadow,filter] duration-300 ease-out motion-reduce:transition-none",
           barShell,
           saving && "opacity-60",
           dragging && "ring-2 ring-brand-400 ring-offset-1",
-          isSelected && !dragging && "z-10 ring-2 ring-brand-500/45 ring-offset-1 shadow-sm brightness-[1.06]",
+          isSelected && !dragging && "relative z-10 ring-2 ring-brand-500/45 ring-offset-1 shadow-sm brightness-[1.06]",
         )}
-        style={{ ...barShellStyle, height: barHeightPx }}
+        style={{ ...barShellStyle, height: barHeightPx, width: visibleShellWidth }}
       >
         <div
-          className="absolute top-0 z-10 h-full w-2 cursor-ew-resize opacity-0 hover:bg-black/5 group-hover:opacity-100 dark:hover:bg-white/10"
+          className="absolute top-0 z-10 flex h-full w-3 cursor-ew-resize items-center justify-center opacity-70 hover:opacity-100"
           onMouseDown={(e) => startDrag(e, "resize-start")}
-        />
+        >
+          <span className="flex h-3 items-center gap-px" aria-hidden>
+            <span className="h-full w-px bg-gray-400/80 dark:bg-gray-500" />
+            <span className="h-full w-px bg-gray-400/80 dark:bg-gray-500" />
+          </span>
+        </div>
         <div
           className="absolute inset-0 cursor-grab active:cursor-grabbing"
           onMouseDown={(e) => startDrag(e, "move")}
@@ -316,10 +325,14 @@ export function GanttDraggableBar({
           </span>
         </div>
         <div
-          className="absolute top-0 z-10 h-full w-2 cursor-ew-resize opacity-0 hover:bg-black/5 group-hover:opacity-100 dark:hover:bg-white/10"
-          style={{ right: 0 }}
+          className="absolute top-0 right-0 z-10 flex h-full w-3 cursor-ew-resize items-center justify-center opacity-70 hover:opacity-100"
           onMouseDown={(e) => startDrag(e, "resize-end")}
-        />
+        >
+          <span className="flex h-3 items-center gap-px" aria-hidden>
+            <span className="h-full w-px bg-gray-400/80 dark:bg-gray-500" />
+            <span className="h-full w-px bg-gray-400/80 dark:bg-gray-500" />
+          </span>
+        </div>
       </div>
       {item.isVirtualEnd && !activePreview && (
         <div

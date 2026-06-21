@@ -277,7 +277,7 @@ export async function getContributionsForPlanTree(userId: string, planId: string
   const planIds = [planId, ...descendantIds];
   const rows = await prisma.planContribution.findMany({
     where: { userId, planId: { in: planIds } },
-    orderBy: [{ occurredOn: "asc" }, { createdAt: "asc" }],
+    orderBy: [{ occurredOn: "desc" }, { createdAt: "desc" }],
     include: {
       plan: { select: { title: true, type: true } },
       images: { orderBy: { createdAt: "asc" } },
