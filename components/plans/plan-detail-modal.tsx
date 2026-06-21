@@ -97,7 +97,7 @@ export function PlanDetailModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={plan?.title ?? "计划详情"}
+      title={null}
       className="max-h-[90vh] max-w-2xl overflow-y-auto"
     >
       {loading && <Loading label="加载计划…" />}

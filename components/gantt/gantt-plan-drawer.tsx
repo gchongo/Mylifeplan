@@ -84,7 +84,7 @@ export function GanttPlanDrawerPanel({
   }, [activePlanId]);
 
   return (
-    <DrawerPanel title={plan?.title ?? "计划详情"} onClose={onClose} className="p-0">
+    <DrawerPanel onClose={onClose} className="p-0">
       {loading && <Loading label="加载计划…" />}
       {!loading && error && <p className="px-4 py-3 text-sm text-red-600">{error}</p>}
       {!loading && plan && (

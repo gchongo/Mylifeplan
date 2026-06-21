@@ -1,18 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlanForm, type PlanFormValues } from "@/components/forms/plan-form";
 import { PlanContributionComposeModal } from "@/components/forms/plan-contribution-compose-modal";
 import type { PlanContributionComposeMode } from "@/components/forms/plan-contribution-compose-form";
 import { PlanContributionTimeline, type PlanContributionItem } from "@/components/plans/plan-contribution-timeline";
 import { PlanRelationshipCard } from "@/components/plans/plan-relationship-card";
+import {
+  MenuIconArchive,
+  MenuIconContribution,
+  MenuIconDelete,
+  MenuIconEdit,
+  MenuIconRestore,
+  MenuIconSubPlan,
+  PlanDetailActionsMenu,
+} from "@/components/plans/plan-detail-actions-menu";
+import { PlanStatusMenuButton } from "@/components/plans/plan-status-menu";
 import { formatPlanDateTimeDisplay } from "@/lib/dates";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import type { PlanRelationNode } from "@/lib/plan-relationship";
+import type { PlanStatus } from "@/types";
 
 export function PlanDetailClient({
   plan,
@@ -40,6 +50,11 @@ export function PlanDetailClient({
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeMode, setComposeMode] = useState<PlanContributionComposeMode>("plan");
   const [deleting, setDeleting] = useState(false);
+  const [status, setStatus] = useState(plan.status ?? "not_started");
+
+  useEffect(() => {
+    setStatus(plan.status ?? "not_started");
+  }, [plan.id, plan.status]);
 
   function openCompose(mode: PlanContributionComposeMode) {
     setComposeMode(mode);
@@ -69,8 +84,27 @@ export function PlanDetailClient({
         body: JSON.stringify({ status: "archived" }),
       });
       if (res.ok) {
+        setStatus("archived");
         afterChange();
         leaveAfterDelete();
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function restorePlan() {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/plans/${plan.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "not_started" }),
+      });
+      if (res.ok) {
+        setStatus("not_started");
+        afterChange();
+        if (!embedded) router.refresh();
       }
     } finally {
       setDeleting(false);
@@ -91,10 +125,55 @@ export function PlanDetailClient({
     }
   }
 
+  const archived = status === "archived";
+  const menuItems = archived
+    ? [
+        {
+          id: "restore",
+          label: "取消归档",
+          icon: <MenuIconRestore />,
+          onClick: () => void restorePlan(),
+          disabled: deleting,
+        },
+        {
+          id: "delete",
+          label: "删除",
+          icon: <MenuIconDelete />,
+          onClick: () => void handleDelete(),
+          destructive: true,
+          disabled: deleting,
+        },
+      ]
+    : [
+        { id: "edit", label: "编辑", icon: <MenuIconEdit />, onClick: () => setShowEdit(true) },
+        { id: "sub", label: "子计划", icon: <MenuIconSubPlan />, onClick: () => openCompose("plan") },
+        {
+          id: "contrib",
+          label: "贡献",
+          icon: <MenuIconContribution />,
+          onClick: () => openCompose("contribution"),
+        },
+        {
+          id: "archive",
+          label: "归档",
+          icon: <MenuIconArchive />,
+          onClick: () => void archivePlan(),
+          disabled: deleting,
+        },
+        {
+          id: "delete",
+          label: "删除",
+          icon: <MenuIconDelete />,
+          onClick: () => void handleDelete(),
+          destructive: true,
+          disabled: deleting,
+        },
+      ];
+
   const currentRelation: PlanRelationNode = {
     id: plan.id,
     title: plan.title,
-    status: plan.status ?? "not_started",
+    status,
     overdue,
   };
 
@@ -106,7 +185,7 @@ export function PlanDetailClient({
         </CardHeader>
         <CardContent>
           <PlanForm
-            plan={plan}
+            plan={{ ...plan, status }}
             redirectTo={embedded ? undefined : `/plans/${plan.id}`}
             onSuccess={() => {
               setShowEdit(false);
@@ -128,32 +207,28 @@ export function PlanDetailClient({
   return (
     <div className="space-y-4">
       <Card>
-        {!embedded && (
-          <CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
-            <CardTitle className="text-xl">{plan.title}</CardTitle>
-            <TaskStatusIndicator
-              status={plan.status ?? "not_started"}
-              dueDate={plan.endDate}
-              overdue={overdue}
-              showLabel
-            />
-          </CardHeader>
-        )}
-        <CardContent className={cnEmbedded(embedded, "space-y-3 text-sm text-gray-700")}>
-          {embedded && (
-            <TaskStatusIndicator
-              status={plan.status ?? "not_started"}
-              dueDate={plan.endDate}
-              overdue={overdue}
-              showLabel
-            />
-          )}
+        <CardHeader className="flex flex-row items-start gap-2 border-b-0 pb-0 pt-4">
+          <PlanStatusMenuButton
+            planId={plan.id}
+            status={status}
+            dueDate={plan.endDate}
+            overdue={overdue}
+            onStatusChanged={(next: PlanStatus) => {
+              setStatus(next);
+              afterChange();
+              if (next === "archived") leaveAfterDelete();
+            }}
+          />
+          <CardTitle className="min-w-0 flex-1 truncate text-base font-semibold leading-6">
+            {plan.title}
+          </CardTitle>
+          <PlanDetailActionsMenu items={menuItems} disabled={deleting} />
+        </CardHeader>
 
+        <CardContent className="space-y-3 pt-2 text-sm text-gray-700 dark:text-gray-300">
           {plan.description && <p className="leading-relaxed">{plan.description}</p>}
 
-          {scheduleLine && (
-            <p className="text-xs text-gray-500">{scheduleLine}</p>
-          )}
+          {scheduleLine && <p className="text-xs text-gray-500 dark:text-gray-400">{scheduleLine}</p>}
 
           {!embedded && (
             <dl className="grid grid-cols-2 gap-2 text-sm">
@@ -163,46 +238,6 @@ export function PlanDetailClient({
               <dd>{formatPlanDateTimeDisplay(plan.endDate)}</dd>
             </dl>
           )}
-
-          <div className="flex flex-wrap gap-2 pt-1">
-            {plan.status !== "archived" && (
-              <>
-                <Button size="sm" variant="secondary" onClick={() => setShowEdit(true)}>
-                  编辑
-                </Button>
-                <Button size="sm" variant="secondary" onClick={() => openCompose("plan")}>
-                  子计划
-                </Button>
-                <Button size="sm" variant="secondary" onClick={() => openCompose("contribution")}>
-                  贡献
-                </Button>
-              </>
-            )}
-            {plan.status === "archived" ? (
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={async () => {
-                  await fetch(`/api/plans/${plan.id}`, {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ status: "not_started" }),
-                  });
-                  afterChange();
-                  if (!embedded) router.refresh();
-                }}
-              >
-                取消归档
-              </Button>
-            ) : (
-              <Button size="sm" variant="ghost" onClick={archivePlan} disabled={deleting}>
-                归档
-              </Button>
-            )}
-            <Button size="sm" variant="ghost" onClick={handleDelete} disabled={deleting}>
-              删除
-            </Button>
-          </div>
         </CardContent>
       </Card>
 
@@ -236,8 +271,4 @@ export function PlanDetailClient({
       />
     </div>
   );
-}
-
-function cnEmbedded(embedded: boolean, base: string) {
-  return embedded ? `${base} pt-4` : base;
 }
