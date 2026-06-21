@@ -31,6 +31,10 @@ export function GanttDraggableBar({
   barText,
   onUpdated,
   onTaskClick,
+  bareShell = false,
+  hitRowHeight,
+  bareShellInsetTop = 0,
+  onPreviewDates,
 }: {
   item: GanttItem;
   layout: TimelineLayout;
@@ -40,6 +44,12 @@ export function GanttDraggableBar({
   barText: string;
   onUpdated: (updated: GanttItem) => void;
   onTaskClick?: () => void;
+  /** 无可见边框（组框一级计划），保留完整拖拽热区 */
+  bareShell?: boolean;
+  hitRowHeight?: number;
+  /** 组框内边距：一级标题下移，避免贴顶 */
+  bareShellInsetTop?: number;
+  onPreviewDates?: (planId: string, preview: { start: string; end: string } | null) => void;
 }) {
   const [dragging, setDragging] = useState<DragState | null>(null);
   const [preview, setPreview] = useState<{ start: string; end: string } | null>(null);
@@ -51,6 +61,7 @@ export function GanttDraggableBar({
       const deltaDays = pixelDeltaToDays(clientX - state.startX, layout);
       if (deltaDays === 0 && state.mode === "move") {
         setPreview(null);
+        onPreviewDates?.(item.id, null);
         return;
       }
 
@@ -59,6 +70,7 @@ export function GanttDraggableBar({
         let newStart = addDaysUtc(state.origStart, deltaDays);
         let newEnd = addDaysUtc(newStart, duration);
         setPreview({ start: newStart, end: newEnd });
+        onPreviewDates?.(item.id, { start: newStart, end: newEnd });
         return;
       }
 
@@ -66,14 +78,16 @@ export function GanttDraggableBar({
         let newStart = addDaysUtc(state.origStart, deltaDays);
         if (newStart > state.origEnd) newStart = state.origEnd;
         setPreview({ start: newStart, end: state.origEnd });
+        onPreviewDates?.(item.id, { start: newStart, end: state.origEnd });
         return;
       }
 
       let newEnd = addDaysUtc(state.origEnd, deltaDays);
       if (newEnd < state.origStart) newEnd = state.origStart;
       setPreview({ start: state.origStart, end: newEnd });
+      onPreviewDates?.(item.id, { start: state.origStart, end: newEnd });
     },
-    [layout],
+    [layout, item.id, onPreviewDates],
   );
 
   const commitDrag = useCallback(
@@ -156,6 +170,7 @@ export function GanttDraggableBar({
       dragRef.current = null;
       setDragging(null);
       setPreview(null);
+      onPreviewDates?.(item.id, null);
     }
 
     window.addEventListener("mousemove", onMove);
@@ -164,7 +179,7 @@ export function GanttDraggableBar({
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [dragging, applyDrag, commitDrag, onTaskClick]);
+  }, [dragging, applyDrag, commitDrag, onTaskClick, item.id, onPreviewDates]);
 
   function startDrag(e: React.MouseEvent, mode: DragMode) {
     e.preventDefault();
@@ -199,22 +214,41 @@ export function GanttDraggableBar({
         })()
       : { left, width };
 
+  const fullHeight = hitRowHeight ?? 28;
+  const shellHeight = bareShell
+    ? Math.max(fullHeight - bareShellInsetTop, 20)
+    : fullHeight;
+
   return (
     <div
       data-gantt-bar
-      className="absolute top-1/2 -translate-y-1/2"
-      style={{ left: metrics.left, width: Math.max(metrics.width, 8) }}
+      data-no-pan
+      className={cn(
+        "absolute",
+        bareShell ? "top-0" : "top-1/2 -translate-y-1/2",
+      )}
+      style={{
+        left: metrics.left,
+        width: Math.max(metrics.width, 8),
+        height: bareShell ? shellHeight : undefined,
+        top: bareShell ? bareShellInsetTop : undefined,
+      }}
     >
       <div
         className={cn(
-          "group relative h-7 overflow-hidden rounded-md",
+          "group relative w-full overflow-hidden rounded-md",
+          bareShell ? "h-full min-h-7" : "h-7",
           barShell,
           saving && "opacity-60",
           dragging && "ring-2 ring-brand-400 ring-offset-1",
+          bareShell && "hover:bg-black/[0.03] dark:hover:bg-white/[0.04]",
         )}
       >
         <div
-          className="absolute left-0 top-0 z-10 h-full w-2 cursor-ew-resize opacity-0 group-hover:opacity-100"
+          className={cn(
+            "absolute top-0 z-10 h-full cursor-ew-resize hover:bg-black/5 dark:hover:bg-white/10",
+            bareShell ? "left-0 w-3" : "left-0 w-2 opacity-0 group-hover:opacity-100",
+          )}
           onMouseDown={(e) => startDrag(e, "resize-start")}
         />
         <div
@@ -223,7 +257,10 @@ export function GanttDraggableBar({
         >
           <span
             className={cn(
-              "pointer-events-none block truncate px-2 text-xs leading-7",
+              "pointer-events-none block max-w-full truncate text-xs leading-7",
+              bareShell
+                ? "inline-block rounded-md bg-white/85 px-2 font-semibold shadow-sm ring-1 ring-black/5 dark:bg-gray-900/80 dark:ring-white/10"
+                : "px-2",
               barText,
             )}
           >
@@ -231,7 +268,10 @@ export function GanttDraggableBar({
           </span>
         </div>
         <div
-          className="absolute right-0 top-0 z-10 h-full w-2 cursor-ew-resize opacity-0 group-hover:opacity-100"
+          className={cn(
+            "absolute top-0 z-10 h-full cursor-ew-resize hover:bg-black/5 dark:hover:bg-white/10",
+            bareShell ? "right-0 w-3" : "right-0 w-2 opacity-0 group-hover:opacity-100",
+          )}
           onMouseDown={(e) => startDrag(e, "resize-end")}
         />
       </div>

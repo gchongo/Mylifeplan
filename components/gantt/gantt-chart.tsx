@@ -39,7 +39,10 @@ import { defaultGanttStatusFilter, filterGanttTasksByStatus } from "@/lib/gantt-
 import {
   buildPlanGroupLayouts,
   getPlanGroupVisualStyle,
+  GROUP_CHILD_BAR_SHELL,
+  GROUP_FRAME_PAD,
 } from "@/lib/gantt-plan-groups";
+import { resolveVisualStatus } from "@/lib/task-status-style";
 import { GRID_BORDER } from "@/lib/gantt-grid-colors";
 import { deriveParentStatus } from "@/lib/services/plan-rollup";
 import {
@@ -193,12 +196,20 @@ function planBarStyle(
   allPlans: GanttItem[],
   depth: number,
   frameRoot = false,
+  inGroupChild = false,
 ) {
   const displayStatus = itemDisplayStatus(item, allPlans);
   const style = getGanttBarStyle(item.status, item.endDate, displayStatus, depth);
   if (frameRoot) {
     return {
       shell: "border-0 bg-transparent shadow-none ring-0",
+      text: style.text,
+    };
+  }
+  if (inGroupChild) {
+    const visual = resolveVisualStatus(item.status, item.endDate, displayStatus);
+    return {
+      shell: GROUP_CHILD_BAR_SHELL[visual],
       text: style.text,
     };
   }
@@ -271,6 +282,9 @@ export const GanttChart = forwardRef<
   const [labelWidth, setLabelWidth] = useState(DEFAULT_LABEL_WIDTH);
   const [labelVisible, setLabelVisible] = useState(true);
   const [isResizingLabel, setIsResizingLabel] = useState(false);
+  const [groupFramePreview, setGroupFramePreview] = useState<
+    Map<string, { start: string; end: string }>
+  >(() => new Map());
 
   const effectiveLabelWidth = labelVisible ? labelWidth : 0;
 
@@ -839,16 +853,27 @@ export const GanttChart = forwardRef<
     });
   }
 
+  const onGroupFramePreview = useCallback(
+    (planId: string, preview: { start: string; end: string } | null) => {
+      setGroupFramePreview((prev) => {
+        const next = new Map(prev);
+        if (preview) next.set(planId, preview);
+        else next.delete(planId);
+        return next;
+      });
+    },
+    [],
+  );
+
   function renderPlanGroupFrames() {
     return planGroups.map((group) => {
       const rootItem = planById.get(group.rootId);
       if (!rootItem) return null;
       const style = getPlanGroupVisualStyle(rootItem, getDisplayStatus);
-      const { left, width } = barMetricsFromDates(
-        rootItem.startDate,
-        rootItem.effectiveEnd,
-        layout,
-      );
+      const preview = groupFramePreview.get(group.rootId);
+      const startDate = preview?.start ?? rootItem.startDate;
+      const endDate = preview?.end ?? rootItem.effectiveEnd;
+      const { left, width } = barMetricsFromDates(startDate, endDate, layout);
       return (
         <div
           key={`group-frame-${group.rootId}`}
@@ -858,10 +883,10 @@ export const GanttChart = forwardRef<
             style.frameBg,
           )}
           style={{
-            top: group.top + 1,
-            height: Math.max(group.height - 2, 0),
-            left: Math.max(left, 0),
-            width: Math.max(width, 8),
+            top: group.top + GROUP_FRAME_PAD,
+            height: Math.max(group.height - GROUP_FRAME_PAD * 2, 0),
+            left: Math.max(left, 0) + GROUP_FRAME_PAD,
+            width: Math.max(width - GROUP_FRAME_PAD * 2, 8),
           }}
           aria-hidden
         />
@@ -874,8 +899,9 @@ export const GanttChart = forwardRef<
     const nextRow = rows[idx + 1];
     const tightBelow = rowTightBelow(row, nextRow);
     const frameRoot = row.depth === 0 && groupedRootIds.has(item.id);
+    const inGroupChild = row.depth > 0 && groupedRootIds.has(row.rootId);
     const { left, width } = barMetricsFromDates(item.startDate, item.effectiveEnd, layout);
-    const barStyle = planBarStyle(item, items, row.depth, frameRoot);
+    const barStyle = planBarStyle(item, items, row.depth, frameRoot, inGroupChild);
 
     return (
       <div
@@ -894,6 +920,10 @@ export const GanttChart = forwardRef<
             width={width}
             barShell={barStyle.shell}
             barText={barStyle.text}
+            bareShell={frameRoot}
+            bareShellInsetTop={frameRoot ? GROUP_FRAME_PAD : 0}
+            hitRowHeight={row.height}
+            onPreviewDates={frameRoot ? onGroupFramePreview : undefined}
             onUpdated={handleItemUpdated}
             onTaskClick={() => openPlan(item.id)}
           />
