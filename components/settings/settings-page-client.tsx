@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import {
   CONTRIBUTION_MARKER_SHAPE_OPTIONS,
@@ -14,8 +15,6 @@ import {
   resolveTimezone,
 } from "@/lib/user-preferences";
 import { useSettings } from "@/components/settings/settings-provider";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 
 function SettingsSection({
   title,
