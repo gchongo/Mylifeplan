@@ -5,12 +5,17 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import {
+  CONTRIBUTION_MARKER_SHAPE_OPTIONS,
+  CONTRIBUTION_MARKER_SIZE_OPTIONS,
+  DEFAULT_CONTRIBUTION_MARKER,
   LANGUAGE_OPTIONS,
   THEME_OPTIONS,
   TIMEZONE_OPTIONS,
   resolveTimezone,
 } from "@/lib/user-preferences";
 import { useSettings } from "@/components/settings/settings-provider";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 
 function SettingsSection({
   title,
@@ -33,7 +38,8 @@ function SettingsSection({
 }
 
 export function SettingsPageClient({ userEmail }: { userEmail?: string | null }) {
-  const { preferences, ready, setTimezone, setTheme, setLanguage } = useSettings();
+  const { preferences, ready, setTimezone, setTheme, setLanguage, setContributionMarker } =
+    useSettings();
   const effectiveTimezone = resolveTimezone(preferences.timezone);
 
   return (
@@ -78,6 +84,91 @@ export function SettingsPageClient({ userEmail }: { userEmail?: string | null })
           options={[...THEME_OPTIONS]}
           onChange={(e) => setTheme(e.target.value as typeof preferences.theme)}
         />
+      </SettingsSection>
+
+      <SettingsSection
+        title="甘特图贡献点"
+        description="自定义甘特图时间轴上贡献记录圆点的样式。"
+      >
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="min-w-[8rem]">
+            <p className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">预览</p>
+            <div className="flex h-10 items-center rounded-lg border border-gray-200 bg-white px-4 dark:border-gray-700 dark:bg-gray-900">
+              <span
+                className={
+                  preferences.contributionMarker.shape === "square"
+                    ? "rounded-sm"
+                    : preferences.contributionMarker.shape === "diamond"
+                      ? "rotate-45 rounded-[1px]"
+                      : "rounded-full"
+                }
+                style={{
+                  width:
+                    preferences.contributionMarker.size === "md"
+                      ? 12
+                      : preferences.contributionMarker.size === "sm"
+                        ? 10
+                        : 8,
+                  height:
+                    preferences.contributionMarker.size === "md"
+                      ? 12
+                      : preferences.contributionMarker.size === "sm"
+                        ? 10
+                        : 8,
+                  backgroundColor: preferences.contributionMarker.color,
+                }}
+              />
+            </div>
+          </div>
+          <div className="flex min-w-[10rem] flex-1 flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">颜色</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                disabled={!ready}
+                value={preferences.contributionMarker.color}
+                onChange={(e) => setContributionMarker({ color: e.target.value })}
+                className="h-9 w-12 cursor-pointer rounded border border-gray-300 bg-white p-0.5 dark:border-gray-600 dark:bg-gray-900"
+              />
+              <Input
+                value={preferences.contributionMarker.color}
+                disabled={!ready}
+                onChange={(e) => setContributionMarker({ color: e.target.value })}
+                className="font-mono text-sm"
+              />
+            </div>
+          </div>
+        </div>
+        <Select
+          label="大小"
+          value={preferences.contributionMarker.size}
+          disabled={!ready}
+          options={[...CONTRIBUTION_MARKER_SIZE_OPTIONS]}
+          onChange={(e) =>
+            setContributionMarker({
+              size: e.target.value as typeof preferences.contributionMarker.size,
+            })
+          }
+        />
+        <Select
+          label="形状"
+          value={preferences.contributionMarker.shape}
+          disabled={!ready}
+          options={[...CONTRIBUTION_MARKER_SHAPE_OPTIONS]}
+          onChange={(e) =>
+            setContributionMarker({
+              shape: e.target.value as typeof preferences.contributionMarker.shape,
+            })
+          }
+        />
+        <button
+          type="button"
+          disabled={!ready}
+          className="text-sm text-brand-600 hover:underline dark:text-brand-400"
+          onClick={() => setContributionMarker(DEFAULT_CONTRIBUTION_MARKER)}
+        >
+          恢复默认
+        </button>
       </SettingsSection>
 
       <SettingsSection title="账户">

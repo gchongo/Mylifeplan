@@ -15,6 +15,7 @@ import {
   normalizeUserPreferences,
   readUserPreferences,
   writeUserPreferences,
+  type ContributionMarkerPreferences,
   type LanguagePreference,
   type ThemePreference,
   type UserPreferences,
@@ -27,6 +28,7 @@ interface SettingsContextValue {
   setTimezone: (timezone: string) => void;
   setTheme: (theme: ThemePreference) => void;
   setLanguage: (language: LanguagePreference) => void;
+  setContributionMarker: (patch: Partial<ContributionMarkerPreferences>) => void;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -68,6 +70,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setTimezone: (timezone) => updatePreferences({ timezone }),
       setTheme: (theme) => updatePreferences({ theme }),
       setLanguage: (language) => updatePreferences({ language }),
+      setContributionMarker: (patch) =>
+        updatePreferences({
+          contributionMarker: { ...preferences.contributionMarker, ...patch },
+        }),
     }),
     [preferences, ready, updatePreferences],
   );

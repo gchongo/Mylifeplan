@@ -45,6 +45,9 @@ import {
   isDateWithinPlanSpan,
 } from "@/lib/gantt-plan-bind";
 import { contributionsForGanttRow } from "@/lib/gantt-contribution-display";
+import { resolveGanttPlanDueDate } from "@/lib/gantt-plan-status";
+import { getContributionMarkerStyle } from "@/lib/contribution-marker-style";
+import { useSettings } from "@/components/settings/settings-provider";
 import {
   getPlanBarAppearance,
   getPlanLabelAppearance,
@@ -282,6 +285,12 @@ export const GanttChart = forwardRef<
   const [barPreview, setBarPreview] = useState<
     Map<string, { start: string; end: string }>
   >(() => new Map());
+
+  const { preferences } = useSettings();
+  const contributionMarkerStyle = useMemo(
+    () => getContributionMarkerStyle(preferences.contributionMarker),
+    [preferences.contributionMarker],
+  );
 
   const effectiveLabelWidth = labelVisible ? labelWidth : 0;
 
@@ -829,7 +838,7 @@ export const GanttChart = forwardRef<
           <PlanStatusMenuButton
             planId={item.id}
             status={item.status}
-            dueDate={item.endDate}
+            dueDate={resolveGanttPlanDueDate(item, planById)}
             displayStatus={displayStatus}
             hasRollup={hasRollup}
             onStatusChanged={(apiStatus) => handlePlanStatusChanged(item.id, apiStatus)}
@@ -879,17 +888,19 @@ export const GanttChart = forwardRef<
               type="button"
               data-gantt-bar
               onClick={() => openContribution(primary.id)}
-              className="pointer-events-auto absolute top-1/2 z-20 flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-brand-500 ring-2 ring-white hover:bg-brand-600"
-              style={{ left: x }}
-              title={list.map((c) => c.title).join("、")}
-              aria-label={`${date} 贡献：${primary.title}`}
-            >
-              {list.length > 1 && (
-                <span className="absolute -right-1.5 -top-1.5 flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full bg-gray-900 px-0.5 text-[9px] font-medium text-white">
-                  {list.length}
-                </span>
+              className={cn(
+                "pointer-events-auto absolute top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 ring-2 ring-white hover:opacity-90",
+                contributionMarkerStyle.shapeClass,
               )}
-            </button>
+              style={{
+                left: x,
+                width: contributionMarkerStyle.px,
+                height: contributionMarkerStyle.px,
+                backgroundColor: contributionMarkerStyle.color,
+              }}
+              title={list.map((c) => c.title).join("、")}
+              aria-label={`${date} 贡献：${list.map((c) => c.title).join("、")}`}
+            />
           );
         })}
       </div>

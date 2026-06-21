@@ -157,7 +157,8 @@ export function isOverdue(
   if (!dueDate || !status) return false;
   const base = normalizeStatusKey(status);
   if (base === "done" || base === "archived") return false;
-  return dueDate < todayDateOnly();
+  const due = dueDate.length >= 10 ? dueDate.slice(0, 10) : dueDate;
+  return due < todayDateOnly();
 }
 
 /** 解析最终用于上色的状态（汇总状态 + 超期优先） */
