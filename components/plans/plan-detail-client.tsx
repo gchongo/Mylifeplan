@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlanForm, type PlanFormValues } from "@/components/forms/plan-form";
 import { PlanContributionComposeModal } from "@/components/forms/plan-contribution-compose-modal";
@@ -187,14 +186,13 @@ export function PlanDetailClient({
           <PlanForm
             plan={{ ...plan, status }}
             redirectTo={embedded ? undefined : `/plans/${plan.id}`}
+            submitLabel="保存"
+            onCancel={() => setShowEdit(false)}
             onSuccess={() => {
               setShowEdit(false);
               afterChange();
             }}
           />
-          <Button className="mt-4" variant="ghost" size="sm" onClick={() => setShowEdit(false)}>
-            取消编辑
-          </Button>
         </CardContent>
       </Card>
     );

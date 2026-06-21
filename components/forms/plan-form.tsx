@@ -34,6 +34,8 @@ export function PlanForm({
   defaultStartDate,
   defaultEndDate,
   onSuccess,
+  onCancel,
+  submitLabel,
 }: {
   plan?: PlanFormValues;
   redirectTo?: string;
@@ -41,6 +43,8 @@ export function PlanForm({
   defaultStartDate?: string | null;
   defaultEndDate?: string | null;
   onSuccess?: () => void;
+  onCancel?: () => void;
+  submitLabel?: string;
 }) {
   const router = useRouter();
   const isEdit = Boolean(plan?.id);
@@ -144,9 +148,20 @@ export function PlanForm({
           defaultValue={plan?.status ?? "not_started"}
         />
       )}
-      <Button type="submit" disabled={loading}>
-        {loading ? "保存中…" : isEdit ? "保存修改" : "保存计划"}
-      </Button>
+      {onCancel ? (
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={onCancel} disabled={loading}>
+            取消
+          </Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? "保存中…" : (submitLabel ?? (isEdit ? "保存修改" : "保存计划"))}
+          </Button>
+        </div>
+      ) : (
+        <Button type="submit" disabled={loading}>
+          {loading ? "保存中…" : (submitLabel ?? (isEdit ? "保存修改" : "保存计划"))}
+        </Button>
+      )}
     </form>
   );
 }

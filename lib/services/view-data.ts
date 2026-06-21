@@ -68,7 +68,7 @@ export async function getGanttItems(
   const rangeFromStr = from ?? formatDateOnly(fromDate)!;
 
   const allPlans = await prisma.plan.findMany({
-    where: { userId, status: { not: "archived" } },
+    where: { userId },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
