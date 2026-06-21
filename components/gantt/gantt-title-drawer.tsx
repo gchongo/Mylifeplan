@@ -19,26 +19,21 @@ export function GanttDrawerOpenTab({
   onOpen: () => void;
 }) {
   return (
-    <div
-      className="pointer-events-none absolute left-0 top-0 z-50"
-      style={{ width: GANTT_DRAWER_TOGGLE_WIDTH }}
+    <button
+      type="button"
+      data-no-pan
+      className={cn(
+        "absolute left-0 top-0 z-50 flex items-center justify-center",
+        "rounded-r-md border border-l-0 border-blue-200 bg-blue-50 shadow-md",
+        "hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/80 dark:hover:bg-blue-900/60",
+      )}
+      style={{ width: GANTT_DRAWER_TOGGLE_WIDTH, height: headerHeight }}
+      title="显示计划列表"
+      aria-label="显示计划列表"
+      onClick={onOpen}
     >
-      <button
-        type="button"
-        data-no-pan
-        className={cn(
-          "pointer-events-auto sticky left-0 top-0 flex items-center justify-center",
-          "rounded-r-md border border-l-0 border-blue-200 bg-blue-50 shadow-md",
-          "hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/80 dark:hover:bg-blue-900/60",
-        )}
-        style={{ width: GANTT_DRAWER_TOGGLE_WIDTH, height: headerHeight }}
-        title="显示计划列表"
-        aria-label="显示计划列表"
-        onClick={onOpen}
-      >
-        <GanttPanelExpandChevron className="text-blue-600 dark:text-blue-300" />
-      </button>
-    </div>
+      <GanttPanelExpandChevron className="text-blue-600 dark:text-blue-300" />
+    </button>
   );
 }
 

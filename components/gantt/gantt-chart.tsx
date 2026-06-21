@@ -898,24 +898,25 @@ export const GanttChart = forwardRef<
             "rounded-none border-0 bg-transparent shadow-none",
           )}
         >
-          <div
-            ref={scrollRef}
-            onMouseDown={handlePanStart}
-            className={cn(
-              "min-h-0 w-full max-w-full min-w-0 flex-1 overflow-x-auto overflow-y-auto",
-              isResizingLabel && "cursor-col-resize select-none",
-              isPanning ? "cursor-grabbing select-none" : !isResizingLabel && "cursor-grab",
+          <div className="relative min-h-0 flex-1">
+            {!labelVisible && (
+              <GanttDrawerOpenTab
+                headerHeight={TIMELINE_HEADER_HEIGHT}
+                onOpen={toggleLabelPanel}
+              />
             )}
-          >
-            <div className="relative flex min-h-0" style={{ width: totalWidth }}>
-              {!labelVisible && (
-                <GanttDrawerOpenTab
-                  headerHeight={TIMELINE_HEADER_HEIGHT}
-                  onOpen={toggleLabelPanel}
-                />
-              )}
 
-              <div className="flex shrink-0">
+            <div
+              ref={scrollRef}
+              onMouseDown={handlePanStart}
+              className={cn(
+                "h-full min-h-0 w-full max-w-full min-w-0 overflow-x-auto overflow-y-auto",
+                isResizingLabel && "cursor-col-resize select-none",
+                isPanning ? "cursor-grabbing select-none" : !isResizingLabel && "cursor-grab",
+              )}
+            >
+              <div className="relative flex min-h-0" style={{ width: totalWidth }}>
+                <div className="flex shrink-0">
                 {labelVisible && (
                   <GanttTitleDrawer
                     width={labelWidth}
@@ -965,6 +966,7 @@ export const GanttChart = forwardRef<
               </div>
             </div>
           </div>
+        </div>
         </div>,
       )}
 
