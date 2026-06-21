@@ -38,8 +38,9 @@ import {
 import { defaultGanttStatusFilter, filterGanttTasksByStatus } from "@/lib/gantt-task-filter";
 import {
   buildPlanGroupLayouts,
-  GROUP_FRAME_PAD,
+  GROUP_FRAME_BOTTOM_PAD,
 } from "@/lib/gantt-plan-groups";
+import { buildBoundGroupPreview } from "@/lib/gantt-plan-bind";
 import {
   getPlanBarAppearance,
   getPlanGroupFrameAppearance,
@@ -271,7 +272,7 @@ export const GanttChart = forwardRef<
   const [labelWidth, setLabelWidth] = useState(DEFAULT_LABEL_WIDTH);
   const [labelVisible, setLabelVisible] = useState(true);
   const [isResizingLabel, setIsResizingLabel] = useState(false);
-  const [groupFramePreview, setGroupFramePreview] = useState<
+  const [barPreview, setBarPreview] = useState<
     Map<string, { start: string; end: string }>
   >(() => new Map());
 
@@ -845,23 +846,29 @@ export const GanttChart = forwardRef<
     });
   }
 
-  const onGroupFramePreview = useCallback(
-    (planId: string, preview: { start: string; end: string } | null) => {
-      setGroupFramePreview((prev) => {
-        const next = new Map(prev);
-        if (preview) next.set(planId, preview);
-        else next.delete(planId);
-        return next;
-      });
+  const onRootDragPreview = useCallback(
+    (rootId: string, preview: { start: string; end: string } | null) => {
+      if (!preview) {
+        setBarPreview(new Map());
+        return;
+      }
+      const root = planById.get(rootId);
+      if (!root) {
+        setBarPreview(new Map());
+        return;
+      }
+      setBarPreview(buildBoundGroupPreview(root, preview, items));
     },
-    [],
+    [items, planById],
   );
+
+  const clearBarPreview = useCallback(() => setBarPreview(new Map()), []);
 
   function renderPlanGroupFrames() {
     return planGroups.map((group) => {
       const rootItem = planById.get(group.rootId);
       if (!rootItem) return null;
-      const preview = groupFramePreview.get(group.rootId);
+      const preview = barPreview.get(group.rootId);
       const startDate = preview?.start ?? rootItem.startDate;
       const endDate = preview?.end ?? rootItem.effectiveEnd;
       const { left, width } = barMetricsFromDates(startDate, endDate, layout);
@@ -872,9 +879,9 @@ export const GanttChart = forwardRef<
           className={frame.className}
           style={{
             top: group.top,
-            height: group.height,
-            left: Math.max(left, 0) + GROUP_FRAME_PAD,
-            width: Math.max(width - GROUP_FRAME_PAD * 2, 8),
+            height: group.height + GROUP_FRAME_BOTTOM_PAD,
+            left: Math.max(left, 0),
+            width: Math.max(width, 8),
             ...frame.style,
           }}
           aria-hidden
@@ -891,8 +898,15 @@ export const GanttChart = forwardRef<
     const inGroupChild = row.depth > 0 && groupedRootIds.has(row.rootId);
     const rootItem = planById.get(row.rootId) ?? item;
     const effectiveColor = resolveEffectivePlanColor(item, rootItem);
-    const { left, width } = barMetricsFromDates(item.startDate, item.effectiveEnd, layout);
+    const previewDates = barPreview.get(item.id);
+    const displayStart = previewDates?.start ?? item.startDate;
+    const displayEnd = previewDates?.end ?? item.effectiveEnd;
+    const { left, width } = barMetricsFromDates(displayStart, displayEnd, layout);
     const barStyle = planBarStyle(item, rootItem.color, row.depth, frameRoot, inGroupChild);
+
+    const parentPlan = item.parentId ? planById.get(item.parentId) : null;
+    const parentPreview = parentPlan ? barPreview.get(parentPlan.id) : undefined;
+    const minStartDate = parentPreview?.start ?? parentPlan?.startDate;
 
     return (
       <div
@@ -915,9 +929,11 @@ export const GanttChart = forwardRef<
             barTextStyle={barStyle.textStyle}
             planColor={effectiveColor}
             bareShell={frameRoot}
-            bareShellInsetTop={frameRoot ? GROUP_FRAME_PAD : 0}
             hitRowHeight={row.height}
-            onPreviewDates={frameRoot ? onGroupFramePreview : undefined}
+            minStartDate={row.depth > 0 ? minStartDate : undefined}
+            previewOverride={previewDates ?? null}
+            onPreviewDates={frameRoot ? onRootDragPreview : undefined}
+            onDragEnd={clearBarPreview}
             onUpdated={handleItemUpdated}
             onTaskClick={() => openPlan(item.id)}
           />

@@ -10,6 +10,7 @@ import {
   deriveStatusFromDirectChildren,
   validateManualStatusChange,
 } from "@/lib/services/plan-rollup";
+import { isPlanStartBeforeParent } from "@/lib/gantt-plan-bind";
 import type { createPlanSchema } from "@/lib/validations/plan";
 import type { z } from "zod";
 
@@ -78,6 +79,69 @@ function validateDates(startDate: string | null | undefined, endDate: string | n
   });
 }
 
+async function validatePlanStartAfterParent(
+  userId: string,
+  parentPlanId: string | null | undefined,
+  startDate: Date | null,
+): Promise<string | null> {
+  if (!parentPlanId || !startDate) return null;
+  const parent = await prisma.plan.findFirst({
+    where: { id: parentPlanId, userId },
+    select: { startDate: true },
+  });
+  if (!parent?.startDate) return null;
+  if (isPlanStartBeforeParent(startDate, parent.startDate)) {
+    return "子计划开始时间不能早于父计划";
+  }
+  return null;
+}
+
+async function collectDescendantPlanIds(
+  tx: Tx,
+  userId: string,
+  planId: string,
+): Promise<string[]> {
+  const ids: string[] = [];
+  let frontier = [planId];
+  while (frontier.length > 0) {
+    const children = await tx.plan.findMany({
+      where: { parentPlanId: { in: frontier }, userId },
+      select: { id: true },
+    });
+    const childIds = children.map((c) => c.id);
+    ids.push(...childIds);
+    frontier = childIds;
+  }
+  return ids;
+}
+
+function shiftDateByMs(value: Date | null, deltaMs: number): Date | null {
+  if (!value) return null;
+  return new Date(value.getTime() + deltaMs);
+}
+
+async function shiftDescendantPlanDates(
+  tx: Tx,
+  userId: string,
+  planId: string,
+  deltaMs: number,
+): Promise<void> {
+  if (deltaMs === 0) return;
+  const descendantIds = await collectDescendantPlanIds(tx, userId, planId);
+  for (const id of descendantIds) {
+    const child = await tx.plan.findFirst({ where: { id, userId } });
+    if (!child) continue;
+    const updated = await tx.plan.update({
+      where: { id },
+      data: {
+        startDate: shiftDateByMs(child.startDate, deltaMs),
+        endDate: shiftDateByMs(child.endDate, deltaMs),
+      },
+    });
+    await syncMemoForPlan(updated, tx);
+  }
+}
+
 async function applyPlanStatusIfChanged(
   userId: string,
   planId: string,
@@ -124,6 +188,14 @@ export async function createPlan(userId: string, input: CreatePlanInput): Promis
 
   const hierarchyError = await validatePlanHierarchy(userId, input.parentPlanId);
   if (hierarchyError) throw new Error(hierarchyError);
+
+  const parsedStart = parsePlanDateTime(input.startDate);
+  const parentStartError = await validatePlanStartAfterParent(
+    userId,
+    input.parentPlanId,
+    parsedStart,
+  );
+  if (parentStartError) throw new Error(parentStartError);
 
   return prisma.$transaction(async (tx) => {
     const plan = await tx.plan.create({
@@ -213,6 +285,20 @@ export async function updatePlan(
     if (rollupError) throw new Error(rollupError);
   }
 
+  const parsedNextStart =
+    input.startDate !== undefined ? parsePlanDateTime(input.startDate) : existing.startDate;
+  const parentStartError = await validatePlanStartAfterParent(
+    userId,
+    parentPlanId,
+    parsedNextStart,
+  );
+  if (parentStartError) throw new Error(parentStartError);
+
+  const startDeltaMs =
+    input.startDate !== undefined && existing.startDate && parsedNextStart
+      ? parsedNextStart.getTime() - existing.startDate.getTime()
+      : 0;
+
   const prevParentId = existing.parentPlanId;
 
   return prisma.$transaction(async (tx) => {
@@ -234,6 +320,10 @@ export async function updatePlan(
     });
 
     await syncMemoForPlan(plan, tx);
+
+    if (startDeltaMs !== 0) {
+      await shiftDescendantPlanDates(tx, userId, planId, startDeltaMs);
+    }
 
     if (input.status !== undefined && input.status !== existing.status) {
       await applyPlanStatusIfChanged(userId, planId, existing.status, plan.status, tx);

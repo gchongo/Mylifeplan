@@ -1,5 +1,5 @@
-/** 组框水平内边距：避免子条贴左右边 */
-export const GROUP_FRAME_PAD = 5;
+/** 组框底部留白，避免最后一行子条贴底边 */
+export const GROUP_FRAME_BOTTOM_PAD = 3;
 
 export interface GanttRowGroupMeta {
   gapBefore: number;
