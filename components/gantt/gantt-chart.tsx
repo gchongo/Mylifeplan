@@ -188,9 +188,21 @@ function rootPlanForRow(row: GanttRow, planById: Map<string, GanttItem>): GanttI
   return planById.get(row.rootId) ?? row.item;
 }
 
-function planBarStyle(item: GanttItem, allPlans: GanttItem[], depth: number) {
+function planBarStyle(
+  item: GanttItem,
+  allPlans: GanttItem[],
+  depth: number,
+  frameRoot = false,
+) {
   const displayStatus = itemDisplayStatus(item, allPlans);
-  return getGanttBarStyle(item.status, item.endDate, displayStatus, depth);
+  const style = getGanttBarStyle(item.status, item.endDate, displayStatus, depth);
+  if (frameRoot) {
+    return {
+      shell: "border-0 bg-transparent shadow-none ring-0",
+      text: style.text,
+    };
+  }
+  return style;
 }
 
 function dataBoundsFromItems(items: GanttItem[]) {
@@ -325,6 +337,10 @@ export const GanttChart = forwardRef<
   );
 
   const planGroups = useMemo(() => buildPlanGroupLayouts(rows), [rows]);
+  const groupedRootIds = useMemo(
+    () => new Set(planGroups.map((g) => g.rootId)),
+    [planGroups],
+  );
 
   const toggleLabelPanel = useCallback(() => {
     setLabelVisible((prev) => {
@@ -828,6 +844,11 @@ export const GanttChart = forwardRef<
       const rootItem = planById.get(group.rootId);
       if (!rootItem) return null;
       const style = getPlanGroupVisualStyle(rootItem, getDisplayStatus);
+      const { left, width } = barMetricsFromDates(
+        rootItem.startDate,
+        rootItem.effectiveEnd,
+        layout,
+      );
       return (
         <div
           key={`group-frame-${group.rootId}`}
@@ -839,8 +860,8 @@ export const GanttChart = forwardRef<
           style={{
             top: group.top + 1,
             height: Math.max(group.height - 2, 0),
-            left: 6,
-            width: timelineWidth - 12,
+            left: Math.max(left, 0),
+            width: Math.max(width, 8),
           }}
           aria-hidden
         />
@@ -852,8 +873,9 @@ export const GanttChart = forwardRef<
     const item = row.item;
     const nextRow = rows[idx + 1];
     const tightBelow = rowTightBelow(row, nextRow);
+    const frameRoot = row.depth === 0 && groupedRootIds.has(item.id);
     const { left, width } = barMetricsFromDates(item.startDate, item.effectiveEnd, layout);
-    const barStyle = planBarStyle(item, items, row.depth);
+    const barStyle = planBarStyle(item, items, row.depth, frameRoot);
 
     return (
       <div
