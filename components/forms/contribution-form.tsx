@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/ui/feedback";
 import {
   ContributionEditor,
+  emptyContributionValues,
   type ContributionEditorValues,
 } from "@/components/contributions/contribution-editor";
 
@@ -25,13 +26,9 @@ export function ContributionForm({
 }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [values, setValues] = useState<ContributionEditorValues>({
-    title: "",
-    body: "",
-    occurredOn: defaultStartDate,
-    occurredEndOn: defaultEndDate ?? defaultStartDate,
-    imageUrls: [],
-  });
+  const [values, setValues] = useState<ContributionEditorValues>(() =>
+    emptyContributionValues(defaultStartDate, defaultEndDate),
+  );
 
   function patch(patch: Partial<ContributionEditorValues>) {
     setValues((prev) => ({ ...prev, ...patch }));

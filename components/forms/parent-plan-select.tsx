@@ -19,11 +19,15 @@ export function ParentPlanSelect({
   onChange,
   excludePlanId,
   name = "parentPlanId",
+  label = "父计划（可选）",
+  emptyLabel = "无父计划",
 }: {
   value?: string | null;
   onChange?: (id: string | null) => void;
   excludePlanId?: string;
   name?: string;
+  label?: string;
+  emptyLabel?: string;
 }) {
   const [options, setOptions] = useState<{ value: string; label: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +41,7 @@ export function ParentPlanSelect({
           (p: PlanOption & { id: string }) => p.id !== excludePlanId,
         );
         setOptions([
-          { value: "", label: "无父计划" },
+          { value: "", label: emptyLabel },
           ...plans.map((p) => ({
             value: p.id,
             label: formatPlanLabel(p),
@@ -45,16 +49,16 @@ export function ParentPlanSelect({
         ]);
       })
       .finally(() => setLoading(false));
-  }, [excludePlanId]);
+  }, [excludePlanId, emptyLabel]);
 
   return (
     <Select
       name={name}
-      label="父计划（可选）"
+      label={label}
       options={options}
       value={value ?? ""}
       onChange={(e) => onChange?.(e.target.value || null)}
-      placeholder={loading ? "加载中…" : "无父计划（可选）"}
+      placeholder={loading ? "加载中…" : emptyLabel}
       disabled={loading}
     />
   );
