@@ -38,8 +38,6 @@ import {
 import { defaultGanttStatusFilter, filterGanttTasksByStatus } from "@/lib/gantt-task-filter";
 import {
   buildPlanGroupLayouts,
-  GROUP_FRAME_BOTTOM_PAD,
-  GROUP_TAB_HEIGHT,
 } from "@/lib/gantt-plan-groups";
 import {
   buildBoundGroupPreview,
@@ -54,7 +52,7 @@ import {
   planColorRgba,
   resolveEffectivePlanColor,
 } from "@/lib/plan-color";
-import { GRID_BORDER } from "@/lib/gantt-grid-colors";
+import { GRID_BORDER, GRID_ROW_BORDER } from "@/lib/gantt-grid-colors";
 import { deriveParentStatus } from "@/lib/services/plan-rollup";
 import type { VisualStatusKey } from "@/lib/task-status-style";
 import type { GanttContribution, GanttItem, PlanStatus } from "@/types";
@@ -64,7 +62,7 @@ import { cn } from "@/lib/utils";
 
 const ROW_HEIGHT = 28;
 const ROW_HEIGHT_CHILD = 28;
-const ROW_GROUP_GAP = 12;
+const ROW_GROUP_GAP = 0;
 const DEFAULT_LABEL_WIDTH = 200;
 const MIN_LABEL_WIDTH = 120;
 const MAX_LABEL_WIDTH = 560;
@@ -120,17 +118,21 @@ function computeRowsTotalHeight(rows: GanttRow[]) {
   return rows.reduce((sum, row) => sum + row.gapBefore + row.height, 0);
 }
 
-/** 与下一行同属一个计划组（兄弟子计划）时不留分隔线 */
+/** 同一计划树内（一级 + 全部子计划）行距一致：不在组内画分隔线 */
 function rowTightBelow(row: GanttRow, next: GanttRow | undefined) {
   if (!next) return false;
-  if (
-    row.depth > 0 &&
-    next.depth === row.depth &&
-    row.item.parentId === next.item.parentId
-  ) {
-    return true;
+  return next.rootId === row.rootId;
+}
+
+/** 各行底边 y（与时间轴行高累计一致，供背景虚线 / 组框对齐） */
+function rowBoundaryOffsets(rows: GanttRow[]): number[] {
+  const offsets: number[] = [];
+  let y = 0;
+  for (const row of rows) {
+    y += row.gapBefore + row.height;
+    offsets.push(y);
   }
-  return false;
+  return offsets;
 }
 
 function planDepth(itemId: string, byId: Map<string, GanttItem>): number {
@@ -715,6 +717,7 @@ export const GanttChart = forwardRef<
   }
 
   function renderGridBackground(height: number) {
+    const rowLines = rowBoundaryOffsets(rows);
     return (
       <div
         className="pointer-events-none absolute left-0 top-0 flex"
@@ -730,6 +733,13 @@ export const GanttChart = forwardRef<
               col.isOtherMonth && "opacity-80",
             )}
             style={{ width: col.width }}
+          />
+        ))}
+        {rowLines.map((top, i) => (
+          <div
+            key={`row-grid-${i}`}
+            className={cn("absolute left-0", GRID_ROW_BORDER)}
+            style={{ top, width: timelineWidth }}
           />
         ))}
         {todayVisible && (
@@ -918,19 +928,21 @@ export const GanttChart = forwardRef<
       const bodyBg = planColorRgba(c, 0.08);
       const frameLeft = Math.max(left, 0);
       const frameWidth = Math.max(width, 8);
-      const frameHeight = group.height + GROUP_FRAME_BOTTOM_PAD;
-      const bodyTop = ROW_HEIGHT;
-      const bodyHeight = Math.max(frameHeight - bodyTop, 0);
 
       return (
         <div
           key={`group-frame-${group.rootId}`}
-          className="pointer-events-none absolute z-[1]"
+          className="pointer-events-none absolute z-[1] box-border rounded-md border-2"
           style={{
             top: group.top,
-            height: frameHeight,
+            height: group.height,
             left: frameLeft,
             width: frameWidth,
+            borderColor,
+            backgroundColor: bodyBg,
+            borderBottomLeftRadius: 6,
+            borderBottomRightRadius: 6,
+            borderTopRightRadius: 6,
           }}
           aria-hidden
         >
@@ -946,18 +958,6 @@ export const GanttChart = forwardRef<
           >
             {rootItem.title}
           </div>
-          <div
-            className="absolute left-0 right-0 border-2"
-            style={{
-              top: bodyTop,
-              height: bodyHeight,
-              borderColor,
-              backgroundColor: bodyBg,
-              borderBottomLeftRadius: 6,
-              borderBottomRightRadius: 6,
-              borderTopRightRadius: 6,
-            }}
-          />
         </div>
       );
     });
@@ -965,8 +965,6 @@ export const GanttChart = forwardRef<
 
   function renderBar(row: GanttRow, idx: number) {
     const item = row.item;
-    const nextRow = rows[idx + 1];
-    const tightBelow = rowTightBelow(row, nextRow);
     const frameRoot = row.depth === 0 && groupedRootIds.has(item.id);
     const inGroupChild = row.depth > 0 && groupedRootIds.has(row.rootId);
     const rootItem = planById.get(row.rootId) ?? item;
@@ -992,10 +990,7 @@ export const GanttChart = forwardRef<
     return (
       <div
         key={`bar-${item.id}-${idx}`}
-        className={cn(
-          "relative",
-          !tightBelow && "border-b border-dashed border-gray-100 dark:border-gray-800/60",
-        )}
+        className="relative"
         style={{ height: row.height, marginTop: row.gapBefore, width: timelineWidth }}
       >
         {!item.contributionOnly && (

@@ -1,5 +1,3 @@
-/** 组框底部留白，避免最后一行子条贴底边 */
-export const GROUP_FRAME_BOTTOM_PAD = 3;
 /** 组框顶部标题标签高度 */
 export const GROUP_TAB_HEIGHT = 24;
 

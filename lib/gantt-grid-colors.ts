@@ -1,7 +1,11 @@
 import type { TimelineColumn } from "@/lib/gantt-scale";
 
 /** 统一灰色虚线，避免干扰任务条 */
-export const GRID_BORDER = "border-r border-dashed border-gray-200/70";
+export const GRID_BORDER = "border-r border-dashed border-gray-200/70 dark:border-gray-700/50";
+
+/** 行分隔虚线（与时间轴背景、组框外缘对齐） */
+export const GRID_ROW_BORDER =
+  "border-b border-dashed border-gray-200/70 dark:border-gray-700/50";
 
 /** 交替极淡背景，便于对齐大时间范围（无边框色） */
 export const GRID_BANDS = [{ bg: "bg-white" }, { bg: "bg-gray-50/35" }];
