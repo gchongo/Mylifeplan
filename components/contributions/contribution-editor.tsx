@@ -4,6 +4,7 @@ import {
   FeedComposeCard,
   type FeedComposeValues,
 } from "@/components/feed/feed-compose-card";
+import { ContributionMarkerColorField } from "@/components/contributions/contribution-marker-color-field";
 import { nowDatetimeLocal, toDatetimeLocalInput } from "@/lib/dates";
 
 export interface ContributionEditorValues {
@@ -12,6 +13,7 @@ export interface ContributionEditorValues {
   occurredOn: string;
   occurredEndOn: string;
   imageUrls: string[];
+  markerColor: string | null;
 }
 
 function toComposeValues(v: ContributionEditorValues): FeedComposeValues {
@@ -63,20 +65,32 @@ export function ContributionEditor({
 
   if (mode === "compact") {
     return (
-      <FeedComposeCard
-        {...shared}
-        titlePlaceholder="标题"
-        bodyPlaceholder="详细记录"
-      />
+      <div className="space-y-4">
+        <FeedComposeCard
+          {...shared}
+          titlePlaceholder="标题"
+          bodyPlaceholder="详细记录"
+        />
+        <ContributionMarkerColorField
+          value={values.markerColor}
+          onChange={(markerColor) => onChange({ markerColor })}
+        />
+      </div>
     );
   }
 
   return (
-    <FeedComposeCard
-      {...shared}
-      titlePlaceholder="贡献标题"
-      bodyPlaceholder="详细记录"
-    />
+    <div className="space-y-4">
+      <FeedComposeCard
+        {...shared}
+        titlePlaceholder="贡献标题"
+        bodyPlaceholder="详细记录"
+      />
+      <ContributionMarkerColorField
+        value={values.markerColor}
+        onChange={(markerColor) => onChange({ markerColor })}
+      />
+    </div>
   );
 }
 
@@ -92,6 +106,7 @@ export function emptyContributionValues(
     occurredOn: start,
     occurredEndOn: end,
     imageUrls: [],
+    markerColor: null,
   };
 }
 

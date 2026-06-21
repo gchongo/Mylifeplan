@@ -7,6 +7,7 @@ import {
   FeedComposeCard,
   type FeedComposeValues,
 } from "@/components/feed/feed-compose-card";
+import { ContributionMarkerColorField } from "@/components/contributions/contribution-marker-color-field";
 import { Button } from "@/components/ui/button";
 import { apiJson } from "@/lib/client-api";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
@@ -38,6 +39,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
     emptyCompose(nowDatetimeLocal()),
   );
   const [contributionRelatedId, setContributionRelatedId] = useState<string | null>(null);
+  const [contributionMarkerColor, setContributionMarkerColor] = useState<string | null>(null);
   const [planListRefreshKey, setPlanListRefreshKey] = useState(0);
 
   const canPublish =
@@ -56,6 +58,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
     setPlanRelatedId(null);
     setContributionValues(emptyCompose(nowDatetimeLocal()));
     setContributionRelatedId(null);
+    setContributionMarkerColor(null);
     setPlanListRefreshKey((k) => k + 1);
   }
 
@@ -92,6 +95,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
               contributionValues.endAt && contributionValues.endAt !== contributionValues.startAt
                 ? contributionValues.endAt
                 : null,
+            markerColor: contributionMarkerColor,
           }),
         });
         dispatchPlanUpdated();
@@ -196,16 +200,23 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
         )}
 
         {mode === "contribution" && (
-          <FeedComposeCard
-            values={contributionValues}
-            onChange={(patch) => setContributionValues((prev) => ({ ...prev, ...patch }))}
-            timeKind="datetime"
-            startRequired
-            titlePlaceholder="贡献标题"
-            bodyPlaceholder="详细记录"
-            showImages
-            relatedPlan={relatedPlanSelect("contribution")}
-          />
+          <div className="space-y-3">
+            <FeedComposeCard
+              values={contributionValues}
+              onChange={(patch) => setContributionValues((prev) => ({ ...prev, ...patch }))}
+              timeKind="datetime"
+              startRequired
+              titlePlaceholder="贡献标题"
+              bodyPlaceholder="详细记录"
+              showImages
+              relatedPlan={relatedPlanSelect("contribution")}
+            />
+            <ContributionMarkerColorField
+              value={contributionMarkerColor}
+              onChange={setContributionMarkerColor}
+              disabled={busy}
+            />
+          </div>
         )}
 
         {mode === "memo" && (

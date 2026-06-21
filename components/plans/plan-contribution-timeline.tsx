@@ -31,6 +31,7 @@ export interface PlanContributionItem {
   imageUrls?: string[];
   occurredOn: string;
   occurredEndOn?: string | null;
+  markerColor?: string | null;
 }
 
 const PREVIEW_CHAR_LIMIT = 300;
@@ -43,6 +44,7 @@ function editorValuesFromEntry(entry: PlanContributionItem): ContributionEditorV
     body: entry.body ?? entry.description ?? "",
     ...contributionValuesFromApi(entry),
     imageUrls: entry.imageUrls ?? [],
+    markerColor: entry.markerColor ?? null,
   };
 }
 
@@ -98,6 +100,7 @@ function TimelineContributionEntry({
           imageUrls: editorValues.imageUrls,
           occurredOn: editorValues.occurredOn,
           occurredEndOn: editorValues.occurredEndOn || null,
+          markerColor: editorValues.markerColor,
         }),
       });
       const data = await res.json();

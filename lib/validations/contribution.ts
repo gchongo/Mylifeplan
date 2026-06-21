@@ -21,6 +21,12 @@ const contributionBaseSchema = z.object({
   imageUrls: z.array(z.string().min(1)).max(20).optional(),
   occurredOn: requiredDateTime,
   occurredEndOn: optionalDateTime,
+  markerColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, "颜色格式无效")
+    .optional()
+    .nullable()
+    .or(z.literal("")),
 });
 
 function refineContributionDates(

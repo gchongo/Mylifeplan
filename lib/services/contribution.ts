@@ -1,6 +1,7 @@
 import type { PlanContribution, ContributionImage } from "@prisma/client";
 import { parseDateOnly, parsePlanDateTime, formatPlanDateTime, toDatetimeLocalInput, datePartOf } from "@/lib/dates";
 import { prisma } from "@/lib/db";
+import { normalizePlanColor } from "@/lib/plan-color";
 import { writeFeed } from "@/lib/services/feed";
 import type { CreateContributionInput } from "@/lib/validations/contribution";
 import { findRootPlanId } from "@/lib/gantt-contribution-display";
@@ -27,6 +28,7 @@ export function serializeContribution(c: ContributionWithRelations) {
     imageUrls: c.images?.map((img) => img.url) ?? [],
     occurredOn: toDatetimeLocalInput(c.occurredOn) || formatPlanDateTime(c.occurredOn) || "",
     occurredEndOn: c.occurredEndOn ? toDatetimeLocalInput(c.occurredEndOn) : null,
+    markerColor: c.markerColor ? normalizePlanColor(c.markerColor) : null,
     createdAt: c.createdAt.toISOString(),
     updatedAt: c.updatedAt.toISOString(),
   };
@@ -121,6 +123,7 @@ export async function createContribution(userId: string, input: CreateContributi
         body,
         occurredOn: parsePlanDateTime(input.occurredOn)!,
         occurredEndOn: endStr ? parsePlanDateTime(endStr) : null,
+        markerColor: input.markerColor ? normalizePlanColor(input.markerColor) : null,
       },
       include: { plan: { select: { title: true } }, images: true },
     });
@@ -189,6 +192,9 @@ export async function updateContribution(
         }),
         ...(endStr !== undefined && {
           occurredEndOn: endStr ? parsePlanDateTime(endStr) : null,
+        }),
+        ...(input.markerColor !== undefined && {
+          markerColor: input.markerColor ? normalizePlanColor(input.markerColor) : null,
         }),
       },
       include: { plan: { select: { title: true } }, images: true },

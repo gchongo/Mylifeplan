@@ -47,8 +47,12 @@ import { buildParentChildForkLines } from "@/lib/gantt-tree-lines";
 import { contributionsForGanttRow } from "@/lib/gantt-contribution-display";
 import { datePartOf } from "@/lib/dates";
 import { isPlanOverdue } from "@/lib/gantt-plan-status";
-import { getContributionMarkerStyle } from "@/lib/contribution-marker-style";
-import { useSettings } from "@/components/settings/settings-provider";
+import {
+  CONTRIBUTION_POINT_WIDTH_PX,
+  contributionIntervalFillStyle,
+  isContributionInterval,
+  resolveContributionMarkerColor,
+} from "@/lib/contribution-marker-style";
 import {
   getStatusStyle,
   resolveVisualStatus,
@@ -289,12 +293,6 @@ export const GanttChart = forwardRef<
     Map<string, { start: string; end: string }>
   >(() => new Map());
   const [hoveredRootId, setHoveredRootId] = useState<string | null>(null);
-
-  const { preferences } = useSettings();
-  const contributionMarkerStyle = useMemo(
-    () => getContributionMarkerStyle(preferences.contributionMarker),
-    [preferences.contributionMarker],
-  );
 
   const effectiveLabelWidth = labelVisible ? labelWidth : 0;
 
@@ -891,50 +889,71 @@ export const GanttChart = forwardRef<
     rowPlanId: string,
     strip?: { top: number; height: number },
   ) {
-    const byDate = new Map<string, GanttContribution[]>();
-    for (const c of rowContributions) {
-      if (!isDateWithinPlanSpan(c.occurredOn, spanStart, spanEnd)) continue;
+    const visible = rowContributions.filter((c) => {
+      if (!isDateWithinPlanSpan(c.occurredOn, spanStart, spanEnd)) return false;
       const endOn = c.occurredEndOn ?? c.occurredOn;
-      if (!isDateWithinPlanSpan(endOn, spanStart, spanEnd) && endOn > spanEnd) continue;
-      const startKey = datePartOf(c.occurredOn) ?? c.occurredOn;
-      const list = byDate.get(startKey) ?? [];
-      list.push(c);
-      byDate.set(startKey, list);
-    }
+      return isDateWithinPlanSpan(endOn, spanStart, spanEnd) || endOn > spanEnd;
+    });
 
-    if (byDate.size === 0) return null;
+    if (visible.length === 0) return null;
+
+    const barOrigin = Math.max(barLeft, 0);
 
     return (
       <div
         className="pointer-events-none absolute overflow-hidden"
         style={{
-          left: Math.max(barLeft, 0),
+          left: barOrigin,
           width: Math.max(barWidth, 8),
           top: strip?.top ?? 0,
           height: strip?.height ?? "100%",
         }}
       >
-        {[...byDate.entries()].map(([date, list]) => {
-          const x = dateToX(date, layout) - Math.max(barLeft, 0);
-          const primary = list[list.length - 1]!;
+        {visible.map((c) => {
+          const color = resolveContributionMarkerColor(c, planById);
+          const title = c.title;
+
+          if (isContributionInterval(c)) {
+            const end = c.occurredEndOn!;
+            const { left, width } = barMetricsFromDates(c.occurredOn, end, layout);
+            const relLeft = left - barOrigin;
+            return (
+              <button
+                key={`contrib-span-${rowPlanId}-${c.id}`}
+                type="button"
+                data-gantt-bar
+                onClick={() => openContribution(c.id)}
+                className="pointer-events-auto absolute top-0 z-10 rounded-sm ring-1 ring-white/80 hover:brightness-110 dark:ring-gray-900/80"
+                style={{
+                  left: Math.max(0, relLeft),
+                  width: Math.max(width, 4),
+                  height: "100%",
+                  ...contributionIntervalFillStyle(color),
+                  borderLeft: `2px solid ${color}`,
+                  borderRight: `2px solid ${color}`,
+                }}
+                title={title}
+                aria-label={`${title}（时间区间）`}
+              />
+            );
+          }
+
+          const x = dateToX(c.occurredOn, layout) - barOrigin;
           return (
             <button
-              key={`${rowPlanId}-${date}-${primary.id}`}
+              key={`contrib-point-${rowPlanId}-${c.id}`}
               type="button"
               data-gantt-bar
-              onClick={() => openContribution(primary.id)}
-              className={cn(
-                "pointer-events-auto absolute top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 ring-2 ring-white hover:opacity-90",
-                contributionMarkerStyle.shapeClass,
-              )}
+              onClick={() => openContribution(c.id)}
+              className="pointer-events-auto absolute top-0 z-20 -translate-x-1/2 hover:opacity-90"
               style={{
-                left: x,
-                width: contributionMarkerStyle.px,
-                height: contributionMarkerStyle.px,
-                backgroundColor: contributionMarkerStyle.color,
+                left: Math.max(0, x),
+                width: CONTRIBUTION_POINT_WIDTH_PX,
+                height: "100%",
+                backgroundColor: color,
               }}
-              title={list.map((c) => c.title).join("、")}
-              aria-label={`${date} 贡献：${list.map((c) => c.title).join("、")}`}
+              title={title}
+              aria-label={`${title}（时间点）`}
             />
           );
         })}

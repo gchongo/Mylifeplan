@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  DEFAULT_CONTRIBUTION_MARKER,
   DEFAULT_USER_PREFERENCES,
   normalizeUserPreferences,
   resolveTimezone,
@@ -23,12 +22,12 @@ describe("user preferences", () => {
     expect(tz.length).toBeGreaterThan(0);
   });
 
-  it("normalizes contribution marker preferences", () => {
+  it("ignores legacy contribution marker fields in stored prefs", () => {
     expect(
       normalizeUserPreferences({
+        timezone: "UTC",
         contributionMarker: { color: "#FF0000", size: "md", shape: "square" },
-      }).contributionMarker,
-    ).toEqual({ color: "#FF0000", size: "md", shape: "square" });
-    expect(normalizeUserPreferences({}).contributionMarker).toEqual(DEFAULT_CONTRIBUTION_MARKER);
+      } as never),
+    ).toEqual({ ...DEFAULT_USER_PREFERENCES, timezone: "UTC" });
   });
 });

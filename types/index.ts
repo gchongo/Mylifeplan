@@ -34,6 +34,7 @@ export interface GanttContribution {
   description?: string | null;
   occurredOn: string;
   occurredEndOn?: string | null;
+  markerColor?: string | null;
 }
 
 export interface CalendarItem {

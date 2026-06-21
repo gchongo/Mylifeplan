@@ -32,6 +32,7 @@ interface ContributionDetail {
   imageUrls: string[];
   occurredOn: string;
   occurredEndOn?: string | null;
+  markerColor?: string | null;
   plan?: { id: string; title: string; type: string };
 }
 
@@ -65,6 +66,7 @@ export function GanttContributionDrawerPanel({
     occurredOn: "",
     occurredEndOn: "",
     imageUrls: [],
+    markerColor: null,
   });
 
   useEffect(() => {
@@ -105,6 +107,7 @@ export function GanttContributionDrawerPanel({
       body: detail.body ?? detail.description ?? "",
       ...contributionValuesFromApi(detail),
       imageUrls: detail.imageUrls ?? [],
+      markerColor: detail.markerColor ?? null,
     });
   }
 
@@ -137,6 +140,7 @@ export function GanttContributionDrawerPanel({
           imageUrls: editorValues.imageUrls,
           occurredOn: editorValues.occurredOn,
           occurredEndOn: editorValues.occurredEndOn || null,
+          markerColor: editorValues.markerColor,
         }),
       });
       const data = await res.json();

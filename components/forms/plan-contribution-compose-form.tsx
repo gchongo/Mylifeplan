@@ -9,6 +9,7 @@ import {
 } from "@/components/feed/feed-compose-card";
 import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/ui/feedback";
+import { ContributionMarkerColorField } from "@/components/contributions/contribution-marker-color-field";
 import { apiJson } from "@/lib/client-api";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import { nowDatetimeLocal } from "@/lib/dates";
@@ -62,6 +63,7 @@ export function PlanContributionComposeForm({
     emptyCompose(nowDatetimeLocal()),
   );
   const [contributionRelatedId, setContributionRelatedId] = useState<string | null>(null);
+  const [contributionMarkerColor, setContributionMarkerColor] = useState<string | null>(null);
   const [planListRefreshKey, setPlanListRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -79,6 +81,7 @@ export function PlanContributionComposeForm({
     });
     setPlanRelatedId(fixedParentPlanId ?? null);
     setContributionRelatedId(fixedPlanId ?? fixedParentPlanId ?? null);
+    setContributionMarkerColor(null);
   }, [
     formKey,
     defaultMode,
@@ -131,6 +134,7 @@ export function PlanContributionComposeForm({
               contributionValues.endAt !== contributionValues.startAt
                 ? contributionValues.endAt
                 : null,
+            markerColor: contributionMarkerColor,
           }),
         });
       } else {
@@ -218,16 +222,23 @@ export function PlanContributionComposeForm({
           relatedPlan={relatedPlanSelect("plan")}
         />
       ) : (
-        <FeedComposeCard
-          values={contributionValues}
-          onChange={(patch) => setContributionValues((prev) => ({ ...prev, ...patch }))}
-          timeKind="datetime"
-          startRequired
-          titlePlaceholder="贡献标题"
-          bodyPlaceholder="详细记录"
-          showImages
-          relatedPlan={relatedPlanSelect("contribution")}
-        />
+        <>
+          <FeedComposeCard
+            values={contributionValues}
+            onChange={(patch) => setContributionValues((prev) => ({ ...prev, ...patch }))}
+            timeKind="datetime"
+            startRequired
+            titlePlaceholder="贡献标题"
+            bodyPlaceholder="详细记录"
+            showImages
+            relatedPlan={relatedPlanSelect("contribution")}
+          />
+          <ContributionMarkerColorField
+            value={contributionMarkerColor}
+            onChange={setContributionMarkerColor}
+            disabled={busy}
+          />
+        </>
       )}
 
       <div className="flex justify-end gap-2 pt-1">

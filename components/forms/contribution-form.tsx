@@ -62,6 +62,7 @@ export function ContributionForm({
             values.occurredEndOn && values.occurredEndOn !== values.occurredOn
               ? values.occurredEndOn
               : null,
+          markerColor: values.markerColor,
         }),
       });
       const data = await res.json();
