@@ -64,8 +64,6 @@ import { cn } from "@/lib/utils";
 
 const ROW_HEIGHT = 28;
 const ROW_HEIGHT_CHILD = 28;
-/** 有展开子计划的一级计划行：与组框标题标签同高 */
-const ROW_HEIGHT_ROOT_GROUPED = GROUP_TAB_HEIGHT;
 const ROW_GROUP_GAP = 12;
 const DEFAULT_LABEL_WIDTH = 200;
 const MIN_LABEL_WIDTH = 120;
@@ -122,10 +120,9 @@ function computeRowsTotalHeight(rows: GanttRow[]) {
   return rows.reduce((sum, row) => sum + row.gapBefore + row.height, 0);
 }
 
-/** 与下一行同属一个计划组（父→子、兄弟子计划）时不留间隔 */
+/** 与下一行同属一个计划组（兄弟子计划）时不留分隔线 */
 function rowTightBelow(row: GanttRow, next: GanttRow | undefined) {
   if (!next) return false;
-  if (next.depth > row.depth) return true;
   if (
     row.depth > 0 &&
     next.depth === row.depth &&
@@ -173,12 +170,7 @@ function buildPlanTreeRows(plans: GanttItem[], expanded: Set<string>): GanttRow[
       rows.push({
         item,
         depth,
-        height:
-          depth === 0 && willExpand
-            ? ROW_HEIGHT_ROOT_GROUPED
-            : depth > 0
-              ? ROW_HEIGHT_CHILD
-              : ROW_HEIGHT,
+        height: depth > 0 ? ROW_HEIGHT_CHILD : ROW_HEIGHT,
         gapBefore: depth === 0 && rows.length > 0 ? ROW_GROUP_GAP : 0,
         rootId: currentRoot,
       });
@@ -927,7 +919,7 @@ export const GanttChart = forwardRef<
       const frameLeft = Math.max(left, 0);
       const frameWidth = Math.max(width, 8);
       const frameHeight = group.height + GROUP_FRAME_BOTTOM_PAD;
-      const bodyTop = GROUP_TAB_HEIGHT;
+      const bodyTop = ROW_HEIGHT;
       const bodyHeight = Math.max(frameHeight - bodyTop, 0);
 
       return (
@@ -969,13 +961,6 @@ export const GanttChart = forwardRef<
         </div>
       );
     });
-  }
-
-  function isFirstChildInGroupRow(idx: number): boolean {
-    const row = rows[idx];
-    const prev = rows[idx - 1];
-    if (!row || row.depth <= 0 || !prev) return false;
-    return prev.rootId === row.rootId && prev.depth === 0;
   }
 
   function renderBar(row: GanttRow, idx: number) {
@@ -1026,7 +1011,6 @@ export const GanttChart = forwardRef<
             planColor={effectiveColor}
             bareShell={frameRoot}
             hideTitle={frameRoot}
-            alignBarTop={inGroupChild && isFirstChildInGroupRow(idx)}
             hitRowHeight={row.height}
             minStartDate={row.depth > 0 ? minStartDate : undefined}
             minContributionDate={contribBounds?.min}
@@ -1052,7 +1036,6 @@ export const GanttChart = forwardRef<
             left,
             width,
             item.id,
-            frameRoot ? { top: 0, height: GROUP_TAB_HEIGHT } : undefined,
           )}
       </div>
     );
