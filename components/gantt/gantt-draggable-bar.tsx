@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getEffectiveEndDate } from "@/lib/content-router";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
@@ -9,6 +10,7 @@ import {
   pixelDeltaToDays,
   type TimelineLayout,
 } from "@/lib/gantt-scale";
+import { normalizePlanColor, planColorRgba } from "@/lib/plan-color";
 import type { GanttItem } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -28,7 +30,10 @@ export function GanttDraggableBar({
   left,
   width,
   barShell,
+  barShellStyle,
   barText,
+  barTextStyle,
+  planColor,
   onUpdated,
   onTaskClick,
   bareShell = false,
@@ -41,7 +46,10 @@ export function GanttDraggableBar({
   left: number;
   width: number;
   barShell: string;
+  barShellStyle?: CSSProperties;
   barText: string;
+  barTextStyle?: CSSProperties;
+  planColor?: string | null;
   onUpdated: (updated: GanttItem) => void;
   onTaskClick?: () => void;
   /** 无可见边框（组框一级计划），保留完整拖拽热区 */
@@ -218,6 +226,7 @@ export function GanttDraggableBar({
   const shellHeight = bareShell
     ? Math.max(fullHeight - bareShellInsetTop, 20)
     : fullHeight;
+  const pillColor = normalizePlanColor(planColor);
 
   return (
     <div
@@ -243,6 +252,7 @@ export function GanttDraggableBar({
           dragging && "ring-2 ring-brand-400 ring-offset-1",
           bareShell && "hover:bg-black/[0.03] dark:hover:bg-white/[0.04]",
         )}
+        style={barShellStyle}
       >
         <div
           className={cn(
@@ -259,10 +269,19 @@ export function GanttDraggableBar({
             className={cn(
               "pointer-events-none block max-w-full truncate text-xs leading-7",
               bareShell
-                ? "inline-block rounded-md bg-white/85 px-2 font-semibold shadow-sm ring-1 ring-black/5 dark:bg-gray-900/80 dark:ring-white/10"
+                ? "inline-block rounded-md px-2 font-semibold shadow-sm"
                 : "px-2",
               barText,
             )}
+            style={{
+              ...barTextStyle,
+              ...(bareShell
+                ? {
+                    backgroundColor: planColorRgba(pillColor, 0.12),
+                    boxShadow: `inset 0 0 0 1px ${planColorRgba(pillColor, 0.35)}`,
+                  }
+                : undefined),
+            }}
           >
             {item.title}
           </span>

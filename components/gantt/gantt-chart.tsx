@@ -38,17 +38,17 @@ import {
 import { defaultGanttStatusFilter, filterGanttTasksByStatus } from "@/lib/gantt-task-filter";
 import {
   buildPlanGroupLayouts,
-  getPlanGroupVisualStyle,
-  GROUP_CHILD_BAR_SHELL,
   GROUP_FRAME_PAD,
 } from "@/lib/gantt-plan-groups";
-import { resolveVisualStatus } from "@/lib/task-status-style";
+import {
+  getPlanBarAppearance,
+  getPlanGroupFrameAppearance,
+  getPlanLabelAppearance,
+  resolveEffectivePlanColor,
+} from "@/lib/plan-color";
 import { GRID_BORDER } from "@/lib/gantt-grid-colors";
 import { deriveParentStatus } from "@/lib/services/plan-rollup";
-import {
-  getGanttBarStyle,
-  type VisualStatusKey,
-} from "@/lib/task-status-style";
+import type { VisualStatusKey } from "@/lib/task-status-style";
 import type { GanttContribution, GanttItem, PlanStatus } from "@/types";
 import { apiJson } from "@/lib/client-api";
 import { dispatchPlanUpdated, PLAN_UPDATED_EVENT } from "@/lib/plan-events";
@@ -193,27 +193,16 @@ function rootPlanForRow(row: GanttRow, planById: Map<string, GanttItem>): GanttI
 
 function planBarStyle(
   item: GanttItem,
-  allPlans: GanttItem[],
+  inheritedColor: string | null | undefined,
   depth: number,
   frameRoot = false,
   inGroupChild = false,
 ) {
-  const displayStatus = itemDisplayStatus(item, allPlans);
-  const style = getGanttBarStyle(item.status, item.endDate, displayStatus, depth);
-  if (frameRoot) {
-    return {
-      shell: "border-0 bg-transparent shadow-none ring-0",
-      text: style.text,
-    };
-  }
-  if (inGroupChild) {
-    const visual = resolveVisualStatus(item.status, item.endDate, displayStatus);
-    return {
-      shell: GROUP_CHILD_BAR_SHELL[visual],
-      text: style.text,
-    };
-  }
-  return style;
+  return getPlanBarAppearance(resolveEffectivePlanColor(item, { color: inheritedColor }), {
+    frameRoot,
+    inGroupChild,
+    isRoot: depth === 0,
+  });
 }
 
 function dataBoundsFromItems(items: GanttItem[]) {
@@ -748,21 +737,24 @@ export const GanttChart = forwardRef<
     const displayStatus = itemDisplayStatus(item, items);
     const hasRollup = itemHasRollup(item, items);
     const rootItem = rootPlanForRow(row, planById);
-    const groupStyle = getPlanGroupVisualStyle(rootItem, getDisplayStatus);
+    const effectiveColor = resolveEffectivePlanColor(item, rootItem);
+    const labelStyle = getPlanLabelAppearance(effectiveColor);
 
     return (
       <div
         key={`label-${item.id}-${idx}`}
         className={cn(
-          "group flex items-center gap-1 overflow-hidden border-l-[3px] px-2",
-          groupStyle.labelBg,
-          groupStyle.labelStripe,
+          "group flex items-center gap-1 overflow-hidden px-2",
+          labelStyle.stripeClass,
+          labelStyle.bgClass,
           !tightBelow && GANTT_TITLE_ROW_CLASS,
         )}
         style={{
           height: row.height,
           marginTop: row.gapBefore,
           paddingLeft: 12 + row.depth * 16,
+          ...labelStyle.bgStyle,
+          ...labelStyle.stripeStyle,
         }}
       >
         {showToggle ? (
@@ -869,24 +861,21 @@ export const GanttChart = forwardRef<
     return planGroups.map((group) => {
       const rootItem = planById.get(group.rootId);
       if (!rootItem) return null;
-      const style = getPlanGroupVisualStyle(rootItem, getDisplayStatus);
       const preview = groupFramePreview.get(group.rootId);
       const startDate = preview?.start ?? rootItem.startDate;
       const endDate = preview?.end ?? rootItem.effectiveEnd;
       const { left, width } = barMetricsFromDates(startDate, endDate, layout);
+      const frame = getPlanGroupFrameAppearance(rootItem.color);
       return (
         <div
           key={`group-frame-${group.rootId}`}
-          className={cn(
-            "pointer-events-none absolute z-[1] rounded-md border-2",
-            style.frameBorder,
-            style.frameBg,
-          )}
+          className={frame.className}
           style={{
-            top: group.top + GROUP_FRAME_PAD,
-            height: Math.max(group.height - GROUP_FRAME_PAD * 2, 0),
+            top: group.top,
+            height: group.height,
             left: Math.max(left, 0) + GROUP_FRAME_PAD,
             width: Math.max(width - GROUP_FRAME_PAD * 2, 8),
+            ...frame.style,
           }}
           aria-hidden
         />
@@ -900,8 +889,10 @@ export const GanttChart = forwardRef<
     const tightBelow = rowTightBelow(row, nextRow);
     const frameRoot = row.depth === 0 && groupedRootIds.has(item.id);
     const inGroupChild = row.depth > 0 && groupedRootIds.has(row.rootId);
+    const rootItem = planById.get(row.rootId) ?? item;
+    const effectiveColor = resolveEffectivePlanColor(item, rootItem);
     const { left, width } = barMetricsFromDates(item.startDate, item.effectiveEnd, layout);
-    const barStyle = planBarStyle(item, items, row.depth, frameRoot, inGroupChild);
+    const barStyle = planBarStyle(item, rootItem.color, row.depth, frameRoot, inGroupChild);
 
     return (
       <div
@@ -918,8 +909,11 @@ export const GanttChart = forwardRef<
             layout={layout}
             left={left}
             width={width}
-            barShell={barStyle.shell}
-            barText={barStyle.text}
+            barShell={barStyle.shellClass}
+            barShellStyle={barStyle.shellStyle}
+            barText={barStyle.textClass}
+            barTextStyle={barStyle.textStyle}
+            planColor={effectiveColor}
             bareShell={frameRoot}
             bareShellInsetTop={frameRoot ? GROUP_FRAME_PAD : 0}
             hitRowHeight={row.height}

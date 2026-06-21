@@ -17,6 +17,11 @@ const planBaseSchema = z.object({
   endDate: optionalDateTime,
   status: z.enum(["not_started", "in_progress", "done", "archived"]).optional(),
   priority: z.enum(["high", "medium", "low"]).optional().nullable(),
+  color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, "颜色格式无效")
+    .optional()
+    .nullable(),
 });
 
 function refinePlanDates(

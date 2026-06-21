@@ -20,6 +20,7 @@ export interface GanttItem {
   isVirtualEnd: boolean;
   parentId?: string | null;
   status?: string;
+  color?: string | null;
   contributionOnly?: boolean;
 }
 

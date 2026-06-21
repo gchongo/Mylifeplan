@@ -137,6 +137,7 @@ export async function createPlan(userId: string, input: CreatePlanInput): Promis
         endDate: parsePlanDateTime(input.endDate),
         status: input.status ?? "not_started",
         priority: input.priority ?? null,
+        color: input.color ?? null,
       },
     });
 
@@ -228,6 +229,7 @@ export async function updatePlan(
         ...(input.endDate !== undefined && { endDate: parsePlanDateTime(input.endDate) }),
         ...(input.status !== undefined && { status: input.status }),
         ...(input.priority !== undefined && { priority: input.priority ?? null }),
+        ...(input.color !== undefined && { color: input.color ?? null }),
       },
     });
 

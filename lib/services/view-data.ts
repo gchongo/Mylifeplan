@@ -57,6 +57,7 @@ export async function getGanttItems(
       isVirtualEnd,
       parentId: plan.parentPlanId,
       status: plan.status,
+      color: plan.color,
     });
   }
 
@@ -96,6 +97,7 @@ export async function getGanttData(
       isVirtualEnd: startDate === endDate,
       parentId: plan.parentPlanId,
       status: plan.status,
+      color: plan.color,
       contributionOnly: true,
     });
     planIds.add(plan.id);

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/ui/feedback";
 import { Input, Select, Textarea } from "@/components/ui";
 import { ParentPlanSelect } from "@/components/forms/parent-plan-select";
+import { PlanColorPicker } from "@/components/forms/plan-color-picker";
 import { toDatetimeLocalInput } from "@/lib/dates";
 
 const statusOptions = [
@@ -23,6 +24,7 @@ export interface PlanFormValues {
   startDate?: string | null;
   endDate?: string | null;
   status?: string;
+  color?: string | null;
 }
 
 export function PlanForm({
@@ -59,6 +61,7 @@ export function PlanForm({
     const startDate = String(fd.get("startDate") ?? "") || null;
     const endDate = String(fd.get("endDate") ?? "") || null;
     const status = String(fd.get("status") ?? "not_started");
+    const color = String(fd.get("color") ?? "").trim() || null;
 
     const payload = {
       title,
@@ -67,6 +70,7 @@ export function PlanForm({
       parentPlanId,
       startDate,
       endDate,
+      color,
       ...(isEdit && { status }),
     };
 
@@ -117,6 +121,7 @@ export function PlanForm({
         onChange={setParentPlanId}
         excludePlanId={plan?.id}
       />
+      <PlanColorPicker defaultValue={plan?.color} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Input
           name="startDate"
