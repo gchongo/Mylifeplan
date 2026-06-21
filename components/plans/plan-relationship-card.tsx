@@ -6,9 +6,15 @@ import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
 import type { PlanRelationNode } from "@/lib/plan-relationship";
 import { cn } from "@/lib/utils";
 
-function RelationArrow() {
+function RelationArrow({ muted = false }: { muted?: boolean }) {
   return (
-    <div className="flex justify-center py-1 text-gray-300" aria-hidden>
+    <div
+      className={cn(
+        "flex justify-center py-1",
+        muted ? "text-gray-200 dark:text-gray-700" : "text-gray-300 dark:text-gray-600",
+      )}
+      aria-hidden
+    >
       <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" d="M12 5v14M7 14l5 5 5-5" />
       </svg>
@@ -29,19 +35,29 @@ function RelationNodeRow({
 
   const inner = (
     <>
-      <span className="min-w-0 flex-1 truncate text-sm">{node.title}</span>
-      <TaskStatusIndicator status={node.status} overdue={node.overdue} size="xs" />
+      <span
+        className={cn(
+          "min-w-0 flex-1 truncate",
+          variant === "current" && "text-base font-semibold",
+          variant !== "current" && "text-xs font-normal",
+        )}
+      >
+        {node.title}
+      </span>
+      <span className={cn("shrink-0", variant !== "current" && "opacity-55")}>
+        <TaskStatusIndicator status={node.status} overdue={node.overdue} size="xs" />
+      </span>
     </>
   );
 
   const className = cn(
-    "flex w-full items-center justify-between gap-2 px-3 py-2 text-left",
+    "flex w-full items-center justify-between gap-2 text-left transition-[opacity,background-color,box-shadow] duration-200 ease-out",
     variant === "current" &&
-      "rounded-lg border-2 border-brand-200 bg-brand-50/60 font-medium text-gray-900 dark:border-brand-800 dark:bg-brand-950/40 dark:text-gray-100",
+      "rounded-full border-2 border-brand-400 bg-brand-50/75 px-4 py-2.5 text-gray-900 shadow-sm dark:border-brand-500 dark:bg-brand-950/45 dark:text-gray-50",
     variant === "ancestor" &&
-      "rounded-lg border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-200 dark:hover:bg-gray-800",
+      "rounded-lg border border-gray-200/70 bg-gray-50/35 px-3 py-1.5 text-gray-500 opacity-70 hover:border-gray-300 hover:bg-gray-100/70 hover:text-gray-700 hover:opacity-100 dark:border-gray-700/60 dark:bg-gray-900/25 dark:text-gray-400 dark:hover:bg-gray-800/50 dark:hover:text-gray-200",
     variant === "child" &&
-      "rounded-lg border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800",
+      "rounded-lg border border-gray-200/70 bg-white/40 px-3 py-1.5 text-gray-500 opacity-70 hover:border-gray-300 hover:bg-gray-50/90 hover:text-gray-700 hover:opacity-100 dark:border-gray-700/60 dark:bg-gray-900/20 dark:text-gray-400 dark:hover:bg-gray-800/45 dark:hover:text-gray-200",
   );
 
   if (clickable) {
@@ -85,15 +101,17 @@ export function PlanRelationshipCard({
         {ancestors.map((node) => (
           <div key={node.id}>
             <RelationNodeRow node={node} variant="ancestor" onNavigate={onNavigatePlan} />
-            <RelationArrow />
+            <RelationArrow muted />
           </div>
         ))}
 
-        <RelationNodeRow node={currentPlan} variant="current" />
+        <div key={currentPlan.id} className="transition-opacity duration-200">
+          <RelationNodeRow node={currentPlan} variant="current" />
+        </div>
 
         {childPlans.length > 0 && (
           <>
-            <RelationArrow />
+            <RelationArrow muted />
             <div className="space-y-2">
               {childPlans.map((node) => (
                 <RelationNodeRow key={node.id} node={node} variant="child" onNavigate={onNavigatePlan} />
