@@ -3,7 +3,7 @@ import { nextStickyColor, defaultStickyPosition } from "@/lib/memo-sticky";
 import { parseDateOnly } from "@/lib/dates";
 import { prisma } from "@/lib/db";
 import { syncMemoForPlan } from "@/lib/services/memo-sync";
-import { updatePlan } from "@/lib/services/plan";
+import { createPlan, updatePlan } from "@/lib/services/plan";
 import { writeFeed } from "@/lib/services/feed";
 
 export async function createStandaloneMemo(
@@ -202,6 +202,44 @@ export async function archiveMemoById(userId: string, memoId: string) {
       content: memo.title,
     });
   });
+}
+
+export async function assignMemoToPlan(
+  userId: string,
+  memoId: string,
+  input: {
+    parentPlanId?: string | null;
+    startDate: string;
+    endDate?: string | null;
+  },
+) {
+  const memo = await prisma.memo.findFirst({
+    where: { id: memoId, userId, linkedPlanId: null },
+    include: { images: { orderBy: { createdAt: "asc" } } },
+  });
+  if (!memo) throw new Error("NOT_FOUND");
+
+  const startDate = input.startDate.trim();
+  if (!startDate) throw new Error("请设置开始时间");
+
+  let description = memo.body?.trim() || memo.description?.trim() || null;
+  if (memo.images.length > 0) {
+    const imageMd = memo.images.map((img) => `![](${img.url})`).join("\n\n");
+    description = description ? `${description}\n\n${imageMd}` : imageMd;
+  }
+
+  const plan = await createPlan(userId, {
+    title: memo.title.trim() || "新计划",
+    description,
+    type: "goal",
+    parentPlanId: input.parentPlanId || null,
+    startDate,
+    endDate: input.endDate?.trim() || null,
+  });
+
+  await prisma.memo.delete({ where: { id: memoId } });
+
+  return plan;
 }
 
 export async function deleteMemoById(userId: string, memoId: string) {

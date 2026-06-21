@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ErrorMessage, Loading } from "@/components/ui/feedback";
 import { StickyNote, type StickyNoteData } from "@/components/memos/sticky-note";
+import { StickyNoteAssignModal } from "@/components/memos/sticky-note-assign-modal";
 import { effectiveStickyPosition, nextStickyColor } from "@/lib/memo-sticky";
 
 type NoteState = StickyNoteData & { x: number; y: number };
@@ -14,6 +15,7 @@ export function StickyNoteBoard() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [assignNoteId, setAssignNoteId] = useState<string | null>(null);
   const maxZRef = useRef(1);
   const boardRef = useRef<HTMLDivElement>(null);
 
@@ -137,6 +139,26 @@ export function StickyNoteBoard() {
     }
   }
 
+  async function handleAssignSubmit(data: {
+    parentPlanId: string | null;
+    startDate: string;
+    endDate: string | null;
+  }) {
+    if (!assignNoteId) return;
+    const res = await fetch(`/api/memos/${assignNoteId}/assign-plan`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error ?? "分配失败");
+    setNotes((prev) => prev.filter((n) => n.id !== assignNoteId));
+    setAssignNoteId(null);
+    if (activeId === assignNoteId) setActiveId(null);
+  }
+
+  const assignNote = assignNoteId ? notes.find((n) => n.id === assignNoteId) : null;
+
   if (loading) return <Loading label="加载便签…" />;
 
   return (
@@ -198,10 +220,19 @@ export function StickyNoteBoard() {
               onMoveEnd={handleMoveEnd}
               onUpdate={handleUpdate}
               onDelete={handleDelete}
+              onAssign={(id) => setAssignNoteId(id)}
             />
           ))}
         </div>
       </div>
+
+      <StickyNoteAssignModal
+        key={assignNoteId ?? "closed"}
+        open={Boolean(assignNote)}
+        noteTitle={assignNote?.title ?? "便签"}
+        onClose={() => setAssignNoteId(null)}
+        onSubmit={handleAssignSubmit}
+      />
     </div>
   );
 }

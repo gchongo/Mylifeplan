@@ -33,6 +33,7 @@ interface StickyNoteProps {
   onMoveEnd: (id: string, x: number, y: number) => void;
   onUpdate: (id: string, patch: Partial<StickyNoteData & { content: string }>) => void;
   onDelete: (id: string) => void;
+  onAssign?: (id: string) => void;
 }
 
 export function StickyNote({
@@ -45,6 +46,7 @@ export function StickyNote({
   onMoveEnd,
   onUpdate,
   onDelete,
+  onAssign,
 }: StickyNoteProps) {
   const palette = stickyNoteColor(note.color);
   const [editing, setEditing] = useState(false);
@@ -136,6 +138,17 @@ export function StickyNote({
           })}
         </span>
         <div className="flex items-center gap-0.5" data-no-drag>
+          {onAssign && (
+            <button
+              type="button"
+              className="rounded p-1 opacity-60 hover:bg-black/5 hover:opacity-100"
+              title="分配到计划"
+              aria-label="分配到计划"
+              onClick={() => onAssign(note.id)}
+            >
+              <AssignIcon />
+            </button>
+          )}
           <button
             type="button"
             className="rounded p-1 opacity-60 hover:bg-black/5 hover:opacity-100"
@@ -215,6 +228,15 @@ export function StickyNote({
         )}
       </div>
     </div>
+  );
+}
+
+function AssignIcon() {
+  return (
+    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path strokeLinecap="round" d="M16 2v4M8 2v4M3 10h18" />
+    </svg>
   );
 }
 
