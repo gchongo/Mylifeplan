@@ -46,7 +46,7 @@ import {
   getPlanContributionBounds,
   isDateWithinPlanSpan,
 } from "@/lib/gantt-plan-bind";
-import { contributionsForGanttRow, groupedRootNeedsContributionLane } from "@/lib/gantt-contribution-display";
+import { contributionsForGanttRow } from "@/lib/gantt-contribution-display";
 import {
   getPlanBarAppearance,
   getPlanLabelAppearance,
@@ -66,8 +66,6 @@ const ROW_HEIGHT = 28;
 const ROW_HEIGHT_CHILD = 28;
 /** 有展开子计划的一级计划行：与组框标题标签同高 */
 const ROW_HEIGHT_ROOT_GROUPED = GROUP_TAB_HEIGHT;
-/** 一级计划展开且有本计划贡献点时：tab + 贡献条带，仍占同一行 */
-const ROW_HEIGHT_ROOT_GROUPED_CONTRIB = GROUP_TAB_HEIGHT + ROW_HEIGHT_CHILD;
 const ROW_GROUP_GAP = 12;
 const DEFAULT_LABEL_WIDTH = 200;
 const MIN_LABEL_WIDTH = 120;
@@ -118,8 +116,6 @@ interface GanttRow {
   height: number;
   gapBefore: number;
   rootId: string;
-  /** 组框 tab 下方同列展示本计划贡献点 */
-  rootContribStrip?: boolean;
 }
 
 function computeRowsTotalHeight(rows: GanttRow[]) {
@@ -150,14 +146,9 @@ function planDepth(itemId: string, byId: Map<string, GanttItem>): number {
   return depth;
 }
 
-function buildPlanTreeRows(
-  plans: GanttItem[],
-  expanded: Set<string>,
-  contributions: GanttContribution[] = [],
-): GanttRow[] {
+function buildPlanTreeRows(plans: GanttItem[], expanded: Set<string>): GanttRow[] {
   const planIds = new Set(plans.map((p) => p.id));
   const byParent = new Map<string | null, GanttItem[]>();
-  const byId = new Map(plans.map((p) => [p.id, p]));
 
   for (const plan of plans) {
     if (plan.parentId) {
@@ -172,34 +163,6 @@ function buildPlanTreeRows(
     list.sort((a, b) => a.startDate.localeCompare(b.startDate));
   }
 
-  const baseRows = buildPlanTreeRowsWalk(byParent, expanded, new Set());
-  const visibleRowIds = new Set(baseRows.map((r) => r.item.id));
-  const rootContribStripRoots = new Set<string>();
-  for (const row of baseRows) {
-    if (row.depth !== 0 || !expanded.has(row.item.id)) continue;
-    const childCount = byParent.get(row.item.id)?.length ?? 0;
-    if (childCount === 0) continue;
-    if (
-      groupedRootNeedsContributionLane(
-        row.item.id,
-        contributions,
-        byId,
-        expanded,
-        visibleRowIds,
-      )
-    ) {
-      rootContribStripRoots.add(row.item.id);
-    }
-  }
-
-  return buildPlanTreeRowsWalk(byParent, expanded, rootContribStripRoots);
-}
-
-function buildPlanTreeRowsWalk(
-  byParent: Map<string | null, GanttItem[]>,
-  expanded: Set<string>,
-  rootContribStripRoots: Set<string>,
-): GanttRow[] {
   const rows: GanttRow[] = [];
 
   function walk(parentId: string | null, depth: number, rootId: string | null) {
@@ -207,22 +170,17 @@ function buildPlanTreeRowsWalk(
       const currentRoot = depth === 0 ? item.id : rootId!;
       const childCount = byParent.get(item.id)?.length ?? 0;
       const willExpand = expanded.has(item.id) && childCount > 0;
-      const rootContribStrip =
-        depth === 0 && willExpand && rootContribStripRoots.has(item.id);
       rows.push({
         item,
         depth,
         height:
           depth === 0 && willExpand
-            ? rootContribStrip
-              ? ROW_HEIGHT_ROOT_GROUPED_CONTRIB
-              : ROW_HEIGHT_ROOT_GROUPED
+            ? ROW_HEIGHT_ROOT_GROUPED
             : depth > 0
               ? ROW_HEIGHT_CHILD
               : ROW_HEIGHT,
         gapBefore: depth === 0 && rows.length > 0 ? ROW_GROUP_GAP : 0,
         rootId: currentRoot,
-        rootContribStrip,
       });
 
       if (willExpand) {
@@ -391,8 +349,8 @@ export const GanttChart = forwardRef<
   );
 
   const rows = useMemo(
-    () => buildPlanTreeRows(filteredPlans, expanded, contributions),
-    [filteredPlans, expanded, contributions],
+    () => buildPlanTreeRows(filteredPlans, expanded),
+    [filteredPlans, expanded],
   );
 
   const visibleRowIds = useMemo(() => new Set(rows.map((r) => r.item.id)), [rows]);
@@ -969,6 +927,8 @@ export const GanttChart = forwardRef<
       const frameLeft = Math.max(left, 0);
       const frameWidth = Math.max(width, 8);
       const frameHeight = group.height + GROUP_FRAME_BOTTOM_PAD;
+      const bodyTop = GROUP_TAB_HEIGHT;
+      const bodyHeight = Math.max(frameHeight - bodyTop, 0);
 
       return (
         <div
@@ -995,9 +955,10 @@ export const GanttChart = forwardRef<
             {rootItem.title}
           </div>
           <div
-            className="absolute bottom-0 left-0 right-0 border-2"
+            className="absolute left-0 right-0 border-2"
             style={{
-              top: GROUP_TAB_HEIGHT - 2,
+              top: bodyTop,
+              height: bodyHeight,
               borderColor,
               backgroundColor: bodyBg,
               borderBottomLeftRadius: 6,
@@ -1035,19 +996,13 @@ export const GanttChart = forwardRef<
     const parentPreview = parentPlan ? barPreview.get(parentPlan.id) : undefined;
     const minStartDate = parentPreview?.start ?? parentPlan?.startDate;
     const contribBounds = contributionBoundsByPlan.get(item.id);
-    const rowContributions =
-      frameRoot && !row.rootContribStrip
-        ? []
-        : contributionsForGanttRow(
-            item.id,
-            contributions,
-            planById,
-            expanded,
-            visibleRowIds,
-          );
-    const contribStrip = row.rootContribStrip
-      ? { top: GROUP_TAB_HEIGHT, height: ROW_HEIGHT_CHILD }
-      : undefined;
+    const rowContributions = contributionsForGanttRow(
+      item.id,
+      contributions,
+      planById,
+      expanded,
+      visibleRowIds,
+    );
 
     return (
       <div
@@ -1097,7 +1052,7 @@ export const GanttChart = forwardRef<
             left,
             width,
             item.id,
-            contribStrip,
+            frameRoot ? { top: 0, height: GROUP_TAB_HEIGHT } : undefined,
           )}
       </div>
     );
