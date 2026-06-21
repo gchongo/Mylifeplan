@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PanelExpandButton } from "@/components/home/panel-expand-button";
@@ -18,25 +19,44 @@ export function GanttPanelLive({
   const ganttRef = useRef<GanttChartHandle>(null);
   const [scale, setScale] = useState<GanttScaleId>("month");
 
-  return (
-    <Card className={cn("flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden", className)}>
-      {!fullPage && (
-        <CardHeader className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 space-y-0 pb-2">
-          <CardTitle className="truncate">甘特图 · 看全局</CardTitle>
-          <GanttToolbarControls
-            scale={scale}
-            onScaleChange={setScale}
-            onPrev={() => ganttRef.current?.navigatePrev()}
-            onNext={() => ganttRef.current?.navigateNext()}
-            onToday={() => ganttRef.current?.goToday()}
-          />
+  const header = (
+    <CardHeader className="flex shrink-0 flex-row items-center gap-3 space-y-0 pb-2 pt-4">
+      <CardTitle className="shrink-0 text-base">甘特图 · 看全局</CardTitle>
+      <div className="ml-auto flex shrink-0 items-center gap-2">
+        <GanttToolbarControls
+          scale={scale}
+          onScaleChange={setScale}
+          onPrev={() => ganttRef.current?.navigatePrev()}
+          onNext={() => ganttRef.current?.navigateNext()}
+          onToday={() => ganttRef.current?.goToday()}
+        />
+        {fullPage ? (
+          <Link
+            href="/calendar"
+            className="hidden rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800 sm:inline-block"
+          >
+            在日历中管理
+          </Link>
+        ) : (
           <PanelExpandButton href="/gantt" label="甘特图" />
-        </CardHeader>
+        )}
+      </div>
+    </CardHeader>
+  );
+
+  return (
+    <Card
+      className={cn(
+        "flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden",
+        fullPage && "rounded-lg border border-gray-200 shadow-sm dark:border-gray-800",
+        className,
       )}
+    >
+      {header}
       <CardContent
         className={cn(
           "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
-          fullPage ? "p-0" : "px-2 pb-2 pt-0",
+          fullPage ? "p-0 pt-0" : "px-2 pb-2 pt-0",
         )}
       >
         <GanttChart ref={ganttRef} fullPage={fullPage} scale={scale} onScaleChange={setScale} />

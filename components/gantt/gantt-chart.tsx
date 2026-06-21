@@ -10,11 +10,15 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  GANTT_TITLE_COLUMN_CLASS,
+  GANTT_TITLE_COLUMN_HEADER_CLASS,
+  GANTT_TITLE_ROW_CLASS,
+} from "@/lib/gantt-title-column";
 import { GanttPanelCollapseChevron, GanttPanelExpandChevron } from "@/components/gantt/gantt-panel-chevron";
 import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribution-drawer";
 import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
 import { GanttPlanDrawerPanel } from "@/components/gantt/gantt-plan-drawer";
-import { GanttToolbar } from "@/components/gantt/gantt-toolbar";
 import { PlanFormModal } from "@/components/gantt/plan-form-modal";
 import { GanttTaskListControls } from "@/components/gantt/gantt-task-list-controls";
 import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
@@ -53,7 +57,7 @@ const MAX_LABEL_WIDTH = 560;
 const GANTT_LABEL_WIDTH_KEY = "mylifeplan-gantt-label-width";
 const GANTT_LABEL_VISIBLE_KEY = "mylifeplan-gantt-label-visible";
 const FOOTER_HEIGHT = 48;
-const TIMELINE_HEADER_HEIGHT = 52;
+const TIMELINE_HEADER_HEIGHT = 28;
 
 function readStoredLabelWidth() {
   if (typeof window === "undefined") return DEFAULT_LABEL_WIDTH;
@@ -573,22 +577,6 @@ export const GanttChart = forwardRef<
     });
   }
 
-  function renderToolbar() {
-    if (!fullPage) return null;
-    return (
-      <div className="shrink-0 border-b border-gray-200 bg-white">
-        <GanttToolbar
-          periodLabel={layout.periodLabel}
-          scale={scale}
-          onScaleChange={changeScale}
-          onPrev={navigatePrev}
-          onNext={navigateNext}
-          onToday={goToday}
-        />
-      </div>
-    );
-  }
-
   function renderLabelResizeSplitter(totalHeight: number) {
     if (!labelVisible) return null;
     return (
@@ -602,8 +590,8 @@ export const GanttChart = forwardRef<
         aria-valuemax={MAX_LABEL_WIDTH}
         className={cn(
           "absolute z-[60] cursor-col-resize touch-none select-none",
-          "hover:bg-brand-500/10",
-          isResizingLabel && "bg-brand-500/20",
+          "border-r-2 border-amber-300/50 hover:border-brand-400/80 dark:border-amber-800/60",
+          isResizingLabel && "border-brand-500 bg-brand-500/10",
         )}
         style={{ left: labelWidth - 4, top: 0, width: 8, height: totalHeight }}
         onMouseDown={(e) => {
@@ -655,7 +643,10 @@ export const GanttChart = forwardRef<
       <div className="sticky top-0 z-30 flex border-b border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
         {labelVisible ? (
           <div
-            className="relative sticky left-0 z-40 flex shrink-0 flex-col border-r border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900"
+            className={cn(
+              "relative sticky left-0 z-40 flex shrink-0 flex-col",
+              GANTT_TITLE_COLUMN_HEADER_CLASS,
+            )}
             style={{ width: labelWidth, minHeight: TIMELINE_HEADER_HEIGHT }}
           >
             {renderListHeaderControls()}
@@ -663,18 +654,7 @@ export const GanttChart = forwardRef<
         ) : (
           renderCollapsedLabelRail(TIMELINE_HEADER_HEIGHT)
         )}
-        <div style={{ width: timelineWidth }} className="relative shrink-0">
-          <div className="flex border-b border-gray-100 bg-gray-50 text-xs text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
-            {layout.topSpans.map((span) => (
-              <div
-                key={span.key}
-                className={cn("bg-gray-50 py-1.5 text-center dark:bg-gray-900", GRID_BORDER)}
-                style={{ width: span.width }}
-              >
-                {span.label}
-              </div>
-            ))}
-          </div>
+        <div style={{ width: timelineWidth }} className="relative shrink-0 bg-white dark:bg-gray-950">
           <div className="flex bg-white text-xs dark:bg-gray-950">
             {layout.columns.map((col) => {
               const isToday = isTodayInColumn(today, col);
@@ -745,7 +725,7 @@ export const GanttChart = forwardRef<
       return (
         <div
           key={`add-${row.parentPlanId}-${idx}`}
-          className="flex items-center border-b border-dashed border-gray-100 bg-purple-50/50 px-2 dark:border-gray-800 dark:bg-purple-950/30"
+          className="flex items-center border-b border-dashed border-amber-100/80 bg-amber-100/40 px-2 dark:border-amber-900/40 dark:bg-amber-950/30"
           style={{ height: ROW_HEIGHT, paddingLeft: 12 + row.depth * 16 }}
         >
           <button
@@ -772,8 +752,8 @@ export const GanttChart = forwardRef<
       <div
         key={`label-${item.id}-${idx}`}
         className={cn(
-          "flex items-center gap-1 border-b border-dashed border-gray-100 border-l-2 px-2 dark:border-gray-800",
-          statusStyle.rowBg,
+          "flex items-center gap-1 border-l-2 px-2",
+          GANTT_TITLE_ROW_CLASS,
           statusStyle.stripe,
         )}
         style={{ height: ROW_HEIGHT, paddingLeft: 12 + row.depth * 16 }}
@@ -937,7 +917,6 @@ export const GanttChart = forwardRef<
       <>
         {wrapWithDrawers(
           <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-            {renderToolbar()}
             <LoadingView label="加载甘特图…" />
           </div>,
         )}
@@ -951,7 +930,6 @@ export const GanttChart = forwardRef<
       <>
         {wrapWithDrawers(
           <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-            {renderToolbar()}
             <EmptyState
               title="暂无时间条"
               description="创建带开始日期的计划后，会在此展示。"
@@ -977,13 +955,9 @@ export const GanttChart = forwardRef<
           ref={containerRef}
           className={cn(
             "flex h-full min-h-0 w-full max-w-full min-w-0 flex-1 flex-col overflow-hidden",
-            fullPage
-              ? "rounded-lg border border-gray-200 bg-white"
-              : "rounded-none border-0 bg-transparent shadow-none",
+            "rounded-none border-0 bg-transparent shadow-none",
           )}
         >
-          {renderToolbar()}
-
           <div
             ref={scrollRef}
             onMouseDown={handlePanStart}
@@ -1004,7 +978,7 @@ export const GanttChart = forwardRef<
                   <div key={`row-${idx}`} className="relative flex">
                     {labelVisible ? (
                       <div
-                        className="sticky left-0 z-20 shrink-0 border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
+                        className={cn("sticky left-0 z-20 shrink-0", GANTT_TITLE_COLUMN_CLASS)}
                         style={{ width: labelWidth }}
                       >
                         {renderLabel(row, idx)}
@@ -1019,7 +993,7 @@ export const GanttChart = forwardRef<
                 <div className="relative flex">
                   {labelVisible ? (
                     <div
-                      className="sticky left-0 z-20 shrink-0 border-r border-gray-200 bg-white p-2 dark:border-gray-800 dark:bg-gray-900"
+                      className={cn("sticky left-0 z-20 shrink-0 p-2", GANTT_TITLE_COLUMN_CLASS)}
                       style={{ width: labelWidth }}
                     >
                       <Button

@@ -51,7 +51,7 @@ export function GanttTaskListControls({
   }
 
   return (
-    <div className="flex items-center gap-1 border-b border-gray-100 px-2 py-1.5 dark:border-gray-800">
+    <div className="flex items-center gap-1 border-b border-amber-200/70 px-2 py-1.5 dark:border-amber-900/50">
       {onToggleLabelPanel && labelVisible && (
         <button
           type="button"
