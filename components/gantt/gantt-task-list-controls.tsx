@@ -17,6 +17,7 @@ export function GanttTaskListControls({
   onStatusFilterChange,
   labelVisible = true,
   onToggleLabelPanel,
+  drawerTheme = false,
 }: {
   allExpanded: boolean;
   onToggleExpandAll: () => void;
@@ -25,6 +26,7 @@ export function GanttTaskListControls({
   onStatusFilterChange: (next: Set<VisualStatusKey>) => void;
   labelVisible?: boolean;
   onToggleLabelPanel?: () => void;
+  drawerTheme?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -51,17 +53,17 @@ export function GanttTaskListControls({
   }
 
   return (
-    <div className="flex items-center gap-1 border-b border-amber-200/70 px-2 py-1.5 dark:border-amber-900/50">
+    <div className="flex items-center gap-1 border-b border-blue-200/70 px-2 py-1.5 dark:border-blue-900/50">
       {onToggleLabelPanel && labelVisible && (
         <button
           type="button"
           data-no-pan
           onClick={onToggleLabelPanel}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
-          title="隐藏计划列表"
-          aria-label="隐藏计划列表"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-blue-700 hover:bg-blue-200/50 dark:text-blue-200 dark:hover:bg-blue-900/50"
+          title="收起计划列表"
+          aria-label="收起计划列表"
         >
-          <GanttPanelCollapseChevron />
+          <GanttPanelCollapseChevron className="text-blue-600 dark:text-blue-300" />
         </button>
       )}
 
@@ -70,7 +72,7 @@ export function GanttTaskListControls({
           type="button"
           data-no-pan
           onClick={onToggleExpandAll}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-blue-700/80 hover:bg-blue-200/40 dark:text-blue-200/80 dark:hover:bg-blue-900/40"
           title={allExpanded ? "隐藏所有子任务" : "展开所有子任务"}
           aria-label={allExpanded ? "隐藏所有子任务" : "展开所有子任务"}
         >
@@ -93,8 +95,10 @@ export function GanttTaskListControls({
           className={cn(
             "flex w-full items-center justify-between gap-1 rounded-md border px-2 py-1 text-xs",
             filterActive
-              ? "border-brand-300 bg-brand-50 text-brand-700"
-              : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50",
+              ? "border-blue-400 bg-blue-100 text-blue-800 dark:border-blue-600 dark:bg-blue-900/50 dark:text-blue-100"
+              : drawerTheme
+                ? "border-blue-200/80 bg-white/80 text-blue-900 hover:bg-white dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100"
+                : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50",
           )}
           aria-label="按状态筛选"
         >

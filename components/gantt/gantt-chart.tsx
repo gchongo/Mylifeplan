@@ -11,16 +11,14 @@ import {
   useState,
 } from "react";
 import {
-  GANTT_COLLAPSED_RAIL_WIDTH,
-  GANTT_TITLE_COLUMN_CLASS,
+  GANTT_DRAWER_TOGGLE_WIDTH,
   GANTT_TITLE_ROW_CLASS,
 } from "@/lib/gantt-title-column";
-import { GanttPanelCollapseChevron, GanttPanelExpandChevron } from "@/components/gantt/gantt-panel-chevron";
+import { GanttDrawerOpenTab, GanttTitleDrawer, GanttTitleDrawerControls, GanttTitleDrawerFooter } from "@/components/gantt/gantt-title-drawer";
 import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribution-drawer";
 import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
 import { GanttPlanDrawerPanel } from "@/components/gantt/gantt-plan-drawer";
 import { PlanFormModal } from "@/components/gantt/plan-form-modal";
-import { GanttTaskListControls } from "@/components/gantt/gantt-task-list-controls";
 import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
 import { Button, EmptyState, Loading as LoadingView } from "@/components/ui";
 import { DrawerLayout } from "@/components/ui/drawer";
@@ -235,7 +233,7 @@ export const GanttChart = forwardRef<
   const [labelVisible, setLabelVisible] = useState(true);
   const [isResizingLabel, setIsResizingLabel] = useState(false);
 
-  const effectiveLabelWidth = labelVisible ? labelWidth : GANTT_COLLAPSED_RAIL_WIDTH;
+  const effectiveLabelWidth = labelVisible ? labelWidth : 0;
 
   useEffect(() => {
     setLabelWidth(readStoredLabelWidth());
@@ -244,9 +242,9 @@ export const GanttChart = forwardRef<
 
   useEffect(() => {
     onTitleColumnLayout?.({
-      width: labelWidth,
+      width: labelVisible ? labelWidth : 0,
       visible: labelVisible,
-      collapsedWidth: GANTT_COLLAPSED_RAIL_WIDTH,
+      collapsedWidth: GANTT_DRAWER_TOGGLE_WIDTH,
     });
   }, [labelWidth, labelVisible, onTitleColumnLayout]);
 
@@ -592,139 +590,43 @@ export const GanttChart = forwardRef<
     });
   }
 
-  function renderLabelResizeSplitter(totalHeight: number) {
-    if (!labelVisible) return null;
+  function renderTimelineHeaderOnly() {
     return (
       <div
-        data-no-pan
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="调整计划列表宽度"
-        aria-valuenow={labelWidth}
-        aria-valuemin={MIN_LABEL_WIDTH}
-        aria-valuemax={MAX_LABEL_WIDTH}
-        className={cn(
-          "absolute z-[60] cursor-col-resize touch-none select-none",
-          "border-r-2 border-amber-300/50 hover:border-brand-400/80 dark:border-amber-800/60",
-          isResizingLabel && "border-brand-500 bg-brand-500/10",
-        )}
-        style={{ left: labelWidth - 4, top: 0, width: 8, height: totalHeight }}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          startLabelResize(e.clientX);
-        }}
-      />
-    );
-  }
-
-  function renderCollapsedLabelHeader() {
-    return (
-      <div
-        className={cn(
-          "sticky left-0 z-40 flex shrink-0 flex-col items-center justify-center",
-          GANTT_TITLE_COLUMN_CLASS,
-        )}
-        style={{ width: GANTT_COLLAPSED_RAIL_WIDTH, minHeight: TIMELINE_HEADER_HEIGHT }}
+        className="sticky top-0 z-20 flex shrink-0 border-b border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900"
+        style={{ width: timelineWidth, minHeight: TIMELINE_HEADER_HEIGHT }}
       >
-        <button
-          type="button"
-          data-no-pan
-          className="flex h-full w-full items-center justify-center hover:bg-amber-100/60 dark:hover:bg-amber-900/40"
-          title="显示计划列表"
-          aria-label="显示计划列表"
-          onClick={toggleLabelPanel}
-        >
-          <GanttPanelExpandChevron />
-        </button>
-      </div>
-    );
-  }
-
-  function renderCollapsedLabelSpacer(height: number) {
-    return (
-      <div
-        className="sticky left-0 z-20 shrink-0"
-        style={{ width: GANTT_COLLAPSED_RAIL_WIDTH, height }}
-        aria-hidden
-      />
-    );
-  }
-
-  function renderTitleColumnBackdrop(totalHeight: number) {
-    if (!labelVisible) return null;
-    return (
-      <div
-        className={cn("pointer-events-none absolute left-0 top-0 z-[5]", GANTT_TITLE_COLUMN_CLASS)}
-        style={{ width: labelWidth, height: totalHeight }}
-        aria-hidden
-      />
-    );
-  }
-
-  function renderListHeaderControls() {
-    return (
-      <GanttTaskListControls
-        allExpanded={allSubplansExpanded}
-        onToggleExpandAll={toggleExpandAll}
-        showExpandToggle={expandablePlanIds.length > 0}
-        statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
-        labelVisible={labelVisible}
-        onToggleLabelPanel={toggleLabelPanel}
-      />
-    );
-  }
-
-  function renderTimelineHeader() {
-    return (
-      <div className="sticky top-0 z-30 flex border-b border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-        {labelVisible ? (
-          <div
-            className={cn(
-              "relative sticky left-0 z-40 flex shrink-0 flex-col",
-              GANTT_TITLE_COLUMN_CLASS,
-            )}
-            style={{ width: labelWidth, minHeight: TIMELINE_HEADER_HEIGHT }}
-          >
-            {renderListHeaderControls()}
-          </div>
-        ) : (
-          renderCollapsedLabelHeader()
-        )}
-        <div style={{ width: timelineWidth }} className="relative shrink-0 bg-white dark:bg-gray-950">
-          <div className="flex bg-white text-xs dark:bg-gray-950">
-            {layout.columns.map((col) => {
-              const isToday = isTodayInColumn(today, col);
-              return (
-                <div
-                  key={col.key}
-                  className={cn(
-                    "bg-white py-1 text-center dark:bg-gray-950",
-                    GRID_BORDER,
-                    col.isWeekend && "bg-gray-50 dark:bg-gray-900/70",
-                    isToday && "ring-1 ring-inset ring-red-200/80 dark:ring-red-500/40",
-                  )}
-                  style={{ width: col.width }}
-                >
-                  {isToday && (scale === "week" || scale === "month") ? (
-                    <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-gray-200 px-1 text-[10px] font-semibold text-gray-800 dark:bg-gray-700 dark:text-gray-100">
-                      {col.headerBottom.replace(/^\S+\s/, "")}
-                    </span>
-                  ) : (
-                    <span
-                      className={cn(
-                        "text-gray-600 dark:text-gray-300",
-                        isToday && "font-semibold text-red-600 dark:text-red-400",
-                      )}
-                    >
-                      {scale === "day" ? formatHourLabel(parseInt(col.headerBottom, 10)) : col.headerBottom}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+        <div className="flex w-full bg-white text-xs dark:bg-gray-950">
+          {layout.columns.map((col) => {
+            const isToday = isTodayInColumn(today, col);
+            return (
+              <div
+                key={col.key}
+                className={cn(
+                  "bg-white py-1 text-center dark:bg-gray-950",
+                  GRID_BORDER,
+                  col.isWeekend && "bg-gray-50 dark:bg-gray-900/70",
+                  isToday && "ring-1 ring-inset ring-red-200/80 dark:ring-red-500/40",
+                )}
+                style={{ width: col.width }}
+              >
+                {isToday && (scale === "week" || scale === "month") ? (
+                  <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-gray-200 px-1 text-[10px] font-semibold text-gray-800 dark:bg-gray-700 dark:text-gray-100">
+                    {col.headerBottom.replace(/^\S+\s/, "")}
+                  </span>
+                ) : (
+                  <span
+                    className={cn(
+                      "text-gray-600 dark:text-gray-300",
+                      isToday && "font-semibold text-red-600 dark:text-red-400",
+                    )}
+                  >
+                    {scale === "day" ? formatHourLabel(parseInt(col.headerBottom, 10)) : col.headerBottom}
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -763,13 +665,13 @@ export const GanttChart = forwardRef<
       return (
         <div
           key={`add-${row.parentPlanId}-${idx}`}
-          className="flex items-center border-b border-dashed border-amber-100/80 bg-amber-100/40 px-2 dark:border-amber-900/40 dark:bg-amber-950/30"
+          className="flex items-center border-b border-dashed border-blue-200/60 bg-blue-100/50 px-2 dark:border-blue-900/40 dark:bg-blue-900/25"
           style={{ height: ROW_HEIGHT, paddingLeft: 12 + row.depth * 16 }}
         >
           <button
             type="button"
             onClick={() => openCreatePlan(row.parentPlanId)}
-            className="text-xs text-brand-600 hover:underline dark:text-brand-400"
+            className="text-xs text-blue-700 hover:underline dark:text-blue-300"
           >
             + 添加子计划
           </button>
@@ -799,7 +701,7 @@ export const GanttChart = forwardRef<
         {showToggle ? (
           <button
             type="button"
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-blue-400 hover:bg-blue-200/40 dark:text-blue-300 dark:hover:bg-blue-900/40"
             onClick={() => toggleExpand(item.id)}
             aria-label={isExpanded ? "折叠" : "展开"}
           >
@@ -813,7 +715,7 @@ export const GanttChart = forwardRef<
         <button
           type="button"
           onClick={() => openPlan(item.id)}
-          className="min-w-0 flex-1 whitespace-normal break-words text-left text-sm leading-snug text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400"
+          className="min-w-0 flex-1 whitespace-normal break-words text-left text-sm leading-snug text-blue-950 hover:text-blue-700 dark:text-blue-50 dark:hover:text-blue-200"
           title={item.title}
         >
           {item.title}
@@ -1005,49 +907,59 @@ export const GanttChart = forwardRef<
               isPanning ? "cursor-grabbing select-none" : !isResizingLabel && "cursor-grab",
             )}
           >
-            <div className="relative" style={{ width: totalWidth }}>
-              {renderTitleColumnBackdrop(TIMELINE_HEADER_HEIGHT + minBodyHeight)}
-              {renderLabelResizeSplitter(TIMELINE_HEADER_HEIGHT + minBodyHeight)}
-              {renderTimelineHeader()}
+            <div className="relative flex min-h-0" style={{ width: totalWidth }}>
+              {!labelVisible && (
+                <GanttDrawerOpenTab
+                  headerHeight={TIMELINE_HEADER_HEIGHT}
+                  onOpen={toggleLabelPanel}
+                />
+              )}
 
-              <div className="relative" style={{ minHeight: minBodyHeight }}>
-                {renderGridBackground(minBodyHeight)}
-
-                {rows.map((row, idx) => (
-                  <div key={`row-${idx}`} className="relative flex">
-                    {labelVisible ? (
-                      <div
-                        className="relative sticky left-0 z-20 shrink-0"
-                        style={{ width: labelWidth }}
-                      >
-                        {renderLabel(row, idx)}
-                      </div>
-                    ) : (
-                      renderCollapsedLabelSpacer(ROW_HEIGHT)
+              <div className="flex shrink-0">
+                {labelVisible && (
+                  <GanttTitleDrawer
+                    width={labelWidth}
+                    headerHeight={TIMELINE_HEADER_HEIGHT}
+                    bodyHeight={Math.max(
+                      rows.length * ROW_HEIGHT,
+                      minBodyHeight - TIMELINE_HEADER_HEIGHT - FOOTER_HEIGHT,
                     )}
-                    <div className="relative z-10 shrink-0">{renderBar(row, idx)}</div>
-                  </div>
-                ))}
+                    footerHeight={FOOTER_HEIGHT}
+                    isResizing={isResizingLabel}
+                    onResizeStart={startLabelResize}
+                    header={
+                      <GanttTitleDrawerControls
+                        allExpanded={allSubplansExpanded}
+                        onToggleExpandAll={toggleExpandAll}
+                        showExpandToggle={expandablePlanIds.length > 0}
+                        statusFilter={statusFilter}
+                        onStatusFilterChange={setStatusFilter}
+                        onCloseDrawer={toggleLabelPanel}
+                      />
+                    }
+                    body={rows.map((row, idx) => renderLabel(row, idx))}
+                    footer={<GanttTitleDrawerFooter onCreatePlan={() => openCreatePlan()} />}
+                  />
+                )}
 
-                <div className="relative flex">
-                  {labelVisible ? (
-                    <div
-                      className="relative sticky left-0 z-20 shrink-0 p-2"
-                      style={{ width: labelWidth }}
-                    >
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        type="button"
-                        data-no-pan
-                        onClick={() => openCreatePlan()}
-                      >
-                        + 新建
-                      </Button>
-                    </div>
-                  ) : (
-                    renderCollapsedLabelSpacer(FOOTER_HEIGHT)
-                  )}
+                <div className="flex shrink-0 flex-col">
+                  {renderTimelineHeaderOnly()}
+
+                  <div
+                    className="relative"
+                    style={{ minHeight: Math.max(rows.length * ROW_HEIGHT, minBodyHeight - TIMELINE_HEADER_HEIGHT - FOOTER_HEIGHT) }}
+                  >
+                    {renderGridBackground(
+                      Math.max(rows.length * ROW_HEIGHT, minBodyHeight - TIMELINE_HEADER_HEIGHT - FOOTER_HEIGHT),
+                    )}
+
+                    {rows.map((row, idx) => (
+                      <div key={`row-${idx}`} className="relative">
+                        {renderBar(row, idx)}
+                      </div>
+                    ))}
+                  </div>
+
                   <div style={{ width: timelineWidth, height: FOOTER_HEIGHT }} />
                 </div>
               </div>
