@@ -52,14 +52,19 @@ export function GanttTaskListControls({
     onStatusFilterChange(new Set(STATUS_LEGEND));
   }
 
+  const compact = drawerTheme;
+
   return (
-    <div className="flex items-center gap-1 border-b border-blue-200/70 px-2 py-1.5 dark:border-blue-900/50">
+    <div className={cn("flex h-full w-full items-center gap-1 px-2", !compact && "border-b border-blue-200/70 py-1.5 dark:border-blue-900/50")}>
       {onToggleLabelPanel && labelVisible && (
         <button
           type="button"
           data-no-pan
           onClick={onToggleLabelPanel}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-blue-700 hover:bg-blue-200/50 dark:text-blue-200 dark:hover:bg-blue-900/50"
+          className={cn(
+            "flex shrink-0 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800",
+            compact ? "h-6 w-6" : "h-7 w-7 text-blue-700 hover:bg-blue-200/50 dark:text-blue-200 dark:hover:bg-blue-900/50",
+          )}
           title="收起计划列表"
           aria-label="收起计划列表"
         >
@@ -72,7 +77,10 @@ export function GanttTaskListControls({
           type="button"
           data-no-pan
           onClick={onToggleExpandAll}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-blue-700/80 hover:bg-blue-200/40 dark:text-blue-200/80 dark:hover:bg-blue-900/40"
+          className={cn(
+            "flex shrink-0 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800",
+            compact ? "h-6 w-6" : "h-7 w-7 text-blue-700/80 hover:bg-blue-200/40 dark:text-blue-200/80 dark:hover:bg-blue-900/40",
+          )}
           title={allExpanded ? "隐藏所有子任务" : "展开所有子任务"}
           aria-label={allExpanded ? "隐藏所有子任务" : "展开所有子任务"}
         >
@@ -93,11 +101,12 @@ export function GanttTaskListControls({
           data-no-pan
           onClick={() => setOpen((v) => !v)}
           className={cn(
-            "flex w-full items-center justify-between gap-1 rounded-md border px-2 py-1 text-xs",
+            "flex w-full items-center justify-between gap-1 rounded-md border text-xs",
+            compact ? "h-6 px-1.5 py-0" : "px-2 py-1",
             filterActive
               ? "border-blue-400 bg-blue-100 text-blue-800 dark:border-blue-600 dark:bg-blue-900/50 dark:text-blue-100"
               : drawerTheme
-                ? "border-blue-200/80 bg-white/80 text-blue-900 hover:bg-white dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100"
+                ? "border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
                 : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50",
           )}
           aria-label="按状态筛选"

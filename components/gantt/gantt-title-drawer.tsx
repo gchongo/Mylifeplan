@@ -5,8 +5,8 @@ import { GanttTaskListControls } from "@/components/gantt/gantt-task-list-contro
 import { GanttPanelCollapseChevron, GanttPanelExpandChevron } from "@/components/gantt/gantt-panel-chevron";
 import {
   GANTT_DRAWER_TOGGLE_WIDTH,
+  GANTT_STICKY_HEADER_CLASS,
   GANTT_TITLE_DRAWER_CLASS,
-  GANTT_TITLE_DRAWER_HEADER_CLASS,
 } from "@/lib/gantt-title-column";
 import type { VisualStatusKey } from "@/lib/task-status-style";
 import { cn } from "@/lib/utils";
@@ -58,17 +58,18 @@ export function GanttTitleDrawer({
   footer: React.ReactNode;
   onResizeStart: (clientX: number) => void;
 }) {
-  const totalHeight = headerHeight + bodyHeight + footerHeight;
-
   return (
     <div
-      className={cn("relative sticky left-0 top-0 z-30 shrink-0", GANTT_TITLE_DRAWER_CLASS)}
-      style={{ width, height: totalHeight }}
+      className={cn("relative sticky left-0 z-30 flex shrink-0 flex-col", GANTT_TITLE_DRAWER_CLASS)}
+      style={{ width }}
     >
-      <div className={GANTT_TITLE_DRAWER_HEADER_CLASS} style={{ minHeight: headerHeight }}>
+      <div
+        className={cn(GANTT_STICKY_HEADER_CLASS, "items-center")}
+        style={{ height: headerHeight, minHeight: headerHeight }}
+      >
         {header}
       </div>
-      <div className="min-h-0 flex-1">{body}</div>
+      <div style={{ minHeight: bodyHeight }}>{body}</div>
       <div className="flex shrink-0 items-center px-2" style={{ height: footerHeight }}>
         {footer}
       </div>

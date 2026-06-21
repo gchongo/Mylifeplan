@@ -12,6 +12,7 @@ import {
 } from "react";
 import {
   GANTT_DRAWER_TOGGLE_WIDTH,
+  GANTT_STICKY_HEADER_CLASS,
   GANTT_TITLE_ROW_CLASS,
 } from "@/lib/gantt-title-column";
 import { GanttDrawerOpenTab, GanttTitleDrawer, GanttTitleDrawerControls, GanttTitleDrawerFooter } from "@/components/gantt/gantt-title-drawer";
@@ -588,8 +589,8 @@ export const GanttChart = forwardRef<
   function renderTimelineHeaderOnly() {
     return (
       <div
-        className="sticky top-0 z-20 flex shrink-0 border-b border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900"
-        style={{ width: timelineWidth, minHeight: TIMELINE_HEADER_HEIGHT }}
+        className={GANTT_STICKY_HEADER_CLASS}
+        style={{ width: timelineWidth, height: TIMELINE_HEADER_HEIGHT, minHeight: TIMELINE_HEADER_HEIGHT }}
       >
         <div className="flex w-full bg-white text-xs dark:bg-gray-950">
           {layout.columns.map((col) => {

@@ -1,3 +1,7 @@
+/** 计划列表头与时间轴日期行共用：垂直滚动时固定顶部、高度一致 */
+export const GANTT_STICKY_HEADER_CLASS =
+  "sticky top-0 z-20 flex shrink-0 border-b border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900";
+
 /** 甘特图左侧计划标题抽屉 */
 export const GANTT_TITLE_DRAWER_CLASS =
   "flex flex-col border-r border-blue-200 bg-blue-50 shadow-[2px_0_8px_rgba(37,99,235,0.08)] dark:border-blue-900/70 dark:bg-blue-950/55 dark:shadow-[2px_0_12px_rgba(0,0,0,0.35)]";
