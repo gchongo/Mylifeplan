@@ -8,14 +8,17 @@ import { handleProtectedRouteError } from "@/lib/api/route-auth";
 import { prisma } from "@/lib/db";
 import { createPlan, serializePlan } from "@/lib/services/plan";
 import {
-  addMemoImages,
   createStandaloneMemo,
   serializeMemo,
 } from "@/lib/services/memo";
 
 const createMemoSchema = z.object({
-  content: z.string().min(1, "内容不能为空").max(20000),
+  content: z.string().max(20000).optional(),
   imageUrls: z.array(z.string().min(1)).optional(),
+  color: z.string().max(20).optional(),
+  posX: z.number().optional(),
+  posY: z.number().optional(),
+  empty: z.boolean().optional(),
   /** @deprecated 兼容旧客户端 */
   title: z.string().min(1).max(200).optional(),
   description: z.string().max(5000).optional().nullable(),
@@ -24,8 +27,13 @@ const createMemoSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     const session = await requireSession(request);
+    const standaloneOnly = request.nextUrl.searchParams.get("standaloneOnly") === "true";
+
     const memos = await prisma.memo.findMany({
-      where: { userId: session.userId },
+      where: {
+        userId: session.userId,
+        ...(standaloneOnly ? { linkedPlanId: null } : {}),
+      },
       orderBy: { updatedAt: "desc" },
       include: {
         linkedPlan: true,
@@ -51,11 +59,23 @@ export async function POST(request: NextRequest) {
       return jsonError(parsed.error.errors[0]?.message ?? "参数错误", 400);
     }
 
-    if (parsed.data.content) {
-      const memo = await createStandaloneMemo(session.userId, {
-        content: parsed.data.content,
-        imageUrls: parsed.data.imageUrls,
-      });
+    const standaloneCount = await prisma.memo.count({
+      where: { userId: session.userId, linkedPlanId: null },
+    });
+
+    if (parsed.data.content || parsed.data.empty || parsed.data.imageUrls?.length) {
+      const memo = await createStandaloneMemo(
+        session.userId,
+        {
+          content: parsed.data.content,
+          imageUrls: parsed.data.imageUrls,
+          color: parsed.data.color,
+          posX: parsed.data.posX,
+          posY: parsed.data.posY,
+          empty: parsed.data.empty,
+        },
+        standaloneCount,
+      );
       const full = await prisma.memo.findUniqueOrThrow({
         where: { id: memo.id },
         include: {
@@ -89,6 +109,10 @@ export async function POST(request: NextRequest) {
               body: plan.description,
               linkedPlanId: plan.id,
               sourceType: "plan" as const,
+              posX: null,
+              posY: null,
+              zIndex: 1,
+              color: "yellow",
               createdAt: plan.createdAt.toISOString(),
               updatedAt: plan.updatedAt.toISOString(),
               images: [],

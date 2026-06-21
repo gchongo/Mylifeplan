@@ -10,7 +10,7 @@ export const sidebarNavItems = [
   { href: "/gantt", label: "甘特图", icon: "▬" },
   { href: "/calendar", label: "日历", icon: "▦" },
   { href: "/plans", label: "看板", icon: "◎" },
-  { href: "/memos", label: "备忘录", icon: "✎" },
+  { href: "/memos", label: "便签", icon: "▤" },
 ];
 
 export function SidebarNavMenu({ onNavigate }: { onNavigate?: () => void }) {

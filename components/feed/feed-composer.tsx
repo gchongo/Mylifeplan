@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 type ComposerMode = "memo" | "plan" | "contribution";
 
 const MODES: { id: ComposerMode; label: string; hint: string }[] = [
-  { id: "memo", label: "备忘", hint: "无日期想法，保存在备忘录" },
+  { id: "memo", label: "便签", hint: "无日期想法，贴在便签板" },
   { id: "plan", label: "计划", hint: "可设日期，出现在甘特图与日历" },
   { id: "contribution", label: "贡献", hint: "记录某一天的计划进展" },
 ];

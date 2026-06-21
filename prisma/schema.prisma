@@ -112,6 +112,10 @@ model Memo {
   description  String?
   body         String?  @db.Text
   linkedPlanId String?  @unique @map("linked_plan_id")
+  posX         Float?   @map("pos_x")
+  posY         Float?   @map("pos_y")
+  zIndex       Int      @default(1) @map("z_index")
+  color        String   @default("yellow")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 

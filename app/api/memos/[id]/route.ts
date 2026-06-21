@@ -20,6 +20,10 @@ const updateMemoSchema = z
     startDate: z.string().optional().nullable(),
     dueDate: z.string().optional().nullable(),
     endDate: z.string().optional().nullable(),
+    posX: z.number().optional().nullable(),
+    posY: z.number().optional().nullable(),
+    zIndex: z.number().int().min(1).max(9999).optional(),
+    color: z.string().max(20).optional(),
   })
   .superRefine((data, ctx) => {
     const error = validateDateFields({
