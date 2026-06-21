@@ -7,9 +7,12 @@ import { PlanDetailClient } from "@/components/plans/plan-detail-client";
 import type { PlanFormValues } from "@/components/forms/plan-form";
 import type { PlanContributionItem } from "@/components/plans/plan-contribution-timeline";
 import { isSubPlanOverdueAgainstParent, planOverdueNode } from "@/lib/gantt-plan-status";
+import type { PlanRelationNode } from "@/lib/plan-relationship";
 
 interface PlanPayload extends PlanFormValues {
   id: string;
+  ancestors?: PlanRelationNode[];
+  subPlans?: Array<PlanFormValues & { id: string }>;
 }
 
 export function GanttPlanDrawerPanel({
@@ -19,18 +22,24 @@ export function GanttPlanDrawerPanel({
   planId: string;
   onClose: () => void;
 }) {
+  const [activePlanId, setActivePlanId] = useState(planId);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [plan, setPlan] = useState<PlanPayload | null>(null);
-  const [subPlans, setSubPlans] = useState<
-    { id: string; title: string; status: string; overdue?: boolean }[]
-  >([]);
+  const [ancestors, setAncestors] = useState<PlanRelationNode[]>([]);
+  const [subPlans, setSubPlans] = useState<PlanRelationNode[]>([]);
   const [contributions, setContributions] = useState<PlanContributionItem[]>([]);
+  const [overdue, setOverdue] = useState(false);
+
+  useEffect(() => {
+    setActivePlanId(planId);
+  }, [planId]);
 
   function loadPlan(id: string) {
     setLoading(true);
     setError("");
     setPlan(null);
+    setAncestors([]);
     setSubPlans([]);
     setContributions([]);
 
@@ -43,17 +52,26 @@ export function GanttPlanDrawerPanel({
           setError("计划不存在");
           return;
         }
-        setPlan(planData.plan);
-        const parentNode = planOverdueNode(planData.plan);
+        const payload = planData.plan as PlanPayload;
+        setPlan(payload);
+        const ancestorList = payload.ancestors ?? [];
+        setAncestors(ancestorList);
+
+        const currentNode = planOverdueNode(payload);
+        const immediateParent = ancestorList[ancestorList.length - 1];
+        setOverdue(
+          immediateParent
+            ? isSubPlanOverdueAgainstParent(currentNode, planOverdueNode(immediateParent))
+            : false,
+        );
+
         setSubPlans(
-          (planData.plan.subPlans ?? []).map(
-            (sp: { id: string; title: string; status: string; startDate?: string | null; endDate?: string | null }) => ({
-              id: sp.id,
-              title: sp.title,
-              status: sp.status,
-              overdue: isSubPlanOverdueAgainstParent(planOverdueNode(sp), parentNode),
-            }),
-          ),
+          (payload.subPlans ?? []).map((sp) => ({
+            id: sp.id,
+            title: sp.title,
+            status: sp.status ?? "not_started",
+            overdue: isSubPlanOverdueAgainstParent(planOverdueNode(sp), currentNode),
+          })),
         );
         setContributions(contribData.contributions ?? []);
       })
@@ -62,8 +80,8 @@ export function GanttPlanDrawerPanel({
   }
 
   useEffect(() => {
-    loadPlan(planId);
-  }, [planId]);
+    loadPlan(activePlanId);
+  }, [activePlanId]);
 
   return (
     <DrawerPanel title={plan?.title ?? "计划详情"} onClose={onClose} className="p-0">
@@ -73,10 +91,14 @@ export function GanttPlanDrawerPanel({
         <div className="p-4">
           <PlanDetailClient
             plan={plan}
+            ancestors={ancestors}
             subPlans={subPlans}
             contributions={contributions}
+            overdue={overdue}
             embedded
-            onChanged={() => loadPlan(planId)}
+            onChanged={() => loadPlan(activePlanId)}
+            onClose={onClose}
+            onNavigatePlan={setActivePlanId}
           />
         </div>
       )}

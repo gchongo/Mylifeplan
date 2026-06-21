@@ -5,6 +5,8 @@ export const runtime = "nodejs";
 import { requireSession } from "@/lib/auth/get-session";
 import { handleProtectedRouteError } from "@/lib/api/route-auth";
 import { prisma } from "@/lib/db";
+import { formatPlanDateTime } from "@/lib/dates";
+import { collectPlanAncestors } from "@/lib/plan-relationship";
 import { deletePlan, serializePlan, updatePlan } from "@/lib/services/plan";
 import { updatePlanSchema } from "@/lib/validations/plan";
 
@@ -18,6 +20,11 @@ export async function GET(request: NextRequest, { params }: Params) {
       where: { id, userId: session.userId },
       include: {
         subPlans: { where: { status: { not: "archived" } }, orderBy: { createdAt: "asc" } },
+        parentPlan: {
+          include: {
+            parentPlan: true,
+          },
+        },
       },
     });
     if (!plan) return jsonError("计划不存在", 404);
@@ -25,6 +32,10 @@ export async function GET(request: NextRequest, { params }: Params) {
       plan: {
         ...serializePlan(plan),
         subPlans: plan.subPlans.map(serializePlan),
+        ancestors: collectPlanAncestors(plan, (p) => ({
+          startDate: formatPlanDateTime(p.startDate ?? null),
+          endDate: formatPlanDateTime(p.endDate ?? null),
+        })),
       },
     });
   } catch (error) {

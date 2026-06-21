@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
@@ -9,24 +8,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlanForm, type PlanFormValues } from "@/components/forms/plan-form";
 import { PlanContributionComposeModal } from "@/components/forms/plan-contribution-compose-modal";
 import type { PlanContributionComposeMode } from "@/components/forms/plan-contribution-compose-form";
-import { shouldShowInMemo } from "@/lib/content-router";
+import { PlanContributionTimeline, type PlanContributionItem } from "@/components/plans/plan-contribution-timeline";
+import { PlanRelationshipCard } from "@/components/plans/plan-relationship-card";
 import { formatPlanDateTimeDisplay } from "@/lib/dates";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
-import { PlanContributionTimeline, type PlanContributionItem } from "@/components/plans/plan-contribution-timeline";
-import { PlanArticleExport } from "@/components/plans/plan-article-export";
-
-interface SubPlan {
-  id: string;
-  title: string;
-  status: string;
-  overdue?: boolean;
-}
+import type { PlanRelationNode } from "@/lib/plan-relationship";
 
 export function PlanDetailClient({
   plan,
+  ancestors = [],
   subPlans,
   contributions = [],
-  parentTitle,
   overdue = false,
   embedded = false,
   onChanged,
@@ -34,9 +26,9 @@ export function PlanDetailClient({
   onNavigatePlan,
 }: {
   plan: PlanFormValues & { id: string };
-  subPlans: SubPlan[];
+  ancestors?: PlanRelationNode[];
+  subPlans: PlanRelationNode[];
   contributions?: PlanContributionItem[];
-  parentTitle?: string | null;
   overdue?: boolean;
   embedded?: boolean;
   onChanged?: () => void;
@@ -99,11 +91,12 @@ export function PlanDetailClient({
     }
   }
 
-  const inMemo = shouldShowInMemo({
-    startDate: plan.startDate,
-    endDate: plan.endDate,
-    parentPlanId: plan.parentPlanId,
-  });
+  const currentRelation: PlanRelationNode = {
+    id: plan.id,
+    title: plan.title,
+    status: plan.status ?? "not_started",
+    overdue,
+  };
 
   if (showEdit) {
     return (
@@ -128,42 +121,60 @@ export function PlanDetailClient({
     );
   }
 
+  const scheduleLine = [formatPlanDateTimeDisplay(plan.startDate), formatPlanDateTimeDisplay(plan.endDate)]
+    .filter((v) => v !== "—")
+    .join(" — ");
+
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-2">
-          <div>
+        {!embedded && (
+          <CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
             <CardTitle className="text-xl">{plan.title}</CardTitle>
-            {parentTitle && (
-              <p className="mt-1 text-sm text-gray-500">父计划：{parentTitle}</p>
-            )}
-          </div>
-          <TaskStatusIndicator status={plan.status ?? "not_started"} dueDate={plan.endDate} overdue={overdue} />
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm text-gray-700">
-          {plan.description && <p>{plan.description}</p>}
-          <dl className="grid grid-cols-2 gap-2">
-            <dt className="text-gray-500">开始</dt>
-            <dd>{formatPlanDateTimeDisplay(plan.startDate)}</dd>
-            <dt className="text-gray-500">结束</dt>
-            <dd>{formatPlanDateTimeDisplay(plan.endDate)}</dd>
-            <dt className="text-gray-500">状态</dt>
-            <dd>{plan.status ?? "not_started"}</dd>
-          </dl>
-          {inMemo && (
-            <p className="text-xs text-amber-600">无日期时此计划会同步出现在备忘录中。</p>
+            <TaskStatusIndicator
+              status={plan.status ?? "not_started"}
+              dueDate={plan.endDate}
+              overdue={overdue}
+              showLabel
+            />
+          </CardHeader>
+        )}
+        <CardContent className={cnEmbedded(embedded, "space-y-3 text-sm text-gray-700")}>
+          {embedded && (
+            <TaskStatusIndicator
+              status={plan.status ?? "not_started"}
+              dueDate={plan.endDate}
+              overdue={overdue}
+              showLabel
+            />
           )}
-          <div className="flex flex-wrap gap-2">
+
+          {plan.description && <p className="leading-relaxed">{plan.description}</p>}
+
+          {scheduleLine && (
+            <p className="text-xs text-gray-500">{scheduleLine}</p>
+          )}
+
+          {!embedded && (
+            <dl className="grid grid-cols-2 gap-2 text-sm">
+              <dt className="text-gray-500">开始</dt>
+              <dd>{formatPlanDateTimeDisplay(plan.startDate)}</dd>
+              <dt className="text-gray-500">结束</dt>
+              <dd>{formatPlanDateTimeDisplay(plan.endDate)}</dd>
+            </dl>
+          )}
+
+          <div className="flex flex-wrap gap-2 pt-1">
             {plan.status !== "archived" && (
               <>
                 <Button size="sm" variant="secondary" onClick={() => setShowEdit(true)}>
-                  编辑计划
+                  编辑
                 </Button>
                 <Button size="sm" variant="secondary" onClick={() => openCompose("plan")}>
-                  添加子计划
+                  子计划
                 </Button>
                 <Button size="sm" variant="secondary" onClick={() => openCompose("contribution")}>
-                  添加贡献
+                  贡献
                 </Button>
               </>
             )}
@@ -208,6 +219,13 @@ export function PlanDetailClient({
         }}
       />
 
+      <PlanRelationshipCard
+        currentPlan={currentRelation}
+        ancestors={ancestors}
+        childPlans={subPlans}
+        onNavigatePlan={onNavigatePlan}
+      />
+
       <PlanContributionTimeline
         contributions={contributions}
         currentPlanId={plan.id}
@@ -216,42 +234,10 @@ export function PlanDetailClient({
           if (!embedded) router.refresh();
         }}
       />
-
-      <PlanArticleExport planTitle={plan.title} contributions={contributions} />
-
-      {subPlans.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">子计划</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              {subPlans.map((sp) => (
-                <li key={sp.id}>
-                  {embedded && onNavigatePlan ? (
-                    <button
-                      type="button"
-                      onClick={() => onNavigatePlan(sp.id)}
-                      className="flex w-full items-center justify-between rounded-lg border border-gray-100 px-3 py-2 text-left hover:bg-gray-50"
-                    >
-                      <span>{sp.title}</span>
-                      <TaskStatusIndicator status={sp.status} overdue={sp.overdue} />
-                    </button>
-                  ) : (
-                    <Link
-                      href={`/plans/${sp.id}`}
-                      className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2 hover:bg-gray-50"
-                    >
-                      <span>{sp.title}</span>
-                      <TaskStatusIndicator status={sp.status} overdue={sp.overdue} />
-                    </Link>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
+}
+
+function cnEmbedded(embedded: boolean, base: string) {
+  return embedded ? `${base} pt-4` : base;
 }

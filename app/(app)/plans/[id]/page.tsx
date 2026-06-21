@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { getSession } from "@/lib/auth/get-session";
 import { prisma } from "@/lib/db";
+import { formatPlanDateTime } from "@/lib/dates";
 import { serializePlan } from "@/lib/services/plan";
 import { getContributionsForPlanTree } from "@/lib/services/contribution";
 import {
   isSubPlanOverdueAgainstParent,
   planOverdueNode,
 } from "@/lib/gantt-plan-status";
+import { collectPlanAncestors } from "@/lib/plan-relationship";
 import { redirect, notFound } from "next/navigation";
 import { PlanDetailClient } from "@/components/plans/plan-detail-client";
 
@@ -23,7 +25,11 @@ export default async function PlanDetailPage({
     where: { id, userId: session.userId },
     include: {
       subPlans: { where: { status: { not: "archived" } }, orderBy: { createdAt: "asc" } },
-      parentPlan: true,
+      parentPlan: {
+        include: {
+          parentPlan: true,
+        },
+      },
     },
   });
   if (!plan) notFound();
@@ -35,13 +41,15 @@ export default async function PlanDetailPage({
     startDate: serialized.startDate,
     endDate: serialized.endDate,
   });
-  const parentNode = plan.parentPlan
-    ? planOverdueNode({
-        status: plan.parentPlan.status,
-        startDate: serializePlan(plan.parentPlan).startDate,
-        endDate: serializePlan(plan.parentPlan).endDate,
-      })
-    : null;
+
+  const ancestors = collectPlanAncestors(plan, (p) => ({
+    startDate: formatPlanDateTime(p.startDate ?? null),
+    endDate: formatPlanDateTime(p.endDate ?? null),
+  }));
+  const immediateParent = ancestors[ancestors.length - 1];
+  const overdue = immediateParent
+    ? isSubPlanOverdueAgainstParent(currentNode, planOverdueNode(immediateParent))
+    : false;
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -59,6 +67,7 @@ export default async function PlanDetailPage({
           endDate: serialized.endDate,
           status: plan.status,
         }}
+        ancestors={ancestors}
         subPlans={plan.subPlans.map((sp) => {
           const spSerialized = serializePlan(sp);
           return {
@@ -75,8 +84,7 @@ export default async function PlanDetailPage({
             ),
           };
         })}
-        parentTitle={plan.parentPlan?.title}
-        overdue={parentNode ? isSubPlanOverdueAgainstParent(currentNode, parentNode) : false}
+        overdue={overdue}
         contributions={contributions}
       />
     </div>

@@ -6,9 +6,13 @@ import { Loading } from "@/components/ui/feedback";
 import { PlanDetailClient } from "@/components/plans/plan-detail-client";
 import type { PlanFormValues } from "@/components/forms/plan-form";
 import type { PlanContributionItem } from "@/components/plans/plan-contribution-timeline";
+import { isSubPlanOverdueAgainstParent, planOverdueNode } from "@/lib/gantt-plan-status";
+import type { PlanRelationNode } from "@/lib/plan-relationship";
 
 interface PlanPayload extends PlanFormValues {
   id: string;
+  ancestors?: PlanRelationNode[];
+  subPlans?: Array<PlanFormValues & { id: string }>;
 }
 
 export function PlanDetailModal({
@@ -26,8 +30,10 @@ export function PlanDetailModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [plan, setPlan] = useState<PlanPayload | null>(null);
-  const [subPlans, setSubPlans] = useState<{ id: string; title: string; status: string }[]>([]);
+  const [ancestors, setAncestors] = useState<PlanRelationNode[]>([]);
+  const [subPlans, setSubPlans] = useState<PlanRelationNode[]>([]);
   const [contributions, setContributions] = useState<PlanContributionItem[]>([]);
+  const [overdue, setOverdue] = useState(false);
 
   useEffect(() => {
     if (open && planId) setActivePlanId(planId);
@@ -37,6 +43,7 @@ export function PlanDetailModal({
     setLoading(true);
     setError("");
     setPlan(null);
+    setAncestors([]);
     setSubPlans([]);
     setContributions([]);
 
@@ -49,15 +56,26 @@ export function PlanDetailModal({
           setError("计划不存在");
           return;
         }
-        setPlan(planData.plan);
+        const payload = planData.plan as PlanPayload;
+        setPlan(payload);
+        const ancestorList = payload.ancestors ?? [];
+        setAncestors(ancestorList);
+
+        const currentNode = planOverdueNode(payload);
+        const immediateParent = ancestorList[ancestorList.length - 1];
+        setOverdue(
+          immediateParent
+            ? isSubPlanOverdueAgainstParent(currentNode, planOverdueNode(immediateParent))
+            : false,
+        );
+
         setSubPlans(
-          (planData.plan.subPlans ?? []).map(
-            (sp: { id: string; title: string; status: string }) => ({
-              id: sp.id,
-              title: sp.title,
-              status: sp.status,
-            }),
-          ),
+          (payload.subPlans ?? []).map((sp) => ({
+            id: sp.id,
+            title: sp.title,
+            status: sp.status ?? "not_started",
+            overdue: isSubPlanOverdueAgainstParent(planOverdueNode(sp), currentNode),
+          })),
         );
         setContributions(contribData.contributions ?? []);
       })
@@ -87,8 +105,10 @@ export function PlanDetailModal({
       {!loading && plan && (
         <PlanDetailClient
           plan={plan}
+          ancestors={ancestors}
           subPlans={subPlans}
           contributions={contributions}
+          overdue={overdue}
           embedded
           onChanged={handleChanged}
           onClose={onClose}
