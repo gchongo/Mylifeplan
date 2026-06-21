@@ -36,11 +36,14 @@ import {
   type TimelineLayout,
 } from "@/lib/gantt-scale";
 import { defaultGanttStatusFilter, filterGanttTasksByStatus } from "@/lib/gantt-task-filter";
+import {
+  buildPlanGroupLayouts,
+  getPlanGroupVisualStyle,
+} from "@/lib/gantt-plan-groups";
 import { GRID_BORDER } from "@/lib/gantt-grid-colors";
 import { deriveParentStatus } from "@/lib/services/plan-rollup";
 import {
   getGanttBarStyle,
-  getStatusStyle,
   type VisualStatusKey,
 } from "@/lib/task-status-style";
 import type { GanttContribution, GanttItem, PlanStatus } from "@/types";
@@ -102,6 +105,7 @@ interface GanttRow {
   depth: number;
   height: number;
   gapBefore: number;
+  rootId: string;
 }
 
 function computeRowsTotalHeight(rows: GanttRow[]) {
@@ -149,24 +153,26 @@ function buildPlanTreeRows(plans: GanttItem[], expanded: Set<string>): GanttRow[
 
   const rows: GanttRow[] = [];
 
-  function walk(parentId: string | null, depth: number) {
+  function walk(parentId: string | null, depth: number, rootId: string | null) {
     for (const item of byParent.get(parentId) ?? []) {
+      const currentRoot = depth === 0 ? item.id : rootId!;
       rows.push({
         kind: "item",
         item,
         depth,
         height: depth > 0 ? ROW_HEIGHT_CHILD : ROW_HEIGHT,
         gapBefore: depth === 0 && rows.length > 0 ? ROW_GROUP_GAP : 0,
+        rootId: currentRoot,
       });
       const childCount = byParent.get(item.id)?.length ?? 0;
 
       if (expanded.has(item.id) && childCount > 0) {
-        walk(item.id, depth + 1);
+        walk(item.id, depth + 1, currentRoot);
       }
     }
   }
 
-  walk(null, 0);
+  walk(null, 0, null);
   return rows;
 }
 
@@ -178,14 +184,13 @@ interface PlanModalState {
   defaultEndDate?: string | null;
 }
 
+function rootPlanForRow(row: GanttRow, planById: Map<string, GanttItem>): GanttItem {
+  return planById.get(row.rootId) ?? row.item;
+}
+
 function planBarStyle(item: GanttItem, allPlans: GanttItem[], depth: number) {
   const displayStatus = itemDisplayStatus(item, allPlans);
   return getGanttBarStyle(item.status, item.endDate, displayStatus, depth);
-}
-
-function planLabelStyle(item: GanttItem, allPlans: GanttItem[]) {
-  const displayStatus = itemDisplayStatus(item, allPlans);
-  return getStatusStyle(item.status, item.endDate, displayStatus);
 }
 
 function dataBoundsFromItems(items: GanttItem[]) {
@@ -318,6 +323,8 @@ export const GanttChart = forwardRef<
     () => buildPlanTreeRows(filteredPlans, expanded),
     [filteredPlans, expanded],
   );
+
+  const planGroups = useMemo(() => buildPlanGroupLayouts(rows), [rows]);
 
   const toggleLabelPanel = useCallback(() => {
     setLabelVisible((prev) => {
@@ -710,15 +717,17 @@ export const GanttChart = forwardRef<
     const isExpanded = expanded.has(item.id);
     const displayStatus = itemDisplayStatus(item, items);
     const hasRollup = itemHasRollup(item, items);
-    const statusStyle = planLabelStyle(item, items);
+    const rootItem = rootPlanForRow(row, planById);
+    const groupStyle = getPlanGroupVisualStyle(rootItem, getDisplayStatus);
 
     return (
       <div
         key={`label-${item.id}-${idx}`}
         className={cn(
-          "group flex items-center gap-1 overflow-hidden border-l-2 px-2",
+          "group flex items-center gap-1 overflow-hidden border-l-[3px] px-2",
+          groupStyle.labelBg,
+          groupStyle.labelStripe,
           !tightBelow && GANTT_TITLE_ROW_CLASS,
-          statusStyle.stripe,
         )}
         style={{
           height: row.height,
@@ -810,6 +819,31 @@ export const GanttChart = forwardRef<
             </span>
           )}
         </button>
+      );
+    });
+  }
+
+  function renderPlanGroupFrames() {
+    return planGroups.map((group) => {
+      const rootItem = planById.get(group.rootId);
+      if (!rootItem) return null;
+      const style = getPlanGroupVisualStyle(rootItem, getDisplayStatus);
+      return (
+        <div
+          key={`group-frame-${group.rootId}`}
+          className={cn(
+            "pointer-events-none absolute z-[1] rounded-md border-2",
+            style.frameBorder,
+            style.frameBg,
+          )}
+          style={{
+            top: group.top + 1,
+            height: Math.max(group.height - 2, 0),
+            left: 6,
+            width: timelineWidth - 12,
+          }}
+          aria-hidden
+        />
       );
     });
   }
@@ -992,9 +1026,10 @@ export const GanttChart = forwardRef<
                 onClick={handleTimelineBackgroundClick}
               >
                 {renderGridBackground(bodyAreaHeight)}
+                {renderPlanGroupFrames()}
 
                 {rows.map((row, idx) => (
-                  <div key={`row-${idx}`} className="relative">
+                  <div key={`row-${idx}`} className="relative z-[2]">
                     {renderBar(row, idx)}
                   </div>
                 ))}
