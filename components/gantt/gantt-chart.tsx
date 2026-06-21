@@ -11,8 +11,8 @@ import {
   useState,
 } from "react";
 import {
+  GANTT_COLLAPSED_RAIL_WIDTH,
   GANTT_TITLE_COLUMN_CLASS,
-  GANTT_TITLE_COLUMN_HEADER_CLASS,
   GANTT_TITLE_ROW_CLASS,
 } from "@/lib/gantt-title-column";
 import { GanttPanelCollapseChevron, GanttPanelExpandChevron } from "@/components/gantt/gantt-panel-chevron";
@@ -188,14 +188,21 @@ export interface GanttChartHandle {
   goToday: () => void;
 }
 
+export interface GanttTitleColumnLayout {
+  width: number;
+  visible: boolean;
+  collapsedWidth: number;
+}
+
 export const GanttChart = forwardRef<
   GanttChartHandle,
   {
     fullPage?: boolean;
     scale?: GanttScaleId;
     onScaleChange?: (scale: GanttScaleId) => void;
+    onTitleColumnLayout?: (layout: GanttTitleColumnLayout) => void;
   }
->(function GanttChart({ fullPage = false, scale: scaleProp, onScaleChange }, ref) {
+>(function GanttChart({ fullPage = false, scale: scaleProp, onScaleChange, onTitleColumnLayout }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrolledToToday = useRef(false);
@@ -228,12 +235,20 @@ export const GanttChart = forwardRef<
   const [labelVisible, setLabelVisible] = useState(true);
   const [isResizingLabel, setIsResizingLabel] = useState(false);
 
-  const effectiveLabelWidth = labelVisible ? labelWidth : 0;
+  const effectiveLabelWidth = labelVisible ? labelWidth : GANTT_COLLAPSED_RAIL_WIDTH;
 
   useEffect(() => {
     setLabelWidth(readStoredLabelWidth());
     setLabelVisible(readStoredLabelVisible());
   }, []);
+
+  useEffect(() => {
+    onTitleColumnLayout?.({
+      width: labelWidth,
+      visible: labelVisible,
+      collapsedWidth: GANTT_COLLAPSED_RAIL_WIDTH,
+    });
+  }, [labelWidth, labelVisible, onTitleColumnLayout]);
 
   const dataBounds = useMemo(() => dataBoundsFromItems(items), [items]);
 
@@ -603,17 +618,19 @@ export const GanttChart = forwardRef<
     );
   }
 
-  function renderCollapsedLabelRail(minHeight?: number) {
-    if (labelVisible) return null;
+  function renderCollapsedLabelHeader() {
     return (
       <div
-        className="sticky left-0 z-40 flex shrink-0 flex-col border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
-        style={{ width: 32, minHeight }}
+        className={cn(
+          "sticky left-0 z-40 flex shrink-0 flex-col items-center justify-center",
+          GANTT_TITLE_COLUMN_CLASS,
+        )}
+        style={{ width: GANTT_COLLAPSED_RAIL_WIDTH, minHeight: TIMELINE_HEADER_HEIGHT }}
       >
         <button
           type="button"
           data-no-pan
-          className="flex flex-1 items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800"
+          className="flex h-full w-full items-center justify-center hover:bg-amber-100/60 dark:hover:bg-amber-900/40"
           title="显示计划列表"
           aria-label="显示计划列表"
           onClick={toggleLabelPanel}
@@ -621,6 +638,27 @@ export const GanttChart = forwardRef<
           <GanttPanelExpandChevron />
         </button>
       </div>
+    );
+  }
+
+  function renderCollapsedLabelSpacer(height: number) {
+    return (
+      <div
+        className="sticky left-0 z-20 shrink-0"
+        style={{ width: GANTT_COLLAPSED_RAIL_WIDTH, height }}
+        aria-hidden
+      />
+    );
+  }
+
+  function renderTitleColumnBackdrop(totalHeight: number) {
+    if (!labelVisible) return null;
+    return (
+      <div
+        className={cn("pointer-events-none absolute left-0 top-0 z-[5]", GANTT_TITLE_COLUMN_CLASS)}
+        style={{ width: labelWidth, height: totalHeight }}
+        aria-hidden
+      />
     );
   }
 
@@ -645,14 +683,14 @@ export const GanttChart = forwardRef<
           <div
             className={cn(
               "relative sticky left-0 z-40 flex shrink-0 flex-col",
-              GANTT_TITLE_COLUMN_HEADER_CLASS,
+              GANTT_TITLE_COLUMN_CLASS,
             )}
             style={{ width: labelWidth, minHeight: TIMELINE_HEADER_HEIGHT }}
           >
             {renderListHeaderControls()}
           </div>
         ) : (
-          renderCollapsedLabelRail(TIMELINE_HEADER_HEIGHT)
+          renderCollapsedLabelHeader()
         )}
         <div style={{ width: timelineWidth }} className="relative shrink-0 bg-white dark:bg-gray-950">
           <div className="flex bg-white text-xs dark:bg-gray-950">
@@ -968,6 +1006,7 @@ export const GanttChart = forwardRef<
             )}
           >
             <div className="relative" style={{ width: totalWidth }}>
+              {renderTitleColumnBackdrop(TIMELINE_HEADER_HEIGHT + minBodyHeight)}
               {renderLabelResizeSplitter(TIMELINE_HEADER_HEIGHT + minBodyHeight)}
               {renderTimelineHeader()}
 
@@ -978,13 +1017,13 @@ export const GanttChart = forwardRef<
                   <div key={`row-${idx}`} className="relative flex">
                     {labelVisible ? (
                       <div
-                        className={cn("sticky left-0 z-20 shrink-0", GANTT_TITLE_COLUMN_CLASS)}
+                        className="relative sticky left-0 z-20 shrink-0"
                         style={{ width: labelWidth }}
                       >
                         {renderLabel(row, idx)}
                       </div>
                     ) : (
-                      renderCollapsedLabelRail(ROW_HEIGHT)
+                      renderCollapsedLabelSpacer(ROW_HEIGHT)
                     )}
                     <div className="relative z-10 shrink-0">{renderBar(row, idx)}</div>
                   </div>
@@ -993,7 +1032,7 @@ export const GanttChart = forwardRef<
                 <div className="relative flex">
                   {labelVisible ? (
                     <div
-                      className={cn("sticky left-0 z-20 shrink-0 p-2", GANTT_TITLE_COLUMN_CLASS)}
+                      className="relative sticky left-0 z-20 shrink-0 p-2"
                       style={{ width: labelWidth }}
                     >
                       <Button
@@ -1007,7 +1046,7 @@ export const GanttChart = forwardRef<
                       </Button>
                     </div>
                   ) : (
-                    renderCollapsedLabelRail(FOOTER_HEIGHT)
+                    renderCollapsedLabelSpacer(FOOTER_HEIGHT)
                   )}
                   <div style={{ width: timelineWidth, height: FOOTER_HEIGHT }} />
                 </div>
