@@ -22,6 +22,8 @@ export interface GanttItem {
   status?: string;
   color?: string | null;
   contributionOnly?: boolean;
+  /** 有父计划但未排期：在甘特图占位显示，不进便签 */
+  isUnscheduled?: boolean;
 }
 
 export interface GanttContribution {

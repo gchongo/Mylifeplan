@@ -90,7 +90,11 @@ export function PlanDetailClient({
     }
   }
 
-  const inMemo = shouldShowInMemo({ startDate: plan.startDate, endDate: plan.endDate });
+  const inMemo = shouldShowInMemo({
+    startDate: plan.startDate,
+    endDate: plan.endDate,
+    parentPlanId: plan.parentPlanId,
+  });
 
   if (showEdit) {
     return (

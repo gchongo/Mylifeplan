@@ -6,11 +6,16 @@ import {
 } from "@/lib/content-router";
 
 describe("routing decision table", () => {
-  it("no dates → memo only", () => {
+  it("no dates root plan → memo only", () => {
     const item = {};
     expect(shouldShowInMemo(item)).toBe(true);
     expect(shouldShowInCalendar(item)).toBe(false);
     expect(shouldShowInGantt(item)).toBe(false);
+  });
+
+  it("no dates sub-plan → not memo", () => {
+    const item = { parentPlanId: "parent-1" };
+    expect(shouldShowInMemo(item)).toBe(false);
   });
 
   it("start only → calendar + gantt, not memo", () => {

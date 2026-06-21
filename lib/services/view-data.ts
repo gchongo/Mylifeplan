@@ -23,20 +23,68 @@ function overlapsRange(start: string, end: string, from: Date, to: Date): boolea
   return s <= to && e >= from;
 }
 
+type PlanRow = {
+  id: string;
+  title: string;
+  startDate: Date | null;
+  endDate: Date | null;
+  parentPlanId: string | null;
+  status: string;
+  color: string | null;
+};
+
+function findAnchorDate(
+  planId: string | null,
+  byId: Map<string, PlanRow>,
+  fallback: string,
+): string {
+  let cur = planId;
+  while (cur) {
+    const p = byId.get(cur);
+    if (!p) break;
+    const start = formatDateOnly(p.startDate);
+    if (start) return start;
+    cur = p.parentPlanId;
+  }
+  return fallback;
+}
+
+function hasScheduledAncestor(planId: string | null, onGantt: Set<string>, byId: Map<string, PlanRow>): boolean {
+  let cur = planId;
+  while (cur) {
+    if (onGantt.has(cur)) return true;
+    cur = byId.get(cur)?.parentPlanId ?? null;
+  }
+  return false;
+}
+
 export async function getGanttItems(
   userId: string,
   from?: string | null,
   to?: string | null,
 ): Promise<GanttItem[]> {
   const { fromDate, toDate } = parseRange(from, to);
-  const items: GanttItem[] = [];
+  const rangeFromStr = from ?? formatDateOnly(fromDate)!;
 
-  const plans = await prisma.plan.findMany({
-    where: { userId, startDate: { not: null } },
-    orderBy: { startDate: "asc" },
+  const allPlans = await prisma.plan.findMany({
+    where: { userId, status: { not: "archived" } },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      title: true,
+      startDate: true,
+      endDate: true,
+      parentPlanId: true,
+      status: true,
+      color: true,
+    },
   });
 
-  for (const plan of plans) {
+  const byId = new Map(allPlans.map((p) => [p.id, p]));
+  const items: GanttItem[] = [];
+  const onGantt = new Set<string>();
+
+  for (const plan of allPlans) {
     const startDate = formatDateOnly(plan.startDate);
     const endDate = formatDateOnly(plan.endDate);
     const routable = { startDate, endDate };
@@ -59,9 +107,34 @@ export async function getGanttItems(
       status: plan.status,
       color: plan.color,
     });
+    onGantt.add(plan.id);
   }
 
-  return items.sort((a, b) => a.startDate.localeCompare(b.startDate));
+  for (const plan of allPlans) {
+    if (plan.startDate || !plan.parentPlanId) continue;
+    if (!hasScheduledAncestor(plan.parentPlanId, onGantt, byId)) continue;
+    if (onGantt.has(plan.id)) continue;
+
+    const anchor = findAnchorDate(plan.parentPlanId, byId, rangeFromStr);
+    items.push({
+      id: plan.id,
+      title: plan.title,
+      startDate: anchor,
+      endDate: null,
+      effectiveEnd: anchor,
+      isVirtualEnd: false,
+      parentId: plan.parentPlanId,
+      status: plan.status,
+      color: plan.color,
+      isUnscheduled: true,
+    });
+    onGantt.add(plan.id);
+  }
+
+  return items.sort((a, b) => {
+    if (a.isUnscheduled !== b.isUnscheduled) return a.isUnscheduled ? 1 : -1;
+    return a.startDate.localeCompare(b.startDate);
+  });
 }
 
 export async function getGanttData(
@@ -106,7 +179,10 @@ export async function getGanttData(
   const visiblePlanIds = new Set(items.map((i) => i.id));
 
   return {
-    items: items.sort((a, b) => a.startDate.localeCompare(b.startDate)),
+    items: items.sort((a, b) => {
+      if (a.isUnscheduled !== b.isUnscheduled) return a.isUnscheduled ? 1 : -1;
+      return a.startDate.localeCompare(b.startDate);
+    }),
     contributions: contributions.filter((c) => visiblePlanIds.has(c.planId)),
   };
 }

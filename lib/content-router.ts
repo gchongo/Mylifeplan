@@ -55,10 +55,18 @@ export function shouldShowInGantt(item: RoutableEntity): boolean {
   return Boolean(item.startDate);
 }
 
-export function shouldShowInMemo(item: RoutableEntity): boolean {
+export function isPlanUnscheduled(item: RoutableEntity): boolean {
   const hasStart = Boolean(item.startDate);
   const hasEnd = Boolean(item.dueDate ?? item.endDate);
   return !hasStart && !hasEnd;
+}
+
+/** 无日期的顶层计划 → 便签；有父计划的未排期子计划留在计划树/甘特图 */
+export function shouldShowInMemo(
+  item: RoutableEntity & { parentPlanId?: string | null },
+): boolean {
+  if (!isPlanUnscheduled(item)) return false;
+  return !item.parentPlanId;
 }
 
 export function validateDateFields(item: RoutableEntity): string | null {

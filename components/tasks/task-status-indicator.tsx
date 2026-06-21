@@ -77,6 +77,8 @@ function pillClass(visual: VisualStatusKey): string {
       return "bg-red-50 text-red-800";
     case "archived":
       return "bg-gray-100 text-gray-600";
+    case "unscheduled":
+      return "bg-violet-50 text-violet-800";
   }
 }
 

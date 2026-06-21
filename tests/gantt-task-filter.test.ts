@@ -78,4 +78,30 @@ describe("filterGanttTasksByStatus", () => {
     );
     expect(result.map((t) => t.id)).toContain("a1");
   });
+
+  it("filters unscheduled sub-plans by unscheduled status", () => {
+    const unscheduled: GanttItem = {
+      id: "u1",
+      title: "Child unscheduled",
+      startDate: "2026-01-01",
+      effectiveEnd: "2026-01-01",
+      isVirtualEnd: false,
+      parentId: "p1",
+      status: "not_started",
+      isUnscheduled: true,
+    };
+    const all = [...plans, unscheduled];
+    const onlyUnscheduled = filterGanttTasksByStatus(
+      all,
+      new Set(["unscheduled"]),
+      (t) => t.status ?? "not_started",
+    );
+    expect(onlyUnscheduled.map((t) => t.id).sort()).toEqual(["p1", "u1"]);
+    const noUnscheduled = filterGanttTasksByStatus(
+      all,
+      new Set(["todo", "in_progress", "done", "overdue"]),
+      (t) => t.status ?? "not_started",
+    );
+    expect(noUnscheduled.map((t) => t.id)).not.toContain("u1");
+  });
 });

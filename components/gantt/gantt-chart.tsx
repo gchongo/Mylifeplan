@@ -162,7 +162,10 @@ function buildPlanTreeRows(plans: GanttItem[], expanded: Set<string>): GanttRow[
   }
 
   for (const list of byParent.values()) {
-    list.sort((a, b) => a.startDate.localeCompare(b.startDate));
+    list.sort((a, b) => {
+      if (!!a.isUnscheduled !== !!b.isUnscheduled) return a.isUnscheduled ? 1 : -1;
+      return a.startDate.localeCompare(b.startDate);
+    });
   }
 
   const rows: GanttRow[] = [];
@@ -814,6 +817,11 @@ export const GanttChart = forwardRef<
           title={item.title}
         >
           {item.title}
+          {item.isUnscheduled && (
+            <span className="ml-1.5 text-[10px] font-normal text-violet-600 dark:text-violet-400">
+              未排期
+            </span>
+          )}
         </button>
         {canAddChild && (
           <button
@@ -985,6 +993,28 @@ export const GanttChart = forwardRef<
     const displayEnd = previewDates?.end ?? item.effectiveEnd;
     const { left, width } = barMetricsFromDates(displayStart, displayEnd, layout);
     const barStyle = planBarStyle(item, rootItem.color, row.depth, frameRoot, inGroupChild);
+
+    if (item.isUnscheduled) {
+      const anchorLeft = barMetricsFromDates(displayStart, displayEnd, layout).left;
+      return (
+        <div
+          key={`bar-${item.id}-${idx}`}
+          className="relative"
+          style={{ height: row.height, marginTop: row.gapBefore, width: timelineWidth }}
+        >
+          <button
+            type="button"
+            data-gantt-bar
+            onClick={() => openPlan(item.id)}
+            className="absolute top-1/2 z-10 -translate-y-1/2 rounded-md border-2 border-dashed border-violet-400 bg-violet-50/80 px-2 py-0.5 text-xs text-violet-700 hover:bg-violet-100 dark:border-violet-500/70 dark:bg-violet-950/40 dark:text-violet-300"
+            style={{ left: Math.max(anchorLeft, 8) }}
+            title="尚未设置时间，点击编辑"
+          >
+            未排期
+          </button>
+        </div>
+      );
+    }
 
     const parentPlan = item.parentId ? planById.get(item.parentId) : null;
     const parentPreview = parentPlan ? barPreview.get(parentPlan.id) : undefined;

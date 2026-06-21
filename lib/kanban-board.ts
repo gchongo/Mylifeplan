@@ -1,4 +1,4 @@
-import { shouldShowInMemo } from "@/lib/content-router";
+import { isPlanUnscheduled } from "@/lib/content-router";
 import { toDatetimeLocalInput } from "@/lib/dates";
 import { deriveStatusFromDirectChildren } from "@/lib/services/plan-rollup";
 import type { PlanStatus, PlanType } from "@/types";
@@ -50,7 +50,7 @@ export function kanbanEffectiveStatus(plan: KanbanPlan): PlanStatus {
 export function kanbanColumnForPlan(plan: KanbanPlan): KanbanColumnId {
   const status = kanbanEffectiveStatus(plan);
   if (status === "done") return "done";
-  if (shouldShowInMemo({ startDate: plan.startDate, endDate: plan.endDate })) {
+  if (isPlanUnscheduled({ startDate: plan.startDate, endDate: plan.endDate })) {
     return "unscheduled";
   }
   if (status === "in_progress") return "in_progress";

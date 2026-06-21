@@ -8,11 +8,16 @@ import {
 } from "@/lib/content-router";
 
 describe("content-router", () => {
-  it("无日期 → 备忘录，不进日历/甘特图", () => {
+  it("无日期顶层 → 便签，不进日历/甘特图", () => {
     const item = {};
     expect(shouldShowInMemo(item)).toBe(true);
     expect(shouldShowInCalendar(item)).toBe(false);
     expect(shouldShowInGantt(item)).toBe(false);
+  });
+
+  it("无日期子计划 → 不进便签", () => {
+    const item = { parentPlanId: "parent-1" };
+    expect(shouldShowInMemo(item)).toBe(false);
   });
 
   it("仅有 start → 日历 + 甘特图（虚拟截止）", () => {

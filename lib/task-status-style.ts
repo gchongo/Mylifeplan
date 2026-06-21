@@ -1,7 +1,7 @@
 import type { TaskStatus } from "@/types";
 
 /** 全局任务/计划状态视觉语义（颜色优先，文字仅作辅助说明） */
-export type VisualStatusKey = "todo" | "in_progress" | "done" | "archived" | "overdue";
+export type VisualStatusKey = "todo" | "in_progress" | "done" | "archived" | "overdue" | "unscheduled";
 
 export interface StatusStyle {
   key: VisualStatusKey;
@@ -76,6 +76,16 @@ const GANTT_BAR_STYLES: Record<
       text: "text-red-700 dark:text-red-300",
     },
   },
+  unscheduled: {
+    parent: {
+      shell: "border-2 border-dashed border-violet-400 bg-violet-50/50 dark:border-violet-500/60 dark:bg-violet-950/30",
+      text: "text-violet-700 dark:text-violet-300",
+    },
+    child: {
+      shell: "border-2 border-dashed border-violet-400 bg-violet-50/50 dark:border-violet-500/60 dark:bg-violet-950/30",
+      text: "text-violet-700 dark:text-violet-300",
+    },
+  },
 };
 
 export const STATUS_STYLES: Record<VisualStatusKey, StatusStyle> = {
@@ -119,6 +129,14 @@ export const STATUS_STYLES: Record<VisualStatusKey, StatusStyle> = {
     rowBg: "bg-white dark:bg-gray-900",
     stripe: "border-l-red-500",
   },
+  unscheduled: {
+    key: "unscheduled",
+    label: "未排期",
+    dot: "bg-violet-400 ring-violet-300",
+    bar: "bg-violet-400 shadow-sm ring-1 ring-violet-500/30",
+    rowBg: "bg-white dark:bg-gray-900",
+    stripe: "border-l-violet-400",
+  },
 };
 
 /** 图例顺序（甘特图/任务页共用） */
@@ -126,6 +144,7 @@ export const STATUS_LEGEND: VisualStatusKey[] = [
   "todo",
   "in_progress",
   "done",
+  "unscheduled",
   "overdue",
   "archived",
 ];

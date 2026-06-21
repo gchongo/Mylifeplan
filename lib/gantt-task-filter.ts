@@ -1,5 +1,17 @@
-import { resolveVisualStatus, STATUS_LEGEND, type VisualStatusKey } from "@/lib/task-status-style";
+import {
+  resolveVisualStatus,
+  STATUS_LEGEND,
+  type VisualStatusKey,
+} from "@/lib/task-status-style";
 import type { GanttItem } from "@/types";
+
+export function ganttItemVisualStatus(
+  item: GanttItem,
+  displayStatus?: string | null,
+): VisualStatusKey {
+  if (item.isUnscheduled) return "unscheduled";
+  return resolveVisualStatus(item.status, item.endDate, displayStatus);
+}
 
 export function isStatusFilterActive(filter: Set<VisualStatusKey>): boolean {
   return filter.size > 0 && filter.size < STATUS_LEGEND.length;
@@ -21,11 +33,7 @@ export function filterGanttTasksByStatus(
   const included = new Set<string>();
 
   for (const task of tasks) {
-    const visual = resolveVisualStatus(
-      task.status,
-      task.endDate,
-      getDisplayStatus(task),
-    );
+    const visual = ganttItemVisualStatus(task, getDisplayStatus(task));
     if (!filter.has(visual)) continue;
 
     included.add(task.id);

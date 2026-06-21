@@ -11,7 +11,14 @@ function planRoutable(plan: Pick<Plan, "startDate" | "endDate">) {
 export async function syncMemoForPlan(
   plan: Pick<
     Plan,
-    "id" | "userId" | "title" | "description" | "startDate" | "endDate" | "status"
+    | "id"
+    | "userId"
+    | "title"
+    | "description"
+    | "startDate"
+    | "endDate"
+    | "status"
+    | "parentPlanId"
   >,
   db: Tx | typeof prisma = prisma,
 ) {
@@ -22,7 +29,10 @@ export async function syncMemoForPlan(
     return;
   }
 
-  const inMemo = shouldShowInMemo(planRoutable(plan));
+  const inMemo = shouldShowInMemo({
+    ...planRoutable(plan),
+    parentPlanId: plan.parentPlanId,
+  });
 
   if (inMemo) {
     if (existing) {
