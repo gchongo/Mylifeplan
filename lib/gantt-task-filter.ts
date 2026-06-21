@@ -3,14 +3,17 @@ import {
   STATUS_LEGEND,
   type VisualStatusKey,
 } from "@/lib/task-status-style";
+import { isPlanOverdue } from "@/lib/gantt-plan-status";
 import type { GanttItem } from "@/types";
 
 export function ganttItemVisualStatus(
   item: GanttItem,
   displayStatus?: string | null,
+  planById?: Map<string, GanttItem>,
 ): VisualStatusKey {
   if (item.isUnscheduled) return "unscheduled";
-  return resolveVisualStatus(item.status, item.endDate, displayStatus);
+  const overdue = planById ? isPlanOverdue(item, planById) : false;
+  return resolveVisualStatus(item.status, item.endDate, displayStatus, overdue);
 }
 
 export function isStatusFilterActive(filter: Set<VisualStatusKey>): boolean {
@@ -26,6 +29,7 @@ export function filterGanttTasksByStatus(
   tasks: GanttItem[],
   filter: Set<VisualStatusKey>,
   getDisplayStatus: (task: GanttItem) => string,
+  planById?: Map<string, GanttItem>,
 ): GanttItem[] {
   if (!isStatusFilterActive(filter)) return tasks;
 
@@ -33,7 +37,7 @@ export function filterGanttTasksByStatus(
   const included = new Set<string>();
 
   for (const task of tasks) {
-    const visual = ganttItemVisualStatus(task, getDisplayStatus(task));
+    const visual = ganttItemVisualStatus(task, getDisplayStatus(task), planById);
     if (!filter.has(visual)) continue;
 
     included.add(task.id);

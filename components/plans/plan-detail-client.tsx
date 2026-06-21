@@ -6,10 +6,11 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ContributionForm } from "@/components/forms/contribution-form";
 import { PlanForm, type PlanFormValues } from "@/components/forms/plan-form";
+import { PlanContributionComposeModal } from "@/components/forms/plan-contribution-compose-modal";
+import type { PlanContributionComposeMode } from "@/components/forms/plan-contribution-compose-form";
 import { shouldShowInMemo } from "@/lib/content-router";
-import { formatPlanDateTimeDisplay, todayStr as todayDateStr } from "@/lib/dates";
+import { formatPlanDateTimeDisplay } from "@/lib/dates";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import { PlanContributionTimeline, type PlanContributionItem } from "@/components/plans/plan-contribution-timeline";
 import { PlanArticleExport } from "@/components/plans/plan-article-export";
@@ -18,6 +19,7 @@ interface SubPlan {
   id: string;
   title: string;
   status: string;
+  overdue?: boolean;
 }
 
 export function PlanDetailClient({
@@ -25,6 +27,7 @@ export function PlanDetailClient({
   subPlans,
   contributions = [],
   parentTitle,
+  overdue = false,
   embedded = false,
   onChanged,
   onClose,
@@ -34,6 +37,7 @@ export function PlanDetailClient({
   subPlans: SubPlan[];
   contributions?: PlanContributionItem[];
   parentTitle?: string | null;
+  overdue?: boolean;
   embedded?: boolean;
   onChanged?: () => void;
   onClose?: () => void;
@@ -41,9 +45,14 @@ export function PlanDetailClient({
 }) {
   const router = useRouter();
   const [showEdit, setShowEdit] = useState(false);
-  const [showNewSubPlan, setShowNewSubPlan] = useState(false);
-  const [showNewContribution, setShowNewContribution] = useState(false);
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [composeMode, setComposeMode] = useState<PlanContributionComposeMode>("plan");
   const [deleting, setDeleting] = useState(false);
+
+  function openCompose(mode: PlanContributionComposeMode) {
+    setComposeMode(mode);
+    setComposeOpen(true);
+  }
 
   function afterChange() {
     dispatchPlanUpdated();
@@ -129,7 +138,7 @@ export function PlanDetailClient({
               <p className="mt-1 text-sm text-gray-500">父计划：{parentTitle}</p>
             )}
           </div>
-          <TaskStatusIndicator status={plan.status ?? "not_started"} dueDate={plan.endDate} />
+          <TaskStatusIndicator status={plan.status ?? "not_started"} dueDate={plan.endDate} overdue={overdue} />
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-gray-700">
           {plan.description && <p>{plan.description}</p>}
@@ -150,25 +159,11 @@ export function PlanDetailClient({
                 <Button size="sm" variant="secondary" onClick={() => setShowEdit(true)}>
                   编辑计划
                 </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    setShowNewContribution(false);
-                    setShowNewSubPlan((v) => !v);
-                  }}
-                >
-                  {showNewSubPlan ? "收起" : "添加子计划"}
+                <Button size="sm" variant="secondary" onClick={() => openCompose("plan")}>
+                  添加子计划
                 </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    setShowNewSubPlan(false);
-                    setShowNewContribution((v) => !v);
-                  }}
-                >
-                  {showNewContribution ? "收起" : "添加贡献"}
+                <Button size="sm" variant="secondary" onClick={() => openCompose("contribution")}>
+                  添加贡献
                 </Button>
               </>
             )}
@@ -200,35 +195,18 @@ export function PlanDetailClient({
         </CardContent>
       </Card>
 
-      {showNewSubPlan && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">添加子计划</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <PlanForm
-              defaultParentPlanId={plan.id}
-              onSuccess={() => {
-                setShowNewSubPlan(false);
-                afterChange();
-              }}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {showNewContribution && (
-        <ContributionForm
-          planId={plan.id}
-          defaultStartDate={todayDateStr()}
-          onSuccess={() => {
-            setShowNewContribution(false);
-            afterChange();
-            if (!embedded) router.refresh();
-          }}
-          onCancel={() => setShowNewContribution(false)}
-        />
-      )}
+      <PlanContributionComposeModal
+        open={composeOpen}
+        onClose={() => setComposeOpen(false)}
+        title="添加计划或贡献"
+        defaultMode={composeMode}
+        fixedParentPlanId={plan.id}
+        fixedPlanId={plan.id}
+        onSuccess={() => {
+          afterChange();
+          if (!embedded) router.refresh();
+        }}
+      />
 
       <PlanContributionTimeline
         contributions={contributions}
@@ -257,7 +235,7 @@ export function PlanDetailClient({
                       className="flex w-full items-center justify-between rounded-lg border border-gray-100 px-3 py-2 text-left hover:bg-gray-50"
                     >
                       <span>{sp.title}</span>
-                      <TaskStatusIndicator status={sp.status} />
+                      <TaskStatusIndicator status={sp.status} overdue={sp.overdue} />
                     </button>
                   ) : (
                     <Link
@@ -265,7 +243,7 @@ export function PlanDetailClient({
                       className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2 hover:bg-gray-50"
                     >
                       <span>{sp.title}</span>
-                      <TaskStatusIndicator status={sp.status} />
+                      <TaskStatusIndicator status={sp.status} overdue={sp.overdue} />
                     </Link>
                   )}
                 </li>

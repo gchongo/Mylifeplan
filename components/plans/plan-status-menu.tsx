@@ -22,6 +22,7 @@ export function PlanStatusMenuButton({
   planId,
   status,
   dueDate,
+  overdue = false,
   displayStatus,
   hasRollup = false,
   disabled = false,
@@ -30,6 +31,7 @@ export function PlanStatusMenuButton({
   planId: string;
   status: string | undefined | null;
   dueDate?: string | null;
+  overdue?: boolean;
   displayStatus?: string | null;
   hasRollup?: boolean;
   disabled?: boolean;
@@ -154,6 +156,7 @@ export function PlanStatusMenuButton({
         <TaskStatusIndicator
           status={status}
           dueDate={dueDate}
+          overdue={overdue}
           displayStatus={displayStatus}
           hasRollup={hasRollup}
         />

@@ -19,7 +19,8 @@ import { GanttDrawerOpenTab, GanttTitleDrawerBody, GanttTitleDrawerControls } fr
 import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribution-drawer";
 import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
 import { GanttPlanDrawerPanel } from "@/components/gantt/gantt-plan-drawer";
-import { PlanFormModal } from "@/components/gantt/plan-form-modal";
+import { PlanContributionComposeModal } from "@/components/forms/plan-contribution-compose-modal";
+import type { PlanContributionComposeMode } from "@/components/forms/plan-contribution-compose-form";
 import { PlanStatusMenuButton } from "@/components/plans/plan-status-menu";
 import { Button, EmptyState, Loading as LoadingView } from "@/components/ui";
 import { DrawerLayout } from "@/components/ui/drawer";
@@ -45,7 +46,7 @@ import {
   isDateWithinPlanSpan,
 } from "@/lib/gantt-plan-bind";
 import { contributionsForGanttRow } from "@/lib/gantt-contribution-display";
-import { resolveGanttPlanDueDate } from "@/lib/gantt-plan-status";
+import { isPlanOverdue } from "@/lib/gantt-plan-status";
 import { getContributionMarkerStyle } from "@/lib/contribution-marker-style";
 import { useSettings } from "@/components/settings/settings-provider";
 import {
@@ -196,6 +197,7 @@ function buildPlanTreeRows(plans: GanttItem[], expanded: Set<string>): GanttRow[
 interface PlanModalState {
   open: boolean;
   title: string;
+  defaultMode?: PlanContributionComposeMode;
   defaultParentPlanId?: string | null;
   defaultStartDate?: string | null;
   defaultEndDate?: string | null;
@@ -266,7 +268,7 @@ export const GanttChart = forwardRef<
 
   const [planModal, setPlanModal] = useState<PlanModalState>({
     open: false,
-    title: "新建计划",
+    title: "新建计划或贡献",
   });
 
   const [internalScale, setInternalScale] = useState<GanttScaleId>("month");
@@ -350,8 +352,8 @@ export const GanttChart = forwardRef<
   );
 
   const filteredPlans = useMemo(
-    () => filterGanttTasksByStatus(items, statusFilter, getDisplayStatus),
-    [items, statusFilter, getDisplayStatus],
+    () => filterGanttTasksByStatus(items, statusFilter, getDisplayStatus, planById),
+    [items, statusFilter, getDisplayStatus, planById],
   );
 
   const rows = useMemo(
@@ -641,10 +643,15 @@ export const GanttChart = forwardRef<
     setSelectedContributionId(null);
   }
 
-  function openCreatePlan(parentPlanId?: string | null, defaultStartDate?: string | null) {
+  function openCreatePlan(
+    parentPlanId?: string | null,
+    defaultStartDate?: string | null,
+    defaultMode: PlanContributionComposeMode = "plan",
+  ) {
     setPlanModal({
       open: true,
-      title: parentPlanId ? "添加子计划" : "新建计划",
+      title: parentPlanId ? "添加计划或贡献" : "新建计划或贡献",
+      defaultMode,
       defaultParentPlanId: parentPlanId ?? null,
       defaultStartDate: defaultStartDate ?? null,
     });
@@ -836,8 +843,8 @@ export const GanttChart = forwardRef<
               "opacity-0 transition-opacity hover:bg-blue-200/60 group-hover:opacity-100",
               "dark:text-blue-300 dark:hover:bg-blue-900/50",
             )}
-            title="添加子计划"
-            aria-label="添加子计划"
+            title="添加计划或贡献"
+            aria-label="添加计划或贡献"
           >
             +
           </button>
@@ -846,7 +853,7 @@ export const GanttChart = forwardRef<
           <PlanStatusMenuButton
             planId={item.id}
             status={item.status}
-            dueDate={resolveGanttPlanDueDate(item, planById)}
+            overdue={isPlanOverdue(item, planById)}
             displayStatus={displayStatus}
             hasRollup={hasRollup}
             onStatusChanged={(apiStatus) => handlePlanStatusChanged(item.id, apiStatus)}
@@ -1242,13 +1249,15 @@ export const GanttChart = forwardRef<
 
   function renderPlanModal() {
     return (
-      <PlanFormModal
+      <PlanContributionComposeModal
         open={planModal.open}
         onClose={closePlanModal}
         title={planModal.title}
-        defaultParentPlanId={planModal.defaultParentPlanId}
-        defaultStartDate={planModal.defaultStartDate}
-        defaultEndDate={planModal.defaultEndDate}
+        defaultMode={planModal.defaultMode}
+        fixedParentPlanId={planModal.defaultParentPlanId}
+        fixedPlanId={planModal.defaultParentPlanId}
+        defaultStartAt={planModal.defaultStartDate}
+        defaultEndAt={planModal.defaultEndDate}
         onSuccess={() => {
           refetchGantt();
           dispatchPlanUpdated();
@@ -1282,7 +1291,7 @@ export const GanttChart = forwardRef<
             {fullPage && (
               <div className="px-4 pb-4">
                 <Button type="button" onClick={() => openCreatePlan()}>
-                  + 新建计划
+                  + 新建计划或贡献
                 </Button>
               </div>
             )}

@@ -1,7 +1,6 @@
 "use client";
 
-import { Modal } from "@/components/ui/modal";
-import { ContributionForm } from "@/components/forms/contribution-form";
+import { PlanContributionComposeModal } from "@/components/forms/plan-contribution-compose-modal";
 
 export function ContributionFormModal({
   open,
@@ -19,18 +18,15 @@ export function ContributionFormModal({
   onSuccess: () => void;
 }) {
   return (
-    <Modal open={open} onClose={onClose} title={null} className="max-w-2xl">
-      <ContributionForm
-        key={`${planId}-${defaultStartDate}`}
-        planId={planId}
-        defaultStartDate={defaultStartDate}
-        defaultEndDate={defaultEndDate}
-        onCancel={onClose}
-        onSuccess={() => {
-          onSuccess();
-          onClose();
-        }}
-      />
-    </Modal>
+    <PlanContributionComposeModal
+      open={open}
+      onClose={onClose}
+      onSuccess={onSuccess}
+      defaultMode="contribution"
+      fixedPlanId={planId}
+      fixedParentPlanId={planId}
+      defaultStartAt={defaultStartDate}
+      defaultEndAt={defaultEndDate}
+    />
   );
 }

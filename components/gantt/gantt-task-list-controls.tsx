@@ -186,8 +186,8 @@ export function GanttTaskListControls({
               ? "border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900"
               : "border-blue-200 bg-white/90 dark:border-blue-800 dark:bg-blue-900/40",
           )}
-          title="新建计划"
-          aria-label="新建计划"
+          title="新建计划或贡献"
+          aria-label="新建计划或贡献"
         >
           +
         </button>

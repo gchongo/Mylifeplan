@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   groupPlansByKanbanColumn,
@@ -18,6 +17,7 @@ import { dispatchPlanUpdated, PLAN_UPDATED_EVENT } from "@/lib/plan-events";
 import { apiJson } from "@/lib/client-api";
 import { ROLLUP_STATUS_HINT } from "@/lib/services/plan-rollup";
 import { PlanDetailModal } from "@/components/plans/plan-detail-modal";
+import { PlanContributionComposeModal } from "@/components/forms/plan-contribution-compose-modal";
 import { cn } from "@/lib/utils";
 
 function PlanKanbanCard({
@@ -92,6 +92,7 @@ function KanbanColumn({
   onDragLeave,
   onDrop,
   onOpenPlan,
+  onCreatePlan,
 }: {
   columnId: KanbanColumnId;
   label: string;
@@ -104,6 +105,7 @@ function KanbanColumn({
   onDragLeave: () => void;
   onDrop: (columnId: KanbanColumnId, planId: string) => void;
   onOpenPlan: (planId: string) => void;
+  onCreatePlan: () => void;
 }) {
   const isTarget = dropTarget === columnId && draggingId !== null;
 
@@ -144,12 +146,13 @@ function KanbanColumn({
         ))}
       </div>
 
-      <Link
-        href="/feed"
-        className="mt-2 block rounded-lg px-2 py-2 text-center text-sm text-gray-500 hover:bg-gray-200/60 hover:text-gray-800"
+      <button
+        type="button"
+        onClick={onCreatePlan}
+        className="mt-2 block w-full rounded-lg px-2 py-2 text-center text-sm text-gray-500 hover:bg-gray-200/60 hover:text-gray-800"
       >
-        ＋ 新建计划
-      </Link>
+        ＋ 新建计划或贡献
+      </button>
     </div>
   );
 }
@@ -161,6 +164,7 @@ export function PlanKanbanBoard({ initialPlans }: { initialPlans: KanbanPlan[] }
   const [error, setError] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
   const [planModalId, setPlanModalId] = useState<string | null>(null);
+  const [composeOpen, setComposeOpen] = useState(false);
 
   const grouped = useMemo(() => groupPlansByKanbanColumn(plans), [plans]);
 
@@ -279,9 +283,16 @@ export function PlanKanbanBoard({ initialPlans }: { initialPlans: KanbanPlan[] }
               void movePlan(planId, columnId);
             }}
             onOpenPlan={setPlanModalId}
+            onCreatePlan={() => setComposeOpen(true)}
           />
         ))}
       </div>
+
+      <PlanContributionComposeModal
+        open={composeOpen}
+        onClose={() => setComposeOpen(false)}
+        onSuccess={() => void reloadPlans()}
+      />
 
       <PlanDetailModal
         planId={planModalId}

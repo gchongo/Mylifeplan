@@ -1,36 +1,73 @@
-import { todayDateOnly } from "@/lib/task-status-style";
+import { getEffectiveEndDate } from "@/lib/content-router";
+import { parsePlanDateTime } from "@/lib/dates";
+import { normalizeStatusKey } from "@/lib/task-status-style";
 import type { GanttItem } from "@/types";
 
-type PlanDueNode = Pick<GanttItem, "endDate" | "isVirtualEnd" | "parentId">;
+export type PlanOverdueNode = Pick<
+  GanttItem,
+  "status" | "endDate" | "isVirtualEnd" | "parentId"
+>;
 
-function normalizeDateOnly(value: string | null | undefined): string | null {
-  if (!value) return null;
-  return value.length >= 10 ? value.slice(0, 10) : value;
+function isActivePlanStatus(status: string | undefined | null): boolean {
+  const base = normalizeStatusKey(status ?? "todo");
+  return base !== "done" && base !== "archived";
 }
 
 /**
- * 甘特图状态圆点用的截止日期：
- * - 无明确结束（虚拟截止）→ 不因日期判超期
- * - 子计划且父计划尚未到期 → 不因子计划自己的日期判超期（仍在父计划时间范围内）
- * - 其余：用计划自己的 endDate
+ * 超期：子计划有明确结束时间，且晚于父计划的结束时间（精确到分钟）。
+ * 顶层计划、无结束时间、或虚拟截止的计划不参与超期判定。
  */
-export function resolveGanttPlanDueDate(
-  item: PlanDueNode,
-  planById: Map<string, PlanDueNode>,
-): string | null | undefined {
-  if (item.isVirtualEnd) return null;
+export function isPlanOverdue(
+  item: PlanOverdueNode,
+  planById: Map<string, PlanOverdueNode>,
+): boolean {
+  if (!isActivePlanStatus(item.status)) return false;
+  if (!item.parentId || item.isVirtualEnd) return false;
 
-  const own = normalizeDateOnly(item.endDate);
-  if (!own) return null;
-  if (!item.parentId) return own;
+  const childEnd = item.endDate;
+  if (!childEnd) return false;
 
   const parent = planById.get(item.parentId);
-  if (!parent) return own;
+  if (!parent || parent.isVirtualEnd) return false;
 
-  const parentDue = parent.isVirtualEnd ? null : normalizeDateOnly(parent.endDate);
-  if (parentDue && parentDue >= todayDateOnly()) {
-    return null;
-  }
+  const parentEnd = parent.endDate;
+  if (!parentEnd) return false;
 
-  return own;
+  const childMs = parsePlanDateTime(childEnd)?.getTime();
+  const parentMs = parsePlanDateTime(parentEnd)?.getTime();
+  if (childMs == null || parentMs == null) return false;
+
+  return childMs > parentMs;
+}
+
+/** 已知父计划结束时间时的便捷判定（详情页等） */
+export function isSubPlanOverdueAgainstParent(
+  item: Pick<PlanOverdueNode, "status" | "endDate" | "isVirtualEnd">,
+  parent: Pick<PlanOverdueNode, "endDate" | "isVirtualEnd"> | null | undefined,
+): boolean {
+  if (!isActivePlanStatus(item.status)) return false;
+  if (item.isVirtualEnd || !item.endDate) return false;
+  if (!parent || parent.isVirtualEnd || !parent.endDate) return false;
+
+  const childMs = parsePlanDateTime(item.endDate)?.getTime();
+  const parentMs = parsePlanDateTime(parent.endDate)?.getTime();
+  if (childMs == null || parentMs == null) return false;
+
+  return childMs > parentMs;
+}
+
+export function planOverdueNode(plan: {
+  status?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+}): Pick<PlanOverdueNode, "status" | "endDate" | "isVirtualEnd"> {
+  const { isVirtualEnd } = getEffectiveEndDate({
+    startDate: plan.startDate ?? undefined,
+    dueDate: plan.endDate ?? undefined,
+  });
+  return {
+    status: plan.status ?? "not_started",
+    endDate: plan.endDate ?? null,
+    isVirtualEnd,
+  };
 }

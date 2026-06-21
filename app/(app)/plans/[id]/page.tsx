@@ -3,6 +3,10 @@ import { getSession } from "@/lib/auth/get-session";
 import { prisma } from "@/lib/db";
 import { serializePlan } from "@/lib/services/plan";
 import { getContributionsForPlanTree } from "@/lib/services/contribution";
+import {
+  isSubPlanOverdueAgainstParent,
+  planOverdueNode,
+} from "@/lib/gantt-plan-status";
 import { redirect, notFound } from "next/navigation";
 import { PlanDetailClient } from "@/components/plans/plan-detail-client";
 
@@ -26,6 +30,18 @@ export default async function PlanDetailPage({
 
   const contributions = await getContributionsForPlanTree(session.userId, id);
   const serialized = serializePlan(plan);
+  const currentNode = planOverdueNode({
+    status: plan.status,
+    startDate: serialized.startDate,
+    endDate: serialized.endDate,
+  });
+  const parentNode = plan.parentPlan
+    ? planOverdueNode({
+        status: plan.parentPlan.status,
+        startDate: serializePlan(plan.parentPlan).startDate,
+        endDate: serializePlan(plan.parentPlan).endDate,
+      })
+    : null;
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -43,12 +59,24 @@ export default async function PlanDetailPage({
           endDate: serialized.endDate,
           status: plan.status,
         }}
-        subPlans={plan.subPlans.map((sp) => ({
-          id: sp.id,
-          title: sp.title,
-          status: sp.status,
-        }))}
+        subPlans={plan.subPlans.map((sp) => {
+          const spSerialized = serializePlan(sp);
+          return {
+            id: sp.id,
+            title: sp.title,
+            status: sp.status,
+            overdue: isSubPlanOverdueAgainstParent(
+              planOverdueNode({
+                status: sp.status,
+                startDate: spSerialized.startDate,
+                endDate: spSerialized.endDate,
+              }),
+              currentNode,
+            ),
+          };
+        })}
         parentTitle={plan.parentPlan?.title}
+        overdue={parentNode ? isSubPlanOverdueAgainstParent(currentNode, parentNode) : false}
         contributions={contributions}
       />
     </div>

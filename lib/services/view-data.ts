@@ -3,9 +3,10 @@ import {
   shouldShowInCalendar,
   shouldShowInGantt,
 } from "@/lib/content-router";
-import { formatDateOnly } from "@/lib/dates";
+import { formatDateOnly, formatPlanDateTime } from "@/lib/dates";
 import { prisma } from "@/lib/db";
 import { getContributionsInRange } from "@/lib/services/contribution";
+import { isPlanOverdue, type PlanOverdueNode } from "@/lib/gantt-plan-status";
 import type { GanttContribution, GanttItem, CalendarItem } from "@/types";
 
 function parseRange(from?: string | null, to?: string | null) {
@@ -200,6 +201,22 @@ export async function getCalendarItems(
     orderBy: { startDate: "asc" },
   });
 
+  const planNodes = new Map<string, PlanOverdueNode>();
+  for (const plan of plans) {
+    const startIso = formatPlanDateTime(plan.startDate);
+    const endIso = formatPlanDateTime(plan.endDate);
+    const { isVirtualEnd } = getEffectiveEndDate({
+      startDate: startIso ?? undefined,
+      dueDate: endIso ?? undefined,
+    });
+    planNodes.set(plan.id, {
+      status: plan.status,
+      endDate: endIso,
+      isVirtualEnd,
+      parentId: plan.parentPlanId,
+    });
+  }
+
   for (const plan of plans) {
     const startDate = formatDateOnly(plan.startDate);
     const endDate = formatDateOnly(plan.endDate);
@@ -208,12 +225,15 @@ export async function getCalendarItems(
     const endForRange = endDate ?? startDate;
     if (!overlapsRange(startDate, endForRange, fromDate, toDate)) continue;
 
+    const node = planNodes.get(plan.id)!;
     items.push({
       id: plan.id,
       title: plan.title,
       startDate: plan.startDate?.toISOString() ?? startDate,
       endDate: plan.endDate?.toISOString() ?? endDate,
       status: plan.status,
+      parentPlanId: plan.parentPlanId,
+      overdue: isPlanOverdue(node, planNodes),
     });
   }
 

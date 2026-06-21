@@ -42,6 +42,8 @@ export interface CalendarItem {
   startDate: string;
   endDate?: string | null;
   status: string;
+  parentPlanId?: string | null;
+  overdue?: boolean;
 }
 
 export interface FeedItem {

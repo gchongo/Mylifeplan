@@ -1,7 +1,6 @@
 "use client";
 
-import { Modal } from "@/components/ui/modal";
-import { PlanForm } from "@/components/forms/plan-form";
+import { PlanContributionComposeModal } from "@/components/forms/plan-contribution-compose-modal";
 
 export function PlanFormModal({
   open,
@@ -20,20 +19,17 @@ export function PlanFormModal({
   defaultEndDate?: string | null;
   onSuccess: () => void;
 }) {
-  const formKey = `${defaultParentPlanId ?? "new"}-${defaultStartDate ?? ""}-${defaultEndDate ?? ""}`;
-
   return (
-    <Modal open={open} onClose={onClose} title={title} className="max-w-xl">
-      <PlanForm
-        key={formKey}
-        defaultParentPlanId={defaultParentPlanId}
-        defaultStartDate={defaultStartDate}
-        defaultEndDate={defaultEndDate}
-        onSuccess={() => {
-          onSuccess();
-          onClose();
-        }}
-      />
-    </Modal>
+    <PlanContributionComposeModal
+      open={open}
+      onClose={onClose}
+      onSuccess={onSuccess}
+      title={title}
+      defaultMode="plan"
+      fixedParentPlanId={defaultParentPlanId}
+      fixedPlanId={defaultParentPlanId}
+      defaultStartAt={defaultStartDate}
+      defaultEndAt={defaultEndDate}
+    />
   );
 }

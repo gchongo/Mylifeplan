@@ -169,25 +169,15 @@ export function normalizeStatusKey(status: string | undefined | null): VisualSta
   return "todo";
 }
 
-export function isOverdue(
-  dueDate: string | null | undefined,
-  status: string | undefined | null,
-): boolean {
-  if (!dueDate || !status) return false;
-  const base = normalizeStatusKey(status);
-  if (base === "done" || base === "archived") return false;
-  const due = dueDate.length >= 10 ? dueDate.slice(0, 10) : dueDate;
-  return due < todayDateOnly();
-}
-
 /** 解析最终用于上色的状态（汇总状态 + 超期优先） */
 export function resolveVisualStatus(
   status: string | undefined | null,
   dueDate?: string | null,
   displayStatus?: string | null,
+  overdue?: boolean,
 ): VisualStatusKey {
   const effective = displayStatus ?? status ?? "todo";
-  if (isOverdue(dueDate, effective)) return "overdue";
+  if (overdue) return "overdue";
   return normalizeStatusKey(effective);
 }
 
@@ -195,8 +185,9 @@ export function getStatusStyle(
   status: string | undefined | null,
   dueDate?: string | null,
   displayStatus?: string | null,
+  overdue?: boolean,
 ): StatusStyle {
-  return STATUS_STYLES[resolveVisualStatus(status, dueDate, displayStatus)];
+  return STATUS_STYLES[resolveVisualStatus(status, dueDate, displayStatus, overdue)];
 }
 
 export function getGanttBarStyle(
@@ -204,8 +195,9 @@ export function getGanttBarStyle(
   dueDate?: string | null,
   displayStatus?: string | null,
   depth = 0,
+  overdue?: boolean,
 ): GanttBarStyle {
-  const visual = resolveVisualStatus(status, dueDate, displayStatus);
+  const visual = resolveVisualStatus(status, dueDate, displayStatus, overdue);
   return GANTT_BAR_STYLES[visual][depth > 0 ? "child" : "parent"];
 }
 
@@ -214,8 +206,9 @@ export function statusBarClass(
   dueDate?: string | null,
   displayStatus?: string | null,
   depth = 0,
+  overdue?: boolean,
 ): string {
-  const { shell, text } = getGanttBarStyle(status, dueDate, displayStatus, depth);
+  const { shell, text } = getGanttBarStyle(status, dueDate, displayStatus, depth, overdue);
   return `${shell} ${text}`;
 }
 
@@ -224,8 +217,9 @@ export function statusLabel(
   dueDate?: string | null,
   displayStatus?: string | null,
   hasRollup?: boolean,
+  overdue?: boolean,
 ): string {
-  const style = getStatusStyle(status, dueDate, displayStatus);
+  const style = getStatusStyle(status, dueDate, displayStatus, overdue);
   return hasRollup ? `${style.label}（汇总）` : style.label;
 }
 

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   getGanttBarStyle,
-  isOverdue,
   normalizeStatusKey,
   resolveVisualStatus,
 } from "@/lib/task-status-style";
@@ -11,10 +10,9 @@ describe("task-status-style", () => {
     expect(normalizeStatusKey("not_started")).toBe("todo");
   });
 
-  it("marks overdue when due date passed and not done", () => {
-    expect(isOverdue("2020-01-01", "todo")).toBe(true);
-    expect(isOverdue("2020-01-01", "done")).toBe(false);
-    expect(resolveVisualStatus("in_progress", "2020-01-01")).toBe("overdue");
+  it("marks overdue only when explicitly flagged", () => {
+    expect(resolveVisualStatus("in_progress", "2020-01-01", undefined, false)).toBe("in_progress");
+    expect(resolveVisualStatus("in_progress", "2020-01-01", undefined, true)).toBe("overdue");
   });
 
   it("returns outline bar styles for parent vs child", () => {

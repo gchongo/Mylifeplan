@@ -2,13 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ContributionFormModal } from "@/components/gantt/contribution-form-modal";
-import { PlanFormModal } from "@/components/gantt/plan-form-modal";
+import { PlanContributionComposeModal } from "@/components/forms/plan-contribution-compose-modal";
+import type { PlanContributionComposeMode } from "@/components/forms/plan-contribution-compose-form";
 import type { CalendarItem } from "@/types";
-
-function dateToDefaultStart(dateStr: string) {
-  return `${dateStr}T09:00`;
-}
 
 export function CalendarDayCreateActions({
   dateStr,
@@ -21,8 +17,8 @@ export function CalendarDayCreateActions({
 }) {
   const [planId, setPlanId] = useState("");
   const [planOptions, setPlanOptions] = useState<{ id: string; title: string }[]>([]);
-  const [contributionOpen, setContributionOpen] = useState(false);
-  const [subPlanOpen, setSubPlanOpen] = useState(false);
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [composeMode, setComposeMode] = useState<PlanContributionComposeMode>("contribution");
 
   useEffect(() => {
     if (dayItems.length > 0) {
@@ -60,6 +56,11 @@ export function CalendarDayCreateActions({
     );
   }
 
+  function openCompose(mode: PlanContributionComposeMode) {
+    setComposeMode(mode);
+    setComposeOpen(true);
+  }
+
   return (
     <>
       <div className="space-y-2 border-t border-gray-100 px-4 py-3">
@@ -81,7 +82,7 @@ export function CalendarDayCreateActions({
             size="sm"
             variant="secondary"
             disabled={!planId}
-            onClick={() => setContributionOpen(true)}
+            onClick={() => openCompose("contribution")}
           >
             添加贡献
           </Button>
@@ -90,7 +91,7 @@ export function CalendarDayCreateActions({
             size="sm"
             variant="secondary"
             disabled={!planId}
-            onClick={() => setSubPlanOpen(true)}
+            onClick={() => openCompose("plan")}
           >
             添加子计划
           </Button>
@@ -98,23 +99,16 @@ export function CalendarDayCreateActions({
       </div>
 
       {planId && (
-        <>
-          <ContributionFormModal
-            open={contributionOpen}
-            onClose={() => setContributionOpen(false)}
-            planId={planId}
-            defaultStartDate={dateStr}
-            onSuccess={onSuccess}
-          />
-          <PlanFormModal
-            open={subPlanOpen}
-            onClose={() => setSubPlanOpen(false)}
-            title="添加子计划"
-            defaultParentPlanId={planId}
-            defaultStartDate={dateToDefaultStart(dateStr)}
-            onSuccess={onSuccess}
-          />
-        </>
+        <PlanContributionComposeModal
+          open={composeOpen}
+          onClose={() => setComposeOpen(false)}
+          title="添加计划或贡献"
+          defaultMode={composeMode}
+          fixedParentPlanId={planId}
+          fixedPlanId={planId}
+          defaultStartAt={dateStr}
+          onSuccess={onSuccess}
+        />
       )}
     </>
   );

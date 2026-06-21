@@ -6,6 +6,7 @@ import { Loading } from "@/components/ui/feedback";
 import { PlanDetailClient } from "@/components/plans/plan-detail-client";
 import type { PlanFormValues } from "@/components/forms/plan-form";
 import type { PlanContributionItem } from "@/components/plans/plan-contribution-timeline";
+import { isSubPlanOverdueAgainstParent, planOverdueNode } from "@/lib/gantt-plan-status";
 
 interface PlanPayload extends PlanFormValues {
   id: string;
@@ -22,7 +23,7 @@ export function GanttPlanDrawerPanel({
   const [error, setError] = useState("");
   const [plan, setPlan] = useState<PlanPayload | null>(null);
   const [subPlans, setSubPlans] = useState<
-    { id: string; title: string; status: string }[]
+    { id: string; title: string; status: string; overdue?: boolean }[]
   >([]);
   const [contributions, setContributions] = useState<PlanContributionItem[]>([]);
 
@@ -43,12 +44,14 @@ export function GanttPlanDrawerPanel({
           return;
         }
         setPlan(planData.plan);
+        const parentNode = planOverdueNode(planData.plan);
         setSubPlans(
           (planData.plan.subPlans ?? []).map(
-            (sp: { id: string; title: string; status: string }) => ({
+            (sp: { id: string; title: string; status: string; startDate?: string | null; endDate?: string | null }) => ({
               id: sp.id,
               title: sp.title,
               status: sp.status,
+              overdue: isSubPlanOverdueAgainstParent(planOverdueNode(sp), parentNode),
             }),
           ),
         );

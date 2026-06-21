@@ -18,6 +18,7 @@ export function TaskStatusIndicator({
   status,
   dueDate,
   displayStatus,
+  overdue = false,
   hasRollup = false,
   size = "sm",
   showLabel = false,
@@ -26,14 +27,15 @@ export function TaskStatusIndicator({
   status: string | undefined | null;
   dueDate?: string | null;
   displayStatus?: string | null;
+  overdue?: boolean;
   hasRollup?: boolean;
   size?: keyof typeof DOT_SIZE;
   showLabel?: boolean;
   className?: string;
 }) {
-  const visual = resolveVisualStatus(status, dueDate, displayStatus);
-  const style = getStatusStyle(status, dueDate, displayStatus);
-  const label = statusLabel(status, dueDate, displayStatus, hasRollup);
+  const visual = resolveVisualStatus(status, dueDate, displayStatus, overdue);
+  const style = getStatusStyle(status, dueDate, displayStatus, overdue);
+  const label = statusLabel(status, dueDate, displayStatus, hasRollup, overdue);
 
   if (showLabel) {
     return (

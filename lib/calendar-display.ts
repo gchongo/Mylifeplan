@@ -84,7 +84,7 @@ export function itemAccent(item: CalendarItem): {
   text: string;
   soft: string;
 } {
-  const key = resolveVisualStatus(item.status, item.endDate);
+  const key = resolveVisualStatus(item.status, item.endDate, undefined, item.overdue);
   switch (key) {
     case "done":
       return { bar: "bg-emerald-500", dot: "bg-emerald-500", text: "text-emerald-800", soft: "bg-emerald-100" };

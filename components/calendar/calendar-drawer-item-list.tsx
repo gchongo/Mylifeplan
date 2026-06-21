@@ -103,7 +103,7 @@ function CalendarDrawerItemRow({
           <span className={cn("text-[10px] transition-transform", expanded && "rotate-90")}>▶</span>
         </button>
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">{item.title}</span>
-        <TaskStatusIndicator status={item.status} dueDate={item.endDate ?? undefined} />
+        <TaskStatusIndicator status={item.status} dueDate={item.endDate ?? undefined} overdue={item.overdue} />
         <span className="shrink-0 text-xs text-gray-400">{formatEventSchedule(item)}</span>
       </div>
 
