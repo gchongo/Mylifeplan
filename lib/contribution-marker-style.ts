@@ -6,6 +6,11 @@ type PlanNode = Pick<GanttItem, "id" | "parentId" | "color">;
 
 export const CONTRIBUTION_POINT_WIDTH_PX = 2;
 export const CONTRIBUTION_INTERVAL_FILL_ALPHA = 0.55;
+export const CONTRIBUTION_MARKER_INSET_Y = 2;
+
+export function contributionMarkerHeight(barHeightPx: number): number {
+  return Math.max(4, barHeightPx - CONTRIBUTION_MARKER_INSET_Y * 2);
+}
 
 export function isContributionInterval(
   c: Pick<GanttContribution, "occurredOn" | "occurredEndOn">,

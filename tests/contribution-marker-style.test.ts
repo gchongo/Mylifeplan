@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isContributionInterval,
   resolveContributionMarkerColor,
+  contributionMarkerHeight,
 } from "@/lib/contribution-marker-style";
 
 describe("contribution-marker-style", () => {
@@ -44,5 +45,10 @@ describe("contribution-marker-style", () => {
         planById,
       ),
     ).toBe("#EF4444");
+  });
+
+  it("marker height insets from bar height", () => {
+    expect(contributionMarkerHeight(32)).toBe(28);
+    expect(contributionMarkerHeight(22)).toBe(18);
   });
 });

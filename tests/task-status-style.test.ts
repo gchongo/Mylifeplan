@@ -24,4 +24,9 @@ describe("task-status-style", () => {
     expect(child.shell).not.toContain("border-dashed");
     expect(child.shell).toContain("emerald");
   });
+
+  it("todo uses amber palette", () => {
+    const todo = getGanttBarStyle("not_started", null, null, 0);
+    expect(todo.shell).toContain("amber");
+  });
 });

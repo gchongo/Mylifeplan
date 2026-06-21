@@ -28,12 +28,12 @@ const GANTT_BAR_STYLES: Record<
 > = {
   todo: {
     parent: {
-      shell: "border-2 border-solid border-gray-400 bg-gray-50 dark:border-gray-500 dark:bg-gray-800/60",
-      text: "text-gray-800 dark:text-gray-100 font-semibold",
+      shell: "border-2 border-solid border-amber-500 bg-amber-50 dark:border-amber-400 dark:bg-amber-950/45",
+      text: "text-amber-900 dark:text-amber-100 font-semibold",
     },
     child: {
-      shell: "border border-solid border-gray-300 bg-gray-100 dark:border-gray-600 dark:bg-gray-800/70",
-      text: "text-gray-700 dark:text-gray-200 font-normal",
+      shell: "border border-solid border-amber-400 bg-amber-100 dark:border-amber-500/80 dark:bg-amber-950/50",
+      text: "text-amber-900 dark:text-amber-200 font-normal",
     },
   },
   in_progress: {
@@ -94,10 +94,10 @@ export const STATUS_STYLES: Record<VisualStatusKey, StatusStyle> = {
   todo: {
     key: "todo",
     label: "待办",
-    dot: "bg-gray-400 ring-gray-300",
-    bar: "bg-gray-500 shadow-sm ring-1 ring-gray-600/30",
+    dot: "bg-amber-500 ring-amber-300",
+    bar: "bg-amber-500 shadow-sm ring-1 ring-amber-600/30",
     rowBg: "bg-white dark:bg-gray-900",
-    stripe: "border-l-gray-400",
+    stripe: "border-l-amber-500",
   },
   in_progress: {
     key: "in_progress",

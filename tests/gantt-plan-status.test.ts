@@ -3,6 +3,8 @@ import {
   isPlanOverdue,
   isSubPlanOverdueAgainstParent,
   planOverdueNode,
+  getActiveSubPlanOverrunTail,
+  getParentRolledUpOverrunTail,
 } from "@/lib/gantt-plan-status";
 import type { GanttItem } from "@/types";
 
@@ -76,6 +78,54 @@ describe("isPlanOverdue", () => {
   it("root plan is never overdue", () => {
     const root = plan({ id: "root", endDate: "2020-01-01T00:00" });
     expect(isPlanOverdue(root, new Map([["root", root]]))).toBe(false);
+  });
+});
+
+describe("overrun tails", () => {
+  it("active child gets tail from parent end to child end", () => {
+    const parent = plan({ id: "root", endDate: "2026-06-01T12:00" });
+    const child = plan({
+      id: "child",
+      parentId: "root",
+      endDate: "2026-06-02T12:00",
+      status: "in_progress",
+    });
+    const byId = new Map([
+      ["root", parent],
+      ["child", child],
+    ]);
+    expect(getActiveSubPlanOverrunTail(child, byId)).toEqual({
+      from: "2026-06-01T12:00",
+      to: "2026-06-02T12:00",
+    });
+  });
+
+  it("done child rolls overrun up to parent tail", () => {
+    const parent = plan({ id: "root", endDate: "2026-06-01T12:00" });
+    const child = plan({
+      id: "child",
+      parentId: "root",
+      endDate: "2026-06-03T12:00",
+      status: "done",
+    });
+    const items = [parent, child];
+    expect(getActiveSubPlanOverrunTail(child, new Map(items.map((p) => [p.id, p])))).toBeNull();
+    expect(getParentRolledUpOverrunTail(parent, items)).toEqual({
+      from: "2026-06-01T12:00",
+      to: "2026-06-03T12:00",
+    });
+  });
+
+  it("parent has no tail when done child finishes within parent end", () => {
+    const parent = plan({ id: "root", endDate: "2026-06-10T12:00" });
+    const child = plan({
+      id: "child",
+      parentId: "root",
+      endDate: "2026-06-05T12:00",
+      status: "done",
+    });
+    const items = [parent, child];
+    expect(getParentRolledUpOverrunTail(parent, items)).toBeNull();
   });
 });
 

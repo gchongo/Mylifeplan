@@ -46,10 +46,11 @@ import {
 import { buildParentChildForkLines } from "@/lib/gantt-tree-lines";
 import { contributionsForGanttRow } from "@/lib/gantt-contribution-display";
 import { datePartOf } from "@/lib/dates";
-import { isPlanOverdue } from "@/lib/gantt-plan-status";
+import { isPlanOverdue, getActiveSubPlanOverrunTail, getParentRolledUpOverrunTail, type PlanOverrunTail } from "@/lib/gantt-plan-status";
 import {
   CONTRIBUTION_POINT_WIDTH_PX,
   contributionIntervalFillStyle,
+  contributionMarkerHeight,
   isContributionInterval,
   resolveContributionMarkerColor,
 } from "@/lib/contribution-marker-style";
@@ -880,6 +881,24 @@ export const GanttChart = forwardRef<
     );
   }
 
+  function renderPlanOverrunTail(tail: PlanOverrunTail, barHeightPx: number, rowHeight: number) {
+    const { left, width } = barMetricsFromDates(tail.from, tail.to, layout);
+    const markerHeight = contributionMarkerHeight(barHeightPx);
+    const top = (rowHeight - markerHeight) / 2;
+    return (
+      <div
+        className="pointer-events-none absolute z-[6] rounded-r-full bg-red-500/80 shadow-sm ring-1 ring-red-400/70 dark:bg-red-600/75"
+        style={{
+          left,
+          width: Math.max(width, 4),
+          top,
+          height: markerHeight,
+        }}
+        aria-hidden
+      />
+    );
+  }
+
   function renderContributionMarkers(
     rowContributions: GanttContribution[],
     spanStart: string,
@@ -887,6 +906,8 @@ export const GanttChart = forwardRef<
     barLeft: number,
     barWidth: number,
     rowPlanId: string,
+    barHeightPx: number,
+    rowHeight: number,
     strip?: { top: number; height: number },
   ) {
     const visible = rowContributions.filter((c) => {
@@ -898,6 +919,9 @@ export const GanttChart = forwardRef<
     if (visible.length === 0) return null;
 
     const barOrigin = Math.max(barLeft, 0);
+    const markerHeight = contributionMarkerHeight(barHeightPx);
+    const containerHeight = strip?.height ?? rowHeight;
+    const markerTop = (strip?.top ?? 0) + (containerHeight - markerHeight) / 2;
 
     return (
       <div
@@ -906,7 +930,7 @@ export const GanttChart = forwardRef<
           left: barOrigin,
           width: Math.max(barWidth, 8),
           top: strip?.top ?? 0,
-          height: strip?.height ?? "100%",
+          height: containerHeight,
         }}
       >
         {visible.map((c) => {
@@ -923,11 +947,12 @@ export const GanttChart = forwardRef<
                 type="button"
                 data-gantt-bar
                 onClick={() => openContribution(c.id)}
-                className="pointer-events-auto absolute top-0 z-10 rounded-sm ring-1 ring-white/80 hover:brightness-110 dark:ring-gray-900/80"
+                className="pointer-events-auto absolute z-10 rounded-sm ring-1 ring-white/80 hover:brightness-110 dark:ring-gray-900/80"
                 style={{
                   left: Math.max(0, relLeft),
                   width: Math.max(width, 4),
-                  height: "100%",
+                  top: markerTop - (strip?.top ?? 0),
+                  height: markerHeight,
                   ...contributionIntervalFillStyle(color),
                   borderLeft: `2px solid ${color}`,
                   borderRight: `2px solid ${color}`,
@@ -945,11 +970,12 @@ export const GanttChart = forwardRef<
               type="button"
               data-gantt-bar
               onClick={() => openContribution(c.id)}
-              className="pointer-events-auto absolute top-0 z-20 -translate-x-1/2 hover:opacity-90"
+              className="pointer-events-auto absolute z-20 -translate-x-1/2 hover:opacity-90"
               style={{
                 left: Math.max(0, x),
                 width: CONTRIBUTION_POINT_WIDTH_PX,
-                height: "100%",
+                top: markerTop - (strip?.top ?? 0),
+                height: markerHeight,
                 backgroundColor: color,
               }}
               title={title}
@@ -1015,6 +1041,11 @@ export const GanttChart = forwardRef<
     const displayStatus = itemDisplayStatus(item, items);
     const overdue = isPlanOverdue(item, planById);
     const barStyle = planBarStyle(item, row.depth, groupColor, displayStatus, overdue);
+    const activeOverrunTail = getActiveSubPlanOverrunTail(item, planById);
+    const parentOverrunTail =
+      !activeOverrunTail && !item.contributionOnly
+        ? getParentRolledUpOverrunTail(item, items)
+        : null;
     const isRootWithChildren =
       row.depth === 0 &&
       expanded.has(item.id) &&
@@ -1111,6 +1142,8 @@ export const GanttChart = forwardRef<
             style={{ left: Math.max(left, 0), width: Math.max(width, 24) }}
           />
         )}
+        {!item.contributionOnly && activeOverrunTail && renderPlanOverrunTail(activeOverrunTail, barStyle.barHeightPx, row.height)}
+        {!item.contributionOnly && parentOverrunTail && renderPlanOverrunTail(parentOverrunTail, barStyle.barHeightPx, row.height)}
         {!item.contributionOnly &&
           renderContributionMarkers(
             rowContributions,
@@ -1119,6 +1152,8 @@ export const GanttChart = forwardRef<
             left,
             width,
             item.id,
+            barStyle.barHeightPx,
+            row.height,
           )}
       </div>
     );
