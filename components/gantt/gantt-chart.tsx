@@ -39,12 +39,18 @@ import { defaultGanttStatusFilter, filterGanttTasksByStatus } from "@/lib/gantt-
 import {
   buildPlanGroupLayouts,
   GROUP_FRAME_BOTTOM_PAD,
+  GROUP_TAB_HEIGHT,
 } from "@/lib/gantt-plan-groups";
-import { buildBoundGroupPreview } from "@/lib/gantt-plan-bind";
+import {
+  buildBoundGroupPreview,
+  getPlanContributionBounds,
+  isDateWithinPlanSpan,
+} from "@/lib/gantt-plan-bind";
 import {
   getPlanBarAppearance,
-  getPlanGroupFrameAppearance,
   getPlanLabelAppearance,
+  normalizePlanColor,
+  planColorRgba,
   resolveEffectivePlanColor,
 } from "@/lib/plan-color";
 import { GRID_BORDER } from "@/lib/gantt-grid-colors";
@@ -57,8 +63,8 @@ import { cn } from "@/lib/utils";
 
 const ROW_HEIGHT = 28;
 const ROW_HEIGHT_CHILD = 28;
-/** 有展开子计划的一级计划行：仅容纳标题，紧贴下方组框 */
-const ROW_HEIGHT_ROOT_GROUPED = 22;
+/** 有展开子计划的一级计划行：与组框标题标签同高 */
+const ROW_HEIGHT_ROOT_GROUPED = GROUP_TAB_HEIGHT;
 const ROW_GROUP_GAP = 12;
 const DEFAULT_LABEL_WIDTH = 200;
 const MIN_LABEL_WIDTH = 120;
@@ -356,6 +362,15 @@ export const GanttChart = forwardRef<
     () => new Set(planGroups.map((g) => g.rootId)),
     [planGroups],
   );
+
+  const contributionBoundsByPlan = useMemo(() => {
+    const map = new Map<string, { min?: string; max?: string }>();
+    const planIds = new Set(items.map((p) => p.id));
+    for (const id of planIds) {
+      map.set(id, getPlanContributionBounds(id, contributions));
+    }
+    return map;
+  }, [items, contributions]);
 
   const toggleLabelPanel = useCallback(() => {
     setLabelVisible((prev) => {
@@ -824,37 +839,51 @@ export const GanttChart = forwardRef<
     );
   }
 
-  function renderContributionMarkers(planId: string) {
+  function renderContributionMarkers(
+    planId: string,
+    spanStart: string,
+    spanEnd: string,
+    barLeft: number,
+    barWidth: number,
+  ) {
     const byDate = new Map<string, GanttContribution[]>();
     for (const c of contributions) {
       if (c.planId !== planId) continue;
+      if (!isDateWithinPlanSpan(c.occurredOn, spanStart, spanEnd)) continue;
       const list = byDate.get(c.occurredOn) ?? [];
       list.push(c);
       byDate.set(c.occurredOn, list);
     }
 
-    return [...byDate.entries()].map(([date, list]) => {
-      const x = dateToX(date, layout);
-      const primary = list[list.length - 1]!;
-      return (
-        <button
-          key={`${planId}-${date}`}
-          type="button"
-          data-gantt-bar
-          onClick={() => openContribution(primary.id)}
-          className="absolute top-1/2 z-20 flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-brand-500 ring-2 ring-white hover:bg-brand-600"
-          style={{ left: x }}
-          title={list.map((c) => c.title).join("、")}
-          aria-label={`${date} 贡献：${primary.title}`}
-        >
-          {list.length > 1 && (
-            <span className="absolute -right-1.5 -top-1.5 flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full bg-gray-900 px-0.5 text-[9px] font-medium text-white">
-              {list.length}
-            </span>
-          )}
-        </button>
-      );
-    });
+    return (
+      <div
+        className="pointer-events-none absolute top-0 overflow-hidden"
+        style={{ left: Math.max(barLeft, 0), width: Math.max(barWidth, 8), height: "100%" }}
+      >
+        {[...byDate.entries()].map(([date, list]) => {
+          const x = dateToX(date, layout) - Math.max(barLeft, 0);
+          const primary = list[list.length - 1]!;
+          return (
+            <button
+              key={`${planId}-${date}`}
+              type="button"
+              data-gantt-bar
+              onClick={() => openContribution(primary.id)}
+              className="pointer-events-auto absolute top-1/2 z-20 flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-brand-500 ring-2 ring-white hover:bg-brand-600"
+              style={{ left: x }}
+              title={list.map((c) => c.title).join("、")}
+              aria-label={`${date} 贡献：${primary.title}`}
+            >
+              {list.length > 1 && (
+                <span className="absolute -right-1.5 -top-1.5 flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full bg-gray-900 px-0.5 text-[9px] font-medium text-white">
+                  {list.length}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    );
   }
 
   const onRootDragPreview = useCallback(
@@ -883,20 +912,50 @@ export const GanttChart = forwardRef<
       const startDate = preview?.start ?? rootItem.startDate;
       const endDate = preview?.end ?? rootItem.effectiveEnd;
       const { left, width } = barMetricsFromDates(startDate, endDate, layout);
-      const frame = getPlanGroupFrameAppearance(rootItem.color);
+      const c = normalizePlanColor(rootItem.color);
+      const borderColor = planColorRgba(c, 0.75);
+      const tabBg = planColorRgba(c, 0.16);
+      const bodyBg = planColorRgba(c, 0.08);
+      const frameLeft = Math.max(left, 0);
+      const frameWidth = Math.max(width, 8);
+      const frameHeight = group.height + GROUP_FRAME_BOTTOM_PAD;
+
       return (
         <div
           key={`group-frame-${group.rootId}`}
-          className={frame.className}
+          className="pointer-events-none absolute z-[1]"
           style={{
             top: group.top,
-            height: group.height + GROUP_FRAME_BOTTOM_PAD,
-            left: Math.max(left, 0),
-            width: Math.max(width, 8),
-            ...frame.style,
+            height: frameHeight,
+            left: frameLeft,
+            width: frameWidth,
           }}
           aria-hidden
-        />
+        >
+          <div
+            className="absolute left-0 top-0 z-[2] max-w-[min(100%,14rem)] truncate border-2 border-b-0 px-2 text-xs font-semibold leading-[22px]"
+            style={{
+              borderColor,
+              backgroundColor: tabBg,
+              color: c,
+              borderTopLeftRadius: 6,
+              borderTopRightRadius: 6,
+            }}
+          >
+            {rootItem.title}
+          </div>
+          <div
+            className="absolute bottom-0 left-0 right-0 border-2"
+            style={{
+              top: GROUP_TAB_HEIGHT - 2,
+              borderColor,
+              backgroundColor: bodyBg,
+              borderBottomLeftRadius: 6,
+              borderBottomRightRadius: 6,
+              borderTopRightRadius: 6,
+            }}
+          />
+        </div>
       );
     });
   }
@@ -918,6 +977,7 @@ export const GanttChart = forwardRef<
     const parentPlan = item.parentId ? planById.get(item.parentId) : null;
     const parentPreview = parentPlan ? barPreview.get(parentPlan.id) : undefined;
     const minStartDate = parentPreview?.start ?? parentPlan?.startDate;
+    const contribBounds = contributionBoundsByPlan.get(item.id);
 
     return (
       <div
@@ -940,9 +1000,11 @@ export const GanttChart = forwardRef<
             barTextStyle={barStyle.textStyle}
             planColor={effectiveColor}
             bareShell={frameRoot}
-            bareShellAlignBottom={frameRoot}
+            hideTitle={frameRoot}
             hitRowHeight={row.height}
             minStartDate={row.depth > 0 ? minStartDate : undefined}
+            minContributionDate={contribBounds?.min}
+            maxContributionDate={contribBounds?.max}
             previewOverride={previewDates ?? null}
             onPreviewDates={frameRoot ? onRootDragPreview : undefined}
             onDragEnd={clearBarPreview}
@@ -956,7 +1018,8 @@ export const GanttChart = forwardRef<
             style={{ left: Math.max(left, 0), width: Math.max(width, 24) }}
           />
         )}
-        {renderContributionMarkers(item.id)}
+        {!item.contributionOnly &&
+          renderContributionMarkers(item.id, displayStart, displayEnd, left, width)}
       </div>
     );
   }

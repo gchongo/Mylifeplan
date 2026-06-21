@@ -1,5 +1,87 @@
 import { addDaysUtc, daysBetween } from "@/lib/gantt-scale";
-import type { GanttItem } from "@/types";
+import type { GanttContribution, GanttItem } from "@/types";
+
+export interface PlanContributionBounds {
+  min?: string;
+  max?: string;
+}
+
+export interface PlanDragConstraints {
+  minStartDate?: string;
+  minContributionDate?: string;
+  maxContributionDate?: string;
+}
+
+/** 计划下所有贡献记录的日期范围 */
+export function getPlanContributionBounds(
+  planId: string,
+  contributions: GanttContribution[],
+): PlanContributionBounds {
+  let min: string | undefined;
+  let max: string | undefined;
+  for (const c of contributions) {
+    if (c.planId !== planId) continue;
+    for (const d of [c.occurredOn, c.occurredEndOn ?? c.occurredOn]) {
+      if (!min || d < min) min = d;
+      if (!max || d > max) max = d;
+    }
+  }
+  return { min, max };
+}
+
+export function constrainPlanMove(
+  newStart: string,
+  durationDays: number,
+  constraints: PlanDragConstraints,
+): { start: string; end: string } {
+  let start = newStart;
+  if (constraints.minStartDate && start < constraints.minStartDate) {
+    start = constraints.minStartDate;
+  }
+  let end = addDaysUtc(start, durationDays);
+
+  if (constraints.maxContributionDate && end < constraints.maxContributionDate) {
+    end = constraints.maxContributionDate;
+    start = addDaysUtc(end, -durationDays);
+    if (constraints.minStartDate && start < constraints.minStartDate) {
+      start = constraints.minStartDate;
+      end = addDaysUtc(start, durationDays);
+    }
+  }
+  if (constraints.minContributionDate && start > constraints.minContributionDate) {
+    start = constraints.minContributionDate;
+    end = addDaysUtc(start, durationDays);
+  }
+  if (end < start) end = start;
+  return { start, end };
+}
+
+export function constrainPlanResizeStart(
+  newStart: string,
+  end: string,
+  constraints: PlanDragConstraints,
+): string {
+  let start = newStart;
+  if (constraints.minStartDate && start < constraints.minStartDate) {
+    start = constraints.minStartDate;
+  }
+  if (constraints.minContributionDate && start > constraints.minContributionDate) {
+    start = constraints.minContributionDate;
+  }
+  if (start > end) start = end;
+  return start;
+}
+
+export function constrainPlanResizeEnd(
+  start: string,
+  newEnd: string,
+  maxContributionDate?: string,
+): string {
+  let end = newEnd;
+  if (end < start) end = start;
+  if (maxContributionDate && end < maxContributionDate) end = maxContributionDate;
+  return end;
+}
 
 /** 收集某计划的所有可见后代（深度优先） */
 export function collectDescendantPlans(rootId: string, items: GanttItem[]): GanttItem[] {
@@ -52,4 +134,13 @@ export function isPlanStartBeforeParent(
 ): boolean {
   if (!childStart || !parentStart) return false;
   return childStart.getTime() < parentStart.getTime();
+}
+
+/** 日期 YYYY-MM-DD 是否在计划条范围内 */
+export function isDateWithinPlanSpan(
+  date: string,
+  start: string,
+  end: string,
+): boolean {
+  return date >= start && date <= end;
 }

@@ -12,7 +12,7 @@ describe("buildPlanGroupLayouts", () => {
   it("groups consecutive rows by rootId", () => {
     const groups = buildPlanGroupLayouts(rows);
     expect(groups).toHaveLength(1);
-    expect(groups[0]).toMatchObject({ rootId: "a", rowCount: 3, top: 28, height: 56 });
+    expect(groups[0]).toMatchObject({ rootId: "a", rowCount: 3, top: 0, height: 84 });
   });
 
   it("skips single-row groups", () => {

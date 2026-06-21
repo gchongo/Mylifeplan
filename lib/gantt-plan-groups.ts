@@ -1,5 +1,7 @@
 /** 组框底部留白，避免最后一行子条贴底边 */
 export const GROUP_FRAME_BOTTOM_PAD = 3;
+/** 组框顶部标题标签高度 */
+export const GROUP_TAB_HEIGHT = 24;
 
 export interface GanttRowGroupMeta {
   gapBefore: number;
@@ -32,11 +34,11 @@ export function buildPlanGroupLayouts(rows: GanttRowGroupMeta[]): PlanGroupLayou
     while (j < rows.length && rows[j]!.rootId === rootId) j++;
     const count = j - i;
     if (count >= 2) {
-      const childrenTop = rowOffsetTop(rows, i + 1);
+      const top = rowOffsetTop(rows, i);
       groups.push({
         rootId,
-        top: childrenTop,
-        height: rowOffsetTop(rows, j) - childrenTop,
+        top,
+        height: rowOffsetTop(rows, j) - top,
         rowCount: count,
       });
     }

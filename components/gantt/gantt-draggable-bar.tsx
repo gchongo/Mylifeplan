@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getEffectiveEndDate } from "@/lib/content-router";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import {
@@ -10,7 +10,12 @@ import {
   pixelDeltaToDays,
   type TimelineLayout,
 } from "@/lib/gantt-scale";
-import { clampPlanStartToParent } from "@/lib/gantt-plan-bind";
+import {
+  constrainPlanMove,
+  constrainPlanResizeEnd,
+  constrainPlanResizeStart,
+  type PlanDragConstraints,
+} from "@/lib/gantt-plan-bind";
 import { normalizePlanColor, planColorRgba } from "@/lib/plan-color";
 import type { GanttItem } from "@/types";
 import { cn } from "@/lib/utils";
@@ -38,9 +43,11 @@ export function GanttDraggableBar({
   onUpdated,
   onTaskClick,
   bareShell = false,
+  hideTitle = false,
   hitRowHeight,
-  bareShellAlignBottom = false,
   minStartDate,
+  minContributionDate,
+  maxContributionDate,
   previewOverride,
   onPreviewDates,
   onDragEnd,
@@ -58,12 +65,12 @@ export function GanttDraggableBar({
   onTaskClick?: () => void;
   /** 无可见边框（组框一级计划），保留完整拖拽热区 */
   bareShell?: boolean;
+  /** 标题由组框标签展示，条上不重复显示 */
+  hideTitle?: boolean;
   hitRowHeight?: number;
-  /** 有组框的一级计划：标题贴行底，紧贴组框上沿 */
-  bareShellAlignBottom?: boolean;
-  /** 子计划：开始时间不得早于父计划 */
   minStartDate?: string;
-  /** 父计划拖动时，由外部传入整组预览 */
+  minContributionDate?: string;
+  maxContributionDate?: string;
   previewOverride?: { start: string; end: string } | null;
   onPreviewDates?: (planId: string, preview: { start: string; end: string } | null) => void;
   onDragEnd?: () => void;
@@ -73,9 +80,13 @@ export function GanttDraggableBar({
   const [saving, setSaving] = useState(false);
   const dragRef = useRef<DragState | null>(null);
 
-  const clampStart = useCallback(
-    (start: string) => (minStartDate ? clampPlanStartToParent(start, minStartDate) : start),
-    [minStartDate],
+  const dragConstraints = useMemo<PlanDragConstraints>(
+    () => ({
+      minStartDate,
+      minContributionDate,
+      maxContributionDate,
+    }),
+    [minStartDate, minContributionDate, maxContributionDate],
   );
 
   const applyDrag = useCallback(
@@ -89,30 +100,30 @@ export function GanttDraggableBar({
 
       if (state.mode === "move") {
         const duration = daysBetween(state.origStart, state.origEnd);
-        let newStart = clampStart(addDaysUtc(state.origStart, deltaDays));
-        let newEnd = addDaysUtc(newStart, duration);
-        if (minStartDate && newStart === minStartDate && newStart !== addDaysUtc(state.origStart, deltaDays)) {
-          newEnd = addDaysUtc(newStart, duration);
-        }
-        setPreview({ start: newStart, end: newEnd });
-        onPreviewDates?.(item.id, { start: newStart, end: newEnd });
+        const rawStart = addDaysUtc(state.origStart, deltaDays);
+        const { start, end } = constrainPlanMove(rawStart, duration, dragConstraints);
+        setPreview({ start, end });
+        onPreviewDates?.(item.id, { start, end });
         return;
       }
 
       if (state.mode === "resize-start") {
-        let newStart = clampStart(addDaysUtc(state.origStart, deltaDays));
-        if (newStart > state.origEnd) newStart = state.origEnd;
-        setPreview({ start: newStart, end: state.origEnd });
-        onPreviewDates?.(item.id, { start: newStart, end: state.origEnd });
+        const rawStart = addDaysUtc(state.origStart, deltaDays);
+        const start = constrainPlanResizeStart(rawStart, state.origEnd, dragConstraints);
+        setPreview({ start, end: state.origEnd });
+        onPreviewDates?.(item.id, { start, end: state.origEnd });
         return;
       }
 
-      let newEnd = addDaysUtc(state.origEnd, deltaDays);
-      if (newEnd < state.origStart) newEnd = state.origStart;
-      setPreview({ start: state.origStart, end: newEnd });
-      onPreviewDates?.(item.id, { start: state.origStart, end: newEnd });
+      const end = constrainPlanResizeEnd(
+        state.origStart,
+        addDaysUtc(state.origEnd, deltaDays),
+        maxContributionDate,
+      );
+      setPreview({ start: state.origStart, end });
+      onPreviewDates?.(item.id, { start: state.origStart, end });
     },
-    [layout, item.id, onPreviewDates, clampStart, minStartDate],
+    [layout, item.id, onPreviewDates, dragConstraints, maxContributionDate],
   );
 
   const commitDrag = useCallback(
@@ -125,15 +136,22 @@ export function GanttDraggableBar({
 
       if (state.mode === "move") {
         const duration = daysBetween(state.origStart, state.origEnd);
-        startDate = clampStart(addDaysUtc(state.origStart, deltaDays));
-        const newEnd = addDaysUtc(startDate, duration);
-        if (state.hadDueDate) endDate = newEnd;
+        const rawStart = addDaysUtc(state.origStart, deltaDays);
+        const moved = constrainPlanMove(rawStart, duration, dragConstraints);
+        startDate = moved.start;
+        if (state.hadDueDate) endDate = moved.end;
       } else if (state.mode === "resize-start") {
-        startDate = clampStart(addDaysUtc(state.origStart, deltaDays));
-        if (startDate > state.origEnd) startDate = state.origEnd;
+        startDate = constrainPlanResizeStart(
+          addDaysUtc(state.origStart, deltaDays),
+          state.origEnd,
+          dragConstraints,
+        );
       } else {
-        const newEnd = addDaysUtc(state.origEnd, deltaDays);
-        endDate = newEnd >= state.origStart ? newEnd : state.origStart;
+        endDate = constrainPlanResizeEnd(
+          state.origStart,
+          addDaysUtc(state.origEnd, deltaDays),
+          maxContributionDate,
+        );
       }
 
       if (startDate === item.startDate && endDate === (item.endDate ?? null)) return;
@@ -170,7 +188,7 @@ export function GanttDraggableBar({
         setSaving(false);
       }
     },
-    [item, layout, onUpdated, clampStart],
+    [item, layout, onUpdated, dragConstraints, maxContributionDate],
   );
 
   useEffect(() => {
@@ -259,9 +277,7 @@ export function GanttDraggableBar({
       <div
         className={cn(
           "group relative w-full overflow-hidden rounded-md",
-          bareShell
-            ? cn("absolute h-7", bareShellAlignBottom ? "bottom-0" : "top-0")
-            : "absolute top-1/2 h-7 -translate-y-1/2",
+          bareShell ? "absolute inset-0" : "absolute top-1/2 h-7 -translate-y-1/2",
           barShell,
           saving && "opacity-60",
           dragging && "ring-2 ring-brand-400 ring-offset-1",
@@ -283,22 +299,26 @@ export function GanttDraggableBar({
           <span
             className={cn(
               "pointer-events-none block max-w-full truncate text-xs leading-7",
-              bareShell
-                ? "inline-block rounded-md px-2 font-semibold shadow-sm"
-                : "px-2",
-              barText,
+              !hideTitle && !bareShell && "px-2",
+              !hideTitle && bareShell && "inline-block rounded-md px-2 font-semibold shadow-sm",
+              !hideTitle && barText,
+              hideTitle && "sr-only",
             )}
             style={{
-              ...barTextStyle,
-              ...(bareShell
-                ? {
-                    backgroundColor: planColorRgba(pillColor, 0.12),
-                    boxShadow: `inset 0 0 0 1px ${planColorRgba(pillColor, 0.35)}`,
-                  }
-                : undefined),
+              ...(hideTitle
+                ? undefined
+                : {
+                    ...barTextStyle,
+                    ...(bareShell
+                      ? {
+                          backgroundColor: planColorRgba(pillColor, 0.12),
+                          boxShadow: `inset 0 0 0 1px ${planColorRgba(pillColor, 0.35)}`,
+                        }
+                      : undefined),
+                  }),
             }}
           >
-            {item.title}
+            {hideTitle ? item.title : item.title}
           </span>
         </div>
         <div

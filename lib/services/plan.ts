@@ -1,8 +1,8 @@
 import type { Plan, PlanStatus } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
-import { shouldShowInMemo, validateDateFields } from "@/lib/content-router";
+import { shouldShowInMemo, validateDateFields, getEffectiveEndDate } from "@/lib/content-router";
 import { UNSCHEDULED_BLOCKED_HINT } from "@/lib/kanban-board";
-import { parsePlanDateTime, formatPlanDateTime, toDatetimeLocalInput } from "@/lib/dates";
+import { parsePlanDateTime, formatPlanDateTime, formatDateOnly, toDatetimeLocalInput } from "@/lib/dates";
 import { prisma } from "@/lib/db";
 import { writeFeed } from "@/lib/services/feed";
 import { deleteMemoForPlan, syncMemoForPlan } from "@/lib/services/memo-sync";
@@ -140,6 +140,38 @@ async function shiftDescendantPlanDates(
     });
     await syncMemoForPlan(updated, tx);
   }
+}
+
+async function validatePlanCoversContributions(
+  userId: string,
+  planId: string,
+  startDate: Date | null,
+  endDate: Date | null,
+): Promise<string | null> {
+  const rows = await prisma.planContribution.findMany({
+    where: { planId, userId },
+    select: { occurredOn: true, occurredEndOn: true },
+  });
+  if (rows.length === 0 || !startDate) return null;
+
+  const startStr = formatDateOnly(startDate)!;
+  const endStr = endDate
+    ? formatDateOnly(endDate)!
+    : getEffectiveEndDate({
+        startDate: startStr,
+        dueDate: null,
+      }).effectiveEnd;
+
+  if (!endStr) return null;
+
+  for (const row of rows) {
+    const cStart = formatDateOnly(row.occurredOn)!;
+    const cEnd = formatDateOnly(row.occurredEndOn ?? row.occurredOn)!;
+    if (cStart < startStr || cEnd > endStr) {
+      return "计划时间需覆盖全部贡献记录，请调整开始或结束时间";
+    }
+  }
+  return null;
 }
 
 async function applyPlanStatusIfChanged(
@@ -293,6 +325,21 @@ export async function updatePlan(
     parsedNextStart,
   );
   if (parentStartError) throw new Error(parentStartError);
+
+  const nextStartDate =
+    input.startDate !== undefined ? parsePlanDateTime(input.startDate) : existing.startDate;
+  const nextEndDate =
+    input.endDate !== undefined ? parsePlanDateTime(input.endDate) : existing.endDate;
+
+  if (input.startDate !== undefined || input.endDate !== undefined) {
+    const contribError = await validatePlanCoversContributions(
+      userId,
+      planId,
+      nextStartDate,
+      nextEndDate,
+    );
+    if (contribError) throw new Error(contribError);
+  }
 
   const startDeltaMs =
     input.startDate !== undefined && existing.startDate && parsedNextStart

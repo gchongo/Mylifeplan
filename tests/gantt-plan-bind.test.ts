@@ -3,6 +3,10 @@ import {
   buildBoundGroupPreview,
   clampPlanStartToParent,
   collectDescendantPlans,
+  constrainPlanMove,
+  constrainPlanResizeEnd,
+  getPlanContributionBounds,
+  isDateWithinPlanSpan,
   shiftPlanDatesByDays,
 } from "@/lib/gantt-plan-bind";
 import type { GanttItem } from "@/types";
@@ -60,5 +64,36 @@ describe("gantt-plan-bind", () => {
   it("clamps child start to parent start", () => {
     expect(clampPlanStartToParent("2026-01-01", "2026-01-05")).toBe("2026-01-05");
     expect(clampPlanStartToParent("2026-01-06", "2026-01-05")).toBe("2026-01-06");
+  });
+
+  it("constrains end date to cover contributions", () => {
+    expect(constrainPlanResizeEnd("2026-01-01", "2026-01-05", "2026-01-10")).toBe("2026-01-10");
+  });
+
+  it("constrains move to cover contribution range", () => {
+    const moved = constrainPlanMove("2026-01-10", 5, {
+      minContributionDate: "2026-01-03",
+      maxContributionDate: "2026-01-08",
+    });
+    expect(moved.start).toBe("2026-01-03");
+    expect(moved.end).toBe("2026-01-08");
+  });
+
+  it("reads contribution bounds for a plan", () => {
+    const bounds = getPlanContributionBounds("p1", [
+      {
+        id: "c1",
+        planId: "p1",
+        title: "A",
+        occurredOn: "2026-01-05",
+        occurredEndOn: "2026-01-07",
+      },
+    ]);
+    expect(bounds).toEqual({ min: "2026-01-05", max: "2026-01-07" });
+  });
+
+  it("checks date within plan span", () => {
+    expect(isDateWithinPlanSpan("2026-01-05", "2026-01-01", "2026-01-10")).toBe(true);
+    expect(isDateWithinPlanSpan("2026-01-11", "2026-01-01", "2026-01-10")).toBe(false);
   });
 });
