@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { GanttPanelCollapseChevron, GanttPanelExpandChevron } from "@/components/gantt/gantt-panel-chevron";
 import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribution-drawer";
 import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
 import { GanttPlanDrawerPanel } from "@/components/gantt/gantt-plan-drawer";
@@ -221,7 +222,6 @@ export const GanttChart = forwardRef<
   const [timelineViewportWidth, setTimelineViewportWidth] = useState(0);
   const [labelWidth, setLabelWidth] = useState(DEFAULT_LABEL_WIDTH);
   const [labelVisible, setLabelVisible] = useState(true);
-  const labelResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [isResizingLabel, setIsResizingLabel] = useState(false);
 
   const effectiveLabelWidth = labelVisible ? labelWidth : 0;
@@ -289,48 +289,38 @@ export const GanttChart = forwardRef<
     });
   }, []);
 
-  const startLabelResize = useCallback(
-    (clientX: number) => {
-      labelResizeRef.current = { startX: clientX, startWidth: labelWidth };
-      setIsResizingLabel(true);
-    },
-    [labelWidth],
-  );
-
-  useEffect(() => {
-    if (!isResizingLabel) return;
+  const startLabelResize = useCallback((clientX: number) => {
+    const startX = clientX;
+    const startWidth = labelWidth;
+    setIsResizingLabel(true);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
 
     function onMove(e: MouseEvent) {
-      const state = labelResizeRef.current;
-      if (!state) return;
       const next = Math.min(
         MAX_LABEL_WIDTH,
-        Math.max(MIN_LABEL_WIDTH, state.startWidth + (e.clientX - state.startX)),
+        Math.max(MIN_LABEL_WIDTH, startWidth + (e.clientX - startX)),
       );
       setLabelWidth(next);
     }
 
     function onUp(e: MouseEvent) {
-      const state = labelResizeRef.current;
-      if (state) {
-        const next = Math.min(
-          MAX_LABEL_WIDTH,
-          Math.max(MIN_LABEL_WIDTH, state.startWidth + (e.clientX - state.startX)),
-        );
-        setLabelWidth(next);
-        localStorage.setItem(GANTT_LABEL_WIDTH_KEY, String(next));
-      }
-      labelResizeRef.current = null;
+      const next = Math.min(
+        MAX_LABEL_WIDTH,
+        Math.max(MIN_LABEL_WIDTH, startWidth + (e.clientX - startX)),
+      );
+      setLabelWidth(next);
+      localStorage.setItem(GANTT_LABEL_WIDTH_KEY, String(next));
       setIsResizingLabel(false);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
     }
 
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-  }, [isResizingLabel]);
+  }, [labelWidth]);
 
   const expandablePlanIds = useMemo(() => {
     return filteredPlans
@@ -553,6 +543,7 @@ export const GanttChart = forwardRef<
 
   function handlePanStart(e: React.MouseEvent) {
     if (e.button !== 0) return;
+    if (isResizingLabel) return;
     const target = e.target as HTMLElement;
     if (target.closest("[data-gantt-bar]")) return;
     if (target.closest("button, a, input, textarea, select, [data-no-pan]")) return;
@@ -598,7 +589,7 @@ export const GanttChart = forwardRef<
     );
   }
 
-  function renderLabelResizeHandle() {
+  function renderLabelResizeSplitter(totalHeight: number) {
     if (!labelVisible) return null;
     return (
       <div
@@ -606,11 +597,15 @@ export const GanttChart = forwardRef<
         role="separator"
         aria-orientation="vertical"
         aria-label="调整计划列表宽度"
+        aria-valuenow={labelWidth}
+        aria-valuemin={MIN_LABEL_WIDTH}
+        aria-valuemax={MAX_LABEL_WIDTH}
         className={cn(
-          "absolute right-0 top-0 z-50 h-full w-1.5 cursor-col-resize touch-none",
-          "hover:bg-brand-400/30",
-          isResizingLabel && "bg-brand-500/40",
+          "absolute z-[60] cursor-col-resize touch-none select-none",
+          "hover:bg-brand-500/10",
+          isResizingLabel && "bg-brand-500/20",
         )}
+        style={{ left: labelWidth - 4, top: 0, width: 8, height: totalHeight }}
         onMouseDown={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -630,12 +625,12 @@ export const GanttChart = forwardRef<
         <button
           type="button"
           data-no-pan
-          className="flex flex-1 items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+          className="flex flex-1 items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800"
           title="显示计划列表"
           aria-label="显示计划列表"
           onClick={toggleLabelPanel}
         >
-          ▶
+          <GanttPanelExpandChevron />
         </button>
       </div>
     );
@@ -664,7 +659,6 @@ export const GanttChart = forwardRef<
             style={{ width: labelWidth, minHeight: TIMELINE_HEADER_HEIGHT }}
           >
             {renderListHeaderControls()}
-            {renderLabelResizeHandle()}
           </div>
         ) : (
           renderCollapsedLabelRail(TIMELINE_HEADER_HEIGHT)
@@ -999,7 +993,8 @@ export const GanttChart = forwardRef<
               isPanning ? "cursor-grabbing select-none" : !isResizingLabel && "cursor-grab",
             )}
           >
-            <div style={{ width: totalWidth }}>
+            <div className="relative" style={{ width: totalWidth }}>
+              {renderLabelResizeSplitter(TIMELINE_HEADER_HEIGHT + minBodyHeight)}
               {renderTimelineHeader()}
 
               <div className="relative" style={{ minHeight: minBodyHeight }}>
