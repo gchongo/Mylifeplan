@@ -39,6 +39,7 @@ export function GanttDraggableBar({
   onTaskClick,
   bareShell = false,
   hitRowHeight,
+  bareShellAlignBottom = false,
   minStartDate,
   previewOverride,
   onPreviewDates,
@@ -58,6 +59,8 @@ export function GanttDraggableBar({
   /** 无可见边框（组框一级计划），保留完整拖拽热区 */
   bareShell?: boolean;
   hitRowHeight?: number;
+  /** 有组框的一级计划：标题贴行底，紧贴组框上沿 */
+  bareShellAlignBottom?: boolean;
   /** 子计划：开始时间不得早于父计划 */
   minStartDate?: string;
   /** 父计划拖动时，由外部传入整组预览 */
@@ -256,7 +259,9 @@ export function GanttDraggableBar({
       <div
         className={cn(
           "group relative w-full overflow-hidden rounded-md",
-          bareShell ? "absolute top-0 h-7" : "absolute top-1/2 h-7 -translate-y-1/2",
+          bareShell
+            ? cn("absolute h-7", bareShellAlignBottom ? "bottom-0" : "top-0")
+            : "absolute top-1/2 h-7 -translate-y-1/2",
           barShell,
           saving && "opacity-60",
           dragging && "ring-2 ring-brand-400 ring-offset-1",

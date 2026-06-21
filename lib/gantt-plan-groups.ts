@@ -32,11 +32,11 @@ export function buildPlanGroupLayouts(rows: GanttRowGroupMeta[]): PlanGroupLayou
     while (j < rows.length && rows[j]!.rootId === rootId) j++;
     const count = j - i;
     if (count >= 2) {
-      const top = rowOffsetTop(rows, i);
+      const childrenTop = rowOffsetTop(rows, i + 1);
       groups.push({
         rootId,
-        top,
-        height: rowOffsetTop(rows, j) - top,
+        top: childrenTop,
+        height: rowOffsetTop(rows, j) - childrenTop,
         rowCount: count,
       });
     }

@@ -57,6 +57,8 @@ import { cn } from "@/lib/utils";
 
 const ROW_HEIGHT = 28;
 const ROW_HEIGHT_CHILD = 28;
+/** 有展开子计划的一级计划行：仅容纳标题，紧贴下方组框 */
+const ROW_HEIGHT_ROOT_GROUPED = 22;
 const ROW_GROUP_GAP = 12;
 const DEFAULT_LABEL_WIDTH = 200;
 const MIN_LABEL_WIDTH = 120;
@@ -146,6 +148,9 @@ function buildPlanTreeRows(plans: GanttItem[], expanded: Set<string>): GanttRow[
   const byId = new Map(plans.map((p) => [p.id, p]));
 
   for (const plan of plans) {
+    if (plan.parentId) {
+      if (!planIds.has(plan.parentId)) continue;
+    }
     const key = plan.parentId && planIds.has(plan.parentId) ? plan.parentId : null;
     if (!byParent.has(key)) byParent.set(key, []);
     byParent.get(key)!.push(plan);
@@ -160,17 +165,23 @@ function buildPlanTreeRows(plans: GanttItem[], expanded: Set<string>): GanttRow[
   function walk(parentId: string | null, depth: number, rootId: string | null) {
     for (const item of byParent.get(parentId) ?? []) {
       const currentRoot = depth === 0 ? item.id : rootId!;
+      const childCount = byParent.get(item.id)?.length ?? 0;
+      const willExpand = expanded.has(item.id) && childCount > 0;
       rows.push({
         kind: "item",
         item,
         depth,
-        height: depth > 0 ? ROW_HEIGHT_CHILD : ROW_HEIGHT,
+        height:
+          depth === 0 && willExpand
+            ? ROW_HEIGHT_ROOT_GROUPED
+            : depth > 0
+              ? ROW_HEIGHT_CHILD
+              : ROW_HEIGHT,
         gapBefore: depth === 0 && rows.length > 0 ? ROW_GROUP_GAP : 0,
         rootId: currentRoot,
       });
-      const childCount = byParent.get(item.id)?.length ?? 0;
 
-      if (expanded.has(item.id) && childCount > 0) {
+      if (willExpand) {
         walk(item.id, depth + 1, currentRoot);
       }
     }
@@ -929,6 +940,7 @@ export const GanttChart = forwardRef<
             barTextStyle={barStyle.textStyle}
             planColor={effectiveColor}
             bareShell={frameRoot}
+            bareShellAlignBottom={frameRoot}
             hitRowHeight={row.height}
             minStartDate={row.depth > 0 ? minStartDate : undefined}
             previewOverride={previewDates ?? null}
