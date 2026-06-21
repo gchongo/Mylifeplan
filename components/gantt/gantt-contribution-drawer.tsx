@@ -11,6 +11,7 @@ import { ContributionPlanSelect } from "@/components/forms/contribution-plan-sel
 import { ContributionMarkdown } from "@/components/contributions/contribution-markdown";
 import {
   ContributionEditor,
+  contributionValuesFromApi,
   type ContributionEditorValues,
 } from "@/components/contributions/contribution-editor";
 
@@ -91,8 +92,7 @@ export function GanttContributionDrawerPanel({
     setEditorValues({
       title: detail.title,
       body: detail.body ?? detail.description ?? "",
-      occurredOn: detail.occurredOn,
-      occurredEndOn: detail.occurredEndOn ?? detail.occurredOn,
+      ...contributionValuesFromApi(detail),
       imageUrls: detail.imageUrls ?? [],
     });
   }

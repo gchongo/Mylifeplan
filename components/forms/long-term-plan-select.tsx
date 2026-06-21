@@ -25,12 +25,16 @@ export function PlanContributionSelect({
   onChange,
   refreshKey = 0,
   inline = false,
+  required = false,
+  label = "关联计划",
 }: {
   value?: string | null;
   onChange?: (id: string | null) => void;
   refreshKey?: number;
   /** 与贡献日期等同排展示 */
   inline?: boolean;
+  required?: boolean;
+  label?: string;
 }) {
   const [options, setOptions] = useState<{ value: string; label: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,9 +71,13 @@ export function PlanContributionSelect({
   return (
     <div className="w-full min-w-0">
       <Select
-        label={inline ? undefined : "关联计划（可选）"}
-        aria-label={inline ? "关联计划（可选）" : undefined}
-        options={[{ value: "", label: "不关联计划" }, ...options]}
+        label={inline ? undefined : label}
+        requiredMark={required && !inline}
+        aria-label={inline ? label : undefined}
+        options={[
+          ...(required ? [] : [{ value: "", label: "不关联计划" }]),
+          ...options,
+        ]}
         value={value ?? ""}
         onChange={(e) => onChange?.(e.target.value || null)}
         onFocus={loadPlans}

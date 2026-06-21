@@ -1,4 +1,5 @@
 import { addDaysUtc, daysBetween } from "@/lib/gantt-scale";
+import { datePartOf } from "@/lib/dates";
 import type { GanttContribution, GanttItem } from "@/types";
 
 export interface PlanContributionBounds {
@@ -136,11 +137,14 @@ export function isPlanStartBeforeParent(
   return childStart.getTime() < parentStart.getTime();
 }
 
-/** 日期 YYYY-MM-DD 是否在计划条范围内 */
+/** 日期 YYYY-MM-DD 或 datetime 是否在计划条范围内（按日比较） */
 export function isDateWithinPlanSpan(
   date: string,
   start: string,
   end: string,
 ): boolean {
-  return date >= start && date <= end;
+  const d = datePartOf(date) ?? date;
+  const s = datePartOf(start) ?? start;
+  const e = datePartOf(end) ?? end;
+  return d >= s && d <= e;
 }

@@ -11,14 +11,14 @@ import { Button } from "@/components/ui/button";
 import { apiJson } from "@/lib/client-api";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import { cn } from "@/lib/utils";
-import { todayStr } from "@/lib/dates";
+import { nowDatetimeLocal } from "@/lib/dates";
 
 type ComposerMode = "memo" | "plan" | "contribution";
 
-const MODES: { id: ComposerMode; label: string; hint: string }[] = [
-  { id: "memo", label: "便签", hint: "无日期想法，贴在便签板" },
-  { id: "plan", label: "计划", hint: "标题必填；补充时间后可出现在甘特图与日历" },
-  { id: "contribution", label: "贡献", hint: "记录计划进展，标题与日期必填" },
+const MODES: { id: ComposerMode; label: string }[] = [
+  { id: "memo", label: "便签" },
+  { id: "plan", label: "计划" },
+  { id: "contribution", label: "贡献" },
 ];
 
 function emptyCompose(startAt = ""): FeedComposeValues {
@@ -35,7 +35,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
   const [planRelatedId, setPlanRelatedId] = useState<string | null>(null);
 
   const [contributionValues, setContributionValues] = useState<FeedComposeValues>(() =>
-    emptyCompose(todayStr()),
+    emptyCompose(nowDatetimeLocal()),
   );
   const [contributionRelatedId, setContributionRelatedId] = useState<string | null>(null);
   const [planListRefreshKey, setPlanListRefreshKey] = useState(0);
@@ -54,7 +54,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
     setMemoText("");
     setPlanValues(emptyCompose());
     setPlanRelatedId(null);
-    setContributionValues(emptyCompose(todayStr()));
+    setContributionValues(emptyCompose(nowDatetimeLocal()));
     setContributionRelatedId(null);
     setPlanListRefreshKey((k) => k + 1);
   }
@@ -70,7 +70,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
           return;
         }
         if (!contributionValues.startAt) {
-          setError("请选择贡献日期");
+          setError("请选择时间");
           return;
         }
         if (!contributionRelatedId) {
@@ -133,21 +133,21 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
     }
   }
 
-  const activeHint = MODES.find((m) => m.id === mode)?.hint ?? "";
-
   const relatedPlanSelect = (variant: "plan" | "contribution") =>
     variant === "plan" ? (
       <ParentPlanSelect
         value={planRelatedId}
         onChange={setPlanRelatedId}
-        label="关联计划（可选）"
-        emptyLabel="不关联计划"
+        label="父计划"
+        emptyLabel="无父计划"
       />
     ) : (
       <PlanContributionSelect
         value={contributionRelatedId}
         onChange={setContributionRelatedId}
         refreshKey={planListRefreshKey}
+        required
+        label="关联计划"
       />
     );
 
@@ -183,18 +183,14 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
         </div>
       </div>
 
-      <p className="border-b border-gray-50 px-3 py-1 text-xs text-gray-400 dark:border-gray-800">
-        {activeHint}
-      </p>
-
       <div className="p-3">
         {mode === "plan" && (
           <FeedComposeCard
             values={planValues}
             onChange={(patch) => setPlanValues((prev) => ({ ...prev, ...patch }))}
             timeKind="datetime"
-            titlePlaceholder="输入计划标题"
-            bodyPlaceholder="计划描述与细节，支持 Markdown。（可选）"
+            titlePlaceholder="计划标题"
+            bodyPlaceholder="描述与细节"
             relatedPlan={relatedPlanSelect("plan")}
           />
         )}
@@ -203,10 +199,10 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
           <FeedComposeCard
             values={contributionValues}
             onChange={(patch) => setContributionValues((prev) => ({ ...prev, ...patch }))}
-            timeKind="date"
+            timeKind="datetime"
             startRequired
-            titlePlaceholder="输入标题，简要说明本次贡献"
-            bodyPlaceholder="在此处输入。支持 Markdown 排版，可拖入图片或点击工具栏上传。（可选）"
+            titlePlaceholder="贡献标题"
+            bodyPlaceholder="详细记录"
             showImages
             relatedPlan={relatedPlanSelect("contribution")}
           />

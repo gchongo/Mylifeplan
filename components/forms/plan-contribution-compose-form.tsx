@@ -11,14 +11,14 @@ import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/ui/feedback";
 import { apiJson } from "@/lib/client-api";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
-import { todayStr } from "@/lib/dates";
+import { nowDatetimeLocal } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 export type PlanContributionComposeMode = "plan" | "contribution";
 
-const MODES: { id: PlanContributionComposeMode; label: string; hint: string }[] = [
-  { id: "plan", label: "计划", hint: "标题必填；补充时间后可出现在甘特图与日历" },
-  { id: "contribution", label: "贡献", hint: "记录计划进展，标题与日期必填" },
+const MODES: { id: PlanContributionComposeMode; label: string }[] = [
+  { id: "plan", label: "计划" },
+  { id: "contribution", label: "贡献" },
 ];
 
 function emptyCompose(startAt = ""): FeedComposeValues {
@@ -29,8 +29,10 @@ function defaultStartForMode(
   value: string | null | undefined,
   mode: PlanContributionComposeMode,
 ): string {
-  if (!value) return mode === "contribution" ? todayStr() : "";
-  if (mode === "contribution") return value.slice(0, 10);
+  if (!value) return mode === "contribution" ? nowDatetimeLocal() : "";
+  if (mode === "contribution") {
+    return value.includes("T") ? value.slice(0, 16) : `${value}T09:00`;
+  }
   return value.includes("T") ? value.slice(0, 16) : `${value}T09:00`;
 }
 
@@ -63,7 +65,7 @@ export function PlanContributionComposeForm({
   const [planValues, setPlanValues] = useState<FeedComposeValues>(() => emptyCompose());
   const [planRelatedId, setPlanRelatedId] = useState<string | null>(null);
   const [contributionValues, setContributionValues] = useState<FeedComposeValues>(() =>
-    emptyCompose(todayStr()),
+    emptyCompose(nowDatetimeLocal()),
   );
   const [contributionRelatedId, setContributionRelatedId] = useState<string | null>(null);
   const [planListRefreshKey, setPlanListRefreshKey] = useState(0);
@@ -72,15 +74,15 @@ export function PlanContributionComposeForm({
     setMode(defaultMode);
     setError("");
     const planStart = defaultStartForMode(defaultStartAt, "plan");
-    const planEnd = defaultEndAt
-      ? defaultStartForMode(defaultEndAt, "plan")
-      : planStart;
+    const planEnd = defaultEndAt ? defaultStartForMode(defaultEndAt, "plan") : planStart;
     const contribStart = defaultStartForMode(defaultStartAt, "contribution");
-    const contribEnd = defaultEndAt
-      ? defaultStartForMode(defaultEndAt, "contribution")
-      : contribStart;
+    const contribEnd = defaultEndAt ? defaultStartForMode(defaultEndAt, "contribution") : contribStart;
     setPlanValues({ ...emptyCompose(planStart), startAt: planStart, endAt: planEnd });
-    setContributionValues({ ...emptyCompose(contribStart), startAt: contribStart, endAt: contribEnd });
+    setContributionValues({
+      ...emptyCompose(contribStart),
+      startAt: contribStart,
+      endAt: contribEnd,
+    });
     setPlanRelatedId(fixedParentPlanId ?? null);
     setContributionRelatedId(fixedPlanId ?? fixedParentPlanId ?? null);
   }, [
@@ -92,16 +94,13 @@ export function PlanContributionComposeForm({
     defaultEndAt,
   ]);
 
-  const effectiveParentId = fixedParentPlanId ?? planRelatedId;
-  const effectiveContributionPlanId = fixedPlanId ?? contributionRelatedId;
-
   const canSubmit =
     !busy &&
     (mode === "plan"
       ? planValues.title.trim().length > 0
       : contributionValues.title.trim().length > 0 &&
         !!contributionValues.startAt &&
-        !!effectiveContributionPlanId);
+        !!contributionRelatedId);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -115,10 +114,10 @@ export function PlanContributionComposeForm({
           return;
         }
         if (!contributionValues.startAt) {
-          setError("请选择贡献日期");
+          setError("请选择时间");
           return;
         }
-        if (!effectiveContributionPlanId) {
+        if (!contributionRelatedId) {
           setError("请选择关联计划");
           return;
         }
@@ -126,7 +125,7 @@ export function PlanContributionComposeForm({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            planId: effectiveContributionPlanId,
+            planId: contributionRelatedId,
             title,
             body: contributionValues.body.trim() || null,
             imageUrls: contributionValues.imageUrls.length
@@ -153,7 +152,7 @@ export function PlanContributionComposeForm({
             title,
             description: planValues.body.trim() || null,
             type: "goal",
-            parentPlanId: effectiveParentId,
+            parentPlanId: planRelatedId,
             startDate: planValues.startAt || null,
             endDate: planValues.endAt || null,
           }),
@@ -170,27 +169,21 @@ export function PlanContributionComposeForm({
     }
   }
 
-  const activeHint = MODES.find((m) => m.id === mode)?.hint ?? "";
-
   const relatedPlanSelect = (variant: PlanContributionComposeMode) =>
     variant === "plan" ? (
-      fixedParentPlanId ? (
-        <p className="text-sm text-gray-500">将作为所选父计划的子计划创建</p>
-      ) : (
-        <ParentPlanSelect
-          value={planRelatedId}
-          onChange={setPlanRelatedId}
-          label="父计划（可选）"
-          emptyLabel="无父计划"
-        />
-      )
-    ) : fixedPlanId ? (
-      <p className="text-sm text-gray-500">将关联到当前计划</p>
+      <ParentPlanSelect
+        value={planRelatedId}
+        onChange={setPlanRelatedId}
+        label="父计划"
+        emptyLabel="无父计划"
+      />
     ) : (
       <PlanContributionSelect
         value={contributionRelatedId}
         onChange={setContributionRelatedId}
         refreshKey={planListRefreshKey}
+        required
+        label="关联计划"
       />
     );
 
@@ -219,7 +212,6 @@ export function PlanContributionComposeForm({
         </div>
       )}
 
-      <p className="text-xs text-gray-400">{activeHint}</p>
       {error && <ErrorMessage message={error} />}
 
       {mode === "plan" ? (
@@ -227,18 +219,18 @@ export function PlanContributionComposeForm({
           values={planValues}
           onChange={(patch) => setPlanValues((prev) => ({ ...prev, ...patch }))}
           timeKind="datetime"
-          titlePlaceholder="输入计划标题"
-          bodyPlaceholder="计划描述与细节，支持 Markdown。（可选）"
+          titlePlaceholder="计划标题"
+          bodyPlaceholder="描述与细节"
           relatedPlan={relatedPlanSelect("plan")}
         />
       ) : (
         <FeedComposeCard
           values={contributionValues}
           onChange={(patch) => setContributionValues((prev) => ({ ...prev, ...patch }))}
-          timeKind="date"
+          timeKind="datetime"
           startRequired
-          titlePlaceholder="输入标题，简要说明本次贡献"
-          bodyPlaceholder="在此处输入。支持 Markdown 排版，可拖入图片或点击工具栏上传。（可选）"
+          titlePlaceholder="贡献标题"
+          bodyPlaceholder="详细记录"
           showImages
           relatedPlan={relatedPlanSelect("contribution")}
         />

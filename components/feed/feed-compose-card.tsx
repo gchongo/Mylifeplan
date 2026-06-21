@@ -16,8 +16,9 @@ export function FeedComposeCard({
   onChange,
   timeKind = "date",
   startRequired = false,
+  titleRequired = true,
   titlePlaceholder = "输入标题",
-  bodyPlaceholder = "在此处输入。支持 Markdown 排版。（可选）",
+  bodyPlaceholder = "支持 Markdown",
   showImages = false,
   imageUploadUrl = "/api/contributions/upload",
   relatedPlan,
@@ -27,6 +28,7 @@ export function FeedComposeCard({
   onChange: (patch: Partial<FeedComposeValues>) => void;
   timeKind?: "date" | "datetime";
   startRequired?: boolean;
+  titleRequired?: boolean;
   titlePlaceholder?: string;
   bodyPlaceholder?: string;
   showImages?: boolean;
@@ -102,14 +104,21 @@ export function FeedComposeCard({
   return (
     <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
       {/* 1. 标题 */}
-      <input
-        type="text"
-        value={values.title}
-        onChange={(e) => onChange({ title: e.target.value })}
-        placeholder={titlePlaceholder}
-        required
-        className="w-full border-b border-gray-100 bg-transparent px-4 py-3 text-base font-medium text-gray-900 placeholder:font-normal placeholder:text-gray-400 focus:outline-none dark:border-gray-800 dark:text-gray-100"
-      />
+      <div className="relative border-b border-gray-100 dark:border-gray-800">
+        <input
+          type="text"
+          value={values.title}
+          onChange={(e) => onChange({ title: e.target.value })}
+          placeholder={titlePlaceholder}
+          required
+          className="w-full bg-transparent px-4 py-3 pr-8 text-base font-medium text-gray-900 placeholder:font-normal placeholder:text-gray-400 focus:outline-none dark:text-gray-100"
+        />
+        {titleRequired && (
+          <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-red-500">
+            *
+          </span>
+        )}
+      </div>
 
       {/* 2. 时间 */}
       <div className="flex flex-wrap items-center gap-3 border-b border-gray-100 px-4 py-2 dark:border-gray-800">
@@ -133,7 +142,6 @@ export function FeedComposeCard({
             onChange={(e) => onChange({ endAt: e.target.value })}
             className="rounded border border-gray-200 bg-white px-2 py-1 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
           />
-          <span className="text-xs text-gray-400">（可选）</span>
         </label>
       </div>
 

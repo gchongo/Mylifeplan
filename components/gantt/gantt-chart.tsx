@@ -46,6 +46,7 @@ import {
   isDateWithinPlanSpan,
 } from "@/lib/gantt-plan-bind";
 import { contributionsForGanttRow } from "@/lib/gantt-contribution-display";
+import { datePartOf } from "@/lib/dates";
 import { isPlanOverdue } from "@/lib/gantt-plan-status";
 import { getContributionMarkerStyle } from "@/lib/contribution-marker-style";
 import { useSettings } from "@/components/settings/settings-provider";
@@ -877,9 +878,10 @@ export const GanttChart = forwardRef<
       if (!isDateWithinPlanSpan(c.occurredOn, spanStart, spanEnd)) continue;
       const endOn = c.occurredEndOn ?? c.occurredOn;
       if (!isDateWithinPlanSpan(endOn, spanStart, spanEnd) && endOn > spanEnd) continue;
-      const list = byDate.get(c.occurredOn) ?? [];
+      const startKey = datePartOf(c.occurredOn) ?? c.occurredOn;
+      const list = byDate.get(startKey) ?? [];
       list.push(c);
-      byDate.set(c.occurredOn, list);
+      byDate.set(startKey, list);
     }
 
     if (byDate.size === 0) return null;

@@ -177,8 +177,8 @@ model PlanContribution {
   title       String
   description String?
   body        String?  @db.Text
-  occurredOn     DateTime  @map("occurred_on") @db.Date
-  occurredEndOn  DateTime? @map("occurred_end_on") @db.Date
+  occurredOn     DateTime  @map("occurred_on")
+  occurredEndOn  DateTime? @map("occurred_end_on")
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 

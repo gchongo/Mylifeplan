@@ -43,7 +43,7 @@ export function ContributionForm({
       return;
     }
     if (!values.occurredOn) {
-      setError("请选择贡献日期");
+      setError("请选择时间");
       return;
     }
     setLoading(true);

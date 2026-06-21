@@ -19,7 +19,7 @@ export function ParentPlanSelect({
   onChange,
   excludePlanId,
   name = "parentPlanId",
-  label = "父计划（可选）",
+  label = "父计划",
   emptyLabel = "无父计划",
 }: {
   value?: string | null;

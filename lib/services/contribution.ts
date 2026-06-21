@@ -1,5 +1,5 @@
 import type { PlanContribution, ContributionImage } from "@prisma/client";
-import { formatDateOnly, parseDateOnly } from "@/lib/dates";
+import { formatDateOnly, parsePlanDateTime, formatPlanDateTime, toDatetimeLocalInput, datePartOf } from "@/lib/dates";
 import { prisma } from "@/lib/db";
 import { writeFeed } from "@/lib/services/feed";
 import type { CreateContributionInput } from "@/lib/validations/contribution";
@@ -13,7 +13,7 @@ type ContributionWithRelations = PlanContribution & {
 export function contributionEndDate(
   c: Pick<PlanContribution, "occurredOn" | "occurredEndOn">,
 ): string {
-  return formatDateOnly(c.occurredEndOn) ?? formatDateOnly(c.occurredOn) ?? "";
+  return datePartOf(c.occurredEndOn) ?? datePartOf(c.occurredOn) ?? "";
 }
 
 export function serializeContribution(c: ContributionWithRelations) {
@@ -25,8 +25,8 @@ export function serializeContribution(c: ContributionWithRelations) {
     description: c.description,
     body: c.body,
     imageUrls: c.images?.map((img) => img.url) ?? [],
-    occurredOn: formatDateOnly(c.occurredOn) ?? "",
-    occurredEndOn: formatDateOnly(c.occurredEndOn),
+    occurredOn: toDatetimeLocalInput(c.occurredOn) || formatPlanDateTime(c.occurredOn) || "",
+    occurredEndOn: c.occurredEndOn ? toDatetimeLocalInput(c.occurredEndOn) : null,
     createdAt: c.createdAt.toISOString(),
     updatedAt: c.updatedAt.toISOString(),
   };
@@ -119,8 +119,8 @@ export async function createContribution(userId: string, input: CreateContributi
         title: input.title.trim(),
         description: input.description?.trim() || body?.slice(0, 500) || null,
         body,
-        occurredOn: parseDateOnly(input.occurredOn)!,
-        occurredEndOn: endStr ? parseDateOnly(endStr) : null,
+        occurredOn: parsePlanDateTime(input.occurredOn)!,
+        occurredEndOn: endStr ? parsePlanDateTime(endStr) : null,
       },
       include: { plan: { select: { title: true } }, images: true },
     });
@@ -185,10 +185,10 @@ export async function updateContribution(
           }),
         }),
         ...(input.occurredOn !== undefined && {
-          occurredOn: parseDateOnly(input.occurredOn)!,
+          occurredOn: parsePlanDateTime(input.occurredOn)!,
         }),
         ...(endStr !== undefined && {
-          occurredEndOn: endStr ? parseDateOnly(endStr) : null,
+          occurredEndOn: endStr ? parsePlanDateTime(endStr) : null,
         }),
       },
       include: { plan: { select: { title: true } }, images: true },

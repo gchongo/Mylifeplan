@@ -47,6 +47,11 @@ export function toDatetimeLocalInput(value: string | Date | null | undefined): s
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/** 当前本地时间，供 datetime-local 输入框 */
+export function nowDatetimeLocal(): string {
+  return toDatetimeLocalInput(new Date());
+}
+
 export function datePartOf(value: string | Date | null | undefined): string | null {
   if (!value) return null;
   if (typeof value === "string") return value.slice(0, 10);

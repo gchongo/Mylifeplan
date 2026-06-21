@@ -4,7 +4,7 @@ import {
   FeedComposeCard,
   type FeedComposeValues,
 } from "@/components/feed/feed-compose-card";
-import { todayStr } from "@/lib/dates";
+import { nowDatetimeLocal, toDatetimeLocalInput } from "@/lib/dates";
 
 export interface ContributionEditorValues {
   title: string;
@@ -36,6 +36,11 @@ function fromComposePatch(
   return out;
 }
 
+function normalizeContributionDateTime(value: string): string {
+  if (!value) return "";
+  return value.includes("T") ? value.slice(0, 16) : `${value}T09:00`;
+}
+
 export function ContributionEditor({
   values,
   onChange,
@@ -47,44 +52,56 @@ export function ContributionEditor({
   mode?: "compose" | "compact";
   bodyRows?: number;
 }) {
+  const shared = {
+    values: toComposeValues(values),
+    onChange: (patch: Partial<FeedComposeValues>) => onChange(fromComposePatch(patch)),
+    timeKind: "datetime" as const,
+    startRequired: true,
+    showImages: true,
+    bodyRows,
+  };
+
   if (mode === "compact") {
     return (
       <FeedComposeCard
-        values={toComposeValues(values)}
-        onChange={(patch) => onChange(fromComposePatch(patch))}
-        timeKind="date"
-        startRequired
-        titlePlaceholder="标题（必填）"
-        bodyPlaceholder="详细记录（可选）"
-        showImages
-        bodyRows={bodyRows}
+        {...shared}
+        titlePlaceholder="标题"
+        bodyPlaceholder="详细记录"
       />
     );
   }
 
   return (
     <FeedComposeCard
-      values={toComposeValues(values)}
-      onChange={(patch) => onChange(fromComposePatch(patch))}
-      timeKind="date"
-      startRequired
-      titlePlaceholder="输入标题，简要说明本次贡献"
-      bodyPlaceholder="在此处输入。支持 Markdown 排版，可拖入图片或点击工具栏上传。（可选）"
-      showImages
-      bodyRows={bodyRows}
+      {...shared}
+      titlePlaceholder="贡献标题"
+      bodyPlaceholder="详细记录"
     />
   );
 }
 
 export function emptyContributionValues(
-  startDate = todayStr(),
+  startDate?: string,
   endDate?: string,
 ): ContributionEditorValues {
+  const start = normalizeContributionDateTime(startDate ?? nowDatetimeLocal());
+  const end = normalizeContributionDateTime(endDate ?? start);
   return {
     title: "",
     body: "",
-    occurredOn: startDate,
-    occurredEndOn: endDate ?? startDate,
+    occurredOn: start,
+    occurredEndOn: end,
     imageUrls: [],
   };
+}
+
+export function contributionValuesFromApi(detail: {
+  occurredOn: string;
+  occurredEndOn?: string | null;
+}): Pick<ContributionEditorValues, "occurredOn" | "occurredEndOn"> {
+  const start = normalizeContributionDateTime(toDatetimeLocalInput(detail.occurredOn) || detail.occurredOn);
+  const end = detail.occurredEndOn
+    ? normalizeContributionDateTime(toDatetimeLocalInput(detail.occurredEndOn) || detail.occurredEndOn)
+    : start;
+  return { occurredOn: start, occurredEndOn: end };
 }

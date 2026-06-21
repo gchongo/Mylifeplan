@@ -165,9 +165,19 @@ async function validatePlanCoversContributions(
   if (!endStr) return null;
 
   for (const row of rows) {
-    const cStart = formatDateOnly(row.occurredOn)!;
-    const cEnd = formatDateOnly(row.occurredEndOn ?? row.occurredOn)!;
-    if (cStart < startStr || cEnd > endStr) {
+    const cStart = row.occurredOn.getTime();
+    const cEnd = (row.occurredEndOn ?? row.occurredOn).getTime();
+    const planStart = startDate.getTime();
+    const planEndMs = endDate
+      ? endDate.getTime()
+      : parsePlanDateTime(
+          getEffectiveEndDate({
+            startDate: startStr,
+            dueDate: null,
+          }).effectiveEnd ?? "",
+        )?.getTime();
+    if (planEndMs == null) return null;
+    if (cStart < planStart || cEnd > planEndMs) {
       return "计划时间需覆盖全部贡献记录，请调整开始或结束时间";
     }
   }
