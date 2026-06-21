@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  getPlanBarAppearance,
+  getGroupColoredBarAppearance,
   getPlanGroupFrameAppearance,
   normalizePlanColor,
   planColorRgba,
@@ -16,9 +16,17 @@ describe("plan-color", () => {
     expect(planColorRgba("#FF0000", 0.5)).toBe("rgba(255, 0, 0, 0.5)");
   });
 
-  it("frame root bar is transparent shell", () => {
-    const bar = getPlanBarAppearance("#3B82F6", { frameRoot: true });
-    expect(bar.shellClass).toContain("bg-transparent");
+  it("group colored bar uses plan group color and status dot", () => {
+    const bar = getGroupColoredBarAppearance("#3B82F6", 0, "bg-blue-500 ring-blue-300");
+    expect(bar.shellStyle?.backgroundColor).toContain("rgba");
+    expect(bar.barHeightPx).toBe(32);
+    expect(bar.statusDotClass).toContain("blue");
+  });
+
+  it("child bar is thinner than root", () => {
+    const root = getGroupColoredBarAppearance("#3B82F6", 0, "bg-blue-500 ring-blue-300");
+    const child = getGroupColoredBarAppearance("#3B82F6", 1, "bg-emerald-500 ring-emerald-300");
+    expect(child.barHeightPx).toBeLessThan(root.barHeightPx);
   });
 
   it("group frame shell is neutral", () => {

@@ -16,7 +16,6 @@ import {
   constrainPlanResizeStart,
   type PlanDragConstraints,
 } from "@/lib/gantt-plan-bind";
-import { normalizePlanColor, planColorRgba } from "@/lib/plan-color";
 import type { GanttItem } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -39,12 +38,10 @@ export function GanttDraggableBar({
   barShellStyle,
   barText,
   barTextStyle,
-  planColor,
+  barHeightPx = 28,
+  statusDotClass,
   onUpdated,
   onTaskClick,
-  bareShell = false,
-  hideTitle = false,
-  alignBarTop = false,
   hitRowHeight,
   minStartDate,
   minContributionDate,
@@ -61,15 +58,10 @@ export function GanttDraggableBar({
   barShellStyle?: CSSProperties;
   barText: string;
   barTextStyle?: CSSProperties;
-  planColor?: string | null;
+  barHeightPx?: number;
+  statusDotClass: string;
   onUpdated: (updated: GanttItem) => void;
   onTaskClick?: () => void;
-  /** 无可见边框（组框一级计划），保留完整拖拽热区 */
-  bareShell?: boolean;
-  /** 标题由组框标签展示，条上不重复显示 */
-  hideTitle?: boolean;
-  /** 组框内首个子计划：条顶对齐行顶，贴组框上沿 */
-  alignBarTop?: boolean;
   hitRowHeight?: number;
   minStartDate?: string;
   minContributionDate?: string;
@@ -264,7 +256,7 @@ export function GanttDraggableBar({
       : { left, width };
 
   const rowHeight = hitRowHeight ?? 28;
-  const pillColor = normalizePlanColor(planColor);
+  const textLeading = Math.max(barHeightPx - 2, 18);
 
   return (
     <div
@@ -279,24 +271,15 @@ export function GanttDraggableBar({
     >
       <div
         className={cn(
-          "group relative w-full overflow-hidden rounded-md",
-          bareShell
-            ? "absolute inset-0"
-            : alignBarTop
-              ? "absolute top-0 h-7"
-              : "absolute top-1/2 h-7 -translate-y-1/2",
+          "group absolute top-1/2 w-full -translate-y-1/2 overflow-hidden rounded-full",
           barShell,
           saving && "opacity-60",
           dragging && "ring-2 ring-brand-400 ring-offset-1",
-          bareShell && "hover:bg-black/[0.03] dark:hover:bg-white/[0.04]",
         )}
-        style={barShellStyle}
+        style={{ ...barShellStyle, height: barHeightPx }}
       >
         <div
-          className={cn(
-            "absolute top-0 z-10 h-full cursor-ew-resize hover:bg-black/5 dark:hover:bg-white/10",
-            bareShell ? "left-0 w-3" : "left-0 w-2 opacity-0 group-hover:opacity-100",
-          )}
+          className="absolute top-0 z-10 h-full w-2 cursor-ew-resize opacity-0 hover:bg-black/5 group-hover:opacity-100 dark:hover:bg-white/10"
           onMouseDown={(e) => startDrag(e, "resize-start")}
         />
         <div
@@ -305,34 +288,25 @@ export function GanttDraggableBar({
         >
           <span
             className={cn(
-              "pointer-events-none block max-w-full truncate text-xs leading-7",
-              !hideTitle && !bareShell && "px-2",
-              !hideTitle && bareShell && "inline-block rounded-md px-2 font-semibold shadow-sm",
-              !hideTitle && barText,
-              hideTitle && "sr-only",
+              "pointer-events-none absolute left-1.5 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full ring-1 ring-white dark:ring-gray-900",
+              statusDotClass,
             )}
-            style={{
-              ...(hideTitle
-                ? undefined
-                : {
-                    ...barTextStyle,
-                    ...(bareShell
-                      ? {
-                          backgroundColor: planColorRgba(pillColor, 0.12),
-                          boxShadow: `inset 0 0 0 1px ${planColorRgba(pillColor, 0.35)}`,
-                        }
-                      : undefined),
-                  }),
-            }}
+            aria-hidden
+          />
+          <span
+            className={cn(
+              "pointer-events-none block max-w-full truncate pl-5 pr-2 text-xs",
+              barText,
+            )}
+            style={{ ...barTextStyle, lineHeight: `${textLeading}px` }}
+            title={item.title}
           >
-            {hideTitle ? item.title : item.title}
+            {item.title}
           </span>
         </div>
         <div
-          className={cn(
-            "absolute top-0 z-10 h-full cursor-ew-resize hover:bg-black/5 dark:hover:bg-white/10",
-            bareShell ? "right-0 w-3" : "right-0 w-2 opacity-0 group-hover:opacity-100",
-          )}
+          className="absolute top-0 z-10 h-full w-2 cursor-ew-resize opacity-0 hover:bg-black/5 group-hover:opacity-100 dark:hover:bg-white/10"
+          style={{ right: 0 }}
           onMouseDown={(e) => startDrag(e, "resize-end")}
         />
       </div>

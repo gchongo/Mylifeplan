@@ -37,25 +37,28 @@ import {
   type TimelineLayout,
 } from "@/lib/gantt-scale";
 import { defaultGanttStatusFilter, filterGanttTasksByStatus } from "@/lib/gantt-task-filter";
-import {
-  buildPlanGroupLayouts,
-} from "@/lib/gantt-plan-groups";
+import { rowOffsetTop } from "@/lib/gantt-plan-groups";
 import {
   buildBoundGroupPreview,
   getPlanContributionBounds,
   isDateWithinPlanSpan,
 } from "@/lib/gantt-plan-bind";
+import { buildParentChildForkLines } from "@/lib/gantt-tree-lines";
 import { contributionsForGanttRow } from "@/lib/gantt-contribution-display";
 import { datePartOf } from "@/lib/dates";
 import { isPlanOverdue } from "@/lib/gantt-plan-status";
 import { getContributionMarkerStyle } from "@/lib/contribution-marker-style";
 import { useSettings } from "@/components/settings/settings-provider";
 import {
-  getGanttGroupShellClasses,
-  getGanttLabelAppearance,
-  getStatusPlanBarAppearance,
+  getStatusStyle,
+  resolveVisualStatus,
   type VisualStatusKey,
 } from "@/lib/task-status-style";
+import {
+  getGroupColoredBarAppearance,
+  getPlanLabelAppearance,
+  resolveEffectivePlanColor,
+} from "@/lib/plan-color";
 import { GRID_BORDER, GRID_ROW_BORDER } from "@/lib/gantt-grid-colors";
 import { deriveParentStatus } from "@/lib/services/plan-rollup";
 import type { GanttContribution, GanttItem, PlanStatus } from "@/types";
@@ -63,9 +66,9 @@ import { apiJson } from "@/lib/client-api";
 import { dispatchPlanUpdated, PLAN_UPDATED_EVENT } from "@/lib/plan-events";
 import { cn } from "@/lib/utils";
 
-const ROW_HEIGHT = 28;
+const ROW_HEIGHT = 36;
 const ROW_HEIGHT_CHILD = 28;
-const ROW_GROUP_GAP = 0;
+const ROW_GROUP_GAP = 8;
 const DEFAULT_LABEL_WIDTH = 200;
 const MIN_LABEL_WIDTH = 120;
 const MAX_LABEL_WIDTH = 560;
@@ -206,16 +209,14 @@ interface PlanModalState {
 function planBarStyle(
   item: GanttItem,
   depth: number,
-  frameRoot: boolean,
+  groupColor: string,
   displayStatus: string,
   overdue: boolean,
 ) {
-  return getStatusPlanBarAppearance(item.status, item.endDate, {
-    depth,
-    frameRoot,
-    displayStatus,
-    overdue,
-  });
+  const visual = resolveVisualStatus(item.status, item.endDate, displayStatus, overdue);
+  const statusStyle = getStatusStyle(item.status, item.endDate, displayStatus, overdue);
+  const muted = visual === "done" || visual === "archived";
+  return getGroupColoredBarAppearance(groupColor, depth, statusStyle.dot, muted);
 }
 
 function dataBoundsFromItems(items: GanttItem[]) {
@@ -360,11 +361,23 @@ export const GanttChart = forwardRef<
 
   const visibleRowIds = useMemo(() => new Set(rows.map((r) => r.item.id)), [rows]);
 
-  const planGroups = useMemo(() => buildPlanGroupLayouts(rows), [rows]);
-  const groupedRootIds = useMemo(
-    () => new Set(planGroups.map((g) => g.rootId)),
-    [planGroups],
-  );
+  const forkLines = useMemo(() => {
+    const layouts = rows.map((row, idx) => {
+      const preview = barPreview.get(row.item.id);
+      const start = preview?.start ?? row.item.startDate;
+      const end = preview?.end ?? row.item.effectiveEnd;
+      const { left } = barMetricsFromDates(start, end, layout);
+      return {
+        itemId: row.item.id,
+        depth: row.depth,
+        parentId: row.item.parentId ?? null,
+        top: rowOffsetTop(rows, idx) + row.gapBefore,
+        height: row.height,
+        barLeft: left,
+      };
+    });
+    return buildParentChildForkLines(layouts);
+  }, [rows, layout, barPreview]);
 
   const contributionBoundsByPlan = useMemo(() => {
     const map = new Map<string, { min?: string; max?: string }>();
@@ -780,11 +793,9 @@ export const GanttChart = forwardRef<
     const displayStatus = itemDisplayStatus(item, items);
     const hasRollup = itemHasRollup(item, items);
     const overdue = isPlanOverdue(item, planById);
-    const labelStyle = getGanttLabelAppearance(item.status, item.endDate, {
-      isGroupRoot: row.depth === 0 && groupedRootIds.has(item.id),
-      displayStatus,
-      overdue,
-    });
+    const rootItem = planById.get(row.rootId) ?? item;
+    const groupColor = resolveEffectivePlanColor(rootItem, rootItem);
+    const labelStyle = getPlanLabelAppearance(groupColor);
 
     return (
       <div
@@ -798,7 +809,9 @@ export const GanttChart = forwardRef<
         style={{
           height: row.height,
           marginTop: row.gapBefore,
-          paddingLeft: 12 + row.depth * 16,
+          paddingLeft: 12 + row.depth * 18,
+          ...labelStyle.bgStyle,
+          ...labelStyle.stripeStyle,
         }}
       >
         {showToggle ? (
@@ -818,7 +831,12 @@ export const GanttChart = forwardRef<
         <button
           type="button"
           onClick={() => openPlan(item.id)}
-          className="min-w-0 flex-1 truncate text-left text-sm text-blue-950 hover:text-blue-700 dark:text-blue-50 dark:hover:text-blue-200"
+          className={cn(
+            "min-w-0 flex-1 truncate text-left hover:text-blue-700 dark:hover:text-blue-200",
+            row.depth === 0
+              ? "text-sm font-semibold text-slate-900 dark:text-slate-50"
+              : "text-sm font-normal text-slate-600 dark:text-slate-300",
+          )}
           title={item.title}
         >
           {item.title}
@@ -939,63 +957,46 @@ export const GanttChart = forwardRef<
 
   const clearBarPreview = useCallback(() => setBarPreview(new Map()), []);
 
-  function renderPlanGroupFrames() {
-    const shell = getGanttGroupShellClasses();
-    return planGroups.map((group) => {
-      const rootItem = planById.get(group.rootId);
-      if (!rootItem) return null;
-      const preview = barPreview.get(group.rootId);
-      const startDate = preview?.start ?? rootItem.startDate;
-      const endDate = preview?.end ?? rootItem.effectiveEnd;
-      const { left, width } = barMetricsFromDates(startDate, endDate, layout);
-      const frameLeft = Math.max(left, 0);
-      const frameWidth = Math.max(width, 8);
-
-      return (
-        <div
-          key={`group-frame-${group.rootId}`}
-          className={cn(
-            "pointer-events-none absolute z-[1] box-border rounded-md",
-            shell.frame,
-          )}
-          style={{
-            top: group.top,
-            height: group.height,
-            left: frameLeft,
-            width: frameWidth,
-            borderBottomLeftRadius: 6,
-            borderBottomRightRadius: 6,
-            borderTopRightRadius: 6,
-          }}
-          aria-hidden
-        >
-          <div
-            className={cn(
-              "absolute left-0 top-0 z-[2] max-w-[min(100%,14rem)] truncate border-2 border-b-0 px-2 text-xs font-semibold leading-[22px]",
-              shell.tab,
-            )}
-            style={{
-              borderTopLeftRadius: 6,
-              borderTopRightRadius: 6,
-            }}
-          >
-            {rootItem.title}
-          </div>
-        </div>
-      );
-    });
+  function renderTreeForkLines() {
+    if (forkLines.length === 0) return null;
+    return (
+      <svg
+        className="pointer-events-none absolute left-0 top-0 z-[1]"
+        width={timelineWidth}
+        height={bodyAreaHeight}
+        aria-hidden
+      >
+        {forkLines.map((line, i) => (
+          <line
+            key={`fork-${i}`}
+            x1={line.x1}
+            y1={line.y1}
+            x2={line.x2}
+            y2={line.y2}
+            stroke="currentColor"
+            strokeWidth={1.5}
+            className="text-slate-300 dark:text-slate-600"
+          />
+        ))}
+      </svg>
+    );
   }
 
   function renderBar(row: GanttRow, idx: number) {
     const item = row.item;
-    const frameRoot = row.depth === 0 && groupedRootIds.has(item.id);
+    const rootItem = planById.get(row.rootId) ?? item;
+    const groupColor = resolveEffectivePlanColor(rootItem, rootItem);
     const previewDates = barPreview.get(item.id);
     const displayStart = previewDates?.start ?? item.startDate;
     const displayEnd = previewDates?.end ?? item.effectiveEnd;
     const { left, width } = barMetricsFromDates(displayStart, displayEnd, layout);
     const displayStatus = itemDisplayStatus(item, items);
     const overdue = isPlanOverdue(item, planById);
-    const barStyle = planBarStyle(item, row.depth, frameRoot, displayStatus, overdue);
+    const barStyle = planBarStyle(item, row.depth, groupColor, displayStatus, overdue);
+    const isRootWithChildren =
+      row.depth === 0 &&
+      expanded.has(item.id) &&
+      filteredPlans.some((p) => p.parentId === item.id);
 
     if (item.isUnscheduled) {
       const anchorLeft = barMetricsFromDates(displayStart, displayEnd, layout).left;
@@ -1009,10 +1010,11 @@ export const GanttChart = forwardRef<
             type="button"
             data-gantt-bar
             onClick={() => openPlan(item.id)}
-            className="absolute top-1/2 z-10 -translate-y-1/2 rounded-md border-2 border-dashed border-violet-400 bg-violet-50/80 px-2 py-0.5 text-xs text-violet-700 hover:bg-violet-100 dark:border-violet-500/70 dark:bg-violet-950/40 dark:text-violet-300"
-            style={{ left: Math.max(anchorLeft, 8) }}
+            className="absolute top-1/2 z-10 flex -translate-y-1/2 items-center gap-1 rounded-full border border-dashed border-violet-400 bg-violet-50/80 px-2 py-0.5 text-xs text-violet-700 hover:bg-violet-100 dark:border-violet-500/70 dark:bg-violet-950/40 dark:text-violet-300"
+            style={{ left: Math.max(anchorLeft, 8), height: barStyle.barHeightPx }}
             title="尚未设置时间，点击编辑"
           >
+            <span className="h-2 w-2 shrink-0 rounded-full bg-violet-400 ring-1 ring-white" aria-hidden />
             未排期
           </button>
         </div>
@@ -1044,15 +1046,17 @@ export const GanttChart = forwardRef<
             left={left}
             width={width}
             barShell={barStyle.shellClass}
+            barShellStyle={barStyle.shellStyle}
             barText={barStyle.textClass}
-            bareShell={frameRoot}
-            hideTitle={frameRoot}
+            barTextStyle={barStyle.textStyle}
+            barHeightPx={barStyle.barHeightPx}
+            statusDotClass={barStyle.statusDotClass}
             hitRowHeight={row.height}
             minStartDate={row.depth > 0 ? minStartDate : undefined}
             minContributionDate={contribBounds?.min}
             maxContributionDate={contribBounds?.max}
             previewOverride={previewDates ?? null}
-            onPreviewDates={frameRoot ? onRootDragPreview : undefined}
+            onPreviewDates={isRootWithChildren ? onRootDragPreview : undefined}
             onDragEnd={clearBarPreview}
             onUpdated={handleItemUpdated}
             onTaskClick={() => openPlan(item.id)}
@@ -1217,7 +1221,7 @@ export const GanttChart = forwardRef<
                 onClick={handleTimelineBackgroundClick}
               >
                 {renderGridBackground(bodyAreaHeight)}
-                {renderPlanGroupFrames()}
+                {renderTreeForkLines()}
 
                 {rows.map((row, idx) => (
                   <div key={`row-${idx}`} className="relative z-[2]">

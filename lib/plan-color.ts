@@ -53,6 +53,8 @@ export interface PlanBarAppearance {
   shellStyle?: CSSProperties;
   textClass: string;
   textStyle?: CSSProperties;
+  barHeightPx: number;
+  statusDotClass: string;
 }
 
 export interface PlanGroupFrameAppearance {
@@ -67,6 +69,31 @@ export interface PlanLabelAppearance {
   bgStyle?: CSSProperties;
 }
 
+export function getGroupColoredBarAppearance(
+  groupColor: string | null | undefined,
+  depth: number,
+  statusDotClass: string,
+  muted = false,
+): PlanBarAppearance {
+  const c = normalizePlanColor(groupColor);
+  const isRoot = depth === 0;
+  const fillAlpha = isRoot ? 0.45 : Math.max(0.2, 0.34 - depth * 0.05);
+
+  return {
+    shellClass: isRoot ? "border-[1.5px] border-solid shadow-sm" : "border border-solid shadow-sm",
+    shellStyle: {
+      borderColor: planColorRgba(c, 0.88),
+      backgroundColor: planColorRgba(c, fillAlpha),
+      opacity: muted ? 0.78 : 1,
+    },
+    textClass: isRoot
+      ? "font-semibold text-slate-900 dark:text-slate-50"
+      : "font-normal text-slate-800 dark:text-slate-200",
+    barHeightPx: isRoot ? 32 : 22,
+    statusDotClass,
+  };
+}
+
 export function getPlanBarAppearance(
   color: string | null | undefined,
   opts: { frameRoot?: boolean; inGroupChild?: boolean; isRoot?: boolean },
@@ -78,6 +105,8 @@ export function getPlanBarAppearance(
       shellClass: "border-0 bg-transparent shadow-none ring-0",
       textClass: "font-semibold",
       textStyle: { color: c },
+      barHeightPx: 32,
+      statusDotClass: "bg-gray-400 ring-gray-300",
     };
   }
 
@@ -90,6 +119,8 @@ export function getPlanBarAppearance(
       },
       textClass: "font-normal",
       textStyle: { color: c },
+      barHeightPx: 22,
+      statusDotClass: "bg-gray-400 ring-gray-300",
     };
   }
 
@@ -102,6 +133,8 @@ export function getPlanBarAppearance(
     },
     textClass: isParent ? "font-semibold" : "font-normal",
     textStyle: { color: c },
+    barHeightPx: isParent ? 32 : 22,
+    statusDotClass: "bg-gray-400 ring-gray-300",
   };
 }
 

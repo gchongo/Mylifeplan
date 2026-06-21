@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   getGanttBarStyle,
-  getGanttLabelAppearance,
-  getStatusPlanBarAppearance,
   normalizeStatusKey,
   resolveVisualStatus,
 } from "@/lib/task-status-style";
@@ -25,15 +23,5 @@ describe("task-status-style", () => {
     expect(child.shell).toContain("border-solid");
     expect(child.shell).not.toContain("border-dashed");
     expect(child.shell).toContain("emerald");
-  });
-
-  it("group root bar is transparent shell", () => {
-    const bar = getStatusPlanBarAppearance("in_progress", null, { depth: 0, frameRoot: true });
-    expect(bar.shellClass).toContain("bg-transparent");
-  });
-
-  it("group label uses neutral stripe", () => {
-    const label = getGanttLabelAppearance("in_progress", null, { isGroupRoot: true });
-    expect(label.stripeClass).toContain("slate");
   });
 });
