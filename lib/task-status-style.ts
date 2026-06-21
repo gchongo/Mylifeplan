@@ -28,62 +28,64 @@ const GANTT_BAR_STYLES: Record<
 > = {
   todo: {
     parent: {
-      shell: "border-2 border-solid border-amber-500 bg-white/95 dark:border-amber-400 dark:bg-gray-900/90",
-      text: "text-amber-700 dark:text-amber-300 font-semibold",
+      shell: "border-2 border-solid border-gray-400 bg-gray-50 dark:border-gray-500 dark:bg-gray-800/60",
+      text: "text-gray-800 dark:text-gray-100 font-semibold",
     },
     child: {
-      shell: "border-2 border-dashed border-amber-400 bg-amber-50/60 dark:border-amber-500/70 dark:bg-amber-950/40",
-      text: "text-amber-700 dark:text-amber-300",
+      shell: "border border-solid border-gray-300 bg-gray-100 dark:border-gray-600 dark:bg-gray-800/70",
+      text: "text-gray-700 dark:text-gray-200 font-normal",
     },
   },
   in_progress: {
     parent: {
-      shell: "border-2 border-solid border-blue-600 bg-white/95 dark:border-blue-400 dark:bg-gray-900/90",
-      text: "text-blue-700 dark:text-blue-300 font-semibold",
+      shell: "border-2 border-solid border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/50",
+      text: "text-blue-800 dark:text-blue-100 font-semibold",
     },
     child: {
-      shell: "border-2 border-dashed border-blue-500 bg-blue-50/60 dark:border-blue-500/70 dark:bg-blue-950/40",
-      text: "text-blue-700 dark:text-blue-300",
+      shell: "border border-solid border-blue-400 bg-blue-100 dark:border-blue-500/80 dark:bg-blue-950/60",
+      text: "text-blue-800 dark:text-blue-200 font-normal",
     },
   },
   done: {
     parent: {
-      shell: "border-2 border-solid border-emerald-600 bg-white/95 dark:border-emerald-400 dark:bg-gray-900/90",
-      text: "text-emerald-700 dark:text-emerald-300 font-semibold",
+      shell:
+        "border-2 border-solid border-emerald-500 bg-emerald-50 opacity-90 dark:border-emerald-500 dark:bg-emerald-950/40",
+      text: "text-emerald-800 dark:text-emerald-100 font-semibold",
     },
     child: {
-      shell: "border-2 border-dashed border-emerald-500 bg-emerald-50/60 dark:border-emerald-500/70 dark:bg-emerald-950/40",
-      text: "text-emerald-700 dark:text-emerald-300",
+      shell:
+        "border border-solid border-emerald-400 bg-emerald-50 opacity-75 dark:border-emerald-600/80 dark:bg-emerald-950/35",
+      text: "text-emerald-800 dark:text-emerald-200 font-normal",
     },
   },
   archived: {
     parent: {
-      shell: "border-2 border-solid border-gray-400 bg-white/95 dark:border-gray-500 dark:bg-gray-900/90",
-      text: "text-gray-600 dark:text-gray-300 font-semibold",
+      shell: "border-2 border-solid border-gray-300 bg-gray-50/80 opacity-60 dark:border-gray-600 dark:bg-gray-900/50",
+      text: "text-gray-600 dark:text-gray-400 font-semibold",
     },
     child: {
-      shell: "border-2 border-dashed border-gray-400 bg-gray-50/80 dark:border-gray-600 dark:bg-gray-800/60",
-      text: "text-gray-600 dark:text-gray-400",
+      shell: "border border-solid border-gray-300 bg-gray-50 opacity-60 dark:border-gray-700 dark:bg-gray-900/40",
+      text: "text-gray-600 dark:text-gray-400 font-normal",
     },
   },
   overdue: {
     parent: {
-      shell: "border-2 border-solid border-red-600 bg-white/95 dark:border-red-400 dark:bg-gray-900/90",
-      text: "text-red-700 dark:text-red-300 font-semibold",
+      shell: "border-2 border-solid border-red-500 bg-red-50 dark:border-red-400 dark:bg-red-950/45",
+      text: "text-red-800 dark:text-red-100 font-semibold",
     },
     child: {
-      shell: "border-2 border-dashed border-red-500 bg-red-50/60 dark:border-red-500/70 dark:bg-red-950/40",
-      text: "text-red-700 dark:text-red-300",
+      shell: "border border-solid border-red-400 bg-red-50 dark:border-red-500/80 dark:bg-red-950/40",
+      text: "text-red-800 dark:text-red-200 font-normal",
     },
   },
   unscheduled: {
     parent: {
       shell: "border-2 border-dashed border-violet-400 bg-violet-50/50 dark:border-violet-500/60 dark:bg-violet-950/30",
-      text: "text-violet-700 dark:text-violet-300",
+      text: "text-violet-700 dark:text-violet-300 font-semibold",
     },
     child: {
-      shell: "border-2 border-dashed border-violet-400 bg-violet-50/50 dark:border-violet-500/60 dark:bg-violet-950/30",
-      text: "text-violet-700 dark:text-violet-300",
+      shell: "border border-dashed border-violet-400 bg-violet-50/50 dark:border-violet-500/60 dark:bg-violet-950/30",
+      text: "text-violet-700 dark:text-violet-300 font-normal",
     },
   },
 };
@@ -92,10 +94,10 @@ export const STATUS_STYLES: Record<VisualStatusKey, StatusStyle> = {
   todo: {
     key: "todo",
     label: "待办",
-    dot: "bg-amber-400 ring-amber-300",
-    bar: "bg-amber-500 shadow-sm ring-1 ring-amber-600/30",
+    dot: "bg-gray-400 ring-gray-300",
+    bar: "bg-gray-500 shadow-sm ring-1 ring-gray-600/30",
     rowBg: "bg-white dark:bg-gray-900",
-    stripe: "border-l-amber-400",
+    stripe: "border-l-gray-400",
   },
   in_progress: {
     key: "in_progress",
@@ -210,6 +212,65 @@ export function statusBarClass(
 ): string {
   const { shell, text } = getGanttBarStyle(status, dueDate, displayStatus, depth, overdue);
   return `${shell} ${text}`;
+}
+
+/** 一级计划组框：中性壳子，不随计划自定义色变化 */
+export function getGanttGroupShellClasses() {
+  return {
+    frame:
+      "border-2 border-slate-300 bg-slate-50/80 dark:border-slate-600 dark:bg-slate-900/35",
+    tab: "border-slate-300 bg-slate-100 text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100",
+  };
+}
+
+/** 甘特条：组内一级透明拖拽层；子计划/独立计划按状态实心上色 */
+export function getStatusPlanBarAppearance(
+  status: string | undefined | null,
+  dueDate: string | null | undefined,
+  opts: {
+    depth: number;
+    frameRoot?: boolean;
+    displayStatus?: string | null;
+    overdue?: boolean;
+  },
+): { shellClass: string; textClass: string } {
+  if (opts.frameRoot) {
+    return {
+      shellClass: "border-0 bg-transparent shadow-none ring-0",
+      textClass: "font-semibold",
+    };
+  }
+  const { shell, text } = getGanttBarStyle(
+    status,
+    dueDate,
+    opts.displayStatus,
+    opts.depth,
+    opts.overdue,
+  );
+  return { shellClass: shell, textClass: text };
+}
+
+/** 甘特左列：组内一级中性强调；其余按各自状态左条 */
+export function getGanttLabelAppearance(
+  status: string | undefined | null,
+  dueDate: string | null | undefined,
+  opts: {
+    isGroupRoot?: boolean;
+    displayStatus?: string | null;
+    overdue?: boolean;
+  },
+): { stripeClass: string; bgClass: string } {
+  if (opts.isGroupRoot) {
+    return {
+      stripeClass: "border-l-[3px] border-l-slate-300 dark:border-l-slate-600",
+      bgClass: "bg-slate-50/40 dark:bg-slate-900/25",
+    };
+  }
+  const style = getStatusStyle(status, dueDate, opts.displayStatus, opts.overdue);
+  return {
+    stripeClass: style.stripe,
+    bgClass: "",
+  };
 }
 
 export function statusLabel(

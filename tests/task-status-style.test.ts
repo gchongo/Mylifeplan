@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   getGanttBarStyle,
+  getGanttLabelAppearance,
+  getStatusPlanBarAppearance,
   normalizeStatusKey,
   resolveVisualStatus,
 } from "@/lib/task-status-style";
@@ -15,12 +17,23 @@ describe("task-status-style", () => {
     expect(resolveVisualStatus("in_progress", "2020-01-01", undefined, true)).toBe("overdue");
   });
 
-  it("returns outline bar styles for parent vs child", () => {
+  it("returns solid status bars for parent vs child", () => {
     const parent = getGanttBarStyle("in_progress", null, null, 0);
-    const child = getGanttBarStyle("in_progress", null, null, 1);
+    const child = getGanttBarStyle("done", null, null, 1);
     expect(parent.shell).toContain("border-solid");
-    expect(parent.text).toContain("blue");
-    expect(child.shell).toContain("border-dashed");
-    expect(child.text).toContain("blue");
+    expect(parent.shell).toContain("blue");
+    expect(child.shell).toContain("border-solid");
+    expect(child.shell).not.toContain("border-dashed");
+    expect(child.shell).toContain("emerald");
+  });
+
+  it("group root bar is transparent shell", () => {
+    const bar = getStatusPlanBarAppearance("in_progress", null, { depth: 0, frameRoot: true });
+    expect(bar.shellClass).toContain("bg-transparent");
+  });
+
+  it("group label uses neutral stripe", () => {
+    const label = getGanttLabelAppearance("in_progress", null, { isGroupRoot: true });
+    expect(label.stripeClass).toContain("slate");
   });
 });

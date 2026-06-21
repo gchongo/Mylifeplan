@@ -51,15 +51,13 @@ import { isPlanOverdue } from "@/lib/gantt-plan-status";
 import { getContributionMarkerStyle } from "@/lib/contribution-marker-style";
 import { useSettings } from "@/components/settings/settings-provider";
 import {
-  getPlanBarAppearance,
-  getPlanLabelAppearance,
-  normalizePlanColor,
-  planColorRgba,
-  resolveEffectivePlanColor,
-} from "@/lib/plan-color";
+  getGanttGroupShellClasses,
+  getGanttLabelAppearance,
+  getStatusPlanBarAppearance,
+  type VisualStatusKey,
+} from "@/lib/task-status-style";
 import { GRID_BORDER, GRID_ROW_BORDER } from "@/lib/gantt-grid-colors";
 import { deriveParentStatus } from "@/lib/services/plan-rollup";
-import type { VisualStatusKey } from "@/lib/task-status-style";
 import type { GanttContribution, GanttItem, PlanStatus } from "@/types";
 import { apiJson } from "@/lib/client-api";
 import { dispatchPlanUpdated, PLAN_UPDATED_EVENT } from "@/lib/plan-events";
@@ -204,21 +202,19 @@ interface PlanModalState {
   defaultEndDate?: string | null;
 }
 
-function rootPlanForRow(row: GanttRow, planById: Map<string, GanttItem>): GanttItem {
-  return planById.get(row.rootId) ?? row.item;
-}
 
 function planBarStyle(
   item: GanttItem,
-  inheritedColor: string | null | undefined,
   depth: number,
-  frameRoot = false,
-  inGroupChild = false,
+  frameRoot: boolean,
+  displayStatus: string,
+  overdue: boolean,
 ) {
-  return getPlanBarAppearance(resolveEffectivePlanColor(item, { color: inheritedColor }), {
+  return getStatusPlanBarAppearance(item.status, item.endDate, {
+    depth,
     frameRoot,
-    inGroupChild,
-    isRoot: depth === 0,
+    displayStatus,
+    overdue,
   });
 }
 
@@ -783,9 +779,12 @@ export const GanttChart = forwardRef<
     const isExpanded = expanded.has(item.id);
     const displayStatus = itemDisplayStatus(item, items);
     const hasRollup = itemHasRollup(item, items);
-    const rootItem = rootPlanForRow(row, planById);
-    const effectiveColor = resolveEffectivePlanColor(item, rootItem);
-    const labelStyle = getPlanLabelAppearance(effectiveColor);
+    const overdue = isPlanOverdue(item, planById);
+    const labelStyle = getGanttLabelAppearance(item.status, item.endDate, {
+      isGroupRoot: row.depth === 0 && groupedRootIds.has(item.id),
+      displayStatus,
+      overdue,
+    });
 
     return (
       <div
@@ -800,8 +799,6 @@ export const GanttChart = forwardRef<
           height: row.height,
           marginTop: row.gapBefore,
           paddingLeft: 12 + row.depth * 16,
-          ...labelStyle.bgStyle,
-          ...labelStyle.stripeStyle,
         }}
       >
         {showToggle ? (
@@ -943,6 +940,7 @@ export const GanttChart = forwardRef<
   const clearBarPreview = useCallback(() => setBarPreview(new Map()), []);
 
   function renderPlanGroupFrames() {
+    const shell = getGanttGroupShellClasses();
     return planGroups.map((group) => {
       const rootItem = planById.get(group.rootId);
       if (!rootItem) return null;
@@ -950,24 +948,21 @@ export const GanttChart = forwardRef<
       const startDate = preview?.start ?? rootItem.startDate;
       const endDate = preview?.end ?? rootItem.effectiveEnd;
       const { left, width } = barMetricsFromDates(startDate, endDate, layout);
-      const c = normalizePlanColor(rootItem.color);
-      const borderColor = planColorRgba(c, 0.75);
-      const tabBg = planColorRgba(c, 0.16);
-      const bodyBg = planColorRgba(c, 0.08);
       const frameLeft = Math.max(left, 0);
       const frameWidth = Math.max(width, 8);
 
       return (
         <div
           key={`group-frame-${group.rootId}`}
-          className="pointer-events-none absolute z-[1] box-border rounded-md border-2"
+          className={cn(
+            "pointer-events-none absolute z-[1] box-border rounded-md",
+            shell.frame,
+          )}
           style={{
             top: group.top,
             height: group.height,
             left: frameLeft,
             width: frameWidth,
-            borderColor,
-            backgroundColor: bodyBg,
             borderBottomLeftRadius: 6,
             borderBottomRightRadius: 6,
             borderTopRightRadius: 6,
@@ -975,11 +970,11 @@ export const GanttChart = forwardRef<
           aria-hidden
         >
           <div
-            className="absolute left-0 top-0 z-[2] max-w-[min(100%,14rem)] truncate border-2 border-b-0 px-2 text-xs font-semibold leading-[22px]"
+            className={cn(
+              "absolute left-0 top-0 z-[2] max-w-[min(100%,14rem)] truncate border-2 border-b-0 px-2 text-xs font-semibold leading-[22px]",
+              shell.tab,
+            )}
             style={{
-              borderColor,
-              backgroundColor: tabBg,
-              color: c,
               borderTopLeftRadius: 6,
               borderTopRightRadius: 6,
             }}
@@ -994,14 +989,13 @@ export const GanttChart = forwardRef<
   function renderBar(row: GanttRow, idx: number) {
     const item = row.item;
     const frameRoot = row.depth === 0 && groupedRootIds.has(item.id);
-    const inGroupChild = row.depth > 0 && groupedRootIds.has(row.rootId);
-    const rootItem = planById.get(row.rootId) ?? item;
-    const effectiveColor = resolveEffectivePlanColor(item, rootItem);
     const previewDates = barPreview.get(item.id);
     const displayStart = previewDates?.start ?? item.startDate;
     const displayEnd = previewDates?.end ?? item.effectiveEnd;
     const { left, width } = barMetricsFromDates(displayStart, displayEnd, layout);
-    const barStyle = planBarStyle(item, rootItem.color, row.depth, frameRoot, inGroupChild);
+    const displayStatus = itemDisplayStatus(item, items);
+    const overdue = isPlanOverdue(item, planById);
+    const barStyle = planBarStyle(item, row.depth, frameRoot, displayStatus, overdue);
 
     if (item.isUnscheduled) {
       const anchorLeft = barMetricsFromDates(displayStart, displayEnd, layout).left;
@@ -1050,10 +1044,7 @@ export const GanttChart = forwardRef<
             left={left}
             width={width}
             barShell={barStyle.shellClass}
-            barShellStyle={barStyle.shellStyle}
             barText={barStyle.textClass}
-            barTextStyle={barStyle.textStyle}
-            planColor={effectiveColor}
             bareShell={frameRoot}
             hideTitle={frameRoot}
             hitRowHeight={row.height}

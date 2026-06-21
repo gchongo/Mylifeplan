@@ -106,15 +106,12 @@ export function getPlanBarAppearance(
 }
 
 export function getPlanGroupFrameAppearance(
-  color: string | null | undefined,
+  _color?: string | null | undefined,
 ): PlanGroupFrameAppearance {
-  const c = normalizePlanColor(color);
   return {
-    className: "pointer-events-none absolute z-[1] rounded-md border-2",
-    style: {
-      borderColor: planColorRgba(c, 0.75),
-      backgroundColor: planColorRgba(c, 0.1),
-    },
+    className:
+      "pointer-events-none absolute z-[1] rounded-md border-2 border-slate-300 bg-slate-50/80 dark:border-slate-600 dark:bg-slate-900/35",
+    style: {},
   };
 }
 

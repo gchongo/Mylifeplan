@@ -21,9 +21,8 @@ describe("plan-color", () => {
     expect(bar.shellClass).toContain("bg-transparent");
   });
 
-  it("group frame uses plan color", () => {
+  it("group frame shell is neutral", () => {
     const frame = getPlanGroupFrameAppearance("#10B981");
-    expect(frame.style.borderColor).toContain("rgba");
-    expect(frame.style.backgroundColor).toContain("rgba");
+    expect(frame.className).toContain("slate");
   });
 });
