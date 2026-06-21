@@ -45,12 +45,15 @@ export function DrawerLayout({
   panel,
   children,
   widthClass = DEFAULT_DRAWER_WIDTH,
+  panelTopOffset = 0,
 }: {
   open: boolean;
   onClose: () => void;
   panel: React.ReactNode;
   children: React.ReactNode;
   widthClass?: string;
+  /** 面板顶部留白（px），用于不遮挡固定页眉，如甘特图日期行 */
+  panelTopOffset?: number;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -72,8 +75,14 @@ export function DrawerLayout({
         <aside
           role="complementary"
           aria-labelledby={open ? "drawer-title" : undefined}
+          style={
+            panelTopOffset > 0
+              ? { marginTop: panelTopOffset, height: `calc(100% - ${panelTopOffset}px)` }
+              : undefined
+          }
           className={cn(
-            "flex h-full flex-col border-l border-gray-200 bg-white",
+            "flex flex-col border-l border-gray-200 bg-white",
+            panelTopOffset === 0 && "h-full",
             widthClass,
             !open && "pointer-events-none opacity-0",
           )}

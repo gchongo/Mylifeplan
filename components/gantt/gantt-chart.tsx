@@ -50,6 +50,8 @@ import { dispatchPlanUpdated, PLAN_UPDATED_EVENT } from "@/lib/plan-events";
 import { cn } from "@/lib/utils";
 
 const ROW_HEIGHT = 44;
+const ROW_HEIGHT_CHILD = 36;
+const ROW_GROUP_GAP = 10;
 const DEFAULT_LABEL_WIDTH = 200;
 const MIN_LABEL_WIDTH = 120;
 const MAX_LABEL_WIDTH = 560;
@@ -99,6 +101,12 @@ interface GanttRow {
   kind: RowKind;
   item: GanttItem;
   depth: number;
+  height: number;
+  gapBefore: number;
+}
+
+function computeRowsTotalHeight(rows: GanttRow[]) {
+  return rows.reduce((sum, row) => sum + row.gapBefore + row.height, 0);
 }
 
 function planDepth(itemId: string, byId: Map<string, GanttItem>): number {
@@ -130,7 +138,13 @@ function buildPlanTreeRows(plans: GanttItem[], expanded: Set<string>): GanttRow[
 
   function walk(parentId: string | null, depth: number) {
     for (const item of byParent.get(parentId) ?? []) {
-      rows.push({ kind: "item", item, depth });
+      rows.push({
+        kind: "item",
+        item,
+        depth,
+        height: depth > 0 ? ROW_HEIGHT_CHILD : ROW_HEIGHT,
+        gapBefore: depth === 0 && rows.length > 0 ? ROW_GROUP_GAP : 0,
+      });
       const childCount = byParent.get(item.id)?.length ?? 0;
 
       if (expanded.has(item.id) && childCount > 0) {
@@ -345,12 +359,12 @@ export const GanttChart = forwardRef<
 
   const allSubplansExpanded =
     expandablePlanIds.length > 0 && expandablePlanIds.every((id) => expanded.has(id));
-  const rowsBodyHeight = rows.length * ROW_HEIGHT;
+  const rowsBodyHeight = computeRowsTotalHeight(rows);
   const minBodyHeight = Math.max(
     rowsBodyHeight,
     scrollViewportHeight - TIMELINE_HEADER_HEIGHT,
   );
-  const bodyAreaHeight = Math.max(rows.length * ROW_HEIGHT, minBodyHeight - TIMELINE_HEADER_HEIGHT);
+  const bodyAreaHeight = Math.max(computeRowsTotalHeight(rows), minBodyHeight - TIMELINE_HEADER_HEIGHT);
 
   const refetchGantt = useCallback(() => {
     apiJson<{ items?: GanttItem[]; contributions?: GanttContribution[] }>(
@@ -675,7 +689,11 @@ export const GanttChart = forwardRef<
           GANTT_TITLE_ROW_CLASS,
           statusStyle.stripe,
         )}
-        style={{ height: ROW_HEIGHT, paddingLeft: 12 + row.depth * 16 }}
+        style={{
+          height: row.height,
+          marginTop: row.gapBefore,
+          paddingLeft: 12 + row.depth * 16,
+        }}
       >
         {showToggle ? (
           <button
@@ -771,8 +789,8 @@ export const GanttChart = forwardRef<
     return (
       <div
         key={`bar-${item.id}-${idx}`}
-        className="relative border-b border-dashed border-gray-100"
-        style={{ height: ROW_HEIGHT, width: timelineWidth }}
+        className="relative border-b border-dashed border-gray-100 dark:border-gray-800/60"
+        style={{ height: row.height, marginTop: row.gapBefore, width: timelineWidth }}
       >
         {!item.contributionOnly && (
           <GanttDraggableBar
@@ -815,9 +833,22 @@ export const GanttChart = forwardRef<
     return null;
   }
 
+  function handleTimelineBackgroundClick(e: React.MouseEvent) {
+    if (!drawerOpen) return;
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-gantt-bar]")) return;
+    if (target.closest("button, a, input, textarea, select, [data-no-pan]")) return;
+    closeDrawer();
+  }
+
   function wrapWithDrawers(content: React.ReactNode) {
     return (
-      <DrawerLayout open={drawerOpen} onClose={closeDrawer} panel={renderDrawerPanel()}>
+      <DrawerLayout
+        open={drawerOpen}
+        onClose={closeDrawer}
+        panelTopOffset={TIMELINE_HEADER_HEIGHT}
+        panel={renderDrawerPanel()}
+      >
         {content}
       </DrawerLayout>
     );
@@ -937,7 +968,11 @@ export const GanttChart = forwardRef<
                 <div className="flex shrink-0 flex-col">
                   {renderTimelineHeaderOnly()}
 
-                  <div className="relative" style={{ minHeight: bodyAreaHeight }}>
+                  <div
+                    className="relative"
+                    style={{ minHeight: bodyAreaHeight }}
+                    onClick={handleTimelineBackgroundClick}
+                  >
                     {renderGridBackground(bodyAreaHeight)}
 
                     {rows.map((row, idx) => (
