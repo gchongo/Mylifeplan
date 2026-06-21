@@ -3,20 +3,23 @@
 import { useState } from "react";
 import { ParentPlanSelect } from "@/components/forms/parent-plan-select";
 import { PlanContributionSelect } from "@/components/forms/long-term-plan-select";
+import {
+  ContributionEditor,
+  type ContributionEditorValues,
+} from "@/components/contributions/contribution-editor";
 import { Button } from "@/components/ui/button";
 import { apiJson } from "@/lib/client-api";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import { cn } from "@/lib/utils";
+import { todayStr } from "@/lib/dates";
 
 type ComposerMode = "memo" | "plan" | "contribution";
 
 const MODES: { id: ComposerMode; label: string; hint: string }[] = [
   { id: "memo", label: "便签", hint: "无日期想法，贴在便签板" },
   { id: "plan", label: "计划", hint: "可设日期，出现在甘特图与日历" },
-  { id: "contribution", label: "贡献", hint: "记录某一天的计划进展" },
+  { id: "contribution", label: "贡献", hint: "记录某一天的计划进展，标题与日期必填" },
 ];
-
-import { todayStr } from "@/lib/dates";
 
 function splitContent(text: string): { title: string; description: string | null } {
   const trimmed = text.trim();
@@ -27,10 +30,9 @@ function splitContent(text: string): { title: string; description: string | null
   return { title, description: rest || null };
 }
 
-const PLACEHOLDERS: Record<ComposerMode, string> = {
+const PLACEHOLDERS: Record<Exclude<ComposerMode, "contribution">, string> = {
   memo: "此刻的想法…",
   plan: "计划做什么？第一行作为标题，换行可写描述",
-  contribution: "今天对计划做了什么？第一行作为标题",
 };
 
 export function FeedComposer({ onPublished }: { onPublished: () => void }) {
@@ -44,10 +46,22 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
   const [endDate, setEndDate] = useState("");
 
   const [contributionPlanId, setContributionPlanId] = useState<string | null>(null);
-  const [occurredOn, setOccurredOn] = useState(todayStr);
+  const [contributionValues, setContributionValues] = useState<ContributionEditorValues>({
+    title: "",
+    body: "",
+    occurredOn: todayStr(),
+    occurredEndOn: todayStr(),
+    imageUrls: [],
+  });
   const [planListRefreshKey, setPlanListRefreshKey] = useState(0);
 
-  const canPublish = text.trim().length > 0 && !busy;
+  const canPublish =
+    !busy &&
+    (mode === "contribution"
+      ? contributionValues.title.trim().length > 0 &&
+        !!contributionValues.occurredOn &&
+        !!contributionPlanId
+      : text.trim().length > 0);
 
   function resetForm() {
     setText("");
@@ -55,18 +69,30 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
     setStartDate("");
     setEndDate("");
     setContributionPlanId(null);
-    setOccurredOn(todayStr());
+    setContributionValues({
+      title: "",
+      body: "",
+      occurredOn: todayStr(),
+      occurredEndOn: todayStr(),
+      imageUrls: [],
+    });
     setPlanListRefreshKey((k) => k + 1);
   }
 
   async function handlePublish() {
-    const { title, description } = splitContent(text);
-    if (!title) return;
-
     setBusy(true);
     setError("");
     try {
       if (mode === "contribution") {
+        const title = contributionValues.title.trim();
+        if (!title) {
+          setError("请填写标题");
+          return;
+        }
+        if (!contributionValues.occurredOn) {
+          setError("请选择贡献日期");
+          return;
+        }
         if (!contributionPlanId) {
           setError("请选择要关联的计划");
           return;
@@ -77,11 +103,22 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
           body: JSON.stringify({
             planId: contributionPlanId,
             title,
-            description,
-            occurredOn,
+            body: contributionValues.body.trim() || null,
+            imageUrls: contributionValues.imageUrls.length
+              ? contributionValues.imageUrls
+              : undefined,
+            occurredOn: contributionValues.occurredOn,
+            occurredEndOn:
+              contributionValues.occurredEndOn &&
+              contributionValues.occurredEndOn !== contributionValues.occurredOn
+                ? contributionValues.occurredEndOn
+                : null,
           }),
         });
+        dispatchPlanUpdated();
       } else if (mode === "plan") {
+        const { title, description } = splitContent(text);
+        if (!title) return;
         await apiJson("/api/plans", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -96,16 +133,13 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
         });
         dispatchPlanUpdated();
       } else {
-        await apiJson("/api/plans", {
+        const content = text.trim();
+        if (!content) return;
+        await apiJson("/api/memos", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title,
-            description,
-            type: "goal",
-          }),
+          body: JSON.stringify({ content }),
         });
-        dispatchPlanUpdated();
       }
 
       resetForm();
@@ -120,8 +154,8 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
   const activeHint = MODES.find((m) => m.id === mode)?.hint ?? "";
 
   return (
-    <div className="feed-composer shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-3 py-2">
+    <div className="feed-composer shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+      <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-3 py-2 dark:border-gray-800">
         <div className="flex flex-wrap items-center gap-1">
           {MODES.map((m) => (
             <button
@@ -134,8 +168,8 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
               className={cn(
                 "rounded-full px-3 py-1 text-xs font-medium transition-colors",
                 mode === m.id
-                  ? "bg-brand-100 text-brand-700"
-                  : "text-gray-500 hover:bg-gray-100 hover:text-gray-800",
+                  ? "bg-brand-100 text-brand-700 dark:bg-brand-950 dark:text-brand-300"
+                  : "text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:hover:bg-gray-800",
               )}
             >
               {m.label}
@@ -151,60 +185,61 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
         </div>
       </div>
 
-      <p className="border-b border-gray-50 px-3 py-1 text-xs text-gray-400">{activeHint}</p>
+      <p className="border-b border-gray-50 px-3 py-1 text-xs text-gray-400 dark:border-gray-800">
+        {activeHint}
+      </p>
 
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder={PLACEHOLDERS[mode]}
-        rows={3}
-        className="w-full resize-none border-0 bg-transparent px-3 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"
-      />
-
-      {mode === "plan" && (
-        <div className="space-y-2 border-t border-gray-100 px-3 py-2">
-          <ParentPlanSelect value={parentPlanId} onChange={setParentPlanId} />
-          <div className="grid gap-2 sm:grid-cols-2">
-            <label className="block text-xs text-gray-500">
-              开始时间
-              <input
-                type="datetime-local"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-200 px-2 py-1.5 text-sm text-gray-800"
-              />
-            </label>
-            <label className="block text-xs text-gray-500">
-              结束时间
-              <input
-                type="datetime-local"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-200 px-2 py-1.5 text-sm text-gray-800"
-              />
-            </label>
+      {mode === "contribution" ? (
+        <div className="space-y-0 p-3">
+          <ContributionEditor
+            values={contributionValues}
+            onChange={(patch) => setContributionValues((prev) => ({ ...prev, ...patch }))}
+            mode="compose"
+          />
+          <div className="mt-2 border-t border-gray-100 pt-2 dark:border-gray-800">
+            <PlanContributionSelect
+              value={contributionPlanId}
+              onChange={setContributionPlanId}
+              refreshKey={planListRefreshKey}
+            />
           </div>
         </div>
-      )}
-
-      {mode === "contribution" && (
-        <div className="grid gap-2 border-t border-gray-100 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-          <PlanContributionSelect
-            value={contributionPlanId}
-            onChange={setContributionPlanId}
-            refreshKey={planListRefreshKey}
-            inline
+      ) : (
+        <>
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={PLACEHOLDERS[mode]}
+            rows={3}
+            className="w-full resize-none border-0 bg-transparent px-3 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0 dark:text-gray-100"
           />
-          <label className="flex shrink-0 items-center gap-2 text-xs text-gray-500">
-            贡献日期
-            <input
-              type="date"
-              value={occurredOn}
-              onChange={(e) => setOccurredOn(e.target.value)}
-              className="rounded-md border border-gray-200 px-2 py-1.5 text-sm text-gray-800"
-            />
-          </label>
-        </div>
+
+          {mode === "plan" && (
+            <div className="space-y-2 border-t border-gray-100 px-3 py-2 dark:border-gray-800">
+              <ParentPlanSelect value={parentPlanId} onChange={setParentPlanId} />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="block text-xs text-gray-500">
+                  开始时间
+                  <input
+                    type="datetime-local"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="mt-1 w-full rounded-md border border-gray-200 px-2 py-1.5 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                  />
+                </label>
+                <label className="block text-xs text-gray-500">
+                  结束时间
+                  <input
+                    type="datetime-local"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="mt-1 w-full rounded-md border border-gray-200 px-2 py-1.5 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                  />
+                </label>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
