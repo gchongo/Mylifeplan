@@ -36,12 +36,13 @@ export function GanttTaskListControls({
     statusFilter.size > 0 && statusFilter.size < STATUS_LEGEND.length;
 
   useEffect(() => {
+    if (!open) return;
     function onDocClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, []);
+    document.addEventListener("click", onDocClick);
+    return () => document.removeEventListener("click", onDocClick);
+  }, [open]);
 
   function toggleStatus(key: VisualStatusKey) {
     const next = new Set(statusFilter);
@@ -97,11 +98,14 @@ export function GanttTaskListControls({
         </button>
       )}
 
-      <div ref={ref} className="relative min-w-0 flex-1">
+      <div ref={ref} className="relative z-50 min-w-0 flex-1">
         <button
           type="button"
           data-no-pan
-          onClick={() => setOpen((v) => !v)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen((v) => !v);
+          }}
           className={cn(
             "flex w-full items-center justify-between gap-1 rounded-md border text-xs",
             compact ? "h-6 px-1.5 py-0" : "px-2 py-1",
@@ -121,7 +125,7 @@ export function GanttTaskListControls({
         </button>
 
         {open && (
-          <div className="absolute left-0 top-full z-50 mt-1 w-36 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+          <div className="absolute left-0 top-full z-[100] mt-1 w-36 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900">
             {STATUS_LEGEND.map((key) => {
               const style = STATUS_STYLES[key];
               const checked = statusFilter.has(key);
@@ -130,7 +134,10 @@ export function GanttTaskListControls({
                   key={key}
                   type="button"
                   data-no-pan
-                  onClick={() => toggleStatus(key)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleStatus(key);
+                  }}
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-gray-50"
                 >
                   <span
@@ -152,7 +159,10 @@ export function GanttTaskListControls({
               <button
                 type="button"
                 data-no-pan
-                onClick={selectAll}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  selectAll();
+                }}
                 className="w-full rounded px-2 py-1 text-left text-xs text-brand-600 hover:bg-gray-50"
               >
                 显示全部

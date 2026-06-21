@@ -20,7 +20,7 @@ import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribut
 import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
 import { GanttPlanDrawerPanel } from "@/components/gantt/gantt-plan-drawer";
 import { PlanFormModal } from "@/components/gantt/plan-form-modal";
-import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
+import { PlanStatusMenuButton } from "@/components/plans/plan-status-menu";
 import { Button, EmptyState, Loading as LoadingView } from "@/components/ui";
 import { DrawerLayout } from "@/components/ui/drawer";
 import {
@@ -560,6 +560,13 @@ export const GanttChart = forwardRef<
     setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
   }
 
+  function handlePlanStatusChanged(planId: string, apiStatus: PlanStatus) {
+    setItems((prev) =>
+      prev.map((i) => (i.id === planId ? { ...i, status: apiStatus } : i)),
+    );
+    refetchGantt();
+  }
+
   function openPlan(planId: string) {
     preserveScrollLeft();
     setSelectedContributionId(null);
@@ -764,11 +771,13 @@ export const GanttChart = forwardRef<
           </button>
         )}
         {item.status && (
-          <TaskStatusIndicator
+          <PlanStatusMenuButton
+            planId={item.id}
             status={item.status}
             dueDate={item.endDate}
             displayStatus={displayStatus}
             hasRollup={hasRollup}
+            onStatusChanged={(apiStatus) => handlePlanStatusChanged(item.id, apiStatus)}
           />
         )}
       </div>
@@ -889,7 +898,7 @@ export const GanttChart = forwardRef<
 
   function renderFixedHeaderRow() {
     return (
-      <div className="relative z-30 flex shrink-0">
+      <div className="relative z-30 flex shrink-0 overflow-visible">
         <GanttDrawerOpenTab
           headerHeight={TIMELINE_HEADER_HEIGHT}
           visible={!labelVisible}
@@ -897,7 +906,7 @@ export const GanttChart = forwardRef<
         />
         <div
           className={cn(
-            "shrink-0 overflow-hidden",
+            "shrink-0 overflow-visible",
             !isResizingLabel && "transition-[width] duration-300 ease-in-out",
           )}
           style={{
@@ -908,7 +917,7 @@ export const GanttChart = forwardRef<
           <div
             className={cn(
               GANTT_STICKY_HEADER_CLASS,
-              "items-center border-r border-blue-200/80 dark:border-blue-900/50",
+              "items-center overflow-visible border-r border-blue-200/80 dark:border-blue-900/50",
             )}
             style={{ width: labelWidth, height: TIMELINE_HEADER_HEIGHT, minHeight: TIMELINE_HEADER_HEIGHT }}
           >
@@ -1066,14 +1075,16 @@ export const GanttChart = forwardRef<
       <div
         ref={containerRef}
         className={cn(
-          "flex h-full min-h-0 w-full max-w-full min-w-0 flex-1 flex-col overflow-hidden",
+          "flex h-full min-h-0 w-full max-w-full min-w-0 flex-1 flex-col",
           "rounded-none border-0 bg-transparent shadow-none",
         )}
       >
         {renderFixedHeaderRow()}
-        <DrawerLayout open={drawerOpen} onClose={closeDrawer} panel={renderDrawerPanel()}>
-          {renderScrollBody()}
-        </DrawerLayout>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <DrawerLayout open={drawerOpen} onClose={closeDrawer} panel={renderDrawerPanel()}>
+            {renderScrollBody()}
+          </DrawerLayout>
+        </div>
       </div>
 
       {renderPlanModal()}
