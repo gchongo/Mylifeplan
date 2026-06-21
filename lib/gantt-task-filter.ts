@@ -5,6 +5,11 @@ export function isStatusFilterActive(filter: Set<VisualStatusKey>): boolean {
   return filter.size > 0 && filter.size < STATUS_LEGEND.length;
 }
 
+/** 甘特图默认不展示归档，用户可在顶栏筛选中勾选「已归档」 */
+export function defaultGanttStatusFilter(): Set<VisualStatusKey> {
+  return new Set(STATUS_LEGEND.filter((key) => key !== "archived"));
+}
+
 export function filterGanttTasksByStatus(
   tasks: GanttItem[],
   filter: Set<VisualStatusKey>,

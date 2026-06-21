@@ -35,13 +35,12 @@ import {
   type GanttScaleId,
   type TimelineLayout,
 } from "@/lib/gantt-scale";
-import { filterGanttTasksByStatus } from "@/lib/gantt-task-filter";
+import { defaultGanttStatusFilter, filterGanttTasksByStatus } from "@/lib/gantt-task-filter";
 import { GRID_BORDER } from "@/lib/gantt-grid-colors";
 import { deriveParentStatus } from "@/lib/services/plan-rollup";
 import {
   getGanttBarStyle,
   getStatusStyle,
-  STATUS_LEGEND,
   type VisualStatusKey,
 } from "@/lib/task-status-style";
 import type { GanttContribution, GanttItem, PlanStatus } from "@/types";
@@ -247,9 +246,7 @@ export const GanttChart = forwardRef<
   const [contributions, setContributions] = useState<GanttContribution[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [statusFilter, setStatusFilter] = useState<Set<VisualStatusKey>>(
-    () => new Set(STATUS_LEGEND),
-  );
+  const [statusFilter, setStatusFilter] = useState<Set<VisualStatusKey>>(defaultGanttStatusFilter);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [selectedContributionId, setSelectedContributionId] = useState<string | null>(null);
   const [scrollViewportHeight, setScrollViewportHeight] = useState(480);

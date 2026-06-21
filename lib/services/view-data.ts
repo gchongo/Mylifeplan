@@ -32,7 +32,7 @@ export async function getGanttItems(
   const items: GanttItem[] = [];
 
   const plans = await prisma.plan.findMany({
-    where: { userId, startDate: { not: null }, status: { not: "archived" } },
+    where: { userId, startDate: { not: null } },
     orderBy: { startDate: "asc" },
   });
 
@@ -77,7 +77,7 @@ export async function getGanttData(
     if (planIds.has(c.planId)) continue;
 
     const plan = await prisma.plan.findFirst({
-      where: { id: c.planId, userId, status: { not: "archived" } },
+      where: { id: c.planId, userId },
     });
     if (!plan || !plan.startDate) continue;
 
