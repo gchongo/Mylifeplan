@@ -32,6 +32,7 @@ import {
   type MonthKey,
 } from "@/lib/calendar-month-grid";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
+import { localDateStr } from "@/lib/dates";
 import type { CalendarItem } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -58,19 +59,20 @@ function monthRange(year: number, month: number) {
 }
 
 function weekRange(anchor: Date) {
-  const dow = anchor.getUTCDay();
+  const dow = anchor.getDay();
   const mondayOffset = dow === 0 ? 6 : dow - 1;
   const start = new Date(anchor);
-  start.setUTCDate(anchor.getUTCDate() - mondayOffset);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(anchor.getDate() - mondayOffset);
   const end = new Date(start);
-  end.setUTCDate(start.getUTCDate() + 6);
+  end.setDate(start.getDate() + 6);
   return {
-    from: start.toISOString().slice(0, 10),
-    to: end.toISOString().slice(0, 10),
+    from: localDateStr(start),
+    to: localDateStr(end),
     days: Array.from({ length: 7 }, (_, i) => {
       const d = new Date(start);
-      d.setUTCDate(start.getUTCDate() + i);
-      return d.toISOString().slice(0, 10);
+      d.setDate(start.getDate() + i);
+      return localDateStr(d);
     }),
   };
 }
@@ -87,7 +89,7 @@ export function CalendarPanelLive({
   className?: string;
 }) {
   const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
+  const todayStr = localDateStr(today);
   const todayMonth = monthKeyFromDate(today);
   const [displayMode, setDisplayMode] = useCalendarDisplayMode();
   const [viewMode, setViewMode] = useState<ViewMode>("month");
@@ -162,7 +164,7 @@ export function CalendarPanelLive({
     setViewMonth(now.getUTCMonth());
     setViewDay(now.getUTCDate());
     setWeekAnchor(now);
-    setSelectedDate(now.toISOString().slice(0, 10));
+    setSelectedDate(localDateStr(now));
     setVisibleMonth(monthKeyFromDate(now));
     if (viewMode === "month") scrollRef.current?.scrollToToday();
   }
@@ -196,7 +198,7 @@ export function CalendarPanelLive({
       setViewYear(d.getUTCFullYear());
       setViewMonth(d.getUTCMonth());
       setViewDay(d.getUTCDate());
-      setSelectedDate(d.toISOString().slice(0, 10));
+      setSelectedDate(localDateStr(d));
     }
   }
 
@@ -219,7 +221,7 @@ export function CalendarPanelLive({
       setViewYear(d.getUTCFullYear());
       setViewMonth(d.getUTCMonth());
       setViewDay(d.getUTCDate());
-      setSelectedDate(d.toISOString().slice(0, 10));
+      setSelectedDate(localDateStr(d));
     }
   }
 

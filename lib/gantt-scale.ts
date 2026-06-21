@@ -1,3 +1,5 @@
+import { todayStr as localTodayStr } from "@/lib/dates";
+
 export const GANTT_SCALES = [
   { id: "day", label: "天" },
   { id: "week", label: "周" },
@@ -80,7 +82,7 @@ export function daysBetween(from: string, to: string) {
 }
 
 export function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  return localTodayStr();
 }
 
 function startOfWeekMonday(date: string) {

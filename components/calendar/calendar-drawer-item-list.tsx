@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
 import { formatEventSchedule, itemAccent } from "@/lib/calendar-display";
+import { formatPlanDateTimeDisplay } from "@/lib/dates";
 import type { CalendarItem } from "@/types";
 import { getStatusStyle } from "@/lib/task-status-style";
 import { cn } from "@/lib/utils";
@@ -27,9 +28,9 @@ function PlanInlineDetail({ plan }: { plan: PlanDetail }) {
       )}
       <dl className="grid grid-cols-2 gap-x-2 gap-y-1">
         <dt className="text-gray-400">开始</dt>
-        <dd>{plan.startDate ?? "—"}</dd>
+        <dd>{formatPlanDateTimeDisplay(plan.startDate)}</dd>
         <dt className="text-gray-400">结束</dt>
-        <dd>{plan.endDate ?? "—"}</dd>
+        <dd>{formatPlanDateTimeDisplay(plan.endDate)}</dd>
       </dl>
       <Link href={`/plans/${plan.id}`} className="text-sm text-brand-600 hover:underline">
         查看完整计划 →

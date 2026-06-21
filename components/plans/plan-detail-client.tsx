@@ -9,17 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContributionForm } from "@/components/forms/contribution-form";
 import { PlanForm, type PlanFormValues } from "@/components/forms/plan-form";
 import { shouldShowInMemo } from "@/lib/content-router";
-import { formatPlanDateTimeDisplay } from "@/lib/dates";
+import { formatPlanDateTimeDisplay, todayStr as todayDateStr } from "@/lib/dates";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 
 interface SubPlan {
   id: string;
   title: string;
   status: string;
-}
-
-function todayDateStr() {
-  return new Date().toISOString().slice(0, 10);
 }
 
 export function PlanDetailClient({

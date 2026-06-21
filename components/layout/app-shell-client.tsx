@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { SettingsProvider } from "@/components/settings/settings-provider";
 import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 import { SidebarNavDrawer } from "@/components/layout/sidebar-brand";
 import { SidebarNavMenu } from "@/components/layout/sidebar-nav";
@@ -56,7 +57,8 @@ export function AppShellClient({
   }, []);
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50">
+    <SettingsProvider>
+      <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-950">
       <TopBar
         title={title}
         userEmail={userEmail}
@@ -98,5 +100,6 @@ export function AppShellClient({
 
       <MobileTabBar />
     </div>
+    </SettingsProvider>
   );
 }

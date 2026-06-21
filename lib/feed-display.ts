@@ -4,10 +4,11 @@ const WEEKDAY_LABELS = ["周日", "周一", "周二", "周三", "周四", "周�
 
 export function formatFeedCardDate(iso: string): string {
   const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
   const month = d.getMonth() + 1;
   const day = d.getDate();
   const weekday = WEEKDAY_LABELS[d.getDay()] ?? "";
-  return `${month}月${day}日 ${weekday}`;
+  return `${month}月${day}日 ${weekday} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 export function feedItemHref(itemType: FeedItemType | "task", itemId: string): string | null {

@@ -1,5 +1,5 @@
 import { resolveVisualStatus } from "@/lib/task-status-style";
-import { datePartOf } from "@/lib/dates";
+import { datePartOf, formatPlanDateTimeCompact } from "@/lib/dates";
 import type { CalendarItem } from "@/types";
 
 export type CalendarDisplayMode = "compact" | "stacked" | "detailed";
@@ -103,18 +103,9 @@ export function formatEventSchedule(item: CalendarItem): string {
   const start = item.startDate;
   const end = item.endDate;
   if (!end || datePartOf(end) === datePartOf(start)) {
-    if (start.includes("T") && !start.endsWith("T00:00:00.000Z")) {
-      try {
-        const d = new Date(start);
-        const pad = (n: number) => String(n).padStart(2, "0");
-        return `${pad(d.getHours())}:${pad(d.getMinutes())} 起`;
-      } catch {
-        return "全天";
-      }
-    }
-    return "全天";
+    return formatPlanDateTimeCompact(start);
   }
-  return `${start.slice(5, 16).replace("T", " ")} → ${end.slice(5, 16).replace("T", " ")}`;
+  return `${formatPlanDateTimeCompact(start)} → ${formatPlanDateTimeCompact(end)}`;
 }
 
 export function displayLimits(mode: CalendarDisplayMode, fullPage: boolean) {

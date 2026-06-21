@@ -16,9 +16,7 @@ const MODES: { id: ComposerMode; label: string; hint: string }[] = [
   { id: "contribution", label: "贡献", hint: "记录某一天的计划进展" },
 ];
 
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
-}
+import { todayStr } from "@/lib/dates";
 
 function splitContent(text: string): { title: string; description: string | null } {
   const trimmed = text.trim();

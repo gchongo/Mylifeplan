@@ -137,8 +137,10 @@ const PLAN_TO_TASK: Record<string, VisualStatusKey> = {
   archived: "archived",
 };
 
+import { todayStr } from "@/lib/dates";
+
 export function todayDateOnly(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayStr();
 }
 
 export function normalizeStatusKey(status: string | undefined | null): VisualStatusKey {

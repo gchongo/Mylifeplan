@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { formatPlanDateTimeDisplay } from "@/lib/dates";
 import { DrawerPanel } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/feedback";
@@ -85,8 +86,8 @@ export function GanttContributionDrawerPanel({
             <p className="text-xs text-gray-500">贡献日期</p>
             <p className="font-medium text-gray-900">
               {item.occurredEndOn && item.occurredEndOn !== item.occurredOn
-                ? `${item.occurredOn} ~ ${item.occurredEndOn}`
-                : item.occurredOn}
+                ? `${formatPlanDateTimeDisplay(item.occurredOn)} ~ ${formatPlanDateTimeDisplay(item.occurredEndOn)}`
+                : formatPlanDateTimeDisplay(item.occurredOn)}
             </p>
           </div>
           <div>
