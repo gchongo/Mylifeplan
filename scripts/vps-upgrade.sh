@@ -51,7 +51,13 @@ npx prisma db push
 echo
 echo "== rebuild & restart =="
 npm run build
-pm2 restart mylifeplan
+if pm2 describe mylifeplan >/dev/null 2>&1; then
+  pm2 restart mylifeplan
+else
+  echo "Process 'mylifeplan' not found — starting fresh"
+  pm2 start npm --name mylifeplan -- start
+  pm2 save
+fi
 
 echo
 echo "== verify auth =="
