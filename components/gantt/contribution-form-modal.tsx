@@ -19,12 +19,13 @@ export function ContributionFormModal({
   onSuccess: () => void;
 }) {
   return (
-    <Modal open={open} onClose={onClose} title="添加贡献" className="max-w-lg">
+    <Modal open={open} onClose={onClose} title={null} className="max-w-2xl">
       <ContributionForm
         key={`${planId}-${defaultStartDate}`}
         planId={planId}
         defaultStartDate={defaultStartDate}
         defaultEndDate={defaultEndDate}
+        onCancel={onClose}
         onSuccess={() => {
           onSuccess();
           onClose();

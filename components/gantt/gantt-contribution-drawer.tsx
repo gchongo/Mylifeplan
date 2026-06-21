@@ -252,6 +252,7 @@ export function GanttContributionDrawerPanel({
           <ContributionEditor
             values={editorValues}
             onChange={(patch) => setEditorValues((prev) => ({ ...prev, ...patch }))}
+            mode="compact"
           />
           <div className="flex flex-wrap gap-2">
             <Button type="button" size="sm" disabled={saving} onClick={() => void handleSaveContent()}>

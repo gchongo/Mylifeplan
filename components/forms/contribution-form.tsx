@@ -13,11 +13,15 @@ export function ContributionForm({
   defaultStartDate,
   defaultEndDate,
   onSuccess,
+  onCancel,
+  showHeader = true,
 }: {
   planId: string;
   defaultStartDate: string;
   defaultEndDate?: string;
   onSuccess?: () => void;
+  onCancel?: () => void;
+  showHeader?: boolean;
 }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,6 +45,10 @@ export function ContributionForm({
       setError("请填写标题");
       return;
     }
+    if (!values.occurredOn) {
+      setError("请选择贡献日期");
+      return;
+    }
     setLoading(true);
 
     try {
@@ -53,7 +61,10 @@ export function ContributionForm({
           body: values.body.trim() || null,
           imageUrls: values.imageUrls.length ? values.imageUrls : undefined,
           occurredOn: values.occurredOn,
-          occurredEndOn: values.occurredEndOn || null,
+          occurredEndOn:
+            values.occurredEndOn && values.occurredEndOn !== values.occurredOn
+              ? values.occurredEndOn
+              : null,
         }),
       });
       const data = await res.json();
@@ -71,11 +82,29 @@ export function ContributionForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {showHeader && (
+        <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-gray-100">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-100 text-sm text-brand-700 dark:bg-brand-950 dark:text-brand-300">
+            +
+          </span>
+          创建贡献
+        </div>
+      )}
+
       {error && <ErrorMessage message={error} />}
-      <ContributionEditor values={values} onChange={patch} />
-      <Button type="submit" disabled={loading}>
-        {loading ? "保存中…" : "保存贡献"}
-      </Button>
+
+      <ContributionEditor values={values} onChange={patch} mode="compose" />
+
+      <div className="flex flex-wrap justify-end gap-2">
+        {onCancel && (
+          <Button type="button" variant="ghost" size="sm" disabled={loading} onClick={onCancel}>
+            取消
+          </Button>
+        )}
+        <Button type="submit" size="sm" disabled={loading || !values.title.trim() || !values.occurredOn}>
+          {loading ? "保存中…" : "保存贡献"}
+        </Button>
+      </div>
     </form>
   );
 }

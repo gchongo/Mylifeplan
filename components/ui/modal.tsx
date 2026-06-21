@@ -13,7 +13,7 @@ export function Modal({
 }: {
   open: boolean;
   onClose: () => void;
-  title: string;
+  title?: string | null;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -36,21 +36,32 @@ export function Modal({
       <div
         role="dialog"
         aria-modal
-        aria-labelledby="modal-title"
+        {...(title != null ? { "aria-labelledby": "modal-title" } : { "aria-label": "对话框" })}
         className={cn(
-          "relative z-10 w-full max-w-lg rounded-xl bg-white shadow-xl",
+          "relative z-10 w-full max-w-lg rounded-xl bg-white shadow-xl dark:bg-gray-900",
           className,
         )}
       >
-        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-          <h2 id="modal-title" className="text-base font-semibold text-gray-900">
-            {title}
-          </h2>
-          <Button variant="ghost" size="sm" onClick={onClose} aria-label="关闭">
-            ✕
-          </Button>
+        {title != null && (
+          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">
+            <h2 id="modal-title" className="text-base font-semibold text-gray-900 dark:text-gray-100">
+              {title}
+            </h2>
+            <Button variant="ghost" size="sm" onClick={onClose} aria-label="关闭">
+              ✕
+            </Button>
+          </div>
+        )}
+        <div className={cn("p-4", title == null && "pt-3")}>
+          {title == null && (
+            <div className="mb-2 flex justify-end">
+              <Button variant="ghost" size="sm" onClick={onClose} aria-label="关闭">
+                ✕
+              </Button>
+            </div>
+          )}
+          {children}
         </div>
-        <div className="p-4">{children}</div>
       </div>
     </div>
   );

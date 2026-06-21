@@ -214,25 +214,16 @@ export function PlanDetailClient({
       )}
 
       {showNewContribution && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">添加贡献</CardTitle>
-            <p className="text-xs text-gray-500">
-              记录本次执行过程，支持 Markdown 与图片，可汇总为教程文章。
-            </p>
-          </CardHeader>
-          <CardContent>
-            <ContributionForm
-              planId={plan.id}
-              defaultStartDate={todayDateStr()}
-              onSuccess={() => {
-                setShowNewContribution(false);
-                afterChange();
-                if (!embedded) router.refresh();
-              }}
-            />
-          </CardContent>
-        </Card>
+        <ContributionForm
+          planId={plan.id}
+          defaultStartDate={todayDateStr()}
+          onSuccess={() => {
+            setShowNewContribution(false);
+            afterChange();
+            if (!embedded) router.refresh();
+          }}
+          onCancel={() => setShowNewContribution(false)}
+        />
       )}
 
       <PlanContributionTimeline
