@@ -5,6 +5,7 @@ import { DrawerPanel } from "@/components/ui/drawer";
 import { Loading } from "@/components/ui/feedback";
 import { PlanDetailClient } from "@/components/plans/plan-detail-client";
 import type { PlanFormValues } from "@/components/forms/plan-form";
+import type { PlanContributionItem } from "@/components/plans/plan-contribution-timeline";
 
 interface PlanPayload extends PlanFormValues {
   id: string;
@@ -23,25 +24,27 @@ export function GanttPlanDrawerPanel({
   const [subPlans, setSubPlans] = useState<
     { id: string; title: string; status: string }[]
   >([]);
+  const [contributions, setContributions] = useState<PlanContributionItem[]>([]);
 
-  useEffect(() => {
-    let cancelled = false;
+  function loadPlan(id: string) {
     setLoading(true);
     setError("");
     setPlan(null);
     setSubPlans([]);
+    setContributions([]);
 
-    fetch(`/api/plans/${planId}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (cancelled) return;
-        if (!data.plan) {
+    Promise.all([
+      fetch(`/api/plans/${id}`).then((r) => r.json()),
+      fetch(`/api/contributions?planId=${id}&includeSubtree=true`).then((r) => r.json()),
+    ])
+      .then(([planData, contribData]) => {
+        if (!planData.plan) {
           setError("计划不存在");
           return;
         }
-        setPlan(data.plan);
+        setPlan(planData.plan);
         setSubPlans(
-          (data.plan.subPlans ?? []).map(
+          (planData.plan.subPlans ?? []).map(
             (sp: { id: string; title: string; status: string }) => ({
               id: sp.id,
               title: sp.title,
@@ -49,17 +52,14 @@ export function GanttPlanDrawerPanel({
             }),
           ),
         );
+        setContributions(contribData.contributions ?? []);
       })
-      .catch(() => {
-        if (!cancelled) setError("加载失败");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+      .catch(() => setError("加载失败"))
+      .finally(() => setLoading(false));
+  }
 
-    return () => {
-      cancelled = true;
-    };
+  useEffect(() => {
+    loadPlan(planId);
   }, [planId]);
 
   return (
@@ -68,7 +68,13 @@ export function GanttPlanDrawerPanel({
       {!loading && error && <p className="px-4 py-3 text-sm text-red-600">{error}</p>}
       {!loading && plan && (
         <div className="p-4">
-          <PlanDetailClient plan={plan} subPlans={subPlans} />
+          <PlanDetailClient
+            plan={plan}
+            subPlans={subPlans}
+            contributions={contributions}
+            embedded
+            onChanged={() => loadPlan(planId)}
+          />
         </div>
       )}
     </DrawerPanel>

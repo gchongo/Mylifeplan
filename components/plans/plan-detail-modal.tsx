@@ -5,6 +5,7 @@ import { Modal } from "@/components/ui/modal";
 import { Loading } from "@/components/ui/feedback";
 import { PlanDetailClient } from "@/components/plans/plan-detail-client";
 import type { PlanFormValues } from "@/components/forms/plan-form";
+import type { PlanContributionItem } from "@/components/plans/plan-contribution-timeline";
 
 interface PlanPayload extends PlanFormValues {
   id: string;
@@ -26,6 +27,7 @@ export function PlanDetailModal({
   const [error, setError] = useState("");
   const [plan, setPlan] = useState<PlanPayload | null>(null);
   const [subPlans, setSubPlans] = useState<{ id: string; title: string; status: string }[]>([]);
+  const [contributions, setContributions] = useState<PlanContributionItem[]>([]);
 
   useEffect(() => {
     if (open && planId) setActivePlanId(planId);
@@ -36,17 +38,20 @@ export function PlanDetailModal({
     setError("");
     setPlan(null);
     setSubPlans([]);
+    setContributions([]);
 
-    fetch(`/api/plans/${id}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (!data.plan) {
+    Promise.all([
+      fetch(`/api/plans/${id}`).then((r) => r.json()),
+      fetch(`/api/contributions?planId=${id}&includeSubtree=true`).then((r) => r.json()),
+    ])
+      .then(([planData, contribData]) => {
+        if (!planData.plan) {
           setError("计划不存在");
           return;
         }
-        setPlan(data.plan);
+        setPlan(planData.plan);
         setSubPlans(
-          (data.plan.subPlans ?? []).map(
+          (planData.plan.subPlans ?? []).map(
             (sp: { id: string; title: string; status: string }) => ({
               id: sp.id,
               title: sp.title,
@@ -54,6 +59,7 @@ export function PlanDetailModal({
             }),
           ),
         );
+        setContributions(contribData.contributions ?? []);
       })
       .catch(() => setError("加载失败"))
       .finally(() => setLoading(false));
@@ -82,6 +88,7 @@ export function PlanDetailModal({
         <PlanDetailClient
           plan={plan}
           subPlans={subPlans}
+          contributions={contributions}
           embedded
           onChanged={handleChanged}
           onClose={onClose}

@@ -11,6 +11,8 @@ import { PlanForm, type PlanFormValues } from "@/components/forms/plan-form";
 import { shouldShowInMemo } from "@/lib/content-router";
 import { formatPlanDateTimeDisplay, todayStr as todayDateStr } from "@/lib/dates";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
+import { PlanContributionTimeline, type PlanContributionItem } from "@/components/plans/plan-contribution-timeline";
+import { PlanArticleExport } from "@/components/plans/plan-article-export";
 
 interface SubPlan {
   id: string;
@@ -21,6 +23,7 @@ interface SubPlan {
 export function PlanDetailClient({
   plan,
   subPlans,
+  contributions = [],
   parentTitle,
   embedded = false,
   onChanged,
@@ -29,6 +32,7 @@ export function PlanDetailClient({
 }: {
   plan: PlanFormValues & { id: string };
   subPlans: SubPlan[];
+  contributions?: PlanContributionItem[];
   parentTitle?: string | null;
   embedded?: boolean;
   onChanged?: () => void;
@@ -213,6 +217,9 @@ export function PlanDetailClient({
         <Card>
           <CardHeader>
             <CardTitle className="text-base">添加贡献</CardTitle>
+            <p className="text-xs text-gray-500">
+              记录本次执行过程，支持 Markdown 与图片，可汇总为教程文章。
+            </p>
           </CardHeader>
           <CardContent>
             <ContributionForm
@@ -221,11 +228,23 @@ export function PlanDetailClient({
               onSuccess={() => {
                 setShowNewContribution(false);
                 afterChange();
+                if (!embedded) router.refresh();
               }}
             />
           </CardContent>
         </Card>
       )}
+
+      <PlanContributionTimeline
+        contributions={contributions}
+        currentPlanId={plan.id}
+        onChanged={() => {
+          afterChange();
+          if (!embedded) router.refresh();
+        }}
+      />
+
+      <PlanArticleExport planTitle={plan.title} contributions={contributions} />
 
       {subPlans.length > 0 && (
         <Card>

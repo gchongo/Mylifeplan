@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/ui/feedback";
-import { Input, Textarea } from "@/components/ui";
+import {
+  ContributionEditor,
+  type ContributionEditorValues,
+} from "@/components/contributions/contribution-editor";
 
 export function ContributionForm({
   planId,
@@ -18,17 +21,27 @@ export function ContributionForm({
 }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [values, setValues] = useState<ContributionEditorValues>({
+    title: "",
+    body: "",
+    occurredOn: defaultStartDate,
+    occurredEndOn: defaultEndDate ?? defaultStartDate,
+    imageUrls: [],
+  });
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function patch(patch: Partial<ContributionEditorValues>) {
+    setValues((prev) => ({ ...prev, ...patch }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    const title = values.title.trim();
+    if (!title) {
+      setError("请填写标题");
+      return;
+    }
     setLoading(true);
-
-    const fd = new FormData(e.currentTarget);
-    const title = String(fd.get("title") ?? "").trim();
-    const description = String(fd.get("description") ?? "").trim();
-    const occurredOn = String(fd.get("occurredOn") ?? "").trim();
-    const occurredEndOn = String(fd.get("occurredEndOn") ?? "").trim();
 
     try {
       const res = await fetch("/api/contributions", {
@@ -37,9 +50,10 @@ export function ContributionForm({
         body: JSON.stringify({
           planId,
           title,
-          description: description || null,
-          occurredOn,
-          occurredEndOn: occurredEndOn || null,
+          body: values.body.trim() || null,
+          imageUrls: values.imageUrls.length ? values.imageUrls : undefined,
+          occurredOn: values.occurredOn,
+          occurredEndOn: values.occurredEndOn || null,
         }),
       });
       const data = await res.json();
@@ -58,23 +72,7 @@ export function ContributionForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && <ErrorMessage message={error} />}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Input
-          name="occurredOn"
-          label="开始日期"
-          type="date"
-          required
-          defaultValue={defaultStartDate}
-        />
-        <Input
-          name="occurredEndOn"
-          label="结束日期"
-          type="date"
-          defaultValue={defaultEndDate ?? defaultStartDate}
-        />
-      </div>
-      <Input name="title" label="标题" placeholder="做了什么（必填）" required />
-      <Textarea name="description" label="描述" placeholder="可选" rows={3} />
+      <ContributionEditor values={values} onChange={patch} />
       <Button type="submit" disabled={loading}>
         {loading ? "保存中…" : "保存贡献"}
       </Button>

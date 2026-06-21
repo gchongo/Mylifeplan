@@ -4,12 +4,13 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 import { requireSession } from "@/lib/auth/get-session";
 import { handleProtectedRouteError } from "@/lib/api/route-auth";
-import { prisma } from "@/lib/db";
 import {
   deleteContribution,
+  getContributionById,
   serializeContribution,
   updateContribution,
 } from "@/lib/services/contribution";
+
 import { updateContributionSchema } from "@/lib/validations/contribution";
 
 type Params = { params: Promise<{ id: string }> };
@@ -18,10 +19,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   try {
     const session = await requireSession(request);
     const { id } = await params;
-    const contribution = await prisma.planContribution.findFirst({
-      where: { id, userId: session.userId },
-      include: { plan: { select: { id: true, title: true, type: true } } },
-    });
+    const contribution = await getContributionById(session.userId, id);
     if (!contribution) return jsonError("记录不存在", 404);
     return jsonOk({
       contribution: {

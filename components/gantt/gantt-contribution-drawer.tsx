@@ -7,8 +7,12 @@ import { dispatchPlanUpdated } from "@/lib/plan-events";
 import { DrawerPanel } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { ErrorMessage, Loading } from "@/components/ui/feedback";
-import { Input, Textarea } from "@/components/ui";
 import { ContributionPlanSelect } from "@/components/forms/contribution-plan-select";
+import { ContributionMarkdown } from "@/components/contributions/contribution-markdown";
+import {
+  ContributionEditor,
+  type ContributionEditorValues,
+} from "@/components/contributions/contribution-editor";
 
 interface ContributionDetail {
   id: string;
@@ -16,10 +20,14 @@ interface ContributionDetail {
   planTitle?: string;
   title: string;
   description: string | null;
+  body: string | null;
+  imageUrls: string[];
   occurredOn: string;
   occurredEndOn?: string | null;
   plan?: { id: string; title: string; type: string };
 }
+
+type EditMode = null | "content" | "plan";
 
 export function GanttContributionDrawerPanel({
   contributionId,
@@ -36,21 +44,24 @@ export function GanttContributionDrawerPanel({
   const [error, setError] = useState("");
   const [item, setItem] = useState<ContributionDetail | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [editing, setEditing] = useState(false);
+  const [editMode, setEditMode] = useState<EditMode>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [planId, setPlanId] = useState("");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [occurredOn, setOccurredOn] = useState("");
-  const [occurredEndOn, setOccurredEndOn] = useState("");
+  const [editorValues, setEditorValues] = useState<ContributionEditorValues>({
+    title: "",
+    body: "",
+    occurredOn: "",
+    occurredEndOn: "",
+    imageUrls: [],
+  });
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError("");
     setItem(null);
-    setEditing(false);
+    setEditMode(null);
 
     fetch(`/api/contributions/${contributionId}`)
       .then((r) => r.json())
@@ -60,12 +71,7 @@ export function GanttContributionDrawerPanel({
           setError("记录不存在");
           return;
         }
-        setItem(data.contribution);
-        setPlanId(data.contribution.planId);
-        setTitle(data.contribution.title);
-        setDescription(data.contribution.description ?? "");
-        setOccurredOn(data.contribution.occurredOn);
-        setOccurredEndOn(data.contribution.occurredEndOn ?? data.contribution.occurredOn);
+        applyItem(data.contribution);
       })
       .catch(() => {
         if (!cancelled) setError("加载失败");
@@ -78,6 +84,18 @@ export function GanttContributionDrawerPanel({
       cancelled = true;
     };
   }, [contributionId]);
+
+  function applyItem(detail: ContributionDetail) {
+    setItem(detail);
+    setPlanId(detail.planId);
+    setEditorValues({
+      title: detail.title,
+      body: detail.body ?? detail.description ?? "",
+      occurredOn: detail.occurredOn,
+      occurredEndOn: detail.occurredEndOn ?? detail.occurredOn,
+      imageUrls: detail.imageUrls ?? [],
+    });
+  }
 
   async function handleDelete() {
     if (!item || !confirm(`确定删除贡献记录「${item.title}」？`)) return;
@@ -94,7 +112,7 @@ export function GanttContributionDrawerPanel({
     }
   }
 
-  async function handleSave() {
+  async function handleSaveContent() {
     if (!item) return;
     setSaveError("");
     setSaving(true);
@@ -103,11 +121,11 @@ export function GanttContributionDrawerPanel({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          planId,
-          title: title.trim(),
-          description: description.trim() || null,
-          occurredOn,
-          occurredEndOn: occurredEndOn || null,
+          title: editorValues.title.trim(),
+          body: editorValues.body.trim() || null,
+          imageUrls: editorValues.imageUrls,
+          occurredOn: editorValues.occurredOn,
+          occurredEndOn: editorValues.occurredEndOn || null,
         }),
       });
       const data = await res.json();
@@ -115,21 +133,8 @@ export function GanttContributionDrawerPanel({
         setSaveError(data.error ?? "保存失败");
         return;
       }
-      const detailRes = await fetch(`/api/contributions/${item.id}`);
-      const detailData = await detailRes.json();
-      if (detailRes.ok && detailData.contribution) {
-        setItem(detailData.contribution);
-        setPlanId(detailData.contribution.planId);
-        setTitle(detailData.contribution.title);
-        setDescription(detailData.contribution.description ?? "");
-        setOccurredOn(detailData.contribution.occurredOn);
-        setOccurredEndOn(
-          detailData.contribution.occurredEndOn ?? detailData.contribution.occurredOn,
-        );
-      } else {
-        setItem({ ...item, ...data.contribution, plan: item.plan });
-      }
-      setEditing(false);
+      await reloadItem();
+      setEditMode(null);
       onUpdated?.();
       dispatchPlanUpdated();
     } catch {
@@ -139,13 +144,54 @@ export function GanttContributionDrawerPanel({
     }
   }
 
+  async function handleSavePlan() {
+    if (!item) return;
+    setSaveError("");
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/contributions/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSaveError(data.error ?? "保存失败");
+        return;
+      }
+      await reloadItem();
+      setEditMode(null);
+      onUpdated?.();
+      dispatchPlanUpdated();
+    } catch {
+      setSaveError("网络错误");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function reloadItem() {
+    const detailRes = await fetch(`/api/contributions/${contributionId}`);
+    const detailData = await detailRes.json();
+    if (detailRes.ok && detailData.contribution) {
+      applyItem(detailData.contribution);
+    }
+  }
+
+  function cancelEdit() {
+    if (item) applyItem(item);
+    setEditMode(null);
+    setSaveError("");
+  }
+
   const planTitle = item?.plan?.title ?? item?.planTitle ?? "计划";
+  const displayBody = item?.body ?? item?.description;
 
   return (
     <DrawerPanel title={item?.title ?? "贡献详情"} onClose={onClose}>
       {loading && <Loading label="加载贡献…" />}
       {!loading && error && <p className="text-sm text-red-600">{error}</p>}
-      {!loading && item && !editing && (
+      {!loading && item && editMode === null && (
         <div className="space-y-4 text-sm">
           <div>
             <p className="text-xs text-gray-500">贡献日期</p>
@@ -163,18 +209,29 @@ export function GanttContributionDrawerPanel({
             >
               {planTitle}
             </Link>
-            <p className="mt-1 text-xs text-gray-400">
-              要改到其它子计划，请点「修改所属计划」，不要改计划的父计划。
-            </p>
           </div>
-          {item.description && (
+          {displayBody && (
             <div>
-              <p className="text-xs text-gray-500">详情</p>
-              <p className="whitespace-pre-wrap text-gray-800">{item.description}</p>
+              <p className="text-xs text-gray-500">执行记录</p>
+              <ContributionMarkdown content={displayBody} />
             </div>
           )}
+          {item.imageUrls.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {item.imageUrls.map((url) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={url} src={url} alt="" className="max-h-48 rounded-lg object-cover" />
+              ))}
+            </div>
+          )}
+          {!displayBody && item.imageUrls.length === 0 && (
+            <p className="text-xs text-gray-400">暂无详细记录，可点击「编辑内容」补充。</p>
+          )}
           <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" onClick={() => setEditing(true)}>
+            <Button type="button" size="sm" onClick={() => setEditMode("content")}>
+              编辑内容
+            </Button>
+            <Button type="button" size="sm" variant="secondary" onClick={() => setEditMode("plan")}>
               修改所属计划
             </Button>
             <Button
@@ -189,60 +246,39 @@ export function GanttContributionDrawerPanel({
           </div>
         </div>
       )}
-      {!loading && item && editing && (
+      {!loading && item && editMode === "content" && (
         <div className="space-y-4">
           {saveError && <ErrorMessage message={saveError} />}
+          <ContributionEditor
+            values={editorValues}
+            onChange={(patch) => setEditorValues((prev) => ({ ...prev, ...patch }))}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" disabled={saving} onClick={() => void handleSaveContent()}>
+              {saving ? "保存中…" : "保存"}
+            </Button>
+            <Button type="button" variant="ghost" size="sm" disabled={saving} onClick={cancelEdit}>
+              取消
+            </Button>
+          </div>
+        </div>
+      )}
+      {!loading && item && editMode === "plan" && (
+        <div className="space-y-4">
+          {saveError && <ErrorMessage message={saveError} />}
+          <p className="text-xs text-gray-400">
+            要改到其它子计划，请在此选择，不要改计划的父计划。
+          </p>
           <ContributionPlanSelect
             currentPlanId={item.planId}
             value={planId}
             onChange={setPlanId}
           />
-          <Input
-            label="标题"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-          />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              label="开始日期"
-              type="date"
-              value={occurredOn}
-              onChange={(e) => setOccurredOn(e.target.value)}
-              required
-            />
-            <Input
-              label="结束日期"
-              type="date"
-              value={occurredEndOn}
-              onChange={(e) => setOccurredEndOn(e.target.value)}
-            />
-          </div>
-          <Textarea
-            label="描述"
-            rows={3}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
           <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" disabled={saving} onClick={() => void handleSave()}>
+            <Button type="button" size="sm" disabled={saving} onClick={() => void handleSavePlan()}>
               {saving ? "保存中…" : "保存"}
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={saving}
-              onClick={() => {
-                setEditing(false);
-                setSaveError("");
-                setPlanId(item.planId);
-                setTitle(item.title);
-                setDescription(item.description ?? "");
-                setOccurredOn(item.occurredOn);
-                setOccurredEndOn(item.occurredEndOn ?? item.occurredOn);
-              }}
-            >
+            <Button type="button" variant="ghost" size="sm" disabled={saving} onClick={cancelEdit}>
               取消
             </Button>
           </div>

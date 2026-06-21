@@ -1,9 +1,14 @@
-import type { PlanContribution } from "@prisma/client";
+import type { PlanContribution, ContributionImage } from "@prisma/client";
 import { formatDateOnly, parseDateOnly } from "@/lib/dates";
 import { prisma } from "@/lib/db";
 import { writeFeed } from "@/lib/services/feed";
 import type { CreateContributionInput } from "@/lib/validations/contribution";
 import { findRootPlanId } from "@/lib/gantt-contribution-display";
+
+type ContributionWithRelations = PlanContribution & {
+  plan?: { title: string; type?: string; id?: string };
+  images?: ContributionImage[];
+};
 
 export function contributionEndDate(
   c: Pick<PlanContribution, "occurredOn" | "occurredEndOn">,
@@ -11,13 +16,15 @@ export function contributionEndDate(
   return formatDateOnly(c.occurredEndOn) ?? formatDateOnly(c.occurredOn) ?? "";
 }
 
-export function serializeContribution(c: PlanContribution & { plan?: { title: string } }) {
+export function serializeContribution(c: ContributionWithRelations) {
   return {
     id: c.id,
     planId: c.planId,
     planTitle: c.plan?.title,
     title: c.title,
     description: c.description,
+    body: c.body,
+    imageUrls: c.images?.map((img) => img.url) ?? [],
     occurredOn: formatDateOnly(c.occurredOn) ?? "",
     occurredEndOn: formatDateOnly(c.occurredEndOn),
     createdAt: c.createdAt.toISOString(),
@@ -35,6 +42,21 @@ function contributionOverlapsRange(
   if (from && end < from) return false;
   if (to && start > to) return false;
   return true;
+}
+
+async function collectDescendantPlanIds(userId: string, planId: string): Promise<string[]> {
+  const ids: string[] = [];
+  let frontier = [planId];
+  while (frontier.length > 0) {
+    const children = await prisma.plan.findMany({
+      where: { parentPlanId: { in: frontier }, userId },
+      select: { id: true },
+    });
+    const childIds = children.map((c) => c.id);
+    ids.push(...childIds);
+    frontier = childIds;
+  }
+  return ids;
 }
 
 async function assertPlanForContribution(userId: string, planId: string) {
@@ -70,20 +92,43 @@ async function validateContributionPlanReassignment(
   return null;
 }
 
+async function syncContributionImages(
+  contributionId: string,
+  imageUrls: string[] | undefined,
+  tx: Pick<typeof prisma, "contributionImage"> = prisma,
+) {
+  if (imageUrls === undefined) return;
+  await tx.contributionImage.deleteMany({ where: { contributionId } });
+  if (imageUrls.length > 0) {
+    await tx.contributionImage.createMany({
+      data: imageUrls.map((url) => ({ contributionId, url })),
+    });
+  }
+}
+
 export async function createContribution(userId: string, input: CreateContributionInput) {
   const plan = await assertPlanForContribution(userId, input.planId);
   const endStr = input.occurredEndOn?.trim() || null;
+  const body = input.body?.trim() || null;
 
-  const contribution = await prisma.planContribution.create({
-    data: {
-      userId,
-      planId: input.planId,
-      title: input.title.trim(),
-      description: input.description?.trim() || null,
-      occurredOn: parseDateOnly(input.occurredOn)!,
-      occurredEndOn: endStr ? parseDateOnly(endStr) : null,
-    },
-    include: { plan: { select: { title: true } } },
+  const contribution = await prisma.$transaction(async (tx) => {
+    const row = await tx.planContribution.create({
+      data: {
+        userId,
+        planId: input.planId,
+        title: input.title.trim(),
+        description: input.description?.trim() || body?.slice(0, 500) || null,
+        body,
+        occurredOn: parseDateOnly(input.occurredOn)!,
+        occurredEndOn: endStr ? parseDateOnly(endStr) : null,
+      },
+      include: { plan: { select: { title: true } }, images: true },
+    });
+    await syncContributionImages(row.id, input.imageUrls, tx);
+    return tx.planContribution.findFirstOrThrow({
+      where: { id: row.id },
+      include: { plan: { select: { title: true } }, images: true },
+    });
   });
 
   await writeFeed({
@@ -121,22 +166,38 @@ export async function updateContribution(
       ? input.occurredEndOn?.trim() || null
       : undefined;
 
-  const contribution = await prisma.planContribution.update({
-    where: { id },
-    data: {
-      ...(input.planId !== undefined && { planId: input.planId }),
-      ...(input.title !== undefined && { title: input.title.trim() }),
-      ...(input.description !== undefined && {
-        description: input.description?.trim() || null,
-      }),
-      ...(input.occurredOn !== undefined && {
-        occurredOn: parseDateOnly(input.occurredOn)!,
-      }),
-      ...(endStr !== undefined && {
-        occurredEndOn: endStr ? parseDateOnly(endStr) : null,
-      }),
-    },
-    include: { plan: { select: { title: true } } },
+  const body =
+    input.body !== undefined ? input.body?.trim() || null : undefined;
+
+  const contribution = await prisma.$transaction(async (tx) => {
+    const row = await tx.planContribution.update({
+      where: { id },
+      data: {
+        ...(input.planId !== undefined && { planId: input.planId }),
+        ...(input.title !== undefined && { title: input.title.trim() }),
+        ...(input.description !== undefined && {
+          description: input.description?.trim() || null,
+        }),
+        ...(body !== undefined && {
+          body,
+          ...(input.description === undefined && {
+            description: body?.slice(0, 500) || null,
+          }),
+        }),
+        ...(input.occurredOn !== undefined && {
+          occurredOn: parseDateOnly(input.occurredOn)!,
+        }),
+        ...(endStr !== undefined && {
+          occurredEndOn: endStr ? parseDateOnly(endStr) : null,
+        }),
+      },
+      include: { plan: { select: { title: true } }, images: true },
+    });
+    await syncContributionImages(row.id, input.imageUrls, tx);
+    return tx.planContribution.findFirstOrThrow({
+      where: { id: row.id },
+      include: { plan: { select: { title: true } }, images: true },
+    });
   });
 
   await writeFeed({
@@ -169,21 +230,52 @@ export async function deleteContribution(userId: string, id: string) {
   });
 }
 
+export async function getContributionById(userId: string, id: string) {
+  return prisma.planContribution.findFirst({
+    where: { id, userId },
+    include: {
+      plan: { select: { id: true, title: true, type: true } },
+      images: { orderBy: { createdAt: "asc" } },
+    },
+  });
+}
+
 export async function getContributionsInRange(
   userId: string,
   from?: string | null,
   to?: string | null,
+  planIds?: string[] | null,
 ) {
   const fromDate = from ? parseDateOnly(from) : null;
   const toDate = to ? parseDateOnly(to) : null;
 
   const rows = await prisma.planContribution.findMany({
-    where: { userId },
+    where: {
+      userId,
+      ...(planIds?.length ? { planId: { in: planIds } } : {}),
+    },
     orderBy: [{ occurredOn: "desc" }, { createdAt: "desc" }],
-    include: { plan: { select: { title: true, type: true } } },
+    include: {
+      plan: { select: { title: true, type: true } },
+      images: { orderBy: { createdAt: "asc" } },
+    },
   });
 
   return rows
     .filter((c) => contributionOverlapsRange(c, fromDate, toDate))
     .map(serializeContribution);
+}
+
+export async function getContributionsForPlanTree(userId: string, planId: string) {
+  const descendantIds = await collectDescendantPlanIds(userId, planId);
+  const planIds = [planId, ...descendantIds];
+  const rows = await prisma.planContribution.findMany({
+    where: { userId, planId: { in: planIds } },
+    orderBy: [{ occurredOn: "asc" }, { createdAt: "asc" }],
+    include: {
+      plan: { select: { title: true, type: true } },
+      images: { orderBy: { createdAt: "asc" } },
+    },
+  });
+  return rows.map(serializeContribution);
 }

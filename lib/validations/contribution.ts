@@ -6,6 +6,8 @@ const contributionBaseSchema = z.object({
   planId: z.string().min(1, "请选择计划"),
   title: z.string().min(1, "标题必填").max(200),
   description: z.string().max(5000).optional().nullable(),
+  body: z.string().max(100_000).optional().nullable(),
+  imageUrls: z.array(z.string().min(1)).max(20).optional(),
   occurredOn: dateStr,
   occurredEndOn: dateStr.optional().nullable().or(z.literal("")),
 });

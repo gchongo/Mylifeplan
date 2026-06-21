@@ -172,17 +172,31 @@ model PlanContribution {
   planId      String   @map("plan_id")
   title       String
   description String?
+  body        String?  @db.Text
   occurredOn     DateTime  @map("occurred_on") @db.Date
   occurredEndOn  DateTime? @map("occurred_end_on") @db.Date
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  user   User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan   Plan                 @relation(fields: [planId], references: [id], onDelete: Cascade)
+  images ContributionImage[]
 
   @@index([userId, planId, occurredOn])
   @@index([userId, occurredOn])
   @@map("plan_contributions")
+}
+
+model ContributionImage {
+  id             String   @id @default(cuid())
+  contributionId String   @map("contribution_id")
+  url            String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  contribution PlanContribution @relation(fields: [contributionId], references: [id], onDelete: Cascade)
+
+  @@index([contributionId])
+  @@map("contribution_images")
 }
 
 model Subscription {

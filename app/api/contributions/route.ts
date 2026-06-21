@@ -6,6 +6,7 @@ import { requireSession } from "@/lib/auth/get-session";
 import { handleProtectedRouteError } from "@/lib/api/route-auth";
 import {
   createContribution,
+  getContributionsForPlanTree,
   getContributionsInRange,
   serializeContribution,
 } from "@/lib/services/contribution";
@@ -18,6 +19,12 @@ export async function GET(request: NextRequest) {
     const from = searchParams.get("from");
     const to = searchParams.get("to");
     const planId = searchParams.get("planId");
+    const includeSubtree = searchParams.get("includeSubtree") === "true";
+
+    if (planId && includeSubtree) {
+      const items = await getContributionsForPlanTree(session.userId, planId);
+      return jsonOk({ contributions: items });
+    }
 
     let items = await getContributionsInRange(session.userId, from, to);
     if (planId) items = items.filter((c) => c.planId === planId);

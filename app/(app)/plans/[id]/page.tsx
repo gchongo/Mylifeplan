@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth/get-session";
 import { prisma } from "@/lib/db";
 import { serializePlan } from "@/lib/services/plan";
+import { getContributionsForPlanTree } from "@/lib/services/contribution";
 import { redirect, notFound } from "next/navigation";
 import { PlanDetailClient } from "@/components/plans/plan-detail-client";
 
@@ -23,6 +24,7 @@ export default async function PlanDetailPage({
   });
   if (!plan) notFound();
 
+  const contributions = await getContributionsForPlanTree(session.userId, id);
   const serialized = serializePlan(plan);
 
   return (
@@ -47,6 +49,7 @@ export default async function PlanDetailPage({
           status: sp.status,
         }))}
         parentTitle={plan.parentPlan?.title}
+        contributions={contributions}
       />
     </div>
   );
