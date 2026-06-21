@@ -92,13 +92,12 @@ function itemHasRollup(item: GanttItem, allPlans: GanttItem[]): boolean {
   return allPlans.some((p) => p.parentId === item.id && p.status !== "archived");
 }
 
-type RowKind = "item" | "add-child";
+type RowKind = "item";
 
 interface GanttRow {
   kind: RowKind;
-  item?: GanttItem;
+  item: GanttItem;
   depth: number;
-  parentPlanId?: string;
 }
 
 function planDepth(itemId: string, byId: Map<string, GanttItem>): number {
@@ -132,13 +131,9 @@ function buildPlanTreeRows(plans: GanttItem[], expanded: Set<string>): GanttRow[
     for (const item of byParent.get(parentId) ?? []) {
       rows.push({ kind: "item", item, depth });
       const childCount = byParent.get(item.id)?.length ?? 0;
-      const canHaveChildren = planDepth(item.id, byId) < 2;
 
-      if (expanded.has(item.id)) {
-        if (childCount > 0) walk(item.id, depth + 1);
-        if (canHaveChildren) {
-          rows.push({ kind: "add-child", depth: depth + 1, parentPlanId: item.id });
-        }
+      if (expanded.has(item.id) && childCount > 0) {
+        walk(item.id, depth + 1);
       }
     }
   }
@@ -661,28 +656,11 @@ export const GanttChart = forwardRef<
   }
 
   function renderLabel(row: GanttRow, idx: number) {
-    if (row.kind === "add-child") {
-      return (
-        <div
-          key={`add-${row.parentPlanId}-${idx}`}
-          className="flex items-center border-b border-dashed border-blue-200/60 bg-blue-100/50 px-2 dark:border-blue-900/40 dark:bg-blue-900/25"
-          style={{ height: ROW_HEIGHT, paddingLeft: 12 + row.depth * 16 }}
-        >
-          <button
-            type="button"
-            onClick={() => openCreatePlan(row.parentPlanId)}
-            className="text-xs text-blue-700 hover:underline dark:text-blue-300"
-          >
-            + 添加子计划
-          </button>
-        </div>
-      );
-    }
-
-    const item = row.item!;
+    const item = row.item;
     const childCount = filteredPlans.filter((p) => p.parentId === item.id).length;
     const showToggle =
       childCount > 0 || planDepth(item.id, planById) < 2;
+    const canAddChild = planDepth(item.id, planById) < 2;
     const isExpanded = expanded.has(item.id);
     const displayStatus = itemDisplayStatus(item, items);
     const hasRollup = itemHasRollup(item, items);
@@ -692,7 +670,7 @@ export const GanttChart = forwardRef<
       <div
         key={`label-${item.id}-${idx}`}
         className={cn(
-          "flex items-center gap-1 border-l-2 px-2",
+          "group flex items-center gap-1 border-l-2 px-2",
           GANTT_TITLE_ROW_CLASS,
           statusStyle.stripe,
         )}
@@ -720,6 +698,25 @@ export const GanttChart = forwardRef<
         >
           {item.title}
         </button>
+        {canAddChild && (
+          <button
+            type="button"
+            data-no-pan
+            onClick={(e) => {
+              e.stopPropagation();
+              openCreatePlan(item.id);
+            }}
+            className={cn(
+              "flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-base leading-none text-blue-600",
+              "opacity-0 transition-opacity hover:bg-blue-200/60 group-hover:opacity-100",
+              "dark:text-blue-300 dark:hover:bg-blue-900/50",
+            )}
+            title="添加子计划"
+            aria-label="添加子计划"
+          >
+            +
+          </button>
+        )}
         {item.status && (
           <TaskStatusIndicator
             status={item.status}
@@ -766,17 +763,7 @@ export const GanttChart = forwardRef<
   }
 
   function renderBar(row: GanttRow, idx: number) {
-    if (row.kind === "add-child") {
-      return (
-        <div
-          key={`bar-add-${idx}`}
-          className="relative border-b border-dashed border-gray-100"
-          style={{ height: ROW_HEIGHT, width: timelineWidth }}
-        />
-      );
-    }
-
-    const item = row.item!;
+    const item = row.item;
     const { left, width } = barMetricsFromDates(item.startDate, item.effectiveEnd, layout);
     const barStyle = planBarStyle(item, items, row.depth);
 
