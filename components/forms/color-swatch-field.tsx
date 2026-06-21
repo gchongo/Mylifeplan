@@ -8,6 +8,7 @@ export function ColorSwatchField({
   value,
   onChange,
   disabled = false,
+  allowClear = true,
 }: {
   label: string;
   value: string | null;
