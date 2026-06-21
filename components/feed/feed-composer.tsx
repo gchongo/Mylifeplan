@@ -31,7 +31,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const [planValues, setPlanValues] = useState<FeedComposeValues>(() => emptyCompose());
+  const [planValues, setPlanValues] = useState<FeedComposeValues>(() => emptyCompose(nowDatetimeLocal()));
   const [planRelatedId, setPlanRelatedId] = useState<string | null>(null);
 
   const [contributionValues, setContributionValues] = useState<FeedComposeValues>(() =>
@@ -52,7 +52,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
 
   function resetForm() {
     setMemoText("");
-    setPlanValues(emptyCompose());
+    setPlanValues(emptyCompose(nowDatetimeLocal()));
     setPlanRelatedId(null);
     setContributionValues(emptyCompose(nowDatetimeLocal()));
     setContributionRelatedId(null);

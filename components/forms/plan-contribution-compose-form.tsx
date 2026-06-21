@@ -25,14 +25,8 @@ function emptyCompose(startAt = ""): FeedComposeValues {
   return { title: "", body: "", startAt, endAt: startAt, imageUrls: [] };
 }
 
-function defaultStartForMode(
-  value: string | null | undefined,
-  mode: PlanContributionComposeMode,
-): string {
-  if (!value) return mode === "contribution" ? nowDatetimeLocal() : "";
-  if (mode === "contribution") {
-    return value.includes("T") ? value.slice(0, 16) : `${value}T09:00`;
-  }
+function defaultStartForMode(value: string | null | undefined): string {
+  if (!value) return nowDatetimeLocal();
   return value.includes("T") ? value.slice(0, 16) : `${value}T09:00`;
 }
 
@@ -62,7 +56,7 @@ export function PlanContributionComposeForm({
   const [mode, setMode] = useState<PlanContributionComposeMode>(defaultMode);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [planValues, setPlanValues] = useState<FeedComposeValues>(() => emptyCompose());
+  const [planValues, setPlanValues] = useState<FeedComposeValues>(() => emptyCompose(nowDatetimeLocal()));
   const [planRelatedId, setPlanRelatedId] = useState<string | null>(null);
   const [contributionValues, setContributionValues] = useState<FeedComposeValues>(() =>
     emptyCompose(nowDatetimeLocal()),
@@ -73,10 +67,10 @@ export function PlanContributionComposeForm({
   useEffect(() => {
     setMode(defaultMode);
     setError("");
-    const planStart = defaultStartForMode(defaultStartAt, "plan");
-    const planEnd = defaultEndAt ? defaultStartForMode(defaultEndAt, "plan") : planStart;
-    const contribStart = defaultStartForMode(defaultStartAt, "contribution");
-    const contribEnd = defaultEndAt ? defaultStartForMode(defaultEndAt, "contribution") : contribStart;
+    const planStart = defaultStartForMode(defaultStartAt);
+    const planEnd = defaultEndAt ? defaultStartForMode(defaultEndAt) : planStart;
+    const contribStart = defaultStartForMode(defaultStartAt);
+    const contribEnd = defaultEndAt ? defaultStartForMode(defaultEndAt) : contribStart;
     setPlanValues({ ...emptyCompose(planStart), startAt: planStart, endAt: planEnd });
     setContributionValues({
       ...emptyCompose(contribStart),

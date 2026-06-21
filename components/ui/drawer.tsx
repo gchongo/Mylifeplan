@@ -19,25 +19,29 @@ export function DrawerPanel({
   className?: string;
   onBack?: () => void;
 }) {
+  const showHeader = Boolean(title || onBack);
+
   return (
     <>
-      <div className="flex shrink-0 items-center gap-2 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
-        {onBack ? (
-          <Button variant="ghost" size="sm" onClick={onBack} className="shrink-0 px-2">
-            ← 返回
+      {showHeader && (
+        <div className="flex shrink-0 items-center gap-2 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
+          {onBack ? (
+            <Button variant="ghost" size="sm" onClick={onBack} className="shrink-0 px-2">
+              ← 返回
+            </Button>
+          ) : null}
+          {title ? (
+            <h2 id="drawer-title" className="min-w-0 flex-1 truncate text-base font-semibold text-gray-900 dark:text-gray-100">
+              {title}
+            </h2>
+          ) : (
+            <div className="min-w-0 flex-1" />
+          )}
+          <Button variant="ghost" size="sm" onClick={onClose} aria-label="关闭" className="shrink-0">
+            ✕
           </Button>
-        ) : null}
-        {title ? (
-          <h2 id="drawer-title" className="min-w-0 flex-1 truncate text-base font-semibold text-gray-900 dark:text-gray-100">
-            {title}
-          </h2>
-        ) : (
-          <div className="min-w-0 flex-1" />
-        )}
-        <Button variant="ghost" size="sm" onClick={onClose} aria-label="关闭" className="shrink-0">
-          ✕
-        </Button>
-      </div>
+        </div>
+      )}
       <div className={cn("min-h-0 flex-1 overflow-y-auto p-4", className)}>{children}</div>
     </>
   );

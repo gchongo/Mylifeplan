@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { PlanForm, type PlanFormValues } from "@/components/forms/plan-form";
 import { PlanContributionComposeModal } from "@/components/forms/plan-contribution-compose-modal";
 import type { PlanContributionComposeMode } from "@/components/forms/plan-contribution-compose-form";
@@ -221,6 +222,11 @@ export function PlanDetailClient({
             {plan.title}
           </CardTitle>
           <PlanDetailActionsMenu items={menuItems} disabled={deleting} />
+          {embedded && onClose && (
+            <Button variant="ghost" size="sm" onClick={onClose} aria-label="关闭" className="shrink-0 px-2">
+              ✕
+            </Button>
+          )}
         </CardHeader>
 
         <CardContent className="space-y-3 pt-2 text-sm text-gray-700 dark:text-gray-300">
