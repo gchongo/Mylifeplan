@@ -15,7 +15,7 @@ import {
   GANTT_STICKY_HEADER_CLASS,
   GANTT_TITLE_ROW_CLASS,
 } from "@/lib/gantt-title-column";
-import { GanttDrawerOpenTab, GanttTitleDrawer, GanttTitleDrawerControls, GanttTitleDrawerFooter } from "@/components/gantt/gantt-title-drawer";
+import { GanttDrawerOpenTab, GanttTitleDrawer, GanttTitleDrawerControls } from "@/components/gantt/gantt-title-drawer";
 import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribution-drawer";
 import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
 import { GanttPlanDrawerPanel } from "@/components/gantt/gantt-plan-drawer";
@@ -55,8 +55,8 @@ const MIN_LABEL_WIDTH = 120;
 const MAX_LABEL_WIDTH = 560;
 const GANTT_LABEL_WIDTH_KEY = "mylifeplan-gantt-label-width";
 const GANTT_LABEL_VISIBLE_KEY = "mylifeplan-gantt-label-visible";
-const FOOTER_HEIGHT = 48;
 const TIMELINE_HEADER_HEIGHT = 28;
+const DRAWER_TRANSITION_MS = 300;
 
 function readStoredLabelWidth() {
   if (typeof window === "undefined") return DEFAULT_LABEL_WIDTH;
@@ -256,7 +256,6 @@ export const GanttChart = forwardRef<
 
   const { from, to } = layout;
   const timelineWidth = layout.totalWidth;
-  const totalWidth = effectiveLabelWidth + timelineWidth;
   const today = todayStr();
   const todayX = dateToX(today, layout);
   const todayVisible = today >= layout.from && today <= layout.to;
@@ -346,11 +345,12 @@ export const GanttChart = forwardRef<
 
   const allSubplansExpanded =
     expandablePlanIds.length > 0 && expandablePlanIds.every((id) => expanded.has(id));
-  const rowsBodyHeight = rows.length * ROW_HEIGHT + FOOTER_HEIGHT;
+  const rowsBodyHeight = rows.length * ROW_HEIGHT;
   const minBodyHeight = Math.max(
     rowsBodyHeight,
     scrollViewportHeight - TIMELINE_HEADER_HEIGHT,
   );
+  const bodyAreaHeight = Math.max(rows.length * ROW_HEIGHT, minBodyHeight - TIMELINE_HEADER_HEIGHT);
 
   const refetchGantt = useCallback(() => {
     apiJson<{ items?: GanttItem[]; contributions?: GanttContribution[] }>(
@@ -631,8 +631,8 @@ export const GanttChart = forwardRef<
   function renderGridBackground(height: number) {
     return (
       <div
-        className="pointer-events-none absolute top-0 flex"
-        style={{ left: effectiveLabelWidth, width: timelineWidth, height }}
+        className="pointer-events-none absolute left-0 top-0 flex"
+        style={{ width: timelineWidth, height }}
       >
         {layout.columns.map((col) => (
           <div
@@ -671,7 +671,7 @@ export const GanttChart = forwardRef<
       <div
         key={`label-${item.id}-${idx}`}
         className={cn(
-          "group flex items-center gap-1 border-l-2 px-2",
+          "group flex items-center gap-1 overflow-hidden border-l-2 px-2",
           GANTT_TITLE_ROW_CLASS,
           statusStyle.stripe,
         )}
@@ -694,7 +694,7 @@ export const GanttChart = forwardRef<
         <button
           type="button"
           onClick={() => openPlan(item.id)}
-          className="min-w-0 flex-1 whitespace-normal break-words text-left text-sm leading-snug text-blue-950 hover:text-blue-700 dark:text-blue-50 dark:hover:text-blue-200"
+          className="min-w-0 flex-1 truncate text-left text-sm text-blue-950 hover:text-blue-700 dark:text-blue-50 dark:hover:text-blue-200"
           title={item.title}
         >
           {item.title}
@@ -887,12 +887,11 @@ export const GanttChart = forwardRef<
           )}
         >
           <div className="relative min-h-0 flex-1">
-            {!labelVisible && (
-              <GanttDrawerOpenTab
-                headerHeight={TIMELINE_HEADER_HEIGHT}
-                onOpen={toggleLabelPanel}
-              />
-            )}
+            <GanttDrawerOpenTab
+              headerHeight={TIMELINE_HEADER_HEIGHT}
+              visible={!labelVisible}
+              onOpen={toggleLabelPanel}
+            />
 
             <div
               ref={scrollRef}
@@ -903,17 +902,21 @@ export const GanttChart = forwardRef<
                 isPanning ? "cursor-grabbing select-none" : !isResizingLabel && "cursor-grab",
               )}
             >
-              <div className="relative flex min-h-0" style={{ width: totalWidth }}>
-                <div className="flex shrink-0">
-                {labelVisible && (
+              <div className="relative flex min-h-0 w-max">
+                <div
+                  className={cn(
+                    "sticky left-0 top-0 z-30 shrink-0 overflow-hidden",
+                    !isResizingLabel && "transition-[width] duration-300 ease-in-out",
+                  )}
+                  style={{
+                    width: labelVisible ? labelWidth : 0,
+                    transitionDuration: isResizingLabel ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
+                  }}
+                >
                   <GanttTitleDrawer
                     width={labelWidth}
                     headerHeight={TIMELINE_HEADER_HEIGHT}
-                    bodyHeight={Math.max(
-                      rows.length * ROW_HEIGHT,
-                      minBodyHeight - TIMELINE_HEADER_HEIGHT - FOOTER_HEIGHT,
-                    )}
-                    footerHeight={FOOTER_HEIGHT}
+                    bodyHeight={bodyAreaHeight}
                     isResizing={isResizingLabel}
                     onResizeStart={startLabelResize}
                     header={
@@ -924,23 +927,18 @@ export const GanttChart = forwardRef<
                         statusFilter={statusFilter}
                         onStatusFilterChange={setStatusFilter}
                         onCloseDrawer={toggleLabelPanel}
+                        onCreatePlan={() => openCreatePlan()}
                       />
                     }
                     body={rows.map((row, idx) => renderLabel(row, idx))}
-                    footer={<GanttTitleDrawerFooter onCreatePlan={() => openCreatePlan()} />}
                   />
-                )}
+                </div>
 
                 <div className="flex shrink-0 flex-col">
                   {renderTimelineHeaderOnly()}
 
-                  <div
-                    className="relative"
-                    style={{ minHeight: Math.max(rows.length * ROW_HEIGHT, minBodyHeight - TIMELINE_HEADER_HEIGHT - FOOTER_HEIGHT) }}
-                  >
-                    {renderGridBackground(
-                      Math.max(rows.length * ROW_HEIGHT, minBodyHeight - TIMELINE_HEADER_HEIGHT - FOOTER_HEIGHT),
-                    )}
+                  <div className="relative" style={{ minHeight: bodyAreaHeight }}>
+                    {renderGridBackground(bodyAreaHeight)}
 
                     {rows.map((row, idx) => (
                       <div key={`row-${idx}`} className="relative">
@@ -948,13 +946,10 @@ export const GanttChart = forwardRef<
                       </div>
                     ))}
                   </div>
-
-                  <div style={{ width: timelineWidth, height: FOOTER_HEIGHT }} />
                 </div>
               </div>
             </div>
           </div>
-        </div>
         </div>,
       )}
 

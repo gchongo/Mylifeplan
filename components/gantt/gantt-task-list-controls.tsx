@@ -17,6 +17,7 @@ export function GanttTaskListControls({
   onStatusFilterChange,
   labelVisible = true,
   onToggleLabelPanel,
+  onCreatePlan,
   drawerTheme = false,
 }: {
   allExpanded: boolean;
@@ -26,6 +27,7 @@ export function GanttTaskListControls({
   onStatusFilterChange: (next: Set<VisualStatusKey>) => void;
   labelVisible?: boolean;
   onToggleLabelPanel?: () => void;
+  onCreatePlan?: () => void;
   drawerTheme?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -159,6 +161,27 @@ export function GanttTaskListControls({
           </div>
         )}
       </div>
+
+      {onCreatePlan && (
+        <button
+          type="button"
+          data-no-pan
+          onClick={onCreatePlan}
+          className={cn(
+            "flex shrink-0 items-center justify-center rounded-md border text-xs font-medium",
+            compact
+              ? "h-6 min-w-6 px-1.5 text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
+              : "h-7 px-2 text-blue-800 hover:bg-blue-100 dark:text-blue-100 dark:hover:bg-blue-900/50",
+            drawerTheme
+              ? "border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900"
+              : "border-blue-200 bg-white/90 dark:border-blue-800 dark:bg-blue-900/40",
+          )}
+          title="新建计划"
+          aria-label="新建计划"
+        >
+          +
+        </button>
+      )}
     </div>
   );
 }

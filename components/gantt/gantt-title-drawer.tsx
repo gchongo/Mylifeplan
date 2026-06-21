@@ -1,8 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { GanttTaskListControls } from "@/components/gantt/gantt-task-list-controls";
-import { GanttPanelCollapseChevron, GanttPanelExpandChevron } from "@/components/gantt/gantt-panel-chevron";
+import { GanttPanelExpandChevron } from "@/components/gantt/gantt-panel-chevron";
 import {
   GANTT_DRAWER_TOGGLE_WIDTH,
   GANTT_STICKY_HEADER_CLASS,
@@ -13,9 +12,11 @@ import { cn } from "@/lib/utils";
 
 export function GanttDrawerOpenTab({
   headerHeight,
+  visible,
   onOpen,
 }: {
   headerHeight: number;
+  visible: boolean;
   onOpen: () => void;
 }) {
   return (
@@ -26,6 +27,10 @@ export function GanttDrawerOpenTab({
         "absolute left-0 top-0 z-50 flex items-center justify-center",
         "rounded-r-md border border-l-0 border-blue-200 bg-blue-50 shadow-md",
         "hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/80 dark:hover:bg-blue-900/60",
+        "transition-[opacity,transform] duration-300 ease-in-out",
+        visible
+          ? "translate-x-0 opacity-100"
+          : "pointer-events-none -translate-x-full opacity-0",
       )}
       style={{ width: GANTT_DRAWER_TOGGLE_WIDTH, height: headerHeight }}
       title="显示计划列表"
@@ -41,26 +46,22 @@ export function GanttTitleDrawer({
   width,
   headerHeight,
   bodyHeight,
-  footerHeight,
   isResizing,
   header,
   body,
-  footer,
   onResizeStart,
 }: {
   width: number;
   headerHeight: number;
   bodyHeight: number;
-  footerHeight: number;
   isResizing: boolean;
   header: React.ReactNode;
   body: React.ReactNode;
-  footer: React.ReactNode;
   onResizeStart: (clientX: number) => void;
 }) {
   return (
     <div
-      className={cn("relative sticky left-0 z-30 flex shrink-0 flex-col", GANTT_TITLE_DRAWER_CLASS)}
+      className={cn("relative flex shrink-0 flex-col", GANTT_TITLE_DRAWER_CLASS)}
       style={{ width }}
     >
       <div
@@ -70,9 +71,6 @@ export function GanttTitleDrawer({
         {header}
       </div>
       <div style={{ minHeight: bodyHeight }}>{body}</div>
-      <div className="flex shrink-0 items-center px-2" style={{ height: footerHeight }}>
-        {footer}
-      </div>
       <div
         data-no-pan
         role="separator"
@@ -100,6 +98,7 @@ export function GanttTitleDrawerControls({
   statusFilter,
   onStatusFilterChange,
   onCloseDrawer,
+  onCreatePlan,
 }: {
   allExpanded: boolean;
   onToggleExpandAll: () => void;
@@ -107,6 +106,7 @@ export function GanttTitleDrawerControls({
   statusFilter: Set<VisualStatusKey>;
   onStatusFilterChange: (next: Set<VisualStatusKey>) => void;
   onCloseDrawer: () => void;
+  onCreatePlan: () => void;
 }) {
   return (
     <GanttTaskListControls
@@ -117,22 +117,8 @@ export function GanttTitleDrawerControls({
       onStatusFilterChange={onStatusFilterChange}
       labelVisible
       onToggleLabelPanel={onCloseDrawer}
+      onCreatePlan={onCreatePlan}
       drawerTheme
     />
-  );
-}
-
-export function GanttTitleDrawerFooter({ onCreatePlan }: { onCreatePlan: () => void }) {
-  return (
-    <Button
-      size="sm"
-      variant="secondary"
-      type="button"
-      data-no-pan
-      className="w-full border-blue-200 bg-white/90 text-blue-900 hover:bg-white dark:border-blue-800 dark:bg-blue-900/40 dark:text-blue-100"
-      onClick={onCreatePlan}
-    >
-      + 新建
-    </Button>
   );
 }
