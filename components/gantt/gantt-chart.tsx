@@ -288,6 +288,7 @@ export const GanttChart = forwardRef<
   const [barPreview, setBarPreview] = useState<
     Map<string, { start: string; end: string }>
   >(() => new Map());
+  const [hoveredRootId, setHoveredRootId] = useState<string | null>(null);
 
   const { preferences } = useSettings();
   const contributionMarkerStyle = useMemo(
@@ -997,6 +998,7 @@ export const GanttChart = forwardRef<
       row.depth === 0 &&
       expanded.has(item.id) &&
       filteredPlans.some((p) => p.parentId === item.id);
+    const showGroupTitles = hoveredRootId === row.rootId;
 
     if (item.isUnscheduled) {
       const anchorLeft = barMetricsFromDates(displayStart, displayEnd, layout).left;
@@ -1005,17 +1007,28 @@ export const GanttChart = forwardRef<
           key={`bar-${item.id}-${idx}`}
           className="relative"
           style={{ height: row.height, marginTop: row.gapBefore, width: timelineWidth }}
+          onMouseEnter={() => setHoveredRootId(row.rootId)}
         >
           <button
             type="button"
             data-gantt-bar
             onClick={() => openPlan(item.id)}
-            className="absolute top-1/2 z-10 flex -translate-y-1/2 items-center gap-1 rounded-full border border-dashed border-violet-400 bg-violet-50/80 px-2 py-0.5 text-xs text-violet-700 hover:bg-violet-100 dark:border-violet-500/70 dark:bg-violet-950/40 dark:text-violet-300"
+            className="absolute top-1/2 z-10 flex -translate-y-1/2 items-center gap-1 overflow-hidden rounded-full border border-dashed border-violet-400 bg-violet-50/80 px-2 py-0.5 text-xs text-violet-700 hover:bg-violet-100 dark:border-violet-500/70 dark:bg-violet-950/40 dark:text-violet-300"
             style={{ left: Math.max(anchorLeft, 8), height: barStyle.barHeightPx }}
             title="尚未设置时间，点击编辑"
           >
             <span className="h-2 w-2 shrink-0 rounded-full bg-violet-400 ring-1 ring-white" aria-hidden />
-            未排期
+            <span
+              className={cn(
+                "truncate transition-[opacity,transform,max-width] duration-300 ease-out motion-reduce:transition-none",
+                showGroupTitles
+                  ? "max-w-[8rem] translate-x-0 opacity-100"
+                  : "max-w-0 translate-x-1 opacity-0",
+              )}
+              aria-hidden={!showGroupTitles}
+            >
+              未排期
+            </span>
           </button>
         </div>
       );
@@ -1038,6 +1051,7 @@ export const GanttChart = forwardRef<
         key={`bar-${item.id}-${idx}`}
         className="relative"
         style={{ height: row.height, marginTop: row.gapBefore, width: timelineWidth }}
+        onMouseEnter={() => setHoveredRootId(row.rootId)}
       >
         {!item.contributionOnly && (
           <GanttDraggableBar
@@ -1051,6 +1065,7 @@ export const GanttChart = forwardRef<
             barTextStyle={barStyle.textStyle}
             barHeightPx={barStyle.barHeightPx}
             statusDotClass={barStyle.statusDotClass}
+            showTitle={showGroupTitles}
             hitRowHeight={row.height}
             minStartDate={row.depth > 0 ? minStartDate : undefined}
             minContributionDate={contribBounds?.min}
@@ -1219,6 +1234,7 @@ export const GanttChart = forwardRef<
                 className="relative"
                 style={{ minHeight: bodyAreaHeight }}
                 onClick={handleTimelineBackgroundClick}
+                onMouseLeave={() => setHoveredRootId(null)}
               >
                 {renderGridBackground(bodyAreaHeight)}
                 {renderTreeForkLines()}

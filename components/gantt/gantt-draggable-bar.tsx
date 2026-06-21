@@ -40,6 +40,7 @@ export function GanttDraggableBar({
   barTextStyle,
   barHeightPx = 28,
   statusDotClass,
+  showTitle = false,
   onUpdated,
   onTaskClick,
   hitRowHeight,
@@ -60,6 +61,7 @@ export function GanttDraggableBar({
   barTextStyle?: CSSProperties;
   barHeightPx?: number;
   statusDotClass: string;
+  showTitle?: boolean;
   onUpdated: (updated: GanttItem) => void;
   onTaskClick?: () => void;
   hitRowHeight?: number;
@@ -288,18 +290,23 @@ export function GanttDraggableBar({
         >
           <span
             className={cn(
-              "pointer-events-none absolute left-1.5 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full ring-1 ring-white dark:ring-gray-900",
+              "pointer-events-none absolute left-1.5 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full ring-1 ring-white transition-transform duration-300 ease-out dark:ring-gray-900",
               statusDotClass,
+              showTitle && "scale-110",
             )}
             aria-hidden
           />
           <span
             className={cn(
-              "pointer-events-none block max-w-full truncate pl-5 pr-2 text-xs",
+              "pointer-events-none block min-w-0 truncate pl-5 pr-2 text-xs transition-[opacity,transform,max-width] duration-300 ease-out motion-reduce:transition-none",
               barText,
+              showTitle
+                ? "max-w-full translate-x-0 opacity-100"
+                : "max-w-0 translate-x-1 opacity-0",
             )}
             style={{ ...barTextStyle, lineHeight: `${textLeading}px` }}
             title={item.title}
+            aria-hidden={!showTitle}
           >
             {item.title}
           </span>
