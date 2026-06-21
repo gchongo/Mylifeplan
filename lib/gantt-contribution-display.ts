@@ -95,6 +95,21 @@ export function contributionsForGanttRow(
   });
 }
 
+/** 一级计划展开子计划后，是否有贡献点应显示在该计划上（含上卷） */
+export function groupedRootNeedsContributionLane(
+  rootId: string,
+  contributions: GanttContribution[],
+  planById: Map<string, PlanNode>,
+  expanded: Set<string>,
+  visibleRowIds: Set<string>,
+): boolean {
+  return contributions.some(
+    (c) =>
+      resolveContributionDisplayPlanId(c.planId, planById, expanded, visibleRowIds) ===
+      rootId,
+  );
+}
+
 /** 贡献改绑计划：须在同一一级计划子树内 */
 export function isPlanInSameRootSubtree(
   fromPlanId: string,

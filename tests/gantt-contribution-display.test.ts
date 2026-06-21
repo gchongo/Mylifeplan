@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   contributionsForGanttRow,
   findRootPlanId,
+  groupedRootNeedsContributionLane,
   isPlanInSameRootSubtree,
   resolveContributionDisplayPlanId,
 } from "@/lib/gantt-contribution-display";
@@ -103,6 +104,26 @@ describe("gantt-contribution-display", () => {
             parentId: null,
           },
         ],
+      ),
+    ).toBe(false);
+  });
+
+  it("detects when grouped root needs a parent-self contribution lane", () => {
+    const expanded = new Set(["root"]);
+    const visible = new Set(["root"]);
+    const contribs = [
+      { id: "c1", planId: "root", title: "On root", occurredOn: "2026-01-10" },
+    ];
+    expect(
+      groupedRootNeedsContributionLane("root", contribs, planMap(plans), expanded, visible),
+    ).toBe(true);
+    expect(
+      groupedRootNeedsContributionLane(
+        "root",
+        [{ id: "c2", planId: "child", title: "On child", occurredOn: "2026-02-10" }],
+        planMap(plans),
+        expanded,
+        new Set(["root", "child"]),
       ),
     ).toBe(false);
   });

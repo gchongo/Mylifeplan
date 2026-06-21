@@ -44,6 +44,7 @@ export function GanttDraggableBar({
   onTaskClick,
   bareShell = false,
   hideTitle = false,
+  alignBarTop = false,
   hitRowHeight,
   minStartDate,
   minContributionDate,
@@ -67,6 +68,8 @@ export function GanttDraggableBar({
   bareShell?: boolean;
   /** 标题由组框标签展示，条上不重复显示 */
   hideTitle?: boolean;
+  /** 组框内首个子计划：条顶对齐行顶，贴组框上沿 */
+  alignBarTop?: boolean;
   hitRowHeight?: number;
   minStartDate?: string;
   minContributionDate?: string;
@@ -277,7 +280,11 @@ export function GanttDraggableBar({
       <div
         className={cn(
           "group relative w-full overflow-hidden rounded-md",
-          bareShell ? "absolute inset-0" : "absolute top-1/2 h-7 -translate-y-1/2",
+          bareShell
+            ? "absolute inset-0"
+            : alignBarTop
+              ? "absolute top-0 h-7"
+              : "absolute top-1/2 h-7 -translate-y-1/2",
           barShell,
           saving && "opacity-60",
           dragging && "ring-2 ring-brand-400 ring-offset-1",
