@@ -187,10 +187,8 @@ function TimelineContributionEntry({
       <div className="space-y-2">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1 space-y-1">
-            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              <span className="font-medium text-gray-900 dark:text-gray-100">{entry.title}</span>
-              <span className="text-xs text-gray-400">{dateLabel}</span>
-            </div>
+            <span className="block font-medium text-gray-900 dark:text-gray-100">{entry.title}</span>
+            <span className="block text-xs text-gray-400">{dateLabel}</span>
             {isOtherPlan && entry.planTitle && (
               <p className="text-xs text-gray-500">子计划：{entry.planTitle}</p>
             )}

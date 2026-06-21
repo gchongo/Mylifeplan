@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { formatPlanDateTimeDisplay } from "@/lib/dates";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import { DrawerPanel } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorMessage, Loading } from "@/components/ui/feedback";
 import { ContributionPlanSelect } from "@/components/forms/contribution-plan-select";
 import { ContributionMarkdown } from "@/components/contributions/contribution-markdown";
@@ -14,6 +14,13 @@ import {
   contributionValuesFromApi,
   type ContributionEditorValues,
 } from "@/components/contributions/contribution-editor";
+import {
+  MenuIconDelete,
+  MenuIconEdit,
+  MenuIconSubPlan,
+  PlanDetailActionsMenu,
+} from "@/components/plans/plan-detail-actions-menu";
+import { cn } from "@/lib/utils";
 
 interface ContributionDetail {
   id: string;
@@ -30,6 +37,8 @@ interface ContributionDetail {
 
 type EditMode = null | "content" | "plan";
 
+const PREVIEW_CHAR_LIMIT = 300;
+
 export function GanttContributionDrawerPanel({
   contributionId,
   onClose,
@@ -44,6 +53,7 @@ export function GanttContributionDrawerPanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [item, setItem] = useState<ContributionDetail | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [editMode, setEditMode] = useState<EditMode>(null);
   const [saving, setSaving] = useState(false);
@@ -63,6 +73,7 @@ export function GanttContributionDrawerPanel({
     setError("");
     setItem(null);
     setEditMode(null);
+    setExpanded(false);
 
     fetch(`/api/contributions/${contributionId}`)
       .then((r) => r.json())
@@ -185,104 +196,163 @@ export function GanttContributionDrawerPanel({
   }
 
   const planTitle = item?.plan?.title ?? item?.planTitle ?? "计划";
-  const displayBody = item?.body ?? item?.description;
+  const displayBody = item?.body ?? item?.description ?? "";
+  const dateLabel =
+    item?.occurredEndOn && item.occurredEndOn !== item.occurredOn
+      ? `${formatPlanDateTimeDisplay(item.occurredOn)} ~ ${formatPlanDateTimeDisplay(item.occurredEndOn)}`
+      : item
+        ? formatPlanDateTimeDisplay(item.occurredOn)
+        : "";
+  const needsExpand = displayBody.length > PREVIEW_CHAR_LIMIT;
+  const menuDisabled = saving || deleting;
+
+  const menuItems = [
+    {
+      id: "edit",
+      label: "编辑内容",
+      icon: <MenuIconEdit />,
+      onClick: () => {
+        if (item) applyItem(item);
+        setEditMode("content");
+      },
+    },
+    {
+      id: "plan",
+      label: "修改所属计划",
+      icon: <MenuIconSubPlan />,
+      onClick: () => {
+        if (item) applyItem(item);
+        setEditMode("plan");
+      },
+    },
+    {
+      id: "delete",
+      label: "删除记录",
+      icon: <MenuIconDelete />,
+      destructive: true,
+      onClick: () => void handleDelete(),
+    },
+  ];
 
   return (
-    <DrawerPanel title={item?.title ?? "贡献详情"} onClose={onClose}>
-      {loading && <Loading label="加载贡献…" />}
-      {!loading && error && <p className="text-sm text-red-600">{error}</p>}
-      {!loading && item && editMode === null && (
-        <div className="space-y-4 text-sm">
-          <div>
-            <p className="text-xs text-gray-500">贡献日期</p>
-            <p className="font-medium text-gray-900">
-              {item.occurredEndOn && item.occurredEndOn !== item.occurredOn
-                ? `${formatPlanDateTimeDisplay(item.occurredOn)} ~ ${formatPlanDateTimeDisplay(item.occurredEndOn)}`
-                : formatPlanDateTimeDisplay(item.occurredOn)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-500">所属计划</p>
-            <Link
-              href={`/plans/${item.planId}`}
-              className="font-medium text-brand-600 hover:underline"
-            >
-              {planTitle}
-            </Link>
-          </div>
-          {displayBody && (
-            <div>
-              <p className="text-xs text-gray-500">执行记录</p>
-              <ContributionMarkdown content={displayBody} />
-            </div>
-          )}
-          {item.imageUrls.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {item.imageUrls.map((url) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={url} src={url} alt="" className="max-h-48 rounded-lg object-cover" />
-              ))}
-            </div>
-          )}
-          {!displayBody && item.imageUrls.length === 0 && (
-            <p className="text-xs text-gray-400">暂无详细记录，可点击「编辑内容」补充。</p>
-          )}
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" onClick={() => setEditMode("content")}>
-              编辑内容
-            </Button>
-            <Button type="button" size="sm" variant="secondary" onClick={() => setEditMode("plan")}>
-              修改所属计划
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={deleting}
-              onClick={handleDelete}
-            >
-              {deleting ? "删除中…" : "删除记录"}
-            </Button>
-          </div>
+    <DrawerPanel onClose={onClose} className="p-0">
+      {loading && (
+        <div className="p-4">
+          <Loading label="加载贡献…" />
         </div>
       )}
-      {!loading && item && editMode === "content" && (
-        <div className="space-y-4">
-          {saveError && <ErrorMessage message={saveError} />}
-          <ContributionEditor
-            values={editorValues}
-            onChange={(patch) => setEditorValues((prev) => ({ ...prev, ...patch }))}
-            mode="compact"
-          />
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" disabled={saving} onClick={() => void handleSaveContent()}>
-              {saving ? "保存中…" : "保存"}
-            </Button>
-            <Button type="button" variant="ghost" size="sm" disabled={saving} onClick={cancelEdit}>
-              取消
-            </Button>
-          </div>
-        </div>
-      )}
-      {!loading && item && editMode === "plan" && (
-        <div className="space-y-4">
-          {saveError && <ErrorMessage message={saveError} />}
-          <p className="text-xs text-gray-400">
-            要改到其它子计划，请在此选择，不要改计划的父计划。
-          </p>
-          <ContributionPlanSelect
-            currentPlanId={item.planId}
-            value={planId}
-            onChange={setPlanId}
-          />
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" disabled={saving} onClick={() => void handleSavePlan()}>
-              {saving ? "保存中…" : "保存"}
-            </Button>
-            <Button type="button" variant="ghost" size="sm" disabled={saving} onClick={cancelEdit}>
-              取消
-            </Button>
-          </div>
+      {!loading && error && <p className="px-4 py-3 text-sm text-red-600">{error}</p>}
+      {!loading && item && (
+        <div className="p-4">
+          <Card>
+            <CardHeader className="flex flex-row items-start gap-2 border-b-0 pb-0 pt-4">
+              <div className="min-w-0 flex-1">
+                <CardTitle className="truncate text-base font-semibold leading-6">{item.title}</CardTitle>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{dateLabel}</p>
+                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">所属计划：{planTitle}</p>
+              </div>
+              <PlanDetailActionsMenu
+                items={menuItems}
+                disabled={menuDisabled}
+                menuClassName="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900"
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onClose}
+                aria-label="关闭"
+                className="shrink-0 px-2"
+              >
+                ✕
+              </Button>
+            </CardHeader>
+
+            <CardContent className="space-y-3 pt-2 text-sm text-gray-700 dark:text-gray-300">
+              {editMode === null && displayBody && (
+                <div
+                  className={cn(
+                    "leading-relaxed text-gray-700 dark:text-gray-300",
+                    !expanded && needsExpand && "line-clamp-6",
+                  )}
+                >
+                  <ContributionMarkdown
+                    content={expanded ? displayBody : displayBody.slice(0, PREVIEW_CHAR_LIMIT)}
+                  />
+                </div>
+              )}
+
+              {editMode === null && item.imageUrls.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {item.imageUrls.map((url) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img key={url} src={url} alt="" className="max-h-48 rounded-lg object-cover" />
+                  ))}
+                </div>
+              )}
+
+              {editMode === null && !displayBody && item.imageUrls.length === 0 && (
+                <p className="text-xs text-gray-400">暂无详细记录，可通过菜单「编辑内容」补充。</p>
+              )}
+
+              {editMode === null && needsExpand && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs text-brand-600 hover:text-brand-700"
+                  onClick={() => setExpanded((v) => !v)}
+                >
+                  {expanded ? "收起" : "查看更多"}
+                </Button>
+              )}
+
+              {editMode === "content" && (
+                <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                  {saveError && <ErrorMessage message={saveError} />}
+                  <ContributionEditor
+                    values={editorValues}
+                    onChange={(patch) => setEditorValues((prev) => ({ ...prev, ...patch }))}
+                    mode="compact"
+                  />
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={saving}
+                      onClick={() => void handleSaveContent()}
+                    >
+                      {saving ? "保存中…" : "保存"}
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" disabled={saving} onClick={cancelEdit}>
+                      取消
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {editMode === "plan" && (
+                <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                  {saveError && <ErrorMessage message={saveError} />}
+                  <p className="mb-3 text-xs text-gray-400">
+                    要改到其它子计划，请在此选择，不要改计划的父计划。
+                  </p>
+                  <ContributionPlanSelect
+                    currentPlanId={item.planId}
+                    value={planId}
+                    onChange={setPlanId}
+                  />
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button type="button" size="sm" disabled={saving} onClick={() => void handleSavePlan()}>
+                      {saving ? "保存中…" : "保存"}
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" disabled={saving} onClick={cancelEdit}>
+                      取消
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
     </DrawerPanel>

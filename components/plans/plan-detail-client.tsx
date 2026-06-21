@@ -218,9 +218,14 @@ export function PlanDetailClient({
               if (next === "archived") leaveAfterDelete();
             }}
           />
-          <CardTitle className="min-w-0 flex-1 truncate text-base font-semibold leading-6">
-            {plan.title}
-          </CardTitle>
+          <div className="min-w-0 flex-1">
+            <CardTitle className="truncate text-base font-semibold leading-6">
+              {plan.title}
+            </CardTitle>
+            {scheduleLine && (
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{scheduleLine}</p>
+            )}
+          </div>
           <PlanDetailActionsMenu items={menuItems} disabled={deleting} />
           {embedded && onClose && (
             <Button variant="ghost" size="sm" onClick={onClose} aria-label="关闭" className="shrink-0 px-2">
@@ -231,8 +236,6 @@ export function PlanDetailClient({
 
         <CardContent className="space-y-3 pt-2 text-sm text-gray-700 dark:text-gray-300">
           {plan.description && <p className="leading-relaxed">{plan.description}</p>}
-
-          {scheduleLine && <p className="text-xs text-gray-500 dark:text-gray-400">{scheduleLine}</p>}
 
           {!embedded && (
             <dl className="grid grid-cols-2 gap-2 text-sm">
