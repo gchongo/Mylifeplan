@@ -42,53 +42,40 @@ export function GanttDrawerOpenTab({
   );
 }
 
-export function GanttTitleDrawer({
+export function GanttTitleDrawerBody({
   width,
-  headerHeight,
   bodyHeight,
-  isResizing,
-  header,
   body,
-  onResizeStart,
 }: {
   width: number;
-  headerHeight: number;
   bodyHeight: number;
-  isResizing: boolean;
-  header: React.ReactNode;
   body: React.ReactNode;
-  onResizeStart: (clientX: number) => void;
 }) {
   return (
     <div
       className={cn("relative flex shrink-0 flex-col", GANTT_TITLE_DRAWER_CLASS)}
       style={{ width }}
     >
-      <div
-        className={cn(GANTT_STICKY_HEADER_CLASS, "items-center")}
-        style={{ height: headerHeight, minHeight: headerHeight }}
-      >
-        {header}
-      </div>
       <div style={{ minHeight: bodyHeight }}>{body}</div>
-      <div
-        data-no-pan
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="调整计划列表宽度"
-        className={cn(
-          "absolute right-0 top-0 z-10 h-full w-2 -translate-x-1/2 cursor-col-resize touch-none select-none",
-          "hover:bg-blue-400/20",
-          isResizing && "bg-blue-500/25",
-        )}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onResizeStart(e.clientX);
-        }}
-      />
     </div>
   );
+}
+
+/** @deprecated 使用固定顶栏 + GanttTitleDrawerBody */
+export function GanttTitleDrawer({
+  width,
+  bodyHeight,
+  body,
+}: {
+  width: number;
+  headerHeight?: number;
+  bodyHeight: number;
+  isResizing?: boolean;
+  header?: React.ReactNode;
+  body: React.ReactNode;
+  onResizeStart?: (clientX: number) => void;
+}) {
+  return <GanttTitleDrawerBody width={width} bodyHeight={bodyHeight} body={body} />;
 }
 
 export function GanttTitleDrawerControls({

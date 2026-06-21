@@ -15,7 +15,7 @@ import {
   GANTT_STICKY_HEADER_CLASS,
   GANTT_TITLE_ROW_CLASS,
 } from "@/lib/gantt-title-column";
-import { GanttDrawerOpenTab, GanttTitleDrawer, GanttTitleDrawerControls } from "@/components/gantt/gantt-title-drawer";
+import { GanttDrawerOpenTab, GanttTitleDrawerBody, GanttTitleDrawerControls } from "@/components/gantt/gantt-title-drawer";
 import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribution-drawer";
 import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
 import { GanttPlanDrawerPanel } from "@/components/gantt/gantt-plan-drawer";
@@ -50,7 +50,7 @@ import { dispatchPlanUpdated, PLAN_UPDATED_EVENT } from "@/lib/plan-events";
 import { cn } from "@/lib/utils";
 
 const ROW_HEIGHT = 44;
-const ROW_HEIGHT_CHILD = 36;
+const ROW_HEIGHT_CHILD = ROW_HEIGHT - 10;
 const ROW_GROUP_GAP = 10;
 const DEFAULT_LABEL_WIDTH = 200;
 const MIN_LABEL_WIDTH = 120;
@@ -213,6 +213,7 @@ export const GanttChart = forwardRef<
 >(function GanttChart({ fullPage = false, scale: scaleProp, onScaleChange, onTitleColumnLayout }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const headerTimelineRef = useRef<HTMLDivElement>(null);
   const scrolledToToday = useRef(false);
   const scrollTarget = useRef<"today" | "anchor">("today");
   const panRef = useRef<{ startX: number; startScrollLeft: number } | null>(null);
@@ -360,11 +361,7 @@ export const GanttChart = forwardRef<
   const allSubplansExpanded =
     expandablePlanIds.length > 0 && expandablePlanIds.every((id) => expanded.has(id));
   const rowsBodyHeight = computeRowsTotalHeight(rows);
-  const minBodyHeight = Math.max(
-    rowsBodyHeight,
-    scrollViewportHeight - TIMELINE_HEADER_HEIGHT,
-  );
-  const bodyAreaHeight = Math.max(computeRowsTotalHeight(rows), minBodyHeight - TIMELINE_HEADER_HEIGHT);
+  const bodyAreaHeight = Math.max(rowsBodyHeight, scrollViewportHeight);
 
   const refetchGantt = useCallback(() => {
     apiJson<{ items?: GanttItem[]; contributions?: GanttContribution[] }>(
@@ -422,13 +419,21 @@ export const GanttChart = forwardRef<
     return () => ro.disconnect();
   }, [isLoading, fullPage, effectiveLabelWidth]);
 
+  const syncTimelineHeaderScroll = useCallback(() => {
+    const left = scrollRef.current?.scrollLeft ?? 0;
+    if (headerTimelineRef.current) {
+      headerTimelineRef.current.style.transform = `translateX(-${left}px)`;
+    }
+  }, []);
+
   const scrollToToday = useCallback(() => {
     const el = scrollRef.current;
     if (!el || !todayVisible) return false;
     const offset = effectiveLabelWidth + todayX - el.clientWidth / 2;
     el.scrollLeft = Math.max(0, offset);
+    syncTimelineHeaderScroll();
     return true;
-  }, [todayVisible, todayX, effectiveLabelWidth]);
+  }, [todayVisible, todayX, effectiveLabelWidth, syncTimelineHeaderScroll]);
 
   const scrollToAnchor = useCallback(() => {
     const el = scrollRef.current;
@@ -436,8 +441,9 @@ export const GanttChart = forwardRef<
     const anchorX = dateToX(anchor, layout);
     const offset = effectiveLabelWidth + anchorX - el.clientWidth / 2;
     el.scrollLeft = Math.max(0, offset);
+    syncTimelineHeaderScroll();
     return true;
-  }, [anchor, layout, effectiveLabelWidth]);
+  }, [anchor, layout, effectiveLabelWidth, syncTimelineHeaderScroll]);
 
   useEffect(() => {
     scrolledToToday.current = false;
@@ -470,7 +476,12 @@ export const GanttChart = forwardRef<
     if (!el) return;
     el.scrollLeft = pendingScrollLeft.current;
     pendingScrollLeft.current = null;
-  }, [drawerOpen, selectedContributionId, selectedPlanId]);
+    syncTimelineHeaderScroll();
+  }, [drawerOpen, selectedContributionId, selectedPlanId, syncTimelineHeaderScroll]);
+
+  useLayoutEffect(() => {
+    syncTimelineHeaderScroll();
+  }, [syncTimelineHeaderScroll, timelineWidth, labelWidth, labelVisible, rows.length]);
 
   function preserveScrollLeft() {
     pendingScrollLeft.current = scrollRef.current?.scrollLeft ?? 0;
@@ -841,14 +852,136 @@ export const GanttChart = forwardRef<
     closeDrawer();
   }
 
+  function renderLabelHeaderControls() {
+    return (
+      <GanttTitleDrawerControls
+        allExpanded={allSubplansExpanded}
+        onToggleExpandAll={toggleExpandAll}
+        showExpandToggle={expandablePlanIds.length > 0}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        onCloseDrawer={toggleLabelPanel}
+        onCreatePlan={() => openCreatePlan()}
+      />
+    );
+  }
+
+  function renderFixedHeaderRow() {
+    return (
+      <div className="relative z-30 flex shrink-0">
+        <GanttDrawerOpenTab
+          headerHeight={TIMELINE_HEADER_HEIGHT}
+          visible={!labelVisible}
+          onOpen={toggleLabelPanel}
+        />
+        <div
+          className={cn(
+            "shrink-0 overflow-hidden",
+            !isResizingLabel && "transition-[width] duration-300 ease-in-out",
+          )}
+          style={{
+            width: labelVisible ? labelWidth : 0,
+            transitionDuration: isResizingLabel ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
+          }}
+        >
+          <div
+            className={cn(
+              GANTT_STICKY_HEADER_CLASS,
+              "items-center border-r border-blue-200/80 dark:border-blue-900/50",
+            )}
+            style={{ width: labelWidth, height: TIMELINE_HEADER_HEIGHT, minHeight: TIMELINE_HEADER_HEIGHT }}
+          >
+            {renderLabelHeaderControls()}
+          </div>
+        </div>
+        <div className="relative min-w-0 flex-1 overflow-hidden">
+          <div ref={headerTimelineRef} className="will-change-transform">
+            {renderTimelineHeaderOnly()}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderScrollBody() {
+    return (
+      <div className="relative min-h-0 flex-1">
+        {labelVisible && (
+          <div
+            data-no-pan
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="调整计划列表宽度"
+            className={cn(
+              "absolute z-40 w-2 -translate-x-1/2 cursor-col-resize touch-none select-none",
+              "hover:bg-blue-400/20",
+              isResizingLabel && "bg-blue-500/25",
+            )}
+            style={{
+              left: labelWidth,
+              top: -TIMELINE_HEADER_HEIGHT,
+              height: `calc(100% + ${TIMELINE_HEADER_HEIGHT}px)`,
+            }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              startLabelResize(e.clientX);
+            }}
+          />
+        )}
+
+        <div
+          ref={scrollRef}
+          onScroll={syncTimelineHeaderScroll}
+          onMouseDown={handlePanStart}
+          className={cn(
+            "h-full min-h-0 w-full max-w-full min-w-0 overflow-x-auto overflow-y-auto",
+            isResizingLabel && "cursor-col-resize select-none",
+            isPanning ? "cursor-grabbing select-none" : !isResizingLabel && "cursor-grab",
+          )}
+        >
+          <div className="relative flex min-h-0 w-max">
+            <div
+              className={cn(
+                "sticky left-0 z-20 shrink-0 overflow-hidden",
+                !isResizingLabel && "transition-[width] duration-300 ease-in-out",
+              )}
+              style={{
+                width: labelVisible ? labelWidth : 0,
+                transitionDuration: isResizingLabel ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
+              }}
+            >
+              <GanttTitleDrawerBody
+                width={labelWidth}
+                bodyHeight={bodyAreaHeight}
+                body={rows.map((row, idx) => renderLabel(row, idx))}
+              />
+            </div>
+
+            <div className="flex shrink-0 flex-col">
+              <div
+                className="relative"
+                style={{ minHeight: bodyAreaHeight }}
+                onClick={handleTimelineBackgroundClick}
+              >
+                {renderGridBackground(bodyAreaHeight)}
+
+                {rows.map((row, idx) => (
+                  <div key={`row-${idx}`} className="relative">
+                    {renderBar(row, idx)}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   function wrapWithDrawers(content: React.ReactNode) {
     return (
-      <DrawerLayout
-        open={drawerOpen}
-        onClose={closeDrawer}
-        panelTopOffset={TIMELINE_HEADER_HEIGHT}
-        panel={renderDrawerPanel()}
-      >
+      <DrawerLayout open={drawerOpen} onClose={closeDrawer} panel={renderDrawerPanel()}>
         {content}
       </DrawerLayout>
     );
@@ -909,84 +1042,18 @@ export const GanttChart = forwardRef<
 
   return (
     <>
-      {wrapWithDrawers(
-        <div
-          ref={containerRef}
-          className={cn(
-            "flex h-full min-h-0 w-full max-w-full min-w-0 flex-1 flex-col overflow-hidden",
-            "rounded-none border-0 bg-transparent shadow-none",
-          )}
-        >
-          <div className="relative min-h-0 flex-1">
-            <GanttDrawerOpenTab
-              headerHeight={TIMELINE_HEADER_HEIGHT}
-              visible={!labelVisible}
-              onOpen={toggleLabelPanel}
-            />
-
-            <div
-              ref={scrollRef}
-              onMouseDown={handlePanStart}
-              className={cn(
-                "h-full min-h-0 w-full max-w-full min-w-0 overflow-x-auto overflow-y-auto",
-                isResizingLabel && "cursor-col-resize select-none",
-                isPanning ? "cursor-grabbing select-none" : !isResizingLabel && "cursor-grab",
-              )}
-            >
-              <div className="relative flex min-h-0 w-max">
-                <div
-                  className={cn(
-                    "sticky left-0 top-0 z-30 shrink-0 overflow-hidden",
-                    !isResizingLabel && "transition-[width] duration-300 ease-in-out",
-                  )}
-                  style={{
-                    width: labelVisible ? labelWidth : 0,
-                    transitionDuration: isResizingLabel ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
-                  }}
-                >
-                  <GanttTitleDrawer
-                    width={labelWidth}
-                    headerHeight={TIMELINE_HEADER_HEIGHT}
-                    bodyHeight={bodyAreaHeight}
-                    isResizing={isResizingLabel}
-                    onResizeStart={startLabelResize}
-                    header={
-                      <GanttTitleDrawerControls
-                        allExpanded={allSubplansExpanded}
-                        onToggleExpandAll={toggleExpandAll}
-                        showExpandToggle={expandablePlanIds.length > 0}
-                        statusFilter={statusFilter}
-                        onStatusFilterChange={setStatusFilter}
-                        onCloseDrawer={toggleLabelPanel}
-                        onCreatePlan={() => openCreatePlan()}
-                      />
-                    }
-                    body={rows.map((row, idx) => renderLabel(row, idx))}
-                  />
-                </div>
-
-                <div className="flex shrink-0 flex-col">
-                  {renderTimelineHeaderOnly()}
-
-                  <div
-                    className="relative"
-                    style={{ minHeight: bodyAreaHeight }}
-                    onClick={handleTimelineBackgroundClick}
-                  >
-                    {renderGridBackground(bodyAreaHeight)}
-
-                    {rows.map((row, idx) => (
-                      <div key={`row-${idx}`} className="relative">
-                        {renderBar(row, idx)}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>,
-      )}
+      <div
+        ref={containerRef}
+        className={cn(
+          "flex h-full min-h-0 w-full max-w-full min-w-0 flex-1 flex-col overflow-hidden",
+          "rounded-none border-0 bg-transparent shadow-none",
+        )}
+      >
+        {renderFixedHeaderRow()}
+        <DrawerLayout open={drawerOpen} onClose={closeDrawer} panel={renderDrawerPanel()}>
+          {renderScrollBody()}
+        </DrawerLayout>
+      </div>
 
       {renderPlanModal()}
     </>

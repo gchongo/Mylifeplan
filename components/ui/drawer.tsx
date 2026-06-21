@@ -67,7 +67,7 @@ export function DrawerLayout({
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
       <div
         className={cn(
-          "shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out",
+          "relative z-10 shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out",
           open ? widthClass : "w-0",
         )}
         aria-hidden={!open}

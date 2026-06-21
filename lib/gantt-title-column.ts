@@ -1,6 +1,6 @@
-/** 计划列表头与时间轴日期行共用：垂直滚动时固定顶部、高度一致 */
+/** 计划列表头与时间轴日期行共用：固定于抽屉之上，不被右侧详情面板遮挡 */
 export const GANTT_STICKY_HEADER_CLASS =
-  "sticky top-0 z-20 flex shrink-0 border-b border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900";
+  "relative z-30 flex shrink-0 border-b border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900";
 
 /** 甘特图左侧计划标题抽屉 */
 export const GANTT_TITLE_DRAWER_CLASS =
