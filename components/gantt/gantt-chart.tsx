@@ -49,9 +49,9 @@ import { apiJson } from "@/lib/client-api";
 import { dispatchPlanUpdated, PLAN_UPDATED_EVENT } from "@/lib/plan-events";
 import { cn } from "@/lib/utils";
 
-const ROW_HEIGHT = 44;
-const ROW_HEIGHT_CHILD = ROW_HEIGHT - 10;
-const ROW_GROUP_GAP = 10;
+const ROW_HEIGHT = 28;
+const ROW_HEIGHT_CHILD = 28;
+const ROW_GROUP_GAP = 12;
 const DEFAULT_LABEL_WIDTH = 200;
 const MIN_LABEL_WIDTH = 120;
 const MAX_LABEL_WIDTH = 560;
@@ -107,6 +107,20 @@ interface GanttRow {
 
 function computeRowsTotalHeight(rows: GanttRow[]) {
   return rows.reduce((sum, row) => sum + row.gapBefore + row.height, 0);
+}
+
+/** 与下一行同属一个计划组（父→子、兄弟子计划）时不留间隔 */
+function rowTightBelow(row: GanttRow, next: GanttRow | undefined) {
+  if (!next) return false;
+  if (next.depth > row.depth) return true;
+  if (
+    row.depth > 0 &&
+    next.depth === row.depth &&
+    row.item.parentId === next.item.parentId
+  ) {
+    return true;
+  }
+  return false;
 }
 
 function planDepth(itemId: string, byId: Map<string, GanttItem>): number {
@@ -683,6 +697,8 @@ export const GanttChart = forwardRef<
 
   function renderLabel(row: GanttRow, idx: number) {
     const item = row.item;
+    const nextRow = rows[idx + 1];
+    const tightBelow = rowTightBelow(row, nextRow);
     const childCount = filteredPlans.filter((p) => p.parentId === item.id).length;
     const showToggle =
       childCount > 0 || planDepth(item.id, planById) < 2;
@@ -697,7 +713,7 @@ export const GanttChart = forwardRef<
         key={`label-${item.id}-${idx}`}
         className={cn(
           "group flex items-center gap-1 overflow-hidden border-l-2 px-2",
-          GANTT_TITLE_ROW_CLASS,
+          !tightBelow && GANTT_TITLE_ROW_CLASS,
           statusStyle.stripe,
         )}
         style={{
@@ -794,13 +810,18 @@ export const GanttChart = forwardRef<
 
   function renderBar(row: GanttRow, idx: number) {
     const item = row.item;
+    const nextRow = rows[idx + 1];
+    const tightBelow = rowTightBelow(row, nextRow);
     const { left, width } = barMetricsFromDates(item.startDate, item.effectiveEnd, layout);
     const barStyle = planBarStyle(item, items, row.depth);
 
     return (
       <div
         key={`bar-${item.id}-${idx}`}
-        className="relative border-b border-dashed border-gray-100 dark:border-gray-800/60"
+        className={cn(
+          "relative",
+          !tightBelow && "border-b border-dashed border-gray-100 dark:border-gray-800/60",
+        )}
         style={{ height: row.height, marginTop: row.gapBefore, width: timelineWidth }}
       >
         {!item.contributionOnly && (
