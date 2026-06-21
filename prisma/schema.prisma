@@ -70,6 +70,7 @@ model User {
 
   plans         Plan[]
   memos         Memo[]
+  memoComments  MemoComment[]
   feeds         Feed[]
   contributions PlanContribution[]
   subscriptions Subscription[]
@@ -109,15 +110,45 @@ model Memo {
   userId       String   @map("user_id")
   title        String
   description  String?
+  body         String?  @db.Text
   linkedPlanId String?  @unique @map("linked_plan_id")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  user       User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  linkedPlan Plan? @relation("PlanMemo", fields: [linkedPlanId], references: [id], onDelete: Cascade)
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  linkedPlan Plan?         @relation("PlanMemo", fields: [linkedPlanId], references: [id], onDelete: Cascade)
+  images     MemoImage[]
+  comments   MemoComment[]
 
   @@index([userId])
   @@map("memos")
+}
+
+model MemoImage {
+  id        String   @id @default(cuid())
+  memoId    String   @map("memo_id")
+  url       String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  memo Memo @relation(fields: [memoId], references: [id], onDelete: Cascade)
+
+  @@index([memoId])
+  @@map("memo_images")
+}
+
+model MemoComment {
+  id        String   @id @default(cuid())
+  memoId    String   @map("memo_id")
+  userId    String   @map("user_id")
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  memo Memo @relation(fields: [memoId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([memoId, createdAt])
+  @@map("memo_comments")
 }
 
 model Feed {

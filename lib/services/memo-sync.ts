@@ -28,7 +28,11 @@ export async function syncMemoForPlan(
     if (existing) {
       await db.memo.update({
         where: { id: existing.id },
-        data: { title: plan.title, description: plan.description },
+        data: {
+          title: plan.title,
+          description: plan.description,
+          body: plan.description,
+        },
       });
     } else {
       await db.memo.create({
@@ -36,6 +40,7 @@ export async function syncMemoForPlan(
           userId: plan.userId,
           title: plan.title,
           description: plan.description,
+          body: plan.description,
           linkedPlanId: plan.id,
         },
       });

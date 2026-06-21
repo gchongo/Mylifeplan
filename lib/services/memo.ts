@@ -1,3 +1,4 @@
+import { splitMemoContent } from "@/lib/memo-content";
 import { parseDateOnly } from "@/lib/dates";
 import { prisma } from "@/lib/db";
 import { syncMemoForPlan } from "@/lib/services/memo-sync";
@@ -6,26 +7,33 @@ import { writeFeed } from "@/lib/services/feed";
 
 export async function createStandaloneMemo(
   userId: string,
-  data: { title: string; description?: string | null },
+  data: { content: string; imageUrls?: string[] },
 ) {
-  const title = data.title.trim();
-  if (!title) throw new Error("标题不能为空");
+  const { title, body } = splitMemoContent(data.content);
+  if (!title && !body) throw new Error("内容不能为空");
 
   return prisma.$transaction(async (tx) => {
     const memo = await tx.memo.create({
       data: {
         userId,
-        title,
-        description: data.description?.trim() || null,
+        title: title || "无标题",
+        description: body || null,
+        body: body || data.content.trim(),
       },
     });
+
+    if (data.imageUrls?.length) {
+      await tx.memoImage.createMany({
+        data: data.imageUrls.map((url) => ({ memoId: memo.id, url })),
+      });
+    }
 
     await writeFeed({
       userId,
       itemType: "memo",
       itemId: memo.id,
       actionType: "create",
-      content: title,
+      content: memo.title,
     });
 
     return memo;
@@ -38,12 +46,25 @@ export async function updateMemoById(
   data: {
     title?: string;
     description?: string | null;
+    body?: string | null;
+    content?: string;
     startDate?: string | null;
     endDate?: string | null;
   },
 ) {
   const memo = await prisma.memo.findFirst({ where: { id: memoId, userId } });
   if (!memo) throw new Error("NOT_FOUND");
+
+  let title = data.title;
+  let description = data.description;
+  let body = data.body;
+
+  if (data.content !== undefined) {
+    const split = splitMemoContent(data.content);
+    title = split.title || "无标题";
+    body = split.body || data.content.trim();
+    description = body;
+  }
 
   if (memo.linkedPlanId) {
     const plan = await prisma.plan.findFirst({ where: { id: memo.linkedPlanId, userId } });
@@ -53,9 +74,9 @@ export async function updateMemoById(
       const updated = await tx.plan.update({
         where: { id: plan.id },
         data: {
-          ...(data.title !== undefined && { title: data.title.trim() }),
-          ...(data.description !== undefined && {
-            description: data.description?.trim() || null,
+          ...(title !== undefined && { title: title.trim() }),
+          ...(description !== undefined && {
+            description: description?.trim() || null,
           }),
           ...(data.startDate !== undefined && { startDate: parseDateOnly(data.startDate || null) }),
           ...(data.endDate !== undefined && { endDate: parseDateOnly(data.endDate || null) }),
@@ -63,6 +84,13 @@ export async function updateMemoById(
       });
 
       await syncMemoForPlan(updated, tx);
+      if (body !== undefined) {
+        await tx.memo.update({
+          where: { id: memoId },
+          data: { body: body?.trim() || null },
+        });
+      }
+
       await writeFeed({
         userId,
         itemType: "plan",
@@ -79,10 +107,11 @@ export async function updateMemoById(
     const updated = await tx.memo.update({
       where: { id: memo.id },
       data: {
-        ...(data.title !== undefined && { title: data.title.trim() }),
-        ...(data.description !== undefined && {
-          description: data.description?.trim() || null,
+        ...(title !== undefined && { title: title.trim() }),
+        ...(description !== undefined && {
+          description: description?.trim() || null,
         }),
+        ...(body !== undefined && { body: body?.trim() || null }),
       },
     });
 
@@ -96,6 +125,34 @@ export async function updateMemoById(
 
     return { type: "memo" as const, item: updated };
   });
+}
+
+export async function addMemoImages(userId: string, memoId: string, urls: string[]) {
+  const memo = await prisma.memo.findFirst({ where: { id: memoId, userId } });
+  if (!memo) throw new Error("NOT_FOUND");
+  if (urls.length === 0) return [];
+  await prisma.memoImage.createMany({
+    data: urls.map((url) => ({ memoId, url })),
+  });
+  return prisma.memoImage.findMany({ where: { memoId }, orderBy: { createdAt: "asc" } });
+}
+
+export async function createMemoComment(userId: string, memoId: string, body: string) {
+  const text = body.trim();
+  if (!text) throw new Error("评论不能为空");
+  const memo = await prisma.memo.findFirst({ where: { id: memoId, userId } });
+  if (!memo) throw new Error("NOT_FOUND");
+  return prisma.memoComment.create({
+    data: { memoId, userId, body: text },
+  });
+}
+
+export async function deleteMemoComment(userId: string, commentId: string) {
+  const comment = await prisma.memoComment.findFirst({
+    where: { id: commentId, userId },
+  });
+  if (!comment) throw new Error("NOT_FOUND");
+  await prisma.memoComment.delete({ where: { id: commentId } });
 }
 
 export async function archiveMemoById(userId: string, memoId: string) {
@@ -128,4 +185,39 @@ export async function deleteMemoById(userId: string, memoId: string) {
     }
     await tx.memo.delete({ where: { id: memoId } });
   });
+}
+
+export function serializeMemo(
+  m: {
+    id: string;
+    title: string;
+    description: string | null;
+    body: string | null;
+    linkedPlanId: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    images?: { id: string; url: string; createdAt: Date }[];
+    comments?: { id: string; body: string; createdAt: Date }[];
+  },
+) {
+  return {
+    id: m.id,
+    title: m.title,
+    description: m.description,
+    body: m.body,
+    linkedPlanId: m.linkedPlanId,
+    sourceType: m.linkedPlanId ? ("plan" as const) : ("standalone" as const),
+    createdAt: m.createdAt.toISOString(),
+    updatedAt: m.updatedAt.toISOString(),
+    images: (m.images ?? []).map((img) => ({
+      id: img.id,
+      url: img.url,
+      createdAt: img.createdAt.toISOString(),
+    })),
+    comments: (m.comments ?? []).map((c) => ({
+      id: c.id,
+      body: c.body,
+      createdAt: c.createdAt.toISOString(),
+    })),
+  };
 }

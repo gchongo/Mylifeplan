@@ -35,6 +35,9 @@ next-env.d.ts
 prisma/*.db
 prisma/*.db-journal
 
+# user uploads
+/public/uploads/
+
 # IDE
 .idea
 .vscode

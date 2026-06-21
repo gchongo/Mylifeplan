@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 import { requireSession } from "@/lib/auth/get-session";
 import { handleProtectedRouteError } from "@/lib/api/route-auth";
-import { deleteMemoById, updateMemoById, archiveMemoById } from "@/lib/services/memo";
+import { deleteMemoById, updateMemoById, archiveMemoById, addMemoImages } from "@/lib/services/memo";
 import { validateDateFields } from "@/lib/content-router";
 
 type Params = { params: Promise<{ id: string }> };
@@ -13,7 +13,10 @@ type Params = { params: Promise<{ id: string }> };
 const updateMemoSchema = z
   .object({
     title: z.string().min(1).max(200).optional(),
-    description: z.string().max(5000).optional().nullable(),
+    description: z.string().max(20000).optional().nullable(),
+    body: z.string().max(20000).optional().nullable(),
+    content: z.string().max(20000).optional(),
+    imageUrls: z.array(z.string()).optional(),
     startDate: z.string().optional().nullable(),
     dueDate: z.string().optional().nullable(),
     endDate: z.string().optional().nullable(),
@@ -45,6 +48,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     }
 
     const result = await updateMemoById(session.userId, id, parsed.data);
+    if (parsed.data.imageUrls?.length) {
+      await addMemoImages(session.userId, id, parsed.data.imageUrls);
+    }
     return jsonOk({ result });
   } catch (e) {
     if (e instanceof Error && e.message === "NOT_FOUND") {
