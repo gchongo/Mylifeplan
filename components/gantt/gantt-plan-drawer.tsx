@@ -18,9 +18,11 @@ interface PlanPayload extends PlanFormValues {
 export function GanttPlanDrawerPanel({
   planId,
   onClose,
+  onPlanChange,
 }: {
   planId: string;
   onClose: () => void;
+  onPlanChange?: (planId: string) => void;
 }) {
   const [activePlanId, setActivePlanId] = useState(planId);
   const [loading, setLoading] = useState(false);
@@ -98,7 +100,10 @@ export function GanttPlanDrawerPanel({
             embedded
             onChanged={() => loadPlan(activePlanId)}
             onClose={onClose}
-            onNavigatePlan={setActivePlanId}
+            onNavigatePlan={(id) => {
+              setActivePlanId(id);
+              onPlanChange?.(id);
+            }}
           />
         </div>
       )}

@@ -797,14 +797,16 @@ export const GanttChart = forwardRef<
     const rootItem = planById.get(row.rootId) ?? item;
     const groupColor = resolveEffectivePlanColor(rootItem, rootItem);
     const labelStyle = getPlanLabelAppearance(groupColor);
+    const isSelected = selectedPlanId === item.id;
 
     return (
       <div
         key={`label-${item.id}-${idx}`}
         className={cn(
-          "group flex items-center gap-1 overflow-hidden px-2",
+          "group flex items-center gap-1 overflow-hidden px-2 transition-colors duration-300 ease-out motion-reduce:transition-none",
           labelStyle.stripeClass,
           labelStyle.bgClass,
+          isSelected && "bg-brand-50/70 ring-1 ring-inset ring-brand-400/35 dark:bg-brand-950/25 dark:ring-brand-500/30",
           !tightBelow && GANTT_TITLE_ROW_CLASS,
         )}
         style={{
@@ -999,6 +1001,7 @@ export const GanttChart = forwardRef<
       expanded.has(item.id) &&
       filteredPlans.some((p) => p.parentId === item.id);
     const showGroupTitles = hoveredRootId === row.rootId;
+    const isSelected = selectedPlanId === item.id;
 
     if (item.isUnscheduled) {
       const anchorLeft = barMetricsFromDates(displayStart, displayEnd, layout).left;
@@ -1013,7 +1016,12 @@ export const GanttChart = forwardRef<
             type="button"
             data-gantt-bar
             onClick={() => openPlan(item.id)}
-            className="absolute top-1/2 z-10 flex -translate-y-1/2 items-center gap-1 overflow-hidden rounded-full border border-dashed border-violet-400 bg-violet-50/80 px-2 py-0.5 text-xs text-violet-700 hover:bg-violet-100 dark:border-violet-500/70 dark:bg-violet-950/40 dark:text-violet-300"
+            className={cn(
+              "absolute top-1/2 z-10 flex -translate-y-1/2 items-center gap-1 overflow-hidden rounded-full border border-dashed px-2 py-0.5 text-xs transition-[box-shadow,filter] duration-300 ease-out motion-reduce:transition-none",
+              isSelected
+                ? "border-violet-500/80 bg-violet-100 text-violet-800 ring-2 ring-brand-500/45 ring-offset-1 shadow-sm brightness-[1.06] dark:border-violet-400/80 dark:bg-violet-900/50 dark:text-violet-200"
+                : "border-violet-400 bg-violet-50/80 text-violet-700 hover:bg-violet-100 dark:border-violet-500/70 dark:bg-violet-950/40 dark:text-violet-300",
+            )}
             style={{ left: Math.max(anchorLeft, 8), height: barStyle.barHeightPx }}
             title="尚未设置时间，点击编辑"
           >
@@ -1066,6 +1074,7 @@ export const GanttChart = forwardRef<
             barHeightPx={barStyle.barHeightPx}
             statusDotClass={barStyle.statusDotClass}
             showTitle={showGroupTitles}
+            isSelected={isSelected}
             hitRowHeight={row.height}
             minStartDate={row.depth > 0 ? minStartDate : undefined}
             minContributionDate={contribBounds?.min}
@@ -1109,7 +1118,11 @@ export const GanttChart = forwardRef<
     }
     if (selectedPlanId) {
       return (
-        <GanttPlanDrawerPanel planId={selectedPlanId} onClose={closePlanDrawer} />
+        <GanttPlanDrawerPanel
+          planId={selectedPlanId}
+          onClose={closePlanDrawer}
+          onPlanChange={setSelectedPlanId}
+        />
       );
     }
     return null;

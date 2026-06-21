@@ -41,6 +41,7 @@ export function GanttDraggableBar({
   barHeightPx = 28,
   statusDotClass,
   showTitle = false,
+  isSelected = false,
   onUpdated,
   onTaskClick,
   hitRowHeight,
@@ -62,6 +63,7 @@ export function GanttDraggableBar({
   barHeightPx?: number;
   statusDotClass: string;
   showTitle?: boolean;
+  isSelected?: boolean;
   onUpdated: (updated: GanttItem) => void;
   onTaskClick?: () => void;
   hitRowHeight?: number;
@@ -273,10 +275,11 @@ export function GanttDraggableBar({
     >
       <div
         className={cn(
-          "group absolute top-1/2 w-full -translate-y-1/2 overflow-hidden rounded-full",
+          "group absolute top-1/2 w-full -translate-y-1/2 overflow-hidden rounded-full transition-[box-shadow,filter] duration-300 ease-out motion-reduce:transition-none",
           barShell,
           saving && "opacity-60",
           dragging && "ring-2 ring-brand-400 ring-offset-1",
+          isSelected && !dragging && "z-10 ring-2 ring-brand-500/45 ring-offset-1 shadow-sm brightness-[1.06]",
         )}
         style={{ ...barShellStyle, height: barHeightPx }}
       >
@@ -293,6 +296,7 @@ export function GanttDraggableBar({
               "pointer-events-none absolute left-1.5 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full ring-1 ring-white transition-transform duration-300 ease-out dark:ring-gray-900",
               statusDotClass,
               showTitle && "scale-110",
+              isSelected && "scale-110",
             )}
             aria-hidden
           />
