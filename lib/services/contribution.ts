@@ -3,6 +3,7 @@ import { formatDateOnly, parseDateOnly } from "@/lib/dates";
 import { prisma } from "@/lib/db";
 import { writeFeed } from "@/lib/services/feed";
 import type { CreateContributionInput } from "@/lib/validations/contribution";
+import { findRootPlanId } from "@/lib/gantt-contribution-display";
 
 export function contributionEndDate(
   c: Pick<PlanContribution, "occurredOn" | "occurredEndOn">,
@@ -44,6 +45,31 @@ async function assertPlanForContribution(userId: string, planId: string) {
   return plan;
 }
 
+async function validateContributionPlanReassignment(
+  userId: string,
+  fromPlanId: string,
+  toPlanId: string,
+): Promise<string | null> {
+  if (fromPlanId === toPlanId) return null;
+
+  const plans = await prisma.plan.findMany({
+    where: { userId, status: { not: "archived" } },
+    select: { id: true, parentPlanId: true },
+  });
+  const byId = new Map(
+    plans.map((p) => [p.id, { id: p.id, parentId: p.parentPlanId }]),
+  );
+  if (!byId.has(fromPlanId) || !byId.has(toPlanId)) {
+    return "计划不存在";
+  }
+  const rootA = findRootPlanId(fromPlanId, byId);
+  const rootB = findRootPlanId(toPlanId, byId);
+  if (rootA !== rootB) {
+    return "贡献记录只能改绑到同一计划树内的子计划";
+  }
+  return null;
+}
+
 export async function createContribution(userId: string, input: CreateContributionInput) {
   const plan = await assertPlanForContribution(userId, input.planId);
   const endStr = input.occurredEndOn?.trim() || null;
@@ -80,6 +106,15 @@ export async function updateContribution(
   if (!existing) throw new Error("NOT_FOUND");
 
   if (input.planId) await assertPlanForContribution(userId, input.planId);
+
+  if (input.planId && input.planId !== existing.planId) {
+    const subtreeError = await validateContributionPlanReassignment(
+      userId,
+      existing.planId,
+      input.planId,
+    );
+    if (subtreeError) throw new Error(subtreeError);
+  }
 
   const endStr =
     input.occurredEndOn !== undefined

@@ -46,6 +46,7 @@ import {
   getPlanContributionBounds,
   isDateWithinPlanSpan,
 } from "@/lib/gantt-plan-bind";
+import { contributionsForGanttRow } from "@/lib/gantt-contribution-display";
 import {
   getPlanBarAppearance,
   getPlanLabelAppearance,
@@ -356,6 +357,8 @@ export const GanttChart = forwardRef<
     () => buildPlanTreeRows(filteredPlans, expanded),
     [filteredPlans, expanded],
   );
+
+  const visibleRowIds = useMemo(() => new Set(rows.map((r) => r.item.id)), [rows]);
 
   const planGroups = useMemo(() => buildPlanGroupLayouts(rows), [rows]);
   const groupedRootIds = useMemo(
@@ -840,20 +843,24 @@ export const GanttChart = forwardRef<
   }
 
   function renderContributionMarkers(
-    planId: string,
+    rowContributions: GanttContribution[],
     spanStart: string,
     spanEnd: string,
     barLeft: number,
     barWidth: number,
+    rowPlanId: string,
   ) {
     const byDate = new Map<string, GanttContribution[]>();
-    for (const c of contributions) {
-      if (c.planId !== planId) continue;
+    for (const c of rowContributions) {
       if (!isDateWithinPlanSpan(c.occurredOn, spanStart, spanEnd)) continue;
+      const endOn = c.occurredEndOn ?? c.occurredOn;
+      if (!isDateWithinPlanSpan(endOn, spanStart, spanEnd) && endOn > spanEnd) continue;
       const list = byDate.get(c.occurredOn) ?? [];
       list.push(c);
       byDate.set(c.occurredOn, list);
     }
+
+    if (byDate.size === 0) return null;
 
     return (
       <div
@@ -865,7 +872,7 @@ export const GanttChart = forwardRef<
           const primary = list[list.length - 1]!;
           return (
             <button
-              key={`${planId}-${date}`}
+              key={`${rowPlanId}-${date}-${primary.id}`}
               type="button"
               data-gantt-bar
               onClick={() => openContribution(primary.id)}
@@ -978,6 +985,13 @@ export const GanttChart = forwardRef<
     const parentPreview = parentPlan ? barPreview.get(parentPlan.id) : undefined;
     const minStartDate = parentPreview?.start ?? parentPlan?.startDate;
     const contribBounds = contributionBoundsByPlan.get(item.id);
+    const rowContributions = contributionsForGanttRow(
+      item.id,
+      contributions,
+      planById,
+      expanded,
+      visibleRowIds,
+    );
 
     return (
       <div
@@ -1019,7 +1033,14 @@ export const GanttChart = forwardRef<
           />
         )}
         {!item.contributionOnly &&
-          renderContributionMarkers(item.id, displayStart, displayEnd, left, width)}
+          renderContributionMarkers(
+            rowContributions,
+            displayStart,
+            displayEnd,
+            left,
+            width,
+            item.id,
+          )}
       </div>
     );
   }
@@ -1031,6 +1052,7 @@ export const GanttChart = forwardRef<
           contributionId={selectedContributionId}
           onClose={closeContributionDrawer}
           onDeleted={refetchGantt}
+          onUpdated={refetchGantt}
         />
       );
     }
