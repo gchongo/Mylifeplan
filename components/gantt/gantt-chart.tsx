@@ -32,7 +32,7 @@ import {
   type TimelineLayout,
 } from "@/lib/gantt-scale";
 import { filterGanttTasksByStatus } from "@/lib/gantt-task-filter";
-import { buildColumnColorIndex, GRID_BANDS, GRID_BORDER, spanColorIndex } from "@/lib/gantt-grid-colors";
+import { GRID_BORDER } from "@/lib/gantt-grid-colors";
 import { deriveParentStatus } from "@/lib/services/plan-rollup";
 import {
   getGanttBarStyle,
@@ -46,9 +46,25 @@ import { dispatchPlanUpdated, PLAN_UPDATED_EVENT } from "@/lib/plan-events";
 import { cn } from "@/lib/utils";
 
 const ROW_HEIGHT = 44;
-const LABEL_WIDTH = 200;
+const DEFAULT_LABEL_WIDTH = 200;
+const MIN_LABEL_WIDTH = 120;
+const MAX_LABEL_WIDTH = 560;
+const GANTT_LABEL_WIDTH_KEY = "mylifeplan-gantt-label-width";
+const GANTT_LABEL_VISIBLE_KEY = "mylifeplan-gantt-label-visible";
 const FOOTER_HEIGHT = 48;
 const TIMELINE_HEADER_HEIGHT = 52;
+
+function readStoredLabelWidth() {
+  if (typeof window === "undefined") return DEFAULT_LABEL_WIDTH;
+  const n = parseInt(localStorage.getItem(GANTT_LABEL_WIDTH_KEY) ?? "", 10);
+  if (Number.isNaN(n)) return DEFAULT_LABEL_WIDTH;
+  return Math.min(MAX_LABEL_WIDTH, Math.max(MIN_LABEL_WIDTH, n));
+}
+
+function readStoredLabelVisible() {
+  if (typeof window === "undefined") return true;
+  return localStorage.getItem(GANTT_LABEL_VISIBLE_KEY) !== "false";
+}
 
 function asPlanStatus(status: string | undefined | null): PlanStatus {
   if (status === "not_started" || status === "in_progress" || status === "done" || status === "archived") {
@@ -203,6 +219,17 @@ export const GanttChart = forwardRef<
   const [selectedContributionId, setSelectedContributionId] = useState<string | null>(null);
   const [scrollViewportHeight, setScrollViewportHeight] = useState(480);
   const [timelineViewportWidth, setTimelineViewportWidth] = useState(0);
+  const [labelWidth, setLabelWidth] = useState(DEFAULT_LABEL_WIDTH);
+  const [labelVisible, setLabelVisible] = useState(true);
+  const labelResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const [isResizingLabel, setIsResizingLabel] = useState(false);
+
+  const effectiveLabelWidth = labelVisible ? labelWidth : 0;
+
+  useEffect(() => {
+    setLabelWidth(readStoredLabelWidth());
+    setLabelVisible(readStoredLabelVisible());
+  }, []);
 
   const dataBounds = useMemo(() => dataBoundsFromItems(items), [items]);
 
@@ -216,7 +243,7 @@ export const GanttChart = forwardRef<
 
   const { from, to } = layout;
   const timelineWidth = layout.totalWidth;
-  const totalWidth = LABEL_WIDTH + timelineWidth;
+  const totalWidth = effectiveLabelWidth + timelineWidth;
   const today = todayStr();
   const todayX = dateToX(today, layout);
   const todayVisible = today >= layout.from && today <= layout.to;
@@ -254,10 +281,56 @@ export const GanttChart = forwardRef<
     [filteredPlans, expanded],
   );
 
-  const columnColors = useMemo(
-    () => buildColumnColorIndex(layout.columns),
-    [layout.columns],
+  const toggleLabelPanel = useCallback(() => {
+    setLabelVisible((prev) => {
+      const next = !prev;
+      localStorage.setItem(GANTT_LABEL_VISIBLE_KEY, String(next));
+      return next;
+    });
+  }, []);
+
+  const startLabelResize = useCallback(
+    (clientX: number) => {
+      labelResizeRef.current = { startX: clientX, startWidth: labelWidth };
+      setIsResizingLabel(true);
+    },
+    [labelWidth],
   );
+
+  useEffect(() => {
+    if (!isResizingLabel) return;
+
+    function onMove(e: MouseEvent) {
+      const state = labelResizeRef.current;
+      if (!state) return;
+      const next = Math.min(
+        MAX_LABEL_WIDTH,
+        Math.max(MIN_LABEL_WIDTH, state.startWidth + (e.clientX - state.startX)),
+      );
+      setLabelWidth(next);
+    }
+
+    function onUp(e: MouseEvent) {
+      const state = labelResizeRef.current;
+      if (state) {
+        const next = Math.min(
+          MAX_LABEL_WIDTH,
+          Math.max(MIN_LABEL_WIDTH, state.startWidth + (e.clientX - state.startX)),
+        );
+        setLabelWidth(next);
+        localStorage.setItem(GANTT_LABEL_WIDTH_KEY, String(next));
+      }
+      labelResizeRef.current = null;
+      setIsResizingLabel(false);
+    }
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [isResizingLabel]);
 
   const expandablePlanIds = useMemo(() => {
     return filteredPlans
@@ -323,31 +396,31 @@ export const GanttChart = forwardRef<
 
     const update = () => {
       setScrollViewportHeight(scroll.clientHeight);
-      const w = Math.floor(container.clientWidth - LABEL_WIDTH);
+      const w = Math.floor(container.clientWidth - effectiveLabelWidth);
       setTimelineViewportWidth((prev) => (Math.abs(prev - w) > 4 ? w : prev));
     };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(container);
     return () => ro.disconnect();
-  }, [isLoading, fullPage]);
+  }, [isLoading, fullPage, effectiveLabelWidth]);
 
   const scrollToToday = useCallback(() => {
     const el = scrollRef.current;
     if (!el || !todayVisible) return false;
-    const offset = LABEL_WIDTH + todayX - el.clientWidth / 2;
+    const offset = effectiveLabelWidth + todayX - el.clientWidth / 2;
     el.scrollLeft = Math.max(0, offset);
     return true;
-  }, [todayVisible, todayX]);
+  }, [todayVisible, todayX, effectiveLabelWidth]);
 
   const scrollToAnchor = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return false;
     const anchorX = dateToX(anchor, layout);
-    const offset = LABEL_WIDTH + anchorX - el.clientWidth / 2;
+    const offset = effectiveLabelWidth + anchorX - el.clientWidth / 2;
     el.scrollLeft = Math.max(0, offset);
     return true;
-  }, [anchor, layout]);
+  }, [anchor, layout, effectiveLabelWidth]);
 
   useEffect(() => {
     scrolledToToday.current = false;
@@ -525,6 +598,49 @@ export const GanttChart = forwardRef<
     );
   }
 
+  function renderLabelResizeHandle() {
+    if (!labelVisible) return null;
+    return (
+      <div
+        data-no-pan
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="调整计划列表宽度"
+        className={cn(
+          "absolute right-0 top-0 z-50 h-full w-1.5 cursor-col-resize touch-none",
+          "hover:bg-brand-400/30",
+          isResizingLabel && "bg-brand-500/40",
+        )}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          startLabelResize(e.clientX);
+        }}
+      />
+    );
+  }
+
+  function renderCollapsedLabelRail(minHeight?: number) {
+    if (labelVisible) return null;
+    return (
+      <div
+        className="sticky left-0 z-40 flex shrink-0 flex-col border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
+        style={{ width: 32, minHeight }}
+      >
+        <button
+          type="button"
+          data-no-pan
+          className="flex flex-1 items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+          title="显示计划列表"
+          aria-label="显示计划列表"
+          onClick={toggleLabelPanel}
+        >
+          ▶
+        </button>
+      </div>
+    );
+  }
+
   function renderListHeaderControls() {
     return (
       <GanttTaskListControls
@@ -533,56 +649,63 @@ export const GanttChart = forwardRef<
         showExpandToggle={expandablePlanIds.length > 0}
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
+        labelVisible={labelVisible}
+        onToggleLabelPanel={toggleLabelPanel}
       />
     );
   }
 
   function renderTimelineHeader() {
     return (
-      <div className="sticky top-0 z-30 flex border-b border-gray-200 bg-white shadow-sm">
-        <div
-          className="sticky left-0 z-40 flex shrink-0 flex-col border-r border-gray-200 bg-gray-50"
-          style={{ width: LABEL_WIDTH, minHeight: TIMELINE_HEADER_HEIGHT }}
-        >
-          {renderListHeaderControls()}
-        </div>
-        <div style={{ width: timelineWidth }} className="relative shrink-0">
-          <div className="flex border-b border-gray-100 bg-gray-50 text-xs text-gray-600">
-            {layout.topSpans.map((span) => {
-              const band = GRID_BANDS[spanColorIndex(layout.columns, span.key) % GRID_BANDS.length]!;
-              return (
-                <div
-                  key={span.key}
-                  className={cn("py-1.5 text-center", GRID_BORDER, band.bg)}
-                  style={{ width: span.width }}
-                >
-                  {span.label}
-                </div>
-              );
-            })}
+      <div className="sticky top-0 z-30 flex border-b border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        {labelVisible ? (
+          <div
+            className="relative sticky left-0 z-40 flex shrink-0 flex-col border-r border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900"
+            style={{ width: labelWidth, minHeight: TIMELINE_HEADER_HEIGHT }}
+          >
+            {renderListHeaderControls()}
+            {renderLabelResizeHandle()}
           </div>
-          <div className="flex text-xs">
+        ) : (
+          renderCollapsedLabelRail(TIMELINE_HEADER_HEIGHT)
+        )}
+        <div style={{ width: timelineWidth }} className="relative shrink-0">
+          <div className="flex border-b border-gray-100 bg-gray-50 text-xs text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
+            {layout.topSpans.map((span) => (
+              <div
+                key={span.key}
+                className={cn("bg-gray-50 py-1.5 text-center dark:bg-gray-900", GRID_BORDER)}
+                style={{ width: span.width }}
+              >
+                {span.label}
+              </div>
+            ))}
+          </div>
+          <div className="flex bg-white text-xs dark:bg-gray-950">
             {layout.columns.map((col) => {
               const isToday = isTodayInColumn(today, col);
-              const band = GRID_BANDS[columnColors.get(col.key) ?? 0]!;
               return (
                 <div
                   key={col.key}
                   className={cn(
-                    "py-1 text-center",
+                    "bg-white py-1 text-center dark:bg-gray-950",
                     GRID_BORDER,
-                    band.bg,
-                    col.isWeekend && "bg-gray-50/80",
-                    isToday && "ring-1 ring-inset ring-red-200/80",
+                    col.isWeekend && "bg-gray-50 dark:bg-gray-900/70",
+                    isToday && "ring-1 ring-inset ring-red-200/80 dark:ring-red-500/40",
                   )}
                   style={{ width: col.width }}
                 >
                   {isToday && (scale === "week" || scale === "month") ? (
-                    <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-gray-200 px-1 text-[10px] font-semibold text-gray-800">
+                    <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-gray-200 px-1 text-[10px] font-semibold text-gray-800 dark:bg-gray-700 dark:text-gray-100">
                       {col.headerBottom.replace(/^\S+\s/, "")}
                     </span>
                   ) : (
-                    <span className={cn("text-gray-600", isToday && "font-semibold text-red-600")}>
+                    <span
+                      className={cn(
+                        "text-gray-600 dark:text-gray-300",
+                        isToday && "font-semibold text-red-600 dark:text-red-400",
+                      )}
+                    >
                       {scale === "day" ? formatHourLabel(parseInt(col.headerBottom, 10)) : col.headerBottom}
                     </span>
                   )}
@@ -599,27 +722,23 @@ export const GanttChart = forwardRef<
     return (
       <div
         className="pointer-events-none absolute top-0 flex"
-        style={{ left: LABEL_WIDTH, width: timelineWidth, height }}
+        style={{ left: effectiveLabelWidth, width: timelineWidth, height }}
       >
-        {layout.columns.map((col) => {
-          const band = GRID_BANDS[columnColors.get(col.key) ?? 0]!;
-          return (
-            <div
-              key={col.key}
-              className={cn(
-                "h-full",
-                GRID_BORDER,
-                band.bg,
-                col.isWeekend && "bg-gray-50/60",
-                col.isOtherMonth && "opacity-80",
-              )}
-              style={{ width: col.width }}
-            />
-          );
-        })}
+        {layout.columns.map((col) => (
+          <div
+            key={col.key}
+            className={cn(
+              "h-full bg-white dark:bg-gray-950",
+              GRID_BORDER,
+              col.isWeekend && "bg-gray-50 dark:bg-gray-900/70",
+              col.isOtherMonth && "opacity-80",
+            )}
+            style={{ width: col.width }}
+          />
+        ))}
         {todayVisible && (
           <div
-            className="absolute bottom-0 top-0 w-px bg-red-400"
+            className="absolute bottom-0 top-0 w-px bg-red-400 dark:bg-red-500"
             style={{ left: todayX }}
           />
         )}
@@ -632,13 +751,13 @@ export const GanttChart = forwardRef<
       return (
         <div
           key={`add-${row.parentPlanId}-${idx}`}
-          className="flex items-center border-b border-dashed border-gray-100 bg-purple-50/50 px-2"
+          className="flex items-center border-b border-dashed border-gray-100 bg-purple-50/50 px-2 dark:border-gray-800 dark:bg-purple-950/30"
           style={{ height: ROW_HEIGHT, paddingLeft: 12 + row.depth * 16 }}
         >
           <button
             type="button"
             onClick={() => openCreatePlan(row.parentPlanId)}
-            className="text-xs text-brand-600 hover:underline"
+            className="text-xs text-brand-600 hover:underline dark:text-brand-400"
           >
             + 添加子计划
           </button>
@@ -659,7 +778,8 @@ export const GanttChart = forwardRef<
       <div
         key={`label-${item.id}-${idx}`}
         className={cn(
-          "flex items-center gap-1 border-b border-dashed border-gray-100 border-l-2 border-l-purple-400 bg-purple-50/80 px-2",
+          "flex items-center gap-1 border-b border-dashed border-gray-100 border-l-2 px-2 dark:border-gray-800",
+          statusStyle.rowBg,
           statusStyle.stripe,
         )}
         style={{ height: ROW_HEIGHT, paddingLeft: 12 + row.depth * 16 }}
@@ -667,7 +787,7 @@ export const GanttChart = forwardRef<
         {showToggle ? (
           <button
             type="button"
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-100"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
             onClick={() => toggleExpand(item.id)}
             aria-label={isExpanded ? "折叠" : "展开"}
           >
@@ -681,7 +801,7 @@ export const GanttChart = forwardRef<
         <button
           type="button"
           onClick={() => openPlan(item.id)}
-          className="min-w-0 flex-1 truncate text-left text-sm hover:text-brand-600"
+          className="min-w-0 flex-1 whitespace-normal break-words text-left text-sm leading-snug text-gray-900 hover:text-brand-600 dark:text-gray-100 dark:hover:text-brand-400"
           title={item.title}
         >
           {item.title}
@@ -875,7 +995,8 @@ export const GanttChart = forwardRef<
             onMouseDown={handlePanStart}
             className={cn(
               "min-h-0 w-full max-w-full min-w-0 flex-1 overflow-x-auto overflow-y-auto",
-              isPanning ? "cursor-grabbing select-none" : "cursor-grab",
+              isResizingLabel && "cursor-col-resize select-none",
+              isPanning ? "cursor-grabbing select-none" : !isResizingLabel && "cursor-grab",
             )}
           >
             <div style={{ width: totalWidth }}>
@@ -886,31 +1007,39 @@ export const GanttChart = forwardRef<
 
                 {rows.map((row, idx) => (
                   <div key={`row-${idx}`} className="relative flex">
-                    <div
-                      className="sticky left-0 z-20 shrink-0 border-r border-gray-200"
-                      style={{ width: LABEL_WIDTH }}
-                    >
-                      {renderLabel(row, idx)}
-                    </div>
+                    {labelVisible ? (
+                      <div
+                        className="sticky left-0 z-20 shrink-0 border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
+                        style={{ width: labelWidth }}
+                      >
+                        {renderLabel(row, idx)}
+                      </div>
+                    ) : (
+                      renderCollapsedLabelRail(ROW_HEIGHT)
+                    )}
                     <div className="relative z-10 shrink-0">{renderBar(row, idx)}</div>
                   </div>
                 ))}
 
                 <div className="relative flex">
-                  <div
-                    className="sticky left-0 z-20 border-r border-gray-200 bg-white p-2"
-                    style={{ width: LABEL_WIDTH }}
-                  >
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      type="button"
-                      data-no-pan
-                      onClick={() => openCreatePlan()}
+                  {labelVisible ? (
+                    <div
+                      className="sticky left-0 z-20 shrink-0 border-r border-gray-200 bg-white p-2 dark:border-gray-800 dark:bg-gray-900"
+                      style={{ width: labelWidth }}
                     >
-                      + 新建
-                    </Button>
-                  </div>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        type="button"
+                        data-no-pan
+                        onClick={() => openCreatePlan()}
+                      >
+                        + 新建
+                      </Button>
+                    </div>
+                  ) : (
+                    renderCollapsedLabelRail(FOOTER_HEIGHT)
+                  )}
                   <div style={{ width: timelineWidth, height: FOOTER_HEIGHT }} />
                 </div>
               </div>

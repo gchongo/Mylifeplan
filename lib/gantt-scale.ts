@@ -125,8 +125,7 @@ function utcDayOfWeek(date: string) {
 }
 
 function isWeekendDate(date: string) {
-  const dow = utcDayOfWeek(date);
-  return dow === 0 || dow === 6;
+  return utcDayOfWeek(date) === 0;
 }
 
 function formatPeriodLabel(scale: GanttScaleId, anchor: string): string {

@@ -14,12 +14,16 @@ export function GanttTaskListControls({
   showExpandToggle,
   statusFilter,
   onStatusFilterChange,
+  labelVisible = true,
+  onToggleLabelPanel,
 }: {
   allExpanded: boolean;
   onToggleExpandAll: () => void;
   showExpandToggle: boolean;
   statusFilter: Set<VisualStatusKey>;
   onStatusFilterChange: (next: Set<VisualStatusKey>) => void;
+  labelVisible?: boolean;
+  onToggleLabelPanel?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -46,7 +50,20 @@ export function GanttTaskListControls({
   }
 
   return (
-    <div className="flex items-center gap-1 border-b border-gray-100 px-2 py-1.5">
+    <div className="flex items-center gap-1 border-b border-gray-100 px-2 py-1.5 dark:border-gray-800">
+      {onToggleLabelPanel && (
+        <button
+          type="button"
+          data-no-pan
+          onClick={onToggleLabelPanel}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+          title={labelVisible ? "隐藏计划列表" : "显示计划列表"}
+          aria-label={labelVisible ? "隐藏计划列表" : "显示计划列表"}
+        >
+          <span className="text-[11px]">{labelVisible ? "◧" : "◨"}</span>
+        </button>
+      )}
+
       {showExpandToggle && (
         <button
           type="button"
