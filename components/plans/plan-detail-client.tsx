@@ -20,6 +20,7 @@ import {
 } from "@/components/plans/plan-detail-actions-menu";
 import { PlanStatusMenuButton } from "@/components/plans/plan-status-menu";
 import { formatPlanDateTimeDisplay } from "@/lib/dates";
+import { describeAggregatedActualTimes } from "@/lib/gantt-actual-timeline";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import type { PlanRelationNode } from "@/lib/plan-relationship";
 import type { PlanStatus } from "@/types";
@@ -177,6 +178,19 @@ export function PlanDetailClient({
     overdue,
   };
 
+  const hasSubPlans = subPlans.length > 0;
+  const aggregatedActual = hasSubPlans
+    ? describeAggregatedActualTimes(
+        subPlans.map((sp) => ({
+          id: sp.id,
+          status: sp.status,
+          endDate: sp.endDate ?? null,
+          actualStartDate: sp.actualStartDate ?? null,
+          actualEndDate: sp.actualEndDate ?? null,
+        })),
+      )
+    : null;
+
   if (showEdit) {
     return (
       <Card>
@@ -186,6 +200,7 @@ export function PlanDetailClient({
         <CardContent>
           <PlanForm
             plan={{ ...plan, status }}
+            hasSubPlans={hasSubPlans}
             redirectTo={embedded ? undefined : `/plans/${plan.id}`}
             submitLabel="保存"
             onCancel={() => setShowEdit(false)}
@@ -244,9 +259,34 @@ export function PlanDetailClient({
               <dt className="text-gray-500">计划结束</dt>
               <dd>{formatPlanDateTimeDisplay(plan.endDate)}</dd>
               <dt className="text-gray-500">实际开始</dt>
-              <dd>{formatPlanDateTimeDisplay(plan.actualStartDate)}</dd>
+              <dd>
+                {hasSubPlans
+                  ? aggregatedActual?.start
+                    ? formatPlanDateTimeDisplay(aggregatedActual.start)
+                    : "—"
+                  : formatPlanDateTimeDisplay(plan.actualStartDate)}
+                {hasSubPlans && (
+                  <span className="ml-1 text-xs text-gray-400">（子计划汇总）</span>
+                )}
+              </dd>
               <dt className="text-gray-500">实际结束</dt>
-              <dd>{formatPlanDateTimeDisplay(plan.actualEndDate)}</dd>
+              <dd>
+                {hasSubPlans ? (
+                  aggregatedActual?.end ? (
+                    <>
+                      {formatPlanDateTimeDisplay(aggregatedActual.end)}
+                      {aggregatedActual.endOpen && (
+                        <span className="ml-1 text-xs text-gray-400">（至今）</span>
+                      )}
+                      <span className="ml-1 text-xs text-gray-400">（子计划汇总）</span>
+                    </>
+                  ) : (
+                    "—"
+                  )
+                ) : (
+                  formatPlanDateTimeDisplay(plan.actualEndDate)
+                )}
+              </dd>
             </dl>
           )}
         </CardContent>

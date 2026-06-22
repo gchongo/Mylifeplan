@@ -343,6 +343,11 @@ export async function updatePlan(
   const nextEndDate =
     input.endDate !== undefined ? parsePlanDateTime(input.endDate) : existing.endDate;
 
+  const subPlanCount = await prisma.plan.count({
+    where: { parentPlanId: planId, userId },
+  });
+  const hasSubPlans = subPlanCount > 0;
+
   let nextActualStart =
     input.actualStartDate !== undefined
       ? parsePlanDateTime(input.actualStartDate)
@@ -353,7 +358,11 @@ export async function updatePlan(
       : existing.actualEndDate;
 
   const nextStatus = input.status ?? existing.status;
-  if (input.status !== undefined && input.status !== existing.status) {
+  if (
+    !hasSubPlans &&
+    input.status !== undefined &&
+    input.status !== existing.status
+  ) {
     const now = new Date();
     if (nextStatus === "in_progress" && !nextActualStart && input.actualStartDate === undefined) {
       nextActualStart = now;
@@ -362,6 +371,14 @@ export async function updatePlan(
       nextActualEnd = now;
     }
   }
+
+  const allowManualActual =
+    !hasSubPlans &&
+    (input.actualStartDate !== undefined || input.actualEndDate !== undefined);
+  const allowStatusActual =
+    !hasSubPlans &&
+    input.status !== undefined &&
+    input.status !== existing.status;
 
   if (input.startDate !== undefined || input.endDate !== undefined) {
     const contribError = await validatePlanCoversContributions(
@@ -392,16 +409,12 @@ export async function updatePlan(
         ...(input.parentPlanId !== undefined && { parentPlanId: input.parentPlanId || null }),
         ...(input.startDate !== undefined && { startDate: parsePlanDateTime(input.startDate) }),
         ...(input.endDate !== undefined && { endDate: parsePlanDateTime(input.endDate) }),
-        ...(input.actualStartDate !== undefined ||
-        (input.status !== undefined &&
-          input.status !== existing.status &&
-          nextActualStart !== existing.actualStartDate)
+        ...(allowManualActual ||
+        (allowStatusActual && nextActualStart !== existing.actualStartDate)
           ? { actualStartDate: nextActualStart }
           : {}),
-        ...(input.actualEndDate !== undefined ||
-        (input.status !== undefined &&
-          input.status !== existing.status &&
-          nextActualEnd !== existing.actualEndDate)
+        ...(allowManualActual ||
+        (allowStatusActual && nextActualEnd !== existing.actualEndDate)
           ? { actualEndDate: nextActualEnd }
           : {}),
         ...(input.status !== undefined && { status: input.status }),

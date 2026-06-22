@@ -20,7 +20,7 @@ export const USER_PREFERENCES_STORAGE_KEY = "mylifeplan-user-preferences";
 
 export const DEFAULT_GANTT_ACTUAL_LINE: GanttActualLinePreferences = {
   enabled: true,
-  color: "#4B5563",
+  color: "#111827",
   width: 2,
   style: "solid",
 };

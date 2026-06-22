@@ -36,6 +36,19 @@ describe("gantt actual timeline", () => {
     ).toBe("2026-06-28T00:00:00.000Z");
   });
 
+  it("does not use today for completed child without actual end", () => {
+    expect(
+      getEffectiveActualEnd(
+        item({
+          id: "c",
+          status: "done",
+          endDate: "2026-06-25T00:00:00.000Z",
+        }),
+        now,
+      ),
+    ).toBe("2026-06-25T00:00:00.000Z");
+  });
+
   it("uses today for in-progress child without actual end", () => {
     expect(
       getEffectiveActualEnd(
@@ -101,6 +114,7 @@ describe("gantt actual timeline", () => {
     expect(fill.red).toEqual({
       from: "2026-06-30T00:00:00.000Z",
       to: now,
+      endKind: "fixed",
     });
     expect(fill.green).toBeNull();
   });
@@ -117,12 +131,14 @@ describe("gantt actual timeline", () => {
         id: "a",
         parentId: "p",
         status: "done",
+        actualStartDate: "2026-06-01T00:00:00.000Z",
         actualEndDate: "2026-06-20T00:00:00.000Z",
       }),
       item({
         id: "b",
         parentId: "p",
         status: "done",
+        actualStartDate: "2026-06-05T00:00:00.000Z",
         actualEndDate: "2026-06-25T00:00:00.000Z",
       }),
     ];
@@ -131,6 +147,7 @@ describe("gantt actual timeline", () => {
     expect(fill.green).toEqual({
       from: "2026-06-25T00:00:00.000Z",
       to: "2026-06-30T00:00:00.000Z",
+      endKind: "fixed",
     });
     expect(fill.red).toBeNull();
   });
@@ -162,19 +179,103 @@ describe("gantt actual timeline", () => {
     expect(fill.red).toBeNull();
   });
 
-  it("returns execution span when actual start exists", () => {
-    expect(
-      getPlanActualExecutionSpan(
-        item({
-          id: "c",
-          status: "in_progress",
-          actualStartDate: "2026-06-05T09:00:00.000Z",
-        }),
-        now,
-      ),
-    ).toEqual({
+  it("returns open execution span for in-progress leaf", () => {
+    const items = [
+      item({
+        id: "c",
+        status: "in_progress",
+        actualStartDate: "2026-06-05T09:00:00.000Z",
+      }),
+    ];
+    expect(getPlanActualExecutionSpan(items[0]!, items, now)).toEqual({
       from: "2026-06-05T09:00:00.000Z",
       to: now,
+      endKind: "open",
     });
+  });
+
+  it("aggregates parent open ray to today when not all children have bounds", () => {
+    const parent = item({ id: "p" });
+    const items = [
+      parent,
+      item({
+        id: "a",
+        parentId: "p",
+        status: "done",
+        actualStartDate: "2026-06-01T00:00:00.000Z",
+        actualEndDate: "2026-06-15T00:00:00.000Z",
+      }),
+      item({
+        id: "b",
+        parentId: "p",
+        status: "in_progress",
+        actualStartDate: "2026-06-10T00:00:00.000Z",
+      }),
+    ];
+
+    expect(getPlanActualExecutionSpan(parent, items, now)).toEqual({
+      from: "2026-06-01T00:00:00.000Z",
+      to: now,
+      endKind: "open",
+    });
+  });
+
+  it("aggregates parent fixed span only when every child has actual start and end", () => {
+    const parent = item({ id: "p" });
+    const items = [
+      parent,
+      item({
+        id: "a",
+        parentId: "p",
+        status: "done",
+        actualStartDate: "2026-06-01T00:00:00.000Z",
+        actualEndDate: "2026-06-15T00:00:00.000Z",
+      }),
+      item({
+        id: "b",
+        parentId: "p",
+        status: "done",
+        actualStartDate: "2026-06-10T00:00:00.000Z",
+        actualEndDate: "2026-06-25T00:00:00.000Z",
+      }),
+    ];
+
+    expect(getPlanActualExecutionSpan(parent, items, now)).toEqual({
+      from: "2026-06-01T00:00:00.000Z",
+      to: "2026-06-25T00:00:00.000Z",
+      endKind: "fixed",
+    });
+  });
+
+  it("skips parent span when no child has actual start", () => {
+    const parent = item({ id: "p" });
+    const items = [
+      parent,
+      item({ id: "a", parentId: "p", status: "in_progress" }),
+      item({ id: "b", parentId: "p", status: "not_started" }),
+    ];
+    expect(getPlanActualExecutionSpan(parent, items, now)).toBeNull();
+  });
+
+  it("uses open ray when one child lacks actual end even if others are done", () => {
+    const parent = item({ id: "p" });
+    const items = [
+      parent,
+      item({
+        id: "a",
+        parentId: "p",
+        status: "done",
+        actualStartDate: "2026-06-01T00:00:00.000Z",
+        actualEndDate: "2026-06-15T00:00:00.000Z",
+      }),
+      item({
+        id: "b",
+        parentId: "p",
+        status: "done",
+        actualStartDate: "2026-06-05T00:00:00.000Z",
+      }),
+    ];
+    expect(getPlanActualExecutionSpan(parent, items, now)?.endKind).toBe("open");
+    expect(getPlanActualExecutionSpan(parent, items, now)?.to).toBe(now);
   });
 });

@@ -4,6 +4,8 @@ export interface PlanRelationNode {
   status: string;
   startDate?: string | null;
   endDate?: string | null;
+  actualStartDate?: string | null;
+  actualEndDate?: string | null;
   overdue?: boolean;
 }
 

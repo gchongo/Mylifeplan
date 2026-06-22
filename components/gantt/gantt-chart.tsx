@@ -1084,7 +1084,7 @@ export const GanttChart = forwardRef<
         : { green: null, red: null };
     const executionSpan =
       showActualTimeline && !item.contributionOnly
-        ? getPlanActualExecutionSpan(item, actualNowIso)
+        ? getPlanActualExecutionSpan(item, items, actualNowIso)
         : null;
     const activeOverrunTail =
       !showActualTimeline ? getActiveSubPlanOverrunTail(item, planById) : null;
@@ -1178,6 +1178,7 @@ export const GanttChart = forwardRef<
               top={(row.height - barStyle.barHeightPx) / 2}
               height={barStyle.barHeightPx}
               prefs={actualLinePrefs}
+              endKind={executionSpan.endKind}
             />
           );
         })()}

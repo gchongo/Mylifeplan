@@ -77,6 +77,10 @@ export default async function PlanDetailPage({
             id: sp.id,
             title: sp.title,
             status: sp.status,
+            startDate: spSerialized.startDate,
+            endDate: spSerialized.endDate,
+            actualStartDate: spSerialized.actualStartDate,
+            actualEndDate: spSerialized.actualEndDate,
             overdue: isSubPlanOverdueAgainstParent(
               planOverdueNode({
                 status: sp.status,

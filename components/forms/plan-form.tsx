@@ -38,6 +38,7 @@ export function PlanForm({
   onSuccess,
   onCancel,
   submitLabel,
+  hasSubPlans = false,
 }: {
   plan?: PlanFormValues;
   redirectTo?: string;
@@ -47,6 +48,8 @@ export function PlanForm({
   onSuccess?: () => void;
   onCancel?: () => void;
   submitLabel?: string;
+  /** 有子计划时实际起止由子计划汇总，不可手填 */
+  hasSubPlans?: boolean;
 }) {
   const router = useRouter();
   const isEdit = Boolean(plan?.id);
@@ -71,6 +74,8 @@ export function PlanForm({
     const status = String(fd.get("status") ?? "not_started");
     const color = String(fd.get("color") ?? "").trim() || null;
 
+    const canEditActual = isEdit && !hasSubPlans;
+
     const payload = {
       title,
       description: description || null,
@@ -78,8 +83,8 @@ export function PlanForm({
       parentPlanId,
       startDate,
       endDate,
-      actualStartDate: isEdit ? actualStartDate : undefined,
-      actualEndDate: isEdit ? actualEndDate : undefined,
+      actualStartDate: canEditActual ? actualStartDate : undefined,
+      actualEndDate: canEditActual ? actualEndDate : undefined,
       color,
       ...(isEdit && { status }),
     };
@@ -146,7 +151,12 @@ export function PlanForm({
           defaultValue={toDatetimeLocalInput(plan?.endDate ?? defaultEndDate)}
         />
       </div>
-      {isEdit && (
+      {isEdit && hasSubPlans && (
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          该计划含有子计划，实际开始与结束由子计划自动汇总，无法在父计划上手动填写。
+        </p>
+      )}
+      {isEdit && !hasSubPlans && (
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
             name="actualStartDate"

@@ -72,6 +72,10 @@ export function GanttPlanDrawerPanel({
             id: sp.id,
             title: sp.title,
             status: sp.status ?? "not_started",
+            startDate: sp.startDate ?? null,
+            endDate: sp.endDate ?? null,
+            actualStartDate: sp.actualStartDate ?? null,
+            actualEndDate: sp.actualEndDate ?? null,
             overdue: isSubPlanOverdueAgainstParent(planOverdueNode(sp), currentNode),
           })),
         );

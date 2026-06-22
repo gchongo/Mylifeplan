@@ -2,9 +2,12 @@ import { formatPlanDateTime, parsePlanDateTime } from "@/lib/dates";
 import { normalizeStatusKey } from "@/lib/task-status-style";
 import type { GanttItem } from "@/types";
 
+export type ActualEndKind = "fixed" | "open";
+
 export interface PlanExecutionSpan {
   from: string;
   to: string;
+  endKind: ActualEndKind;
 }
 
 export interface ParentActualExecutionFill {
@@ -45,17 +48,24 @@ function getDirectChildren(parentId: string, items: GanttItem[]): GanttItem[] {
   return items.filter((item) => item.parentId === parentId && !item.contributionOnly);
 }
 
+/** 已完成计划的结束：优先实际结束，其次计划结束；不使用「今天」 */
+function resolvedCompletedEnd(item: ActualTimelineNode): string | null {
+  if (item.actualEndDate) return item.actualEndDate;
+  if (item.endDate) return item.endDate;
+  return null;
+}
+
 /**
- * 用于父条汇总与超期判定：
- * - 已完成：实际结束优先，否则今天
+ * 用于父条绿/红汇总：
+ * - 已完成：实际/计划结束（今天之前）
  * - 进行中：未填实际结束则用今天
- * - 未开始：若已过计划期限则用今天，否则不参与汇总
+ * - 未开始且已过计划期限：今天
  */
 export function getEffectiveActualEnd(item: ActualTimelineNode, nowIso: string): string | null {
   if (item.actualEndDate) return item.actualEndDate;
 
   if (isDoneOrArchived(item.status)) {
-    return nowIso;
+    return resolvedCompletedEnd(item);
   }
 
   if (isInProgress(item.status)) {
@@ -74,18 +84,110 @@ export function getEffectiveActualEnd(item: ActualTimelineNode, nowIso: string):
   return null;
 }
 
-/** 条内实际执行线：需要实际开始时间 */
-export function getPlanActualExecutionSpan(
-  item: ActualTimelineNode,
+function getLeafExecutionSpan(item: ActualTimelineNode, nowIso: string): PlanExecutionSpan | null {
+  if (!item.actualStartDate) return null;
+
+  if (item.actualEndDate) {
+    const startMs = timeMs(item.actualStartDate);
+    const endMs = timeMs(item.actualEndDate);
+    if (startMs == null || endMs == null || endMs < startMs) return null;
+    return { from: item.actualStartDate, to: item.actualEndDate, endKind: "fixed" };
+  }
+
+  if (isInProgress(item.status)) {
+    const startMs = timeMs(item.actualStartDate);
+    const endMs = timeMs(nowIso);
+    if (startMs == null || endMs == null || endMs < startMs) return null;
+    return { from: item.actualStartDate, to: nowIso, endKind: "open" };
+  }
+
+  if (isDoneOrArchived(item.status)) {
+    const end = resolvedCompletedEnd(item);
+    if (!end) return null;
+    const startMs = timeMs(item.actualStartDate);
+    const endMs = timeMs(end);
+    if (startMs == null || endMs == null || endMs < startMs) return null;
+    return { from: item.actualStartDate, to: end, endKind: "fixed" };
+  }
+
+  return null;
+}
+
+function allChildrenHaveActualBounds(children: GanttItem[]): boolean {
+  return (
+    children.length > 0 &&
+    children.every((child) => Boolean(child.actualStartDate && child.actualEndDate))
+  );
+}
+
+function earliestActualStart(children: GanttItem[]): string | null {
+  let minStart: string | null = null;
+  let minStartMs = Infinity;
+
+  for (const child of children) {
+    if (!child.actualStartDate) continue;
+    const ms = timeMs(child.actualStartDate);
+    if (ms != null && ms < minStartMs) {
+      minStartMs = ms;
+      minStart = child.actualStartDate;
+    }
+  }
+
+  return minStart;
+}
+
+function latestActualEnd(children: GanttItem[]): string | null {
+  let maxEnd: string | null = null;
+  let maxEndMs = -Infinity;
+
+  for (const child of children) {
+    if (!child.actualEndDate) continue;
+    const ms = timeMs(child.actualEndDate);
+    if (ms != null && ms > maxEndMs) {
+      maxEndMs = ms;
+      maxEnd = child.actualEndDate;
+    }
+  }
+
+  return maxEnd;
+}
+
+function getParentAggregatedExecutionSpan(
+  children: GanttItem[],
   nowIso: string,
 ): PlanExecutionSpan | null {
-  if (!item.actualStartDate) return null;
-  const end = getEffectiveActualEnd(item, nowIso);
-  if (!end) return null;
-  const startMs = timeMs(item.actualStartDate);
-  const endMs = timeMs(end);
-  if (startMs == null || endMs == null || endMs < startMs) return null;
-  return { from: item.actualStartDate, to: end };
+  const minStart = earliestActualStart(children);
+  if (!minStart) return null;
+
+  const minStartMs = timeMs(minStart);
+  if (minStartMs == null) return null;
+
+  if (allChildrenHaveActualBounds(children)) {
+    const maxEnd = latestActualEnd(children);
+    if (!maxEnd) return null;
+    const maxEndMs = timeMs(maxEnd);
+    if (maxEndMs == null || maxEndMs < minStartMs) return null;
+    return { from: minStart, to: maxEnd, endKind: "fixed" };
+  }
+
+  const nowMs = timeMs(nowIso);
+  if (nowMs == null || nowMs < minStartMs) return null;
+  return { from: minStart, to: nowIso, endKind: "open" };
+}
+
+/**
+ * 叶子计划：用自身实际起止；有子计划的一级/父计划：从子计划汇总。
+ */
+export function getPlanActualExecutionSpan(
+  item: ActualTimelineNode,
+  items: GanttItem[],
+  nowIso: string,
+): PlanExecutionSpan | null {
+  const children = getDirectChildren(item.id, items);
+  if (children.length > 0) {
+    return getParentAggregatedExecutionSpan(children, nowIso);
+  }
+  return getLeafExecutionSpan(item, nowIso);
 }
 
 export function getParentActualExecutionFill(
@@ -110,14 +212,19 @@ export function getParentActualExecutionFill(
   let maxEnd: string | null = null;
   let maxEndMs = -Infinity;
 
-  for (const child of children) {
-    const effectiveEnd = getEffectiveActualEnd(child, nowIso);
-    if (!effectiveEnd) continue;
-    const ms = timeMs(effectiveEnd);
-    if (ms == null) continue;
-    if (ms > maxEndMs) {
-      maxEndMs = ms;
-      maxEnd = effectiveEnd;
+  if (allChildrenHaveActualBounds(children)) {
+    maxEnd = latestActualEnd(children);
+    maxEndMs = maxEnd ? timeMs(maxEnd) ?? -Infinity : -Infinity;
+  } else {
+    for (const child of children) {
+      const effectiveEnd = getEffectiveActualEnd(child, nowIso);
+      if (!effectiveEnd) continue;
+      const ms = timeMs(effectiveEnd);
+      if (ms == null) continue;
+      if (ms > maxEndMs) {
+        maxEndMs = ms;
+        maxEnd = effectiveEnd;
+      }
     }
   }
 
@@ -126,17 +233,18 @@ export function getParentActualExecutionFill(
   }
 
   const allChildrenDone = children.every((child) => isDoneOrArchived(child.status));
+  const fullyBounded = allChildrenHaveActualBounds(children);
 
   if (maxEndMs > parentEndMs) {
     return {
       green: null,
-      red: { from: parent.endDate, to: maxEnd },
+      red: { from: parent.endDate, to: maxEnd, endKind: "fixed" },
     };
   }
 
-  if (allChildrenDone && maxEndMs < parentEndMs) {
+  if (fullyBounded && allChildrenDone && maxEndMs < parentEndMs) {
     return {
-      green: { from: maxEnd, to: parent.endDate },
+      green: { from: maxEnd, to: parent.endDate, endKind: "fixed" },
       red: null,
     };
   }
@@ -146,4 +254,24 @@ export function getParentActualExecutionFill(
 
 export function nowPlanIso(): string {
   return formatPlanDateTime(new Date())!;
+}
+
+/** 详情页展示：有子计划时由子计划汇总的实际起止说明 */
+export function describeAggregatedActualTimes(
+  children: ActualTimelineNode[],
+  nowIso: string = nowPlanIso(),
+): {
+  start: string | null;
+  end: string | null;
+  endOpen: boolean;
+} {
+  const span = getParentAggregatedExecutionSpan(children as GanttItem[], nowIso);
+  if (!span) {
+    return { start: null, end: null, endOpen: false };
+  }
+  return {
+    start: span.from,
+    end: span.to,
+    endOpen: span.endKind === "open",
+  };
 }
