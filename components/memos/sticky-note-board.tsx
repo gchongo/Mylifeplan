@@ -5,6 +5,14 @@ import { Button } from "@/components/ui/button";
 import { ErrorMessage, Loading } from "@/components/ui/feedback";
 import { StickyNote, type StickyNoteData } from "@/components/memos/sticky-note";
 import { StickyNoteAssignModal } from "@/components/memos/sticky-note-assign-modal";
+import {
+  DEFAULT_STICKY_HEIGHT,
+  DEFAULT_STICKY_WIDTH,
+  detectMemoQuadrant,
+  MEMO_QUADRANT_BOARD_HEIGHT,
+  MEMO_QUADRANT_BOARD_WIDTH,
+  MEMO_QUADRANTS,
+} from "@/lib/memo-quadrant";
 import { effectiveStickyPosition, nextStickyColor } from "@/lib/memo-sticky";
 
 type NoteState = StickyNoteData & { x: number; y: number };
@@ -15,6 +23,7 @@ export function StickyNoteBoard() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [assignNoteId, setAssignNoteId] = useState<string | null>(null);
   const maxZRef = useRef(1);
   const boardRef = useRef<HTMLDivElement>(null);
@@ -45,13 +54,6 @@ export function StickyNoteBoard() {
     });
   }, [notes, search]);
 
-  const boardSize = useMemo(() => {
-    if (notes.length === 0) return { width: "100%", height: "100%" };
-    const maxX = Math.max(...notes.map((n) => n.x + 280), 800);
-    const maxY = Math.max(...notes.map((n) => n.y + 260), 600);
-    return { width: maxX, height: maxY };
-  }, [notes]);
-
   function patchNote(id: string, patch: Partial<NoteState>) {
     setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, ...patch } : n)));
   }
@@ -66,14 +68,39 @@ export function StickyNoteBoard() {
     if (!res.ok) throw new Error(data.error ?? "保存失败");
   }
 
+  function noteSize(note: NoteState) {
+    return {
+      width: note.width ?? DEFAULT_STICKY_WIDTH,
+      height: note.height ?? DEFAULT_STICKY_HEIGHT,
+    };
+  }
+
   function handleMove(id: string, x: number, y: number) {
     patchNote(id, { x, y });
   }
 
   function handleMoveEnd(id: string, x: number, y: number) {
-    patchNote(id, { x, y, posX: x, posY: y });
-    void persistNote(id, { posX: x, posY: y }).catch((e) =>
+    const note = notes.find((n) => n.id === id);
+    const { width, height } = note ? noteSize(note) : { width: DEFAULT_STICKY_WIDTH, height: DEFAULT_STICKY_HEIGHT };
+    const quadrant = detectMemoQuadrant(x, y, width, height);
+    patchNote(id, { x, y, posX: x, posY: y, quadrant });
+    void persistNote(id, { posX: x, posY: y, quadrant }).catch((e) =>
       setError(e instanceof Error ? e.message : "保存位置失败"),
+    );
+  }
+
+  function handleResize(id: string, width: number, height: number) {
+    patchNote(id, { width, height });
+  }
+
+  function handleResizeEnd(id: string, width: number, height: number) {
+    const note = notes.find((n) => n.id === id);
+    const x = note?.x ?? 0;
+    const y = note?.y ?? 0;
+    const quadrant = detectMemoQuadrant(x, y, width, height);
+    patchNote(id, { width, height, quadrant });
+    void persistNote(id, { width, height, quadrant }).catch((e) =>
+      setError(e instanceof Error ? e.message : "保存大小失败"),
     );
   }
 
@@ -87,8 +114,12 @@ export function StickyNoteBoard() {
 
   async function handleUpdate(id: string, patch: Partial<StickyNoteData & { content: string }>) {
     if (patch.color) patchNote(id, { color: patch.color });
+    if (patch.quadrant !== undefined) patchNote(id, { quadrant: patch.quadrant });
     try {
       await persistNote(id, patch);
+      if (patch.content !== undefined) {
+        setEditingId(null);
+      }
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存失败");
@@ -104,6 +135,7 @@ export function StickyNoteBoard() {
         throw new Error(data.error ?? "删除失败");
       }
       setNotes((prev) => prev.filter((n) => n.id !== id));
+      if (editingId === id) setEditingId(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "删除失败");
     }
@@ -114,10 +146,11 @@ export function StickyNoteBoard() {
     const board = boardRef.current;
     const scrollLeft = board?.scrollLeft ?? 0;
     const scrollTop = board?.scrollTop ?? 0;
-    const viewW = board?.clientWidth ?? 800;
-    const viewH = board?.clientHeight ?? 600;
-    const posX = scrollLeft + Math.max(40, (viewW - 240) / 2);
-    const posY = scrollTop + Math.max(40, (viewH - 180) / 2);
+    const viewW = board?.clientWidth ?? MEMO_QUADRANT_BOARD_WIDTH;
+    const viewH = board?.clientHeight ?? MEMO_QUADRANT_BOARD_HEIGHT;
+    const posX = scrollLeft + Math.max(40, (viewW - DEFAULT_STICKY_WIDTH) / 2);
+    const posY = scrollTop + Math.max(40, (viewH - DEFAULT_STICKY_HEIGHT) / 2);
+    const quadrant = detectMemoQuadrant(posX, posY, DEFAULT_STICKY_WIDTH, DEFAULT_STICKY_HEIGHT);
 
     try {
       const res = await fetch("/api/memos", {
@@ -128,12 +161,16 @@ export function StickyNoteBoard() {
           color: nextStickyColor(notes.length),
           posX,
           posY,
+          quadrant,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "创建失败");
       await load();
-      if (data.memo?.id) setActiveId(data.memo.id);
+      if (data.memo?.id) {
+        setActiveId(data.memo.id);
+        setEditingId(data.memo.id);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "创建失败");
     }
@@ -181,43 +218,67 @@ export function StickyNoteBoard() {
 
       <div
         ref={boardRef}
-        className="relative flex-1 overflow-auto rounded-xl border border-dashed border-gray-300 bg-[#f5f0e8] dark:border-gray-600 dark:bg-[#2a2824]"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px)",
-          backgroundSize: "24px 24px",
+        className="relative flex-1 overflow-auto rounded-xl border border-gray-300 bg-[#f5f0e8] dark:border-gray-600 dark:bg-[#2a2824]"
+        onPointerDown={() => {
+          setActiveId(null);
+          setEditingId(null);
         }}
-        onPointerDown={() => setActiveId(null)}
       >
         <div
           className="relative"
-          style={{ minWidth: boardSize.width, minHeight: boardSize.height }}
+          style={{
+            width: MEMO_QUADRANT_BOARD_WIDTH,
+            height: MEMO_QUADRANT_BOARD_HEIGHT,
+            minWidth: MEMO_QUADRANT_BOARD_WIDTH,
+            minHeight: MEMO_QUADRANT_BOARD_HEIGHT,
+          }}
         >
-          {filteredNotes.length === 0 && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-sm text-gray-500">
-              {search.trim() ? (
-                <p>没有匹配的便签</p>
-              ) : (
-                <>
-                  <p className="mb-3">板上还没有便签</p>
-                  <Button type="button" size="sm" variant="secondary" onClick={() => void handleAdd()}>
-                    贴第一张便签
-                  </Button>
-                </>
-              )}
+          <div
+            className="pointer-events-none absolute inset-0 grid grid-cols-2 grid-rows-2"
+            aria-hidden
+          >
+            {MEMO_QUADRANTS.map((q) => (
+              <div
+                key={q.id}
+                className="flex flex-col border border-dashed border-black/10 p-3 dark:border-white/10"
+              >
+                <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">
+                  {q.shortLabel} · {q.label}
+                </span>
+                <span className="mt-0.5 text-[10px] text-gray-400">{q.hint}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="pointer-events-none absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-black/15 dark:bg-white/15" />
+          <div className="pointer-events-none absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-black/15 dark:bg-white/15" />
+
+          {filteredNotes.length === 0 && !search.trim() && (
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center text-sm text-gray-500">
+              <p className="mb-1">拖动便签到对应象限进行分类</p>
+              <p className="text-xs opacity-70">左=紧急 · 右=不紧急 · 上=重要 · 下=不重要</p>
             </div>
           )}
-          {filteredNotes.map((note, index) => (
+
+          {filteredNotes.length === 0 && search.trim() && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-gray-500">
+              没有匹配的便签
+            </div>
+          )}
+
+          {filteredNotes.map((note) => (
             <StickyNote
               key={note.id}
               note={note}
-              index={index}
               x={note.x}
               y={note.y}
               isActive={activeId === note.id}
+              startInEditMode={editingId === note.id}
               onActivate={() => handleActivate(note.id)}
               onMove={handleMove}
               onMoveEnd={handleMoveEnd}
+              onResize={handleResize}
+              onResizeEnd={handleResizeEnd}
               onUpdate={handleUpdate}
               onDelete={handleDelete}
               onAssign={(id) => setAssignNoteId(id)}

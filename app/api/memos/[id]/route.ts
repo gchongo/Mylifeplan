@@ -12,7 +12,7 @@ type Params = { params: Promise<{ id: string }> };
 
 const updateMemoSchema = z
   .object({
-    title: z.string().min(1).max(200).optional(),
+    title: z.string().max(200).optional(),
     description: z.string().max(20000).optional().nullable(),
     body: z.string().max(20000).optional().nullable(),
     content: z.string().max(20000).optional(),
@@ -24,6 +24,9 @@ const updateMemoSchema = z
     posY: z.number().optional().nullable(),
     zIndex: z.number().int().min(1).max(9999).optional(),
     color: z.string().max(20).optional(),
+    quadrant: z.string().max(40).optional().nullable(),
+    width: z.number().min(120).max(560).optional().nullable(),
+    height: z.number().min(100).max(480).optional().nullable(),
   })
   .superRefine((data, ctx) => {
     const error = validateDateFields({

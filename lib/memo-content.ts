@@ -16,7 +16,9 @@ export function memoDisplayBody(memo: {
 }): string {
   if (memo.body?.trim()) return memo.body.trim();
   if (memo.description?.trim()) return memo.description.trim();
-  return memo.title;
+  const title = memo.title.trim();
+  if (!title || title === "新便签") return "";
+  return title;
 }
 
 export function formatMemoCardDate(iso: string): string {

@@ -56,10 +56,12 @@ function ExcerptText({
 export function FeedItemCard({
   item,
   onPlanClick,
+  onContributionClick,
   logStyle = false,
 }: {
   item: FeedItemCardData;
   onPlanClick?: (planId: string) => void;
+  onContributionClick?: (contributionId: string) => void;
   logStyle?: boolean;
 }) {
   const href = feedItemHref(item.itemType, item.itemId);
@@ -72,14 +74,27 @@ export function FeedItemCard({
     <div className="space-y-1">
       {isContribution ? (
         <>
-          <h3
-            className={cn(
-              "text-base font-bold leading-snug text-gray-900 dark:text-gray-100",
-              meta.archived && "text-gray-400",
-            )}
-          >
-            {item.headline}
-          </h3>
+          {onContributionClick ? (
+            <button
+              type="button"
+              className={cn(
+                "text-left text-base font-bold leading-snug text-brand-700 underline decoration-brand-200 underline-offset-2 hover:text-brand-800 dark:text-brand-400",
+                meta.archived && "text-gray-400 no-underline",
+              )}
+              onClick={() => onContributionClick(item.itemId)}
+            >
+              {item.headline}
+            </button>
+          ) : (
+            <h3
+              className={cn(
+                "text-base font-bold leading-snug text-gray-900 dark:text-gray-100",
+                meta.archived && "text-gray-400",
+              )}
+            >
+              {item.headline}
+            </h3>
+          )}
           {item.contextLabel && (
             <p className="text-xs text-gray-400 dark:text-gray-500">{item.contextLabel}</p>
           )}

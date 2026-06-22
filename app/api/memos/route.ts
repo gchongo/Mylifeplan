@@ -18,6 +18,7 @@ const createMemoSchema = z.object({
   color: z.string().max(20).optional(),
   posX: z.number().optional(),
   posY: z.number().optional(),
+  quadrant: z.string().max(40).optional().nullable(),
   empty: z.boolean().optional(),
   /** @deprecated 兼容旧客户端 */
   title: z.string().min(1).max(200).optional(),
@@ -72,6 +73,7 @@ export async function POST(request: NextRequest) {
           color: parsed.data.color,
           posX: parsed.data.posX,
           posY: parsed.data.posY,
+          quadrant: parsed.data.quadrant,
           empty: parsed.data.empty,
         },
         standaloneCount,

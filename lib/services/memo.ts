@@ -1,4 +1,5 @@
 import { splitMemoContent } from "@/lib/memo-content";
+import { isBlankStickyMemo, isMemoQuadrantId } from "@/lib/memo-quadrant";
 import { nextStickyColor, defaultStickyPosition } from "@/lib/memo-sticky";
 import { parseDateOnly } from "@/lib/dates";
 import { prisma } from "@/lib/db";
@@ -14,13 +15,16 @@ export async function createStandaloneMemo(
     color?: string;
     posX?: number;
     posY?: number;
-    /** 空便签：无内容时创建占位 */
+    quadrant?: string | null;
+    width?: number;
+    height?: number;
+    /** 空便签：无内容时创建占位，不写信息流 */
     empty?: boolean;
   },
   noteIndex = 0,
 ) {
   const content = data.content?.trim() ?? "";
-  const { title, body } = content ? splitMemoContent(content) : { title: "新便签", body: "" };
+  const { title, body } = content ? splitMemoContent(content) : { title: "", body: "" };
   if (!data.empty && !content && !data.imageUrls?.length) {
     throw new Error("内容不能为空");
   }
@@ -29,17 +33,23 @@ export async function createStandaloneMemo(
     ? { x: data.posX, y: data.posY }
     : defaultStickyPosition(noteIndex);
 
+  const quadrant =
+    data.quadrant && isMemoQuadrantId(data.quadrant) ? data.quadrant : null;
+
   return prisma.$transaction(async (tx) => {
     const memo = await tx.memo.create({
       data: {
         userId,
-        title: title || "新便签",
+        title: data.empty ? "" : title || "新便签",
         description: body || null,
         body: body || null,
         color: data.color ?? nextStickyColor(noteIndex),
         posX: pos.x,
         posY: pos.y,
         zIndex: noteIndex + 1,
+        quadrant,
+        width: data.width ?? null,
+        height: data.height ?? null,
       },
     });
 
@@ -49,13 +59,15 @@ export async function createStandaloneMemo(
       });
     }
 
-    await writeFeed({
-      userId,
-      itemType: "memo",
-      itemId: memo.id,
-      actionType: "create",
-      content: memo.title,
-    });
+    if (!data.empty) {
+      await writeFeed({
+        userId,
+        itemType: "memo",
+        itemId: memo.id,
+        actionType: "create",
+        content: memo.title.trim() || body?.slice(0, 80) || "便签",
+      });
+    }
 
     return memo;
   });
@@ -93,10 +105,22 @@ export async function updateMemoById(
     posY?: number | null;
     zIndex?: number;
     color?: string;
+    quadrant?: string | null;
+    width?: number | null;
+    height?: number | null;
   },
 ) {
   const memo = await prisma.memo.findFirst({ where: { id: memoId, userId } });
   if (!memo) throw new Error("NOT_FOUND");
+  const wasBlank = isBlankStickyMemo(memo);
+
+  function feedTitle(updated: { title: string; body: string | null }) {
+    const fromTitle = updated.title.trim();
+    if (fromTitle && fromTitle !== "新便签") return fromTitle;
+    const fromBody = updated.body?.trim();
+    if (fromBody) return fromBody.split(/\n/)[0]!.slice(0, 80);
+    return "便签";
+  }
 
   let title = data.title;
   let description = data.description;
@@ -161,6 +185,11 @@ export async function updateMemoById(
         ...(data.posY !== undefined && { posY: data.posY }),
         ...(data.zIndex !== undefined && { zIndex: data.zIndex }),
         ...(data.color !== undefined && { color: data.color }),
+        ...(data.quadrant !== undefined && {
+          quadrant: data.quadrant && isMemoQuadrantId(data.quadrant) ? data.quadrant : null,
+        }),
+        ...(data.width !== undefined && { width: data.width }),
+        ...(data.height !== undefined && { height: data.height }),
       },
     });
 
@@ -169,8 +198,8 @@ export async function updateMemoById(
         userId,
         itemType: "memo",
         itemId: updated.id,
-        actionType: "update",
-        content: updated.title,
+        actionType: wasBlank ? "create" : "update",
+        content: feedTitle(updated),
       });
     }
 
@@ -287,6 +316,9 @@ export function serializeMemo(
     posY?: number | null;
     zIndex?: number;
     color?: string;
+    quadrant?: string | null;
+    width?: number | null;
+    height?: number | null;
     createdAt: Date;
     updatedAt: Date;
     images?: { id: string; url: string; createdAt: Date }[];
@@ -303,6 +335,9 @@ export function serializeMemo(
     posY: m.posY,
     zIndex: m.zIndex ?? 1,
     color: m.color ?? "yellow",
+    quadrant: m.quadrant ?? null,
+    width: m.width ?? null,
+    height: m.height ?? null,
     sourceType: m.linkedPlanId ? ("plan" as const) : ("standalone" as const),
     createdAt: m.createdAt.toISOString(),
     updatedAt: m.updatedAt.toISOString(),

@@ -7,6 +7,7 @@ import { EmptyState, Loading } from "@/components/ui/feedback";
 import { FeedComposer } from "@/components/feed/feed-composer";
 import { FeedTypeFilter } from "@/components/feed/feed-type-filter";
 import { FeedItemCard } from "@/components/feed/feed-item-card";
+import { ContributionDetailModal } from "@/components/contributions/contribution-detail-modal";
 import { PlanDetailModal } from "@/components/plans/plan-detail-modal";
 import { PanelExpandButton } from "@/components/home/panel-expand-button";
 import type { FeedTypeFilter as FeedTypeFilterId } from "@/lib/feed-filters";
@@ -41,6 +42,7 @@ export function FeedPanelLive({
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<FeedTypeFilterId>("all");
   const [planModalId, setPlanModalId] = useState<string | null>(null);
+  const [contributionModalId, setContributionModalId] = useState<string | null>(null);
 
   const load = useCallback(
     async (
@@ -131,6 +133,7 @@ export function FeedPanelLive({
                     item={item}
                     logStyle={item.itemType === "contribution"}
                     onPlanClick={(id) => setPlanModalId(id)}
+                    onContributionClick={(id) => setContributionModalId(id)}
                   />
                 </li>
               ))}
@@ -139,6 +142,12 @@ export function FeedPanelLive({
               planId={planModalId}
               open={planModalId !== null}
               onClose={() => setPlanModalId(null)}
+              onChanged={refreshFeed}
+            />
+            <ContributionDetailModal
+              contributionId={contributionModalId}
+              open={contributionModalId !== null}
+              onClose={() => setContributionModalId(null)}
               onChanged={refreshFeed}
             />
             {nextCursor && (

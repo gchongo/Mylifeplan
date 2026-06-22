@@ -4,6 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { MemoMarkdown } from "@/components/memos/memo-markdown";
 import { memoDisplayBody } from "@/lib/memo-content";
 import {
+  DEFAULT_STICKY_HEIGHT,
+  DEFAULT_STICKY_WIDTH,
+  MEMO_QUADRANTS,
+  MIN_STICKY_HEIGHT,
+  MIN_STICKY_WIDTH,
+  type MemoQuadrantId,
+} from "@/lib/memo-quadrant";
+import {
   STICKY_NOTE_COLORS,
   stickyNoteColor,
   type StickyNoteColorId,
@@ -19,18 +27,23 @@ export interface StickyNoteData {
   posY: number | null;
   zIndex: number;
   color: string;
+  quadrant?: string | null;
+  width?: number | null;
+  height?: number | null;
   updatedAt: string;
 }
 
 interface StickyNoteProps {
   note: StickyNoteData;
-  index: number;
   x: number;
   y: number;
   isActive: boolean;
+  startInEditMode?: boolean;
   onActivate: () => void;
   onMove: (id: string, x: number, y: number) => void;
   onMoveEnd: (id: string, x: number, y: number) => void;
+  onResize: (id: string, width: number, height: number) => void;
+  onResizeEnd: (id: string, width: number, height: number) => void;
   onUpdate: (id: string, patch: Partial<StickyNoteData & { content: string }>) => void;
   onDelete: (id: string) => void;
   onAssign?: (id: string) => void;
@@ -41,14 +54,19 @@ export function StickyNote({
   x,
   y,
   isActive,
+  startInEditMode = false,
   onActivate,
   onMove,
   onMoveEnd,
+  onResize,
+  onResizeEnd,
   onUpdate,
   onDelete,
   onAssign,
 }: StickyNoteProps) {
   const palette = stickyNoteColor(note.color);
+  const width = note.width ?? DEFAULT_STICKY_WIDTH;
+  const height = note.height ?? DEFAULT_STICKY_HEIGHT;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [showColors, setShowColors] = useState(false);
@@ -57,8 +75,16 @@ export function StickyNote({
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(
     null,
   );
+  const resizeRef = useRef<{
+    startX: number;
+    startY: number;
+    origW: number;
+    origH: number;
+  } | null>(null);
+  const autoEditStarted = useRef(false);
 
   const displayBody = memoDisplayBody(note);
+  const quadrantMeta = MEMO_QUADRANTS.find((q) => q.id === note.quadrant);
 
   useEffect(() => {
     if (editing) textareaRef.current?.focus();
@@ -69,6 +95,17 @@ export function StickyNote({
     setEditing(true);
     onActivate();
   }, [displayBody, onActivate]);
+
+  useEffect(() => {
+    autoEditStarted.current = false;
+  }, [note.id]);
+
+  useEffect(() => {
+    if (startInEditMode && !editing && !autoEditStarted.current) {
+      autoEditStarted.current = true;
+      startEdit();
+    }
+  }, [startInEditMode, editing, startEdit]);
 
   const saveEdit = useCallback(() => {
     const text = draft.trim();
@@ -104,16 +141,48 @@ export function StickyNote({
     onMoveEnd(note.id, Math.max(0, nx), Math.max(0, ny));
   }
 
+  function onResizePointerDown(e: React.PointerEvent) {
+    e.stopPropagation();
+    onActivate();
+    resizeRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      origW: width,
+      origH: height,
+    };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    e.preventDefault();
+  }
+
+  function onResizePointerMove(e: React.PointerEvent) {
+    const resize = resizeRef.current;
+    if (!resize) return;
+    const nextW = Math.max(MIN_STICKY_WIDTH, resize.origW + (e.clientX - resize.startX));
+    const nextH = Math.max(MIN_STICKY_HEIGHT, resize.origH + (e.clientY - resize.startY));
+    onResize(note.id, nextW, nextH);
+  }
+
+  function onResizePointerUp(e: React.PointerEvent) {
+    const resize = resizeRef.current;
+    if (!resize) return;
+    resizeRef.current = null;
+    const nextW = Math.max(MIN_STICKY_WIDTH, resize.origW + (e.clientX - resize.startX));
+    const nextH = Math.max(MIN_STICKY_HEIGHT, resize.origH + (e.clientY - resize.startY));
+    onResizeEnd(note.id, nextW, nextH);
+  }
+
   return (
     <div
       ref={noteRef}
       className={cn(
-        "absolute flex w-[240px] flex-col rounded-sm shadow-md transition-shadow",
+        "absolute flex flex-col rounded-sm shadow-md transition-shadow",
         isActive && "shadow-lg ring-2 ring-black/10",
       )}
       style={{
         left: x,
         top: y,
+        width,
+        height,
         zIndex: note.zIndex,
         backgroundColor: palette.bg,
         borderTop: `3px solid ${palette.border}`,
@@ -125,19 +194,42 @@ export function StickyNote({
       }}
     >
       <div
-        className="flex cursor-grab items-center justify-between px-2 py-1.5 active:cursor-grabbing"
+        className="flex cursor-grab items-center justify-between gap-1 px-2 py-1.5 active:cursor-grabbing"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
       >
-        <span className="text-[10px] opacity-60">
-          {new Date(note.updatedAt).toLocaleDateString("zh-CN", {
-            month: "numeric",
-            day: "numeric",
-          })}
-        </span>
+        <div className="min-w-0">
+          <span className="text-[10px] opacity-60">
+            {new Date(note.updatedAt).toLocaleDateString("zh-CN", {
+              month: "numeric",
+              day: "numeric",
+            })}
+          </span>
+          {quadrantMeta && (
+            <span className="ml-1.5 text-[10px] font-medium opacity-70">{quadrantMeta.shortLabel}</span>
+          )}
+        </div>
         <div className="flex items-center gap-0.5" data-no-drag>
+          <select
+            value={note.quadrant ?? ""}
+            onChange={(e) =>
+              onUpdate(note.id, {
+                quadrant: (e.target.value || null) as MemoQuadrantId | null,
+              })
+            }
+            className="max-w-[5.5rem] rounded border border-black/10 bg-white/60 px-1 py-0.5 text-[10px] outline-none"
+            title="四象限分类"
+            aria-label="四象限分类"
+          >
+            <option value="">未分类</option>
+            {MEMO_QUADRANTS.map((q) => (
+              <option key={q.id} value={q.id}>
+                {q.shortLabel} {q.label}
+              </option>
+            ))}
+          </select>
           {onAssign && (
             <button
               type="button"
@@ -192,7 +284,7 @@ export function StickyNote({
         </div>
       )}
 
-      <div className="min-h-[120px] flex-1 px-3 pb-3" data-no-drag>
+      <div className="min-h-0 flex-1 overflow-hidden px-3 pb-3" data-no-drag>
         {editing ? (
           <textarea
             ref={textareaRef}
@@ -209,13 +301,13 @@ export function StickyNote({
               }
             }}
             placeholder="写点什么…（支持 Markdown）"
-            className="h-full min-h-[100px] w-full resize-none bg-transparent text-sm leading-relaxed outline-none placeholder:opacity-50"
+            className="h-full w-full resize-none bg-transparent text-sm leading-relaxed outline-none placeholder:opacity-50"
             style={{ color: palette.text }}
           />
         ) : (
           <button
             type="button"
-            className="w-full text-left text-sm leading-relaxed"
+            className="h-full w-full overflow-y-auto text-left text-sm leading-relaxed"
             onClick={startEdit}
             onDoubleClick={startEdit}
           >
@@ -226,6 +318,20 @@ export function StickyNote({
             )}
           </button>
         )}
+      </div>
+
+      <div
+        data-no-drag
+        className="absolute bottom-0 right-0 flex h-4 w-4 cursor-se-resize items-end justify-end p-0.5 opacity-40 hover:opacity-80"
+        onPointerDown={onResizePointerDown}
+        onPointerMove={onResizePointerMove}
+        onPointerUp={onResizePointerUp}
+        onPointerCancel={onResizePointerUp}
+        aria-hidden
+      >
+        <svg viewBox="0 0 10 10" className="h-2.5 w-2.5" fill="currentColor">
+          <path d="M9 1v8H1" fill="none" stroke="currentColor" strokeWidth="1.5" />
+        </svg>
       </div>
     </div>
   );
