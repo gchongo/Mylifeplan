@@ -75,18 +75,29 @@ const MONTH_NAMES = [
 ];
 
 function parseUtcDate(s: string) {
-  const [y, m, d] = s.split("-").map(Number);
+  const dateOnly = s.slice(0, 10);
+  const [y, m, d] = dateOnly.split("-").map(Number);
+  if (!y || !m || !d) return NaN;
   return Date.UTC(y, m - 1, d);
 }
 
+function utcDateOnly(s: string): string {
+  return s.slice(0, 10);
+}
+
 export function addDaysUtc(base: string, days: number) {
-  const dt = new Date(parseUtcDate(base));
+  const ms = parseUtcDate(base);
+  if (Number.isNaN(ms)) return utcDateOnly(base);
+  const dt = new Date(ms);
   dt.setUTCDate(dt.getUTCDate() + days);
   return dt.toISOString().slice(0, 10);
 }
 
 export function daysBetween(from: string, to: string) {
-  return Math.round((parseUtcDate(to) - parseUtcDate(from)) / 86400000);
+  const fromMs = parseUtcDate(from);
+  const toMs = parseUtcDate(to);
+  if (Number.isNaN(fromMs) || Number.isNaN(toMs)) return 0;
+  return Math.round((toMs - fromMs) / 86400000);
 }
 
 export function todayStr() {
@@ -94,7 +105,9 @@ export function todayStr() {
 }
 
 function startOfWeekMonday(date: string) {
-  const dt = new Date(parseUtcDate(date));
+  const ms = parseUtcDate(date);
+  if (Number.isNaN(ms)) return utcDateOnly(date);
+  const dt = new Date(ms);
   const dow = dt.getUTCDay();
   const diff = dow === 0 ? -6 : 1 - dow;
   dt.setUTCDate(dt.getUTCDate() + diff);
@@ -102,29 +115,31 @@ function startOfWeekMonday(date: string) {
 }
 
 function startOfWeekSunday(date: string) {
-  const dt = new Date(parseUtcDate(date));
+  const ms = parseUtcDate(date);
+  if (Number.isNaN(ms)) return utcDateOnly(date);
+  const dt = new Date(ms);
   const dow = dt.getUTCDay();
   dt.setUTCDate(dt.getUTCDate() - dow);
   return dt.toISOString().slice(0, 10);
 }
 
 function startOfMonth(date: string) {
-  const [y, m] = date.split("-").map(Number);
+  const [y, m] = utcDateOnly(date).split("-").map(Number);
   return `${y}-${String(m).padStart(2, "0")}-01`;
 }
 
 function endOfMonth(date: string) {
-  const [y, m] = date.split("-").map(Number);
+  const [y, m] = utcDateOnly(date).split("-").map(Number);
   return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
 }
 
 function addMonthsUtc(base: string, months: number) {
-  const [y, m, d] = base.split("-").map(Number);
+  const [y, m, d] = utcDateOnly(base).split("-").map(Number);
   return new Date(Date.UTC(y, m - 1 + months, d)).toISOString().slice(0, 10);
 }
 
 function addYearsUtc(base: string, years: number) {
-  const [y, m, d] = base.split("-").map(Number);
+  const [y, m, d] = utcDateOnly(base).split("-").map(Number);
   return new Date(Date.UTC(y + years, m - 1, d)).toISOString().slice(0, 10);
 }
 
@@ -158,8 +173,12 @@ function mergeBounds(
   if (!dataBounds?.from && !dataBounds?.to) return { from: scaleFrom, to: scaleTo };
   let from = scaleFrom;
   let to = scaleTo;
-  if (dataBounds.from && dataBounds.from < from) from = dataBounds.from;
-  if (dataBounds.to && dataBounds.to > to) to = dataBounds.to;
+  if (dataBounds.from && utcDateOnly(dataBounds.from) < from) {
+    from = utcDateOnly(dataBounds.from);
+  }
+  if (dataBounds.to && utcDateOnly(dataBounds.to) > to) {
+    to = utcDateOnly(dataBounds.to);
+  }
   return { from, to };
 }
 

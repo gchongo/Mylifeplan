@@ -18,6 +18,7 @@ export function parseDateOnly(value: string | null | undefined): Date | null {
 
 export function formatDateOnly(value: Date | null | undefined): string | null {
   if (!value) return null;
+  if (Number.isNaN(value.getTime())) return null;
   return value.toISOString().slice(0, 10);
 }
 
@@ -35,6 +36,7 @@ export function parsePlanDateTime(value: string | null | undefined): Date | null
 
 export function formatPlanDateTime(value: Date | null | undefined): string | null {
   if (!value) return null;
+  if (Number.isNaN(value.getTime())) return null;
   return value.toISOString();
 }
 

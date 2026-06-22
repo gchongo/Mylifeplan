@@ -87,7 +87,7 @@ import { deriveParentStatus } from "@/lib/services/plan-rollup";
 import type { GanttContribution, GanttItem, PlanStatus } from "@/types";
 import { apiJson } from "@/lib/client-api";
 import { dispatchPlanUpdated, PLAN_UPDATED_EVENT } from "@/lib/plan-events";
-import { cn } from "@/lib/utils";
+import { planLocalDatePart } from "@/lib/dates";
 
 const ROW_GROUP_GAP = 8;
 const DEFAULT_LABEL_WIDTH = 200;
@@ -242,11 +242,13 @@ function planBarStyle(
 
 function dataBoundsFromItems(items: GanttItem[]) {
   if (items.length === 0) return null;
-  let from = items[0]!.startDate;
-  let to = items[0]!.effectiveEnd;
+  let from = planLocalDatePart(items[0]!.startDate);
+  let to = planLocalDatePart(items[0]!.effectiveEnd);
   for (const item of items) {
-    if (item.startDate < from) from = item.startDate;
-    if (item.effectiveEnd > to) to = item.effectiveEnd;
+    const start = planLocalDatePart(item.startDate);
+    const end = planLocalDatePart(item.effectiveEnd);
+    if (start < from) from = start;
+    if (end > to) to = end;
   }
   return { from, to };
 }

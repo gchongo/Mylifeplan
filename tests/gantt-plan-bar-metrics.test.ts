@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildTimelineLayout, ganttPlanBarMetrics } from "@/lib/gantt-scale";
+import { buildTimelineLayout, ganttPlanBarMetrics, addDaysUtc } from "@/lib/gantt-scale";
 
 describe("ganttPlanBarMetrics", () => {
   it("spans full day for date-only plan on day scale", () => {
@@ -28,5 +28,9 @@ describe("ganttPlanBarMetrics", () => {
       layout,
     );
     expect(metrics.width).toBe(36);
+  });
+
+  it("addDaysUtc accepts ISO datetime strings", () => {
+    expect(addDaysUtc("2026-06-30T10:30:00.000Z", 1)).toBe("2026-07-01");
   });
 });
