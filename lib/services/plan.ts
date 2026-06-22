@@ -12,6 +12,7 @@ import {
 } from "@/lib/services/plan-rollup";
 import { isPlanStartBeforeParent } from "@/lib/gantt-plan-bind";
 import { applyStatusChangeToActualDates } from "@/lib/plan-status-actual-dates";
+import { aggregateParentActualDates } from "@/lib/plan-actual-rollup";
 import type { createPlanSchema } from "@/lib/validations/plan";
 import type { z } from "zod";
 
@@ -211,17 +212,42 @@ async function rollupParentPlan(userId: string, parentPlanId: string | null, tx:
 
   const children = await tx.plan.findMany({
     where: { parentPlanId: parent.id, userId },
-    select: { status: true },
+    select: {
+      status: true,
+      actualStartDate: true,
+      actualEndDate: true,
+      startDate: true,
+      endDate: true,
+    },
   });
   const nextStatus = deriveStatusFromDirectChildren(children.map((c) => c.status));
-  if (!nextStatus || nextStatus === parent.status) return;
+  if (!nextStatus) return;
+
+  const aggregated = aggregateParentActualDates(children);
+  const nextActualStart =
+    nextStatus === "not_started" ? null : aggregated.actualStartDate;
+  const nextActualEnd = nextStatus === "done" ? aggregated.actualEndDate : null;
+
+  const statusChanged = nextStatus !== parent.status;
+  const startChanged =
+    (nextActualStart?.getTime() ?? null) !== (parent.actualStartDate?.getTime() ?? null);
+  const endChanged =
+    (nextActualEnd?.getTime() ?? null) !== (parent.actualEndDate?.getTime() ?? null);
+
+  if (!statusChanged && !startChanged && !endChanged) return;
 
   const updated = await tx.plan.update({
     where: { id: parent.id },
-    data: { status: nextStatus },
+    data: {
+      ...(statusChanged && { status: nextStatus }),
+      ...(startChanged && { actualStartDate: nextActualStart }),
+      ...(endChanged && { actualEndDate: nextActualEnd }),
+    },
   });
   await syncMemoForPlan(updated, tx);
-  await applyPlanStatusIfChanged(userId, parent.id, parent.status, nextStatus, tx);
+  if (statusChanged) {
+    await applyPlanStatusIfChanged(userId, parent.id, parent.status, nextStatus, tx);
+  }
   await rollupParentPlan(userId, parent.parentPlanId, tx);
 }
 
@@ -371,6 +397,7 @@ export async function updatePlan(
       actualEnd: nextActualEnd,
       explicitActualStart: input.actualStartDate !== undefined,
       explicitActualEnd: input.actualEndDate !== undefined,
+      planStart: existing.startDate,
     });
     nextActualStart = applied.actualStart;
     nextActualEnd = applied.actualEnd;

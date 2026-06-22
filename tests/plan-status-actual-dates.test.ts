@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { applyStatusChangeToActualDates } from "@/lib/plan-status-actual-dates";
-import { planRangeEdgeMs } from "@/lib/dates";
 
 const now = new Date("2026-06-20T15:30:00.000Z");
 const start = new Date("2026-06-01T09:00:00.000Z");
@@ -74,7 +73,7 @@ describe("applyStatusChangeToActualDates", () => {
         explicitActualEnd: false,
         now,
       }),
-    ).toEqual({ actualStart: null, actualEnd: now });
+    ).toEqual({ actualStart: now, actualEnd: now });
   });
 
   it("does not change actual dates when caller supplies them explicitly", () => {
@@ -92,19 +91,19 @@ describe("applyStatusChangeToActualDates", () => {
     ).toEqual({ actualStart: start, actualEnd: customEnd });
   });
 
-  it("uses now for overdue completion so red fill can start at plan end", () => {
-    const planEndMs = planRangeEdgeMs("2026-06-18", "end")!;
-    expect(planEndMs).toBeLessThan(now.getTime());
+  it("sets actual start from plan start when completing directly", () => {
+    const planStart = new Date("2026-06-01T09:00:00.000Z");
     expect(
       applyStatusChangeToActualDates({
-        previousStatus: "in_progress",
+        previousStatus: "not_started",
         nextStatus: "done",
-        actualStart: start,
+        actualStart: null,
         actualEnd: null,
         explicitActualStart: false,
         explicitActualEnd: false,
+        planStart,
         now,
       }),
-    ).toEqual({ actualStart: start, actualEnd: now });
+    ).toEqual({ actualStart: planStart, actualEnd: now });
   });
 });

@@ -116,41 +116,76 @@ function getLeafExecutionSpan(item: ActualTimelineNode, nowIso: string): PlanExe
 export type AggregatedChildNode = Pick<
   GanttItem,
   "actualStartDate" | "actualEndDate" | "status" | "endDate"
->;
+> & {
+  startDate?: string | null;
+};
 
-function allChildrenHaveActualBounds(children: AggregatedChildNode[]): boolean {
-  return (
-    children.length > 0 &&
-    children.every((child) => Boolean(child.actualStartDate && child.actualEndDate))
-  );
+function activeChildren(children: AggregatedChildNode[]): AggregatedChildNode[] {
+  return children.filter((child) => normalizeStatusKey(child.status ?? "todo") !== "archived");
 }
 
-function earliestActualStart(children: AggregatedChildNode[]): string | null {
+function allActiveChildrenDone(children: AggregatedChildNode[]): boolean {
+  const active = activeChildren(children);
+  return active.length > 0 && active.every((child) => isDoneOrArchived(child.status));
+}
+
+function resolveChildActualStart(child: AggregatedChildNode): string | null {
+  if (child.actualStartDate) return child.actualStartDate;
+  if (isDoneOrArchived(child.status) && child.startDate) return child.startDate;
+  return null;
+}
+
+function resolveChildActualEnd(child: AggregatedChildNode, nowIso: string): string | null {
+  if (child.actualEndDate) return child.actualEndDate;
+
+  if (isDoneOrArchived(child.status)) {
+    return child.endDate ?? null;
+  }
+
+  if (isInProgress(child.status)) {
+    return nowIso;
+  }
+
+  if (isNotStarted(child.status)) {
+    const planEndMs = timeMs(child.endDate ?? null);
+    const nowMs = timeMs(nowIso);
+    if (planEndMs != null && nowMs != null && nowMs > planEndMs) {
+      return nowIso;
+    }
+    return null;
+  }
+
+  return null;
+}
+
+function earliestResolvedStart(children: AggregatedChildNode[]): string | null {
   let minStart: string | null = null;
   let minStartMs = Infinity;
 
-  for (const child of children) {
-    if (!child.actualStartDate) continue;
-    const ms = timeMs(child.actualStartDate);
+  for (const child of activeChildren(children)) {
+    const start = resolveChildActualStart(child);
+    if (!start) continue;
+    const ms = timeMs(start);
     if (ms != null && ms < minStartMs) {
       minStartMs = ms;
-      minStart = child.actualStartDate;
+      minStart = start;
     }
   }
 
   return minStart;
 }
 
-function latestActualEnd(children: AggregatedChildNode[]): string | null {
+function latestResolvedEnd(children: AggregatedChildNode[], nowIso: string): string | null {
   let maxEnd: string | null = null;
   let maxEndMs = -Infinity;
 
-  for (const child of children) {
-    if (!child.actualEndDate) continue;
-    const ms = timeMs(child.actualEndDate);
+  for (const child of activeChildren(children)) {
+    const end = resolveChildActualEnd(child, nowIso);
+    if (!end) continue;
+    const ms = timeMs(end);
     if (ms != null && ms > maxEndMs) {
       maxEndMs = ms;
-      maxEnd = child.actualEndDate;
+      maxEnd = end;
     }
   }
 
@@ -161,14 +196,14 @@ function getParentAggregatedExecutionSpan(
   children: AggregatedChildNode[],
   nowIso: string,
 ): PlanExecutionSpan | null {
-  const minStart = earliestActualStart(children);
+  const minStart = earliestResolvedStart(children);
   if (!minStart) return null;
 
   const minStartMs = timeMs(minStart);
   if (minStartMs == null) return null;
 
-  if (allChildrenHaveActualBounds(children)) {
-    const maxEnd = latestActualEnd(children);
+  if (allActiveChildrenDone(children)) {
+    const maxEnd = latestResolvedEnd(children, nowIso);
     if (!maxEnd) return null;
     const maxEndMs = timeMs(maxEnd);
     if (maxEndMs == null || maxEndMs < minStartMs) return null;
@@ -209,36 +244,22 @@ export function getParentActualExecutionFill(
     return { green: null, red: null };
   }
 
-  const parentEndMs = timeMs(parent.endDate);
+  const parentEndMs = planRangeEdgeMs(parent.endDate, "end");
   if (parentEndMs == null) {
     return { green: null, red: null };
   }
 
-  let maxEnd: string | null = null;
-  let maxEndMs = -Infinity;
-
-  if (allChildrenHaveActualBounds(children)) {
-    maxEnd = latestActualEnd(children);
-    maxEndMs = maxEnd ? timeMs(maxEnd) ?? -Infinity : -Infinity;
-  } else {
-    for (const child of children) {
-      const effectiveEnd = getEffectiveActualEnd(child, nowIso);
-      if (!effectiveEnd) continue;
-      const ms = timeMs(effectiveEnd);
-      if (ms == null) continue;
-      if (ms > maxEndMs) {
-        maxEndMs = ms;
-        maxEnd = effectiveEnd;
-      }
-    }
-  }
-
+  const maxEnd = latestResolvedEnd(children, nowIso);
   if (!maxEnd) {
     return { green: null, red: null };
   }
 
-  const allChildrenDone = children.every((child) => isDoneOrArchived(child.status));
-  const fullyBounded = allChildrenHaveActualBounds(children);
+  const maxEndMs = timeMs(maxEnd);
+  if (maxEndMs == null) {
+    return { green: null, red: null };
+  }
+
+  const allDone = allActiveChildrenDone(children);
 
   if (maxEndMs > parentEndMs) {
     return {
@@ -247,7 +268,7 @@ export function getParentActualExecutionFill(
     };
   }
 
-  if (fullyBounded && allChildrenDone && maxEndMs < parentEndMs) {
+  if (allDone && maxEndMs < parentEndMs) {
     return {
       green: { from: maxEnd, to: parent.endDate, endKind: "fixed" },
       red: null,

@@ -7,6 +7,7 @@ export function applyStatusChangeToActualDates(args: {
   actualEnd: Date | null;
   explicitActualStart: boolean;
   explicitActualEnd: boolean;
+  planStart?: Date | null;
   now?: Date;
 }): { actualStart: Date | null; actualEnd: Date | null } {
   const {
@@ -16,6 +17,7 @@ export function applyStatusChangeToActualDates(args: {
     actualEnd,
     explicitActualStart,
     explicitActualEnd,
+    planStart = null,
     now = new Date(),
   } = args;
 
@@ -24,6 +26,10 @@ export function applyStatusChangeToActualDates(args: {
 
   if (!explicitActualStart && nextStatus === "in_progress" && !nextActualStart) {
     nextActualStart = now;
+  }
+
+  if (!explicitActualStart && nextStatus === "done" && !nextActualStart) {
+    nextActualStart = planStart ?? now;
   }
 
   if (

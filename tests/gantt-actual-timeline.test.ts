@@ -257,7 +257,7 @@ describe("gantt actual timeline", () => {
     expect(getPlanActualExecutionSpan(parent, items, now)).toBeNull();
   });
 
-  it("uses open ray when one child lacks actual end even if others are done", () => {
+  it("uses open ray when a child is still in progress", () => {
     const parent = item({ id: "p" });
     const items = [
       parent,
@@ -271,12 +271,40 @@ describe("gantt actual timeline", () => {
       item({
         id: "b",
         parentId: "p",
-        status: "done",
+        status: "in_progress",
         actualStartDate: "2026-06-05T00:00:00.000Z",
       }),
     ];
     expect(getPlanActualExecutionSpan(parent, items, now)?.endKind).toBe("open");
     expect(getPlanActualExecutionSpan(parent, items, now)?.to).toBe(now);
+  });
+
+  it("uses fixed end when all children are done even without stored actual starts", () => {
+    const parent = item({ id: "p" });
+    const items = [
+      parent,
+      item({
+        id: "a",
+        parentId: "p",
+        status: "done",
+        startDate: "2026-06-01T00:00:00.000Z",
+        endDate: "2026-06-15T00:00:00.000Z",
+        actualEndDate: "2026-06-14T00:00:00.000Z",
+      }),
+      item({
+        id: "b",
+        parentId: "p",
+        status: "done",
+        startDate: "2026-06-05T00:00:00.000Z",
+        endDate: "2026-06-20T00:00:00.000Z",
+        actualEndDate: "2026-06-18T00:00:00.000Z",
+      }),
+    ];
+    expect(getPlanActualExecutionSpan(parent, items, now)).toEqual({
+      from: "2026-06-01T00:00:00.000Z",
+      to: "2026-06-18T00:00:00.000Z",
+      endKind: "fixed",
+    });
   });
 
   it("returns open ray when actual start is set but end is not (not_started)", () => {

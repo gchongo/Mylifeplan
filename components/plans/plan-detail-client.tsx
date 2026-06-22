@@ -184,6 +184,7 @@ export function PlanDetailClient({
         subPlans.map(
           (sp): AggregatedChildNode => ({
             status: sp.status,
+            startDate: sp.startDate ?? null,
             endDate: sp.endDate ?? null,
             actualStartDate: sp.actualStartDate ?? null,
             actualEndDate: sp.actualEndDate ?? null,
