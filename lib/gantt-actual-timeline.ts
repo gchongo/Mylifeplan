@@ -84,33 +84,33 @@ export function getEffectiveActualEnd(item: ActualTimelineNode, nowIso: string):
   return null;
 }
 
+/**
+ * 叶子执行线：只依赖「实际开始/结束」与「今天」，不直接读计划起止。
+ *
+ * 与计划窗口相对今天的三种情况：
+ * - 计划结束在今天之前（已过期）：有实际开始、无实际结束 → 开放射线到今天（可超出计划结束）
+ * - 计划开始在今天之后（未到期）：无实际开始 → 不画；实际开始晚于今天 → 不画
+ * - 计划横跨今天：有实际开始、无实际结束 → 开放射线到今天
+ */
 function getLeafExecutionSpan(item: ActualTimelineNode, nowIso: string): PlanExecutionSpan | null {
   if (!item.actualStartDate) return null;
 
+  const startMs = timeMs(item.actualStartDate);
+  if (startMs == null) return null;
+
   if (item.actualEndDate) {
-    const startMs = timeMs(item.actualStartDate);
     const endMs = timeMs(item.actualEndDate);
-    if (startMs == null || endMs == null || endMs < startMs) return null;
+    if (endMs == null || endMs < startMs) return null;
     return { from: item.actualStartDate, to: item.actualEndDate, endKind: "fixed" };
   }
 
-  if (isInProgress(item.status)) {
-    const startMs = timeMs(item.actualStartDate);
-    const endMs = timeMs(nowIso);
-    if (startMs == null || endMs == null || endMs < startMs) return null;
-    return { from: item.actualStartDate, to: nowIso, endKind: "open" };
-  }
-
   if (isDoneOrArchived(item.status)) {
-    const end = resolvedCompletedEnd(item);
-    if (!end) return null;
-    const startMs = timeMs(item.actualStartDate);
-    const endMs = timeMs(end);
-    if (startMs == null || endMs == null || endMs < startMs) return null;
-    return { from: item.actualStartDate, to: end, endKind: "fixed" };
+    return null;
   }
 
-  return null;
+  const endMs = timeMs(nowIso);
+  if (endMs == null || endMs < startMs) return null;
+  return { from: item.actualStartDate, to: nowIso, endKind: "open" };
 }
 
 export type AggregatedChildNode = Pick<

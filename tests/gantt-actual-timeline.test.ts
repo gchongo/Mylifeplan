@@ -278,4 +278,97 @@ describe("gantt actual timeline", () => {
     expect(getPlanActualExecutionSpan(parent, items, now)?.endKind).toBe("open");
     expect(getPlanActualExecutionSpan(parent, items, now)?.to).toBe(now);
   });
+
+  it("returns open ray when actual start is set but end is not (not_started)", () => {
+    const items = [
+      item({
+        id: "c",
+        status: "not_started",
+        endDate: "2026-06-25T00:00:00.000Z",
+        actualStartDate: "2026-06-18T00:00:00.000Z",
+      }),
+    ];
+    expect(getPlanActualExecutionSpan(items[0]!, items, "2026-06-22T12:00:00.000Z")).toEqual({
+      from: "2026-06-18T00:00:00.000Z",
+      to: "2026-06-22T12:00:00.000Z",
+      endKind: "open",
+    });
+  });
+
+  it("does not use planned end when done without actual end", () => {
+    const items = [
+      item({
+        id: "c",
+        status: "done",
+        endDate: "2026-06-25T00:00:00.000Z",
+        actualStartDate: "2026-06-18T00:00:00.000Z",
+      }),
+    ];
+    expect(getPlanActualExecutionSpan(items[0]!, items, now)).toBeNull();
+  });
+
+  describe("plan window vs today", () => {
+    const today = "2026-07-10T12:00:00.000Z";
+
+    it("overdue plan: no line without actual start", () => {
+      const leaf = item({
+        id: "c",
+        status: "not_started",
+        startDate: "2026-06-01T00:00:00.000Z",
+        endDate: "2026-06-30T00:00:00.000Z",
+      });
+      expect(getPlanActualExecutionSpan(leaf, [leaf], today)).toBeNull();
+    });
+
+    it("overdue plan: open ray to today when actual start exists", () => {
+      const leaf = item({
+        id: "c",
+        status: "in_progress",
+        startDate: "2026-06-01T00:00:00.000Z",
+        endDate: "2026-06-30T00:00:00.000Z",
+        actualStartDate: "2026-06-05T00:00:00.000Z",
+      });
+      expect(getPlanActualExecutionSpan(leaf, [leaf], today)).toEqual({
+        from: "2026-06-05T00:00:00.000Z",
+        to: today,
+        endKind: "open",
+      });
+    });
+
+    it("future plan: no line without actual start", () => {
+      const leaf = item({
+        id: "c",
+        status: "not_started",
+        startDate: "2026-07-20T00:00:00.000Z",
+        endDate: "2026-07-30T00:00:00.000Z",
+      });
+      expect(getPlanActualExecutionSpan(leaf, [leaf], today)).toBeNull();
+    });
+
+    it("future plan: no line when actual start is still in the future", () => {
+      const leaf = item({
+        id: "c",
+        status: "in_progress",
+        startDate: "2026-07-20T00:00:00.000Z",
+        endDate: "2026-07-30T00:00:00.000Z",
+        actualStartDate: "2026-07-15T00:00:00.000Z",
+      });
+      expect(getPlanActualExecutionSpan(leaf, [leaf], today)).toBeNull();
+    });
+
+    it("spanning plan: open ray to today when in progress with actual start", () => {
+      const leaf = item({
+        id: "c",
+        status: "in_progress",
+        startDate: "2026-07-01T00:00:00.000Z",
+        endDate: "2026-07-30T00:00:00.000Z",
+        actualStartDate: "2026-07-05T00:00:00.000Z",
+      });
+      expect(getPlanActualExecutionSpan(leaf, [leaf], today)).toEqual({
+        from: "2026-07-05T00:00:00.000Z",
+        to: today,
+        endKind: "open",
+      });
+    });
+  });
 });
