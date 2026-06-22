@@ -113,14 +113,19 @@ function getLeafExecutionSpan(item: ActualTimelineNode, nowIso: string): PlanExe
   return null;
 }
 
-function allChildrenHaveActualBounds(children: GanttItem[]): boolean {
+export type AggregatedChildNode = Pick<
+  GanttItem,
+  "actualStartDate" | "actualEndDate" | "status" | "endDate"
+>;
+
+function allChildrenHaveActualBounds(children: AggregatedChildNode[]): boolean {
   return (
     children.length > 0 &&
     children.every((child) => Boolean(child.actualStartDate && child.actualEndDate))
   );
 }
 
-function earliestActualStart(children: GanttItem[]): string | null {
+function earliestActualStart(children: AggregatedChildNode[]): string | null {
   let minStart: string | null = null;
   let minStartMs = Infinity;
 
@@ -136,7 +141,7 @@ function earliestActualStart(children: GanttItem[]): string | null {
   return minStart;
 }
 
-function latestActualEnd(children: GanttItem[]): string | null {
+function latestActualEnd(children: AggregatedChildNode[]): string | null {
   let maxEnd: string | null = null;
   let maxEndMs = -Infinity;
 
@@ -153,7 +158,7 @@ function latestActualEnd(children: GanttItem[]): string | null {
 }
 
 function getParentAggregatedExecutionSpan(
-  children: GanttItem[],
+  children: AggregatedChildNode[],
   nowIso: string,
 ): PlanExecutionSpan | null {
   const minStart = earliestActualStart(children);
@@ -258,14 +263,14 @@ export function nowPlanIso(): string {
 
 /** 详情页展示：有子计划时由子计划汇总的实际起止说明 */
 export function describeAggregatedActualTimes(
-  children: ActualTimelineNode[],
+  children: AggregatedChildNode[],
   nowIso: string = nowPlanIso(),
 ): {
   start: string | null;
   end: string | null;
   endOpen: boolean;
 } {
-  const span = getParentAggregatedExecutionSpan(children as GanttItem[], nowIso);
+  const span = getParentAggregatedExecutionSpan(children, nowIso);
   if (!span) {
     return { start: null, end: null, endOpen: false };
   }
