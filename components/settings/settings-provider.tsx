@@ -16,6 +16,7 @@ import {
   readUserPreferences,
   writeUserPreferences,
   type GanttActualLinePreferences,
+  type GanttTodayColumnPreferences,
   type LanguagePreference,
   type ThemePreference,
   type UserPreferences,
@@ -29,6 +30,7 @@ interface SettingsContextValue {
   setTheme: (theme: ThemePreference) => void;
   setLanguage: (language: LanguagePreference) => void;
   setGanttActualLine: (patch: Partial<GanttActualLinePreferences>) => void;
+  setGanttTodayColumn: (patch: Partial<GanttTodayColumnPreferences>) => void;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -73,6 +75,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setGanttActualLine: (patch) =>
         updatePreferences({
           ganttActualLine: { ...preferences.ganttActualLine, ...patch },
+        }),
+      setGanttTodayColumn: (patch) =>
+        updatePreferences({
+          ganttTodayColumn: { ...preferences.ganttTodayColumn, ...patch },
         }),
     }),
     [preferences, ready, updatePreferences],

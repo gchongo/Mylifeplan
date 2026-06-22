@@ -41,6 +41,10 @@ import {
   type GanttScaleId,
   type TimelineLayout,
 } from "@/lib/gantt-scale";
+import {
+  ganttTodayColumnBackground,
+  ganttTodayColumnLabelStyle,
+} from "@/lib/gantt-today-column-style";
 import { defaultGanttStatusFilter, filterGanttTasksByStatus } from "@/lib/gantt-task-filter";
 import { rowOffsetTop } from "@/lib/gantt-plan-groups";
 import {
@@ -53,7 +57,7 @@ import { contributionsForGanttRow } from "@/lib/gantt-contribution-display";
 import { datePartOf } from "@/lib/dates";
 import { isPlanOverdue, getActiveSubPlanOverrunTail, getParentRolledUpOverrunTail, type PlanOverrunTail } from "@/lib/gantt-plan-status";
 import {
-  getParentActualExecutionFill,
+  getPlanActualExecutionFill,
   getPlanActualExecutionSpan,
   nowPlanIso,
   type PlanExecutionSpan,
@@ -308,7 +312,16 @@ export const GanttChart = forwardRef<
 
   const { preferences, setGanttActualLine } = useSettings();
   const actualLinePrefs = preferences.ganttActualLine;
+  const todayColumnPrefs = preferences.ganttTodayColumn;
   const showActualTimeline = actualLinePrefs.enabled;
+  const todayColumnBg = useMemo(
+    () => ganttTodayColumnBackground(todayColumnPrefs),
+    [todayColumnPrefs],
+  );
+  const todayColumnLabel = useMemo(
+    () => ganttTodayColumnLabelStyle(todayColumnPrefs),
+    [todayColumnPrefs],
+  );
 
   const effectiveLabelWidth = labelVisible ? labelWidth : 0;
 
@@ -724,8 +737,10 @@ export const GanttChart = forwardRef<
     });
   }
 
-  const todayColumnClass =
-    "bg-red-50/90 dark:bg-red-950/40";
+  function todayColumnCellStyle(isToday: boolean): React.CSSProperties | undefined {
+    if (!isToday || !todayColumnPrefs.enabled) return undefined;
+    return todayColumnBg;
+  }
 
   function renderTimelineHeaderOnly() {
     return (
@@ -736,31 +751,35 @@ export const GanttChart = forwardRef<
         <div className="flex w-full bg-white text-xs dark:bg-gray-950">
           {layout.columns.map((col) => {
             const isToday = isTodayInColumn(today, col);
+            const todayStyle = todayColumnCellStyle(isToday);
             return (
               <div
                 key={col.key}
                 className={cn(
                   "py-1 text-center",
                   GRID_BORDER,
-                  isToday
-                    ? todayColumnClass
-                    : cn(
-                        "bg-white dark:bg-gray-950",
-                        col.isWeekend && "bg-gray-50 dark:bg-gray-900/70",
-                      ),
+                  !todayStyle && cn(
+                    "bg-white dark:bg-gray-950",
+                    col.isWeekend && "bg-gray-50 dark:bg-gray-900/70",
+                  ),
                 )}
-                style={{ width: col.width }}
+                style={{ width: col.width, ...todayStyle }}
               >
                 {isToday && (scale === "week" || scale === "month") ? (
-                  <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-gray-200 px-1 text-[10px] font-semibold text-gray-800 dark:bg-gray-700 dark:text-gray-100">
+                  <span
+                    className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-gray-200 px-1 text-[10px] font-semibold text-gray-800 dark:bg-gray-700 dark:text-gray-100"
+                    style={todayColumnLabel}
+                  >
                     {col.headerBottom.replace(/^\S+\s/, "")}
                   </span>
                 ) : (
                   <span
                     className={cn(
                       "text-gray-600 dark:text-gray-300",
-                      isToday && "font-semibold text-red-600 dark:text-red-400",
+                      isToday && !todayColumnLabel && "font-semibold text-red-600 dark:text-red-400",
+                      isToday && todayColumnLabel && "font-semibold",
                     )}
+                    style={isToday ? todayColumnLabel : undefined}
                   >
                     {scale === "day" ? formatHourLabel(parseInt(col.headerBottom, 10)) : col.headerBottom}
                   </span>
@@ -782,21 +801,20 @@ export const GanttChart = forwardRef<
       >
         {layout.columns.map((col) => {
           const isToday = isTodayInColumn(today, col);
+          const todayStyle = todayColumnCellStyle(isToday);
           return (
             <div
               key={col.key}
               className={cn(
                 "h-full",
                 GRID_BORDER,
-                isToday
-                  ? todayColumnClass
-                  : cn(
-                      "bg-white dark:bg-gray-950",
-                      col.isWeekend && "bg-gray-50 dark:bg-gray-900/70",
-                      col.isOtherMonth && "opacity-80",
-                    ),
+                !todayStyle && cn(
+                  "bg-white dark:bg-gray-950",
+                  col.isWeekend && "bg-gray-50 dark:bg-gray-900/70",
+                  col.isOtherMonth && "opacity-80",
+                ),
               )}
-              style={{ width: col.width }}
+              style={{ width: col.width, ...todayStyle }}
             />
           );
         })}
@@ -1100,9 +1118,9 @@ export const GanttChart = forwardRef<
     const overdue = isPlanOverdue(item, planById);
     const barStyle = planBarStyle(item, row.depth, groupColor, displayStatus, overdue);
     const actualNowIso = nowPlanIso();
-    const parentActualFill =
+    const actualExecutionFill =
       showActualTimeline && !item.contributionOnly
-        ? getParentActualExecutionFill(item, items, actualNowIso)
+        ? getPlanActualExecutionFill(item, items, actualNowIso)
         : { green: null, red: null };
     const executionSpan =
       showActualTimeline && !item.contributionOnly
@@ -1183,10 +1201,10 @@ export const GanttChart = forwardRef<
         style={{ height: row.height, marginTop: row.gapBefore, width: timelineWidth }}
         onMouseEnter={() => setHoveredRootId(row.rootId)}
       >
-        {!item.contributionOnly && parentActualFill.red &&
-          renderExecutionFillTail(parentActualFill.red, barStyle.barHeightPx, row.height, "red")}
-        {!item.contributionOnly && parentActualFill.green &&
-          renderExecutionFillTail(parentActualFill.green, barStyle.barHeightPx, row.height, "green")}
+        {!item.contributionOnly && actualExecutionFill.red &&
+          renderExecutionFillTail(actualExecutionFill.red, barStyle.barHeightPx, row.height, "red")}
+        {!item.contributionOnly && actualExecutionFill.green &&
+          renderExecutionFillTail(actualExecutionFill.green, barStyle.barHeightPx, row.height, "green")}
         {!item.contributionOnly && activeOverrunTail &&
           renderPlanOverrunTail(activeOverrunTail, barStyle.barHeightPx, row.height)}
         {!item.contributionOnly && parentOverrunTail &&

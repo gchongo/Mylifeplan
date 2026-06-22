@@ -257,6 +257,52 @@ export function getParentActualExecutionFill(
   return { green: null, red: null };
 }
 
+/** 叶子计划：有实际结束且有计划截止时，按二者差值显示绿/红条 */
+function getLeafActualExecutionFill(
+  item: Pick<GanttItem, "endDate" | "actualEndDate" | "isVirtualEnd">,
+): ParentActualExecutionFill {
+  if (!item.endDate || item.isVirtualEnd || !item.actualEndDate) {
+    return { green: null, red: null };
+  }
+
+  const planEndMs = timeMs(item.endDate);
+  const actualEndMs = timeMs(item.actualEndDate);
+  if (planEndMs == null || actualEndMs == null) {
+    return { green: null, red: null };
+  }
+
+  if (actualEndMs > planEndMs) {
+    return {
+      green: null,
+      red: { from: item.endDate, to: item.actualEndDate, endKind: "fixed" },
+    };
+  }
+
+  if (actualEndMs < planEndMs) {
+    return {
+      green: { from: item.actualEndDate, to: item.endDate, endKind: "fixed" },
+      red: null,
+    };
+  }
+
+  return { green: null, red: null };
+}
+
+/**
+ * 有计划条绿/红尾：叶子看自身实际结束 vs 计划结束；有子项时汇总子计划。
+ */
+export function getPlanActualExecutionFill(
+  item: Pick<GanttItem, "id" | "endDate" | "actualEndDate" | "isVirtualEnd">,
+  items: GanttItem[],
+  nowIso: string,
+): ParentActualExecutionFill {
+  const children = getDirectChildren(item.id, items);
+  if (children.length > 0) {
+    return getParentActualExecutionFill(item, items, nowIso);
+  }
+  return getLeafActualExecutionFill(item);
+}
+
 export function nowPlanIso(): string {
   return formatPlanDateTime(new Date())!;
 }

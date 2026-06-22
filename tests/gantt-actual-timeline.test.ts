@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getEffectiveActualEnd,
-  getParentActualExecutionFill,
+  getPlanActualExecutionFill,
   getPlanActualExecutionSpan,
 } from "@/lib/gantt-actual-timeline";
 import type { GanttItem } from "@/types";
@@ -110,7 +110,7 @@ describe("gantt actual timeline", () => {
       }),
     ];
 
-    const fill = getParentActualExecutionFill(parent, items, now);
+    const fill = getPlanActualExecutionFill(parent, items, now);
     expect(fill.red).toEqual({
       from: "2026-06-30T00:00:00.000Z",
       to: now,
@@ -143,7 +143,7 @@ describe("gantt actual timeline", () => {
       }),
     ];
 
-    const fill = getParentActualExecutionFill(parent, items, now);
+    const fill = getPlanActualExecutionFill(parent, items, now);
     expect(fill.green).toEqual({
       from: "2026-06-25T00:00:00.000Z",
       to: "2026-06-30T00:00:00.000Z",
@@ -174,7 +174,7 @@ describe("gantt actual timeline", () => {
       }),
     ];
 
-    const fill = getParentActualExecutionFill(parent, items, "2026-06-22T12:00:00.000Z");
+    const fill = getPlanActualExecutionFill(parent, items, "2026-06-22T12:00:00.000Z");
     expect(fill.green).toBeNull();
     expect(fill.red).toBeNull();
   });
@@ -305,6 +305,49 @@ describe("gantt actual timeline", () => {
       }),
     ];
     expect(getPlanActualExecutionSpan(items[0]!, items, now)).toBeNull();
+  });
+
+  it("draws leaf red when actual end is after plan end", () => {
+    const leaf = item({
+      id: "c",
+      endDate: "2026-06-25T00:00:00.000Z",
+      actualEndDate: "2026-06-28T00:00:00.000Z",
+    });
+    const fill = getPlanActualExecutionFill(leaf, [leaf], now);
+    expect(fill.red).toEqual({
+      from: "2026-06-25T00:00:00.000Z",
+      to: "2026-06-28T00:00:00.000Z",
+      endKind: "fixed",
+    });
+    expect(fill.green).toBeNull();
+  });
+
+  it("draws leaf green when actual end is before plan end", () => {
+    const leaf = item({
+      id: "c",
+      endDate: "2026-06-30T00:00:00.000Z",
+      actualEndDate: "2026-06-22T00:00:00.000Z",
+    });
+    const fill = getPlanActualExecutionFill(leaf, [leaf], now);
+    expect(fill.green).toEqual({
+      from: "2026-06-22T00:00:00.000Z",
+      to: "2026-06-30T00:00:00.000Z",
+      endKind: "fixed",
+    });
+    expect(fill.red).toBeNull();
+  });
+
+  it("skips leaf fill without actual end", () => {
+    const leaf = item({
+      id: "c",
+      status: "in_progress",
+      endDate: "2026-06-30T00:00:00.000Z",
+      actualStartDate: "2026-06-05T00:00:00.000Z",
+    });
+    expect(getPlanActualExecutionFill(leaf, [leaf], now)).toEqual({
+      green: null,
+      red: null,
+    });
   });
 
   describe("plan window vs today", () => {

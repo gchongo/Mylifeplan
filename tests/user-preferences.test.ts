@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_GANTT_TODAY_COLUMN,
   DEFAULT_USER_PREFERENCES,
+  normalizeGanttTodayColumnPreferences,
   normalizeUserPreferences,
   resolveTimezone,
 } from "@/lib/user-preferences";
@@ -33,6 +35,20 @@ describe("user preferences", () => {
       theme: DEFAULT_USER_PREFERENCES.theme,
       language: DEFAULT_USER_PREFERENCES.language,
       ganttActualLine: DEFAULT_USER_PREFERENCES.ganttActualLine,
+      ganttTodayColumn: DEFAULT_USER_PREFERENCES.ganttTodayColumn,
+    });
+  });
+
+  it("normalizes today column opacity bounds", () => {
+    expect(
+      normalizeGanttTodayColumnPreferences({
+        opacity: 200,
+        fillStyle: "striped",
+      }),
+    ).toEqual({
+      ...DEFAULT_GANTT_TODAY_COLUMN,
+      opacity: 80,
+      fillStyle: "striped",
     });
   });
 });

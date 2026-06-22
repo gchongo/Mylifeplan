@@ -5,6 +5,7 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { GanttActualLineSettings } from "@/components/settings/gantt-actual-line-settings";
+import { GanttTodayColumnSettings } from "@/components/settings/gantt-today-column-settings";
 import { LANGUAGE_OPTIONS, THEME_OPTIONS, TIMEZONE_OPTIONS, resolveTimezone } from "@/lib/user-preferences";
 import { useSettings } from "@/components/settings/settings-provider";
 
@@ -29,7 +30,8 @@ function SettingsSection({
 }
 
 export function SettingsPageClient({ userEmail }: { userEmail?: string | null }) {
-  const { preferences, ready, setTimezone, setTheme, setLanguage, setGanttActualLine } = useSettings();
+  const { preferences, ready, setTimezone, setTheme, setLanguage, setGanttActualLine, setGanttTodayColumn } =
+    useSettings();
   const effectiveTimezone = resolveTimezone(preferences.timezone);
 
   return (
@@ -73,6 +75,17 @@ export function SettingsPageClient({ userEmail }: { userEmail?: string | null })
           disabled={!ready}
           options={[...THEME_OPTIONS]}
           onChange={(e) => setTheme(e.target.value as typeof preferences.theme)}
+        />
+      </SettingsSection>
+
+      <SettingsSection
+        title="甘特图 · 今天列"
+        description="高亮时间轴上「今天」所在的整列，便于对照计划与实际进度。"
+      >
+        <GanttTodayColumnSettings
+          value={preferences.ganttTodayColumn}
+          disabled={!ready}
+          onChange={setGanttTodayColumn}
         />
       </SettingsSection>
 

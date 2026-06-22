@@ -1,6 +1,7 @@
 export type ThemePreference = "system" | "light" | "dark";
 export type LanguagePreference = "zh-CN" | "en-US";
 export type GanttActualLineStyle = "solid" | "dashed" | "dotted";
+export type GanttTodayColumnFillStyle = "solid" | "striped" | "dotted";
 
 export interface GanttActualLinePreferences {
   enabled: boolean;
@@ -9,11 +10,20 @@ export interface GanttActualLinePreferences {
   style: GanttActualLineStyle;
 }
 
+export interface GanttTodayColumnPreferences {
+  enabled: boolean;
+  color: string;
+  /** 5–80，百分比 */
+  opacity: number;
+  fillStyle: GanttTodayColumnFillStyle;
+}
+
 export interface UserPreferences {
   timezone: string;
   theme: ThemePreference;
   language: LanguagePreference;
   ganttActualLine: GanttActualLinePreferences;
+  ganttTodayColumn: GanttTodayColumnPreferences;
 }
 
 export const USER_PREFERENCES_STORAGE_KEY = "mylifeplan-user-preferences";
@@ -25,11 +35,19 @@ export const DEFAULT_GANTT_ACTUAL_LINE: GanttActualLinePreferences = {
   style: "solid",
 };
 
+export const DEFAULT_GANTT_TODAY_COLUMN: GanttTodayColumnPreferences = {
+  enabled: true,
+  color: "#EF4444",
+  opacity: 18,
+  fillStyle: "solid",
+};
+
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   timezone: "auto",
   theme: "system",
   language: "zh-CN",
   ganttActualLine: DEFAULT_GANTT_ACTUAL_LINE,
+  ganttTodayColumn: DEFAULT_GANTT_TODAY_COLUMN,
 };
 
 export const TIMEZONE_OPTIONS = [
@@ -66,6 +84,12 @@ export const GANTT_ACTUAL_LINE_WIDTH_OPTIONS = [
   { value: 3, label: "粗" },
 ] as const;
 
+export const GANTT_TODAY_COLUMN_FILL_OPTIONS = [
+  { value: "solid", label: "纯色填充" },
+  { value: "striped", label: "斜纹" },
+  { value: "dotted", label: "点阵" },
+] as const;
+
 const GANTT_ACTUAL_LINE_COLORS = [
   "#4B5563",
   "#1F2937",
@@ -78,6 +102,18 @@ const GANTT_ACTUAL_LINE_COLORS = [
   "#DB2777",
 ] as const;
 
+const GANTT_TODAY_COLUMN_COLORS = [
+  "#EF4444",
+  "#F97316",
+  "#EAB308",
+  "#22C55E",
+  "#3B82F6",
+  "#8B5CF6",
+  "#EC4899",
+  "#6B7280",
+  "#111827",
+] as const;
+
 function isTheme(value: unknown): value is ThemePreference {
   return value === "system" || value === "light" || value === "dark";
 }
@@ -88,6 +124,10 @@ function isLanguage(value: unknown): value is LanguagePreference {
 
 function isLineStyle(value: unknown): value is GanttActualLineStyle {
   return value === "solid" || value === "dashed" || value === "dotted";
+}
+
+function isTodayColumnFillStyle(value: unknown): value is GanttTodayColumnFillStyle {
+  return value === "solid" || value === "striped" || value === "dotted";
 }
 
 function isHexColor(value: unknown): value is string {
@@ -108,6 +148,25 @@ export function normalizeGanttActualLinePreferences(
   };
 }
 
+export function normalizeGanttTodayColumnPreferences(
+  raw: Partial<GanttTodayColumnPreferences> | null | undefined,
+): GanttTodayColumnPreferences {
+  const opacityRaw = raw?.opacity;
+  const opacity =
+    typeof opacityRaw === "number" && Number.isFinite(opacityRaw)
+      ? Math.min(80, Math.max(5, Math.round(opacityRaw)))
+      : DEFAULT_GANTT_TODAY_COLUMN.opacity;
+  return {
+    enabled:
+      typeof raw?.enabled === "boolean" ? raw.enabled : DEFAULT_GANTT_TODAY_COLUMN.enabled,
+    color: isHexColor(raw?.color) ? raw.color : DEFAULT_GANTT_TODAY_COLUMN.color,
+    opacity,
+    fillStyle: isTodayColumnFillStyle(raw?.fillStyle)
+      ? raw.fillStyle
+      : DEFAULT_GANTT_TODAY_COLUMN.fillStyle,
+  };
+}
+
 export function normalizeUserPreferences(raw: Partial<UserPreferences> | null | undefined): UserPreferences {
   const timezone =
     typeof raw?.timezone === "string" && raw.timezone.trim()
@@ -118,6 +177,7 @@ export function normalizeUserPreferences(raw: Partial<UserPreferences> | null | 
     theme: isTheme(raw?.theme) ? raw.theme : DEFAULT_USER_PREFERENCES.theme,
     language: isLanguage(raw?.language) ? raw.language : DEFAULT_USER_PREFERENCES.language,
     ganttActualLine: normalizeGanttActualLinePreferences(raw?.ganttActualLine),
+    ganttTodayColumn: normalizeGanttTodayColumnPreferences(raw?.ganttTodayColumn),
   };
 }
 
@@ -165,4 +225,4 @@ export function applyUserPreferences(prefs: UserPreferences) {
   applyLanguagePreference(prefs.language);
 }
 
-export { GANTT_ACTUAL_LINE_COLORS };
+export { GANTT_ACTUAL_LINE_COLORS, GANTT_TODAY_COLUMN_COLORS };
