@@ -6,10 +6,18 @@ import { getEffectiveEndDate } from "@/lib/content-router";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import {
   addDaysUtc,
+  barMetricsFromDates,
   daysBetween,
   pixelDeltaToDays,
   type TimelineLayout,
 } from "@/lib/gantt-scale";
+import {
+  constrainPlanMoveByMs,
+  pixelDeltaToTimelineMs,
+  planSpanMs,
+  shiftPlanDateTime,
+  timelineUsesMinutePrecision,
+} from "@/lib/gantt-plan-drag";
 import {
   constrainPlanMove,
   constrainPlanResizeEnd,
@@ -93,14 +101,24 @@ export function GanttDraggableBar({
 
   const applyDrag = useCallback(
     (state: DragState, clientX: number) => {
-      const deltaDays = pixelDeltaToDays(clientX - state.startX, layout);
-      if (deltaDays === 0 && state.mode === "move") {
+      const minutePrecision = timelineUsesMinutePrecision(layout);
+      const deltaMs = pixelDeltaToTimelineMs(clientX - state.startX, layout);
+      if (deltaMs === 0 && state.mode === "move") {
         setPreview(null);
         onPreviewDates?.(item.id, null);
         return;
       }
 
       if (state.mode === "move") {
+        if (minutePrecision) {
+          const durationMs = planSpanMs(state.origStart, state.origEnd);
+          const rawStart = shiftPlanDateTime(state.origStart, deltaMs);
+          const { start, end } = constrainPlanMoveByMs(rawStart, durationMs, dragConstraints);
+          setPreview({ start, end });
+          onPreviewDates?.(item.id, { start, end });
+          return;
+        }
+        const deltaDays = pixelDeltaToDays(clientX - state.startX, layout);
         const duration = daysBetween(state.origStart, state.origEnd);
         const rawStart = addDaysUtc(state.origStart, deltaDays);
         const { start, end } = constrainPlanMove(rawStart, duration, dragConstraints);
@@ -110,18 +128,19 @@ export function GanttDraggableBar({
       }
 
       if (state.mode === "resize-start") {
-        const rawStart = addDaysUtc(state.origStart, deltaDays);
+        const rawStart = minutePrecision
+          ? shiftPlanDateTime(state.origStart, deltaMs)
+          : addDaysUtc(state.origStart, pixelDeltaToDays(clientX - state.startX, layout));
         const start = constrainPlanResizeStart(rawStart, state.origEnd, dragConstraints);
         setPreview({ start, end: state.origEnd });
         onPreviewDates?.(item.id, { start, end: state.origEnd });
         return;
       }
 
-      const end = constrainPlanResizeEnd(
-        state.origStart,
-        addDaysUtc(state.origEnd, deltaDays),
-        maxContributionDate,
-      );
+      const rawEnd = minutePrecision
+        ? shiftPlanDateTime(state.origEnd, deltaMs)
+        : addDaysUtc(state.origEnd, pixelDeltaToDays(clientX - state.startX, layout));
+      const end = constrainPlanResizeEnd(state.origStart, rawEnd, maxContributionDate);
       setPreview({ start: state.origStart, end });
       onPreviewDates?.(item.id, { start: state.origStart, end });
     },
@@ -130,28 +149,48 @@ export function GanttDraggableBar({
 
   const commitDrag = useCallback(
     async (state: DragState, clientX: number) => {
-      const deltaDays = pixelDeltaToDays(clientX - state.startX, layout);
-      if (deltaDays === 0 && state.mode === "move") return;
+      const minutePrecision = timelineUsesMinutePrecision(layout);
+      const deltaMs = pixelDeltaToTimelineMs(clientX - state.startX, layout);
+      if (deltaMs === 0 && state.mode === "move") return;
 
       let startDate = state.origStart;
       let endDate: string | null = state.hadDueDate ? state.origEnd : null;
 
       if (state.mode === "move") {
-        const duration = daysBetween(state.origStart, state.origEnd);
-        const rawStart = addDaysUtc(state.origStart, deltaDays);
-        const moved = constrainPlanMove(rawStart, duration, dragConstraints);
-        startDate = moved.start;
-        if (state.hadDueDate) endDate = moved.end;
+        if (minutePrecision) {
+          const durationMs = planSpanMs(state.origStart, state.origEnd);
+          const moved = constrainPlanMoveByMs(
+            shiftPlanDateTime(state.origStart, deltaMs),
+            durationMs,
+            dragConstraints,
+          );
+          startDate = moved.start;
+          if (state.hadDueDate) endDate = moved.end;
+        } else {
+          const deltaDays = pixelDeltaToDays(clientX - state.startX, layout);
+          const duration = daysBetween(state.origStart, state.origEnd);
+          const moved = constrainPlanMove(
+            addDaysUtc(state.origStart, deltaDays),
+            duration,
+            dragConstraints,
+          );
+          startDate = moved.start;
+          if (state.hadDueDate) endDate = moved.end;
+        }
       } else if (state.mode === "resize-start") {
         startDate = constrainPlanResizeStart(
-          addDaysUtc(state.origStart, deltaDays),
+          minutePrecision
+            ? shiftPlanDateTime(state.origStart, deltaMs)
+            : addDaysUtc(state.origStart, pixelDeltaToDays(clientX - state.startX, layout)),
           state.origEnd,
           dragConstraints,
         );
       } else {
         endDate = constrainPlanResizeEnd(
           state.origStart,
-          addDaysUtc(state.origEnd, deltaDays),
+          minutePrecision
+            ? shiftPlanDateTime(state.origEnd, deltaMs)
+            : addDaysUtc(state.origEnd, pixelDeltaToDays(clientX - state.startX, layout)),
           maxContributionDate,
         );
       }
@@ -243,24 +282,9 @@ export function GanttDraggableBar({
 
   const activePreview = dragging ? preview : previewOverride ?? null;
 
-  const metrics =
-    activePreview
-      ? (() => {
-          const fromMs = new Date(layout.from + "T00:00:00.000Z").getTime();
-          const toMs = new Date(layout.to + "T00:00:00.000Z").getTime() + 86400000;
-          const span = toMs - fromMs;
-          const startMs = new Date(activePreview.start + "T00:00:00.000Z").getTime();
-          const endMs = new Date(activePreview.end + "T00:00:00.000Z").getTime();
-          const dayFraction = layout.totalWidth / (daysBetween(layout.from, layout.to) + 1);
-          return {
-            left: ((startMs - fromMs) / span) * layout.totalWidth,
-            width: Math.max(
-              dayFraction * 0.6,
-              ((endMs - startMs) / span) * layout.totalWidth + dayFraction,
-            ),
-          };
-        })()
-      : { left, width };
+  const metrics = activePreview
+    ? barMetricsFromDates(activePreview.start, activePreview.end, layout)
+    : { left, width };
 
   const rowHeight = hitRowHeight ?? 28;
   const textLeading = Math.max(barHeightPx - 2, 14);

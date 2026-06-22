@@ -93,7 +93,7 @@ const GANTT_BAR_STYLES: Record<
 export const STATUS_STYLES: Record<VisualStatusKey, StatusStyle> = {
   todo: {
     key: "todo",
-    label: "待办",
+    label: "未开始",
     dot: "bg-amber-500 ring-amber-300",
     bar: "bg-amber-500 shadow-sm ring-1 ring-amber-600/30",
     rowBg: "bg-white dark:bg-gray-900",

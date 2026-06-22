@@ -834,8 +834,7 @@ export const GanttChart = forwardRef<
     const nextRow = rows[idx + 1];
     const tightBelow = rowTightBelow(row, nextRow);
     const childCount = filteredPlans.filter((p) => p.parentId === item.id).length;
-    const showToggle =
-      childCount > 0 || planDepth(item.id, planById) < 2;
+    const showToggle = childCount > 0;
     const canAddChild = planDepth(item.id, planById) < 2;
     const isExpanded = expanded.has(item.id);
     const displayStatus = itemDisplayStatus(item, items);
@@ -864,7 +863,7 @@ export const GanttChart = forwardRef<
           ...labelStyle.stripeStyle,
         }}
       >
-        {showToggle ? (
+        {showToggle && (
           <button
             type="button"
             className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-blue-400 hover:bg-blue-200/40 dark:text-blue-300 dark:hover:bg-blue-900/40"
@@ -875,8 +874,6 @@ export const GanttChart = forwardRef<
               ▶
             </span>
           </button>
-        ) : (
-          <span className="w-5 shrink-0" />
         )}
         <button
           type="button"

@@ -1,4 +1,6 @@
+import { parsePlanDateTime } from "@/lib/dates";
 import { addDaysUtc, daysBetween } from "@/lib/gantt-scale";
+import { planSpanMs, shiftPlanDateTime } from "@/lib/gantt-plan-drag";
 import { datePartOf } from "@/lib/dates";
 import type { GanttContribution, GanttItem } from "@/types";
 
@@ -115,11 +117,16 @@ export function buildBoundGroupPreview(
   rootPreview: { start: string; end: string },
   items: GanttItem[],
 ): Map<string, { start: string; end: string }> {
-  const deltaDays = daysBetween(root.startDate, rootPreview.start);
+  const rootStartMs = parsePlanDateTime(root.startDate)?.getTime() ?? 0;
+  const previewStartMs = parsePlanDateTime(rootPreview.start)?.getTime() ?? 0;
+  const deltaMs = previewStartMs - rootStartMs;
   const map = new Map<string, { start: string; end: string }>();
   map.set(root.id, rootPreview);
   for (const child of collectDescendantPlans(root.id, items)) {
-    map.set(child.id, shiftPlanDatesByDays(child, deltaDays));
+    map.set(child.id, {
+      start: shiftPlanDateTime(child.startDate, deltaMs),
+      end: shiftPlanDateTime(child.effectiveEnd, deltaMs),
+    });
   }
   return map;
 }
