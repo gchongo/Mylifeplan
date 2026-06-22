@@ -31,6 +31,11 @@ if [ -f prisma/migrations/add_memo_sticky_board.sql ] && command -v run_psql >/d
   run_psql -f prisma/migrations/add_memo_sticky_board.sql || true
 fi
 
+if [ -f prisma/migrations/add_memo_quadrant_size.sql ] && command -v run_psql >/dev/null 2>&1; then
+  echo "== memo quadrant size migration =="
+  run_psql -f prisma/migrations/add_memo_quadrant_size.sql || true
+fi
+
 if [ -f prisma/migrations/add_contribution_rich_content.sql ] && command -v run_psql >/dev/null 2>&1; then
   echo "== contribution rich content migration =="
   run_psql -f prisma/migrations/add_contribution_rich_content.sql || true

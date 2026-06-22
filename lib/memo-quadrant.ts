@@ -52,6 +52,36 @@ export const DEFAULT_STICKY_HEIGHT = 180;
 export const MIN_STICKY_WIDTH = 180;
 export const MIN_STICKY_HEIGHT = 120;
 
+/** 便签板最小尺寸（实际以视口与便签范围为准） */
+export const MEMO_BOARD_MIN_WIDTH = 640;
+export const MEMO_BOARD_MIN_HEIGHT = 480;
+
+export const MEMO_AXIS_LABELS = {
+  top: "重要",
+  bottom: "不重要",
+  left: "紧急",
+  right: "不紧急",
+} as const;
+
+export function computeMemoBoardSize(
+  viewportWidth: number,
+  viewportHeight: number,
+  notes: { x: number; y: number; width?: number | null; height?: number | null }[],
+): { width: number; height: number } {
+  const pad = 48;
+  let width = Math.max(viewportWidth, MEMO_BOARD_MIN_WIDTH);
+  let height = Math.max(viewportHeight, MEMO_BOARD_MIN_HEIGHT);
+
+  for (const note of notes) {
+    const w = note.width ?? DEFAULT_STICKY_WIDTH;
+    const h = note.height ?? DEFAULT_STICKY_HEIGHT;
+    width = Math.max(width, note.x + w + pad);
+    height = Math.max(height, note.y + h + pad);
+  }
+
+  return { width, height };
+}
+
 export function isMemoQuadrantId(value: string | null | undefined): value is MemoQuadrantId {
   return MEMO_QUADRANT_IDS.includes(value as MemoQuadrantId);
 }

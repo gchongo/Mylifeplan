@@ -6,11 +6,11 @@ import { ErrorMessage, Loading } from "@/components/ui/feedback";
 import { StickyNote, type StickyNoteData } from "@/components/memos/sticky-note";
 import { StickyNoteAssignModal } from "@/components/memos/sticky-note-assign-modal";
 import {
+  computeMemoBoardSize,
   DEFAULT_STICKY_HEIGHT,
   DEFAULT_STICKY_WIDTH,
   detectMemoQuadrant,
-  MEMO_QUADRANT_BOARD_HEIGHT,
-  MEMO_QUADRANT_BOARD_WIDTH,
+  MEMO_AXIS_LABELS,
   MEMO_QUADRANTS,
 } from "@/lib/memo-quadrant";
 import { effectiveStickyPosition, nextStickyColor } from "@/lib/memo-sticky";
@@ -25,6 +25,7 @@ export function StickyNoteBoard() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [assignNoteId, setAssignNoteId] = useState<string | null>(null);
+  const [viewportSize, setViewportSize] = useState({ width: 800, height: 600 });
   const maxZRef = useRef(1);
   const boardRef = useRef<HTMLDivElement>(null);
 
@@ -44,6 +45,25 @@ export function StickyNoteBoard() {
   useEffect(() => {
     load().finally(() => setLoading(false));
   }, [load]);
+
+  useEffect(() => {
+    const board = boardRef.current;
+    if (!board) return;
+
+    const updateViewport = () => {
+      setViewportSize({ width: board.clientWidth, height: board.clientHeight });
+    };
+
+    updateViewport();
+    const observer = new ResizeObserver(updateViewport);
+    observer.observe(board);
+    return () => observer.disconnect();
+  }, [loading]);
+
+  const boardSize = useMemo(
+    () => computeMemoBoardSize(viewportSize.width, viewportSize.height, notes),
+    [viewportSize.width, viewportSize.height, notes],
+  );
 
   const filteredNotes = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -75,6 +95,10 @@ export function StickyNoteBoard() {
     };
   }
 
+  function detectQuadrant(x: number, y: number, width: number, height: number) {
+    return detectMemoQuadrant(x, y, width, height, boardSize.width, boardSize.height);
+  }
+
   function handleMove(id: string, x: number, y: number) {
     patchNote(id, { x, y });
   }
@@ -82,7 +106,7 @@ export function StickyNoteBoard() {
   function handleMoveEnd(id: string, x: number, y: number) {
     const note = notes.find((n) => n.id === id);
     const { width, height } = note ? noteSize(note) : { width: DEFAULT_STICKY_WIDTH, height: DEFAULT_STICKY_HEIGHT };
-    const quadrant = detectMemoQuadrant(x, y, width, height);
+    const quadrant = detectQuadrant(x, y, width, height);
     patchNote(id, { x, y, posX: x, posY: y, quadrant });
     void persistNote(id, { posX: x, posY: y, quadrant }).catch((e) =>
       setError(e instanceof Error ? e.message : "保存位置失败"),
@@ -97,7 +121,7 @@ export function StickyNoteBoard() {
     const note = notes.find((n) => n.id === id);
     const x = note?.x ?? 0;
     const y = note?.y ?? 0;
-    const quadrant = detectMemoQuadrant(x, y, width, height);
+    const quadrant = detectQuadrant(x, y, width, height);
     patchNote(id, { width, height, quadrant });
     void persistNote(id, { width, height, quadrant }).catch((e) =>
       setError(e instanceof Error ? e.message : "保存大小失败"),
@@ -146,11 +170,11 @@ export function StickyNoteBoard() {
     const board = boardRef.current;
     const scrollLeft = board?.scrollLeft ?? 0;
     const scrollTop = board?.scrollTop ?? 0;
-    const viewW = board?.clientWidth ?? MEMO_QUADRANT_BOARD_WIDTH;
-    const viewH = board?.clientHeight ?? MEMO_QUADRANT_BOARD_HEIGHT;
-    const posX = scrollLeft + Math.max(40, (viewW - DEFAULT_STICKY_WIDTH) / 2);
-    const posY = scrollTop + Math.max(40, (viewH - DEFAULT_STICKY_HEIGHT) / 2);
-    const quadrant = detectMemoQuadrant(posX, posY, DEFAULT_STICKY_WIDTH, DEFAULT_STICKY_HEIGHT);
+    const viewW = board?.clientWidth ?? viewportSize.width;
+    const viewH = board?.clientHeight ?? viewportSize.height;
+    const posX = scrollLeft + Math.max(0, (viewW - DEFAULT_STICKY_WIDTH) / 2);
+    const posY = scrollTop + Math.max(0, (viewH - DEFAULT_STICKY_HEIGHT) / 2);
+    const quadrant = detectQuadrant(posX, posY, DEFAULT_STICKY_WIDTH, DEFAULT_STICKY_HEIGHT);
 
     try {
       const res = await fetch("/api/memos", {
@@ -216,74 +240,109 @@ export function StickyNoteBoard() {
 
       {error && <ErrorMessage message={error} />}
 
-      <div
-        ref={boardRef}
-        className="relative flex-1 overflow-auto rounded-xl border border-gray-300 bg-[#f5f0e8] dark:border-gray-600 dark:bg-[#2a2824]"
-        onPointerDown={() => {
-          setActiveId(null);
-          setEditingId(null);
-        }}
-      >
+      <div className="relative min-h-0 flex-1">
+        <span className="pointer-events-none absolute left-3 top-1/2 z-20 -translate-y-1/2 text-xs font-medium text-gray-500 dark:text-gray-400">
+          {MEMO_AXIS_LABELS.left}
+        </span>
+        <span className="pointer-events-none absolute right-3 top-1/2 z-20 -translate-y-1/2 text-xs font-medium text-gray-500 dark:text-gray-400">
+          {MEMO_AXIS_LABELS.right}
+        </span>
+        <span className="pointer-events-none absolute left-1/2 top-2 z-20 -translate-x-1/2 text-xs font-medium text-gray-500 dark:text-gray-400">
+          {MEMO_AXIS_LABELS.top}
+        </span>
+        <span className="pointer-events-none absolute bottom-2 left-1/2 z-20 -translate-x-1/2 text-xs font-medium text-gray-500 dark:text-gray-400">
+          {MEMO_AXIS_LABELS.bottom}
+        </span>
+
         <div
-          className="relative"
+          ref={boardRef}
+          className="relative h-full overflow-auto rounded-xl border border-gray-300 bg-[#f5f0e8] dark:border-gray-600 dark:bg-[#2a2824]"
           style={{
-            width: MEMO_QUADRANT_BOARD_WIDTH,
-            height: MEMO_QUADRANT_BOARD_HEIGHT,
-            minWidth: MEMO_QUADRANT_BOARD_WIDTH,
-            minHeight: MEMO_QUADRANT_BOARD_HEIGHT,
+            backgroundImage:
+              "radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px)",
+            backgroundSize: "24px 24px",
+          }}
+          onPointerDown={() => {
+            setActiveId(null);
+            setEditingId(null);
           }}
         >
           <div
-            className="pointer-events-none absolute inset-0 grid grid-cols-2 grid-rows-2"
-            aria-hidden
+            className="relative"
+            style={{
+              width: boardSize.width,
+              height: boardSize.height,
+              minWidth: "100%",
+              minHeight: "100%",
+            }}
           >
-            {MEMO_QUADRANTS.map((q) => (
-              <div
-                key={q.id}
-                className="flex flex-col border border-dashed border-black/10 p-3 dark:border-white/10"
-              >
-                <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">
-                  {q.shortLabel} · {q.label}
-                </span>
-                <span className="mt-0.5 text-[10px] text-gray-400">{q.hint}</span>
+            <div className="pointer-events-none absolute inset-0 z-0" aria-hidden>
+              <div className="grid h-full w-full grid-cols-2 grid-rows-2">
+                {MEMO_QUADRANTS.map((q) => (
+                  <div
+                    key={q.id}
+                    className="border border-dashed border-black/10 dark:border-white/10"
+                  >
+                    <div className="p-2">
+                      <span className="text-[11px] font-semibold text-gray-500/90 dark:text-gray-400/90">
+                        {q.shortLabel} · {q.label}
+                      </span>
+                      <span className="mt-0.5 block text-[10px] text-gray-400/80">{q.hint}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+
+              <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-black/20 dark:bg-white/20" />
+              <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-black/20 dark:bg-white/20" />
+              <div className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/25 dark:bg-white/25" />
+            </div>
+
+            {filteredNotes.length === 0 && !search.trim() && (
+              <div
+                className="pointer-events-none absolute inset-0 z-[1] flex flex-col items-center justify-center text-center text-sm text-gray-500"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <p className="mb-3">板上还没有便签</p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="pointer-events-auto"
+                  onClick={() => void handleAdd()}
+                >
+                  贴第一张便签
+                </Button>
+              </div>
+            )}
+
+            {filteredNotes.length === 0 && search.trim() && (
+              <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center text-sm text-gray-500">
+                没有匹配的便签
+              </div>
+            )}
+
+            <div className="absolute inset-0 z-10">
+              {filteredNotes.map((note) => (
+                <StickyNote
+                  key={note.id}
+                  note={note}
+                  x={note.x}
+                  y={note.y}
+                  isActive={activeId === note.id}
+                  startInEditMode={editingId === note.id}
+                  onActivate={() => handleActivate(note.id)}
+                  onMove={handleMove}
+                  onMoveEnd={handleMoveEnd}
+                  onResize={handleResize}
+                  onResizeEnd={handleResizeEnd}
+                  onUpdate={handleUpdate}
+                  onDelete={handleDelete}
+                  onAssign={(id) => setAssignNoteId(id)}
+                />
+              ))}
+            </div>
           </div>
-
-          <div className="pointer-events-none absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-black/15 dark:bg-white/15" />
-          <div className="pointer-events-none absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-black/15 dark:bg-white/15" />
-
-          {filteredNotes.length === 0 && !search.trim() && (
-            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center text-sm text-gray-500">
-              <p className="mb-1">拖动便签到对应象限进行分类</p>
-              <p className="text-xs opacity-70">左=紧急 · 右=不紧急 · 上=重要 · 下=不重要</p>
-            </div>
-          )}
-
-          {filteredNotes.length === 0 && search.trim() && (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-gray-500">
-              没有匹配的便签
-            </div>
-          )}
-
-          {filteredNotes.map((note) => (
-            <StickyNote
-              key={note.id}
-              note={note}
-              x={note.x}
-              y={note.y}
-              isActive={activeId === note.id}
-              startInEditMode={editingId === note.id}
-              onActivate={() => handleActivate(note.id)}
-              onMove={handleMove}
-              onMoveEnd={handleMoveEnd}
-              onResize={handleResize}
-              onResizeEnd={handleResizeEnd}
-              onUpdate={handleUpdate}
-              onDelete={handleDelete}
-              onAssign={(id) => setAssignNoteId(id)}
-            />
-          ))}
         </div>
       </div>
 
