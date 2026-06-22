@@ -863,7 +863,7 @@ export const GanttChart = forwardRef<
           ...labelStyle.stripeStyle,
         }}
       >
-        {showToggle && (
+        {showToggle ? (
           <button
             type="button"
             className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-blue-400 hover:bg-blue-200/40 dark:text-blue-300 dark:hover:bg-blue-900/40"
@@ -874,6 +874,8 @@ export const GanttChart = forwardRef<
               ▶
             </span>
           </button>
+        ) : (
+          <span className="h-5 w-5 shrink-0" aria-hidden />
         )}
         <button
           type="button"

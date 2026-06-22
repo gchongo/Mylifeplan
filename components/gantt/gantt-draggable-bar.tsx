@@ -4,22 +4,14 @@ import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getEffectiveEndDate } from "@/lib/content-router";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
-import {
-  addDaysUtc,
-  barMetricsFromDates,
-  daysBetween,
-  pixelDeltaToDays,
-  type TimelineLayout,
-} from "@/lib/gantt-scale";
+import { barMetricsFromDates, type TimelineLayout } from "@/lib/gantt-scale";
 import {
   constrainPlanMoveByMs,
-  pixelDeltaToTimelineMs,
+  pixelDeltaToDragAmount,
   planSpanMs,
-  shiftPlanDateTime,
-  timelineUsesMinutePrecision,
+  shiftPlanByDragAmount,
 } from "@/lib/gantt-plan-drag";
 import {
-  constrainPlanMove,
   constrainPlanResizeEnd,
   constrainPlanResizeStart,
   type PlanDragConstraints,
@@ -82,7 +74,6 @@ export function GanttDraggableBar({
   previewOverride?: { start: string; end: string } | null;
   onPreviewDates?: (planId: string, preview: { start: string; end: string } | null) => void;
   onDragEnd?: () => void;
-  /** 可见条宽度；未设时与 width 相同 */
   shellWidth?: number;
 }) {
   const [dragging, setDragging] = useState<DragState | null>(null);
@@ -101,45 +92,31 @@ export function GanttDraggableBar({
 
   const applyDrag = useCallback(
     (state: DragState, clientX: number) => {
-      const minutePrecision = timelineUsesMinutePrecision(layout);
-      const deltaMs = pixelDeltaToTimelineMs(clientX - state.startX, layout);
-      if (deltaMs === 0 && state.mode === "move") {
+      const dragAmount = pixelDeltaToDragAmount(clientX - state.startX, layout);
+      if (dragAmount === 0 && state.mode === "move") {
         setPreview(null);
         onPreviewDates?.(item.id, null);
         return;
       }
 
       if (state.mode === "move") {
-        if (minutePrecision) {
-          const durationMs = planSpanMs(state.origStart, state.origEnd);
-          const rawStart = shiftPlanDateTime(state.origStart, deltaMs);
-          const { start, end } = constrainPlanMoveByMs(rawStart, durationMs, dragConstraints);
-          setPreview({ start, end });
-          onPreviewDates?.(item.id, { start, end });
-          return;
-        }
-        const deltaDays = pixelDeltaToDays(clientX - state.startX, layout);
-        const duration = daysBetween(state.origStart, state.origEnd);
-        const rawStart = addDaysUtc(state.origStart, deltaDays);
-        const { start, end } = constrainPlanMove(rawStart, duration, dragConstraints);
+        const durationMs = planSpanMs(state.origStart, state.origEnd);
+        const rawStart = shiftPlanByDragAmount(state.origStart, dragAmount, layout);
+        const { start, end } = constrainPlanMoveByMs(rawStart, durationMs, dragConstraints);
         setPreview({ start, end });
         onPreviewDates?.(item.id, { start, end });
         return;
       }
 
       if (state.mode === "resize-start") {
-        const rawStart = minutePrecision
-          ? shiftPlanDateTime(state.origStart, deltaMs)
-          : addDaysUtc(state.origStart, pixelDeltaToDays(clientX - state.startX, layout));
+        const rawStart = shiftPlanByDragAmount(state.origStart, dragAmount, layout);
         const start = constrainPlanResizeStart(rawStart, state.origEnd, dragConstraints);
         setPreview({ start, end: state.origEnd });
         onPreviewDates?.(item.id, { start, end: state.origEnd });
         return;
       }
 
-      const rawEnd = minutePrecision
-        ? shiftPlanDateTime(state.origEnd, deltaMs)
-        : addDaysUtc(state.origEnd, pixelDeltaToDays(clientX - state.startX, layout));
+      const rawEnd = shiftPlanByDragAmount(state.origEnd, dragAmount, layout);
       const end = constrainPlanResizeEnd(state.origStart, rawEnd, maxContributionDate);
       setPreview({ start: state.origStart, end });
       onPreviewDates?.(item.id, { start: state.origStart, end });
@@ -149,48 +126,31 @@ export function GanttDraggableBar({
 
   const commitDrag = useCallback(
     async (state: DragState, clientX: number) => {
-      const minutePrecision = timelineUsesMinutePrecision(layout);
-      const deltaMs = pixelDeltaToTimelineMs(clientX - state.startX, layout);
-      if (deltaMs === 0 && state.mode === "move") return;
+      const dragAmount = pixelDeltaToDragAmount(clientX - state.startX, layout);
+      if (dragAmount === 0 && state.mode === "move") return;
 
       let startDate = state.origStart;
       let endDate: string | null = state.hadDueDate ? state.origEnd : null;
 
       if (state.mode === "move") {
-        if (minutePrecision) {
-          const durationMs = planSpanMs(state.origStart, state.origEnd);
-          const moved = constrainPlanMoveByMs(
-            shiftPlanDateTime(state.origStart, deltaMs),
-            durationMs,
-            dragConstraints,
-          );
-          startDate = moved.start;
-          if (state.hadDueDate) endDate = moved.end;
-        } else {
-          const deltaDays = pixelDeltaToDays(clientX - state.startX, layout);
-          const duration = daysBetween(state.origStart, state.origEnd);
-          const moved = constrainPlanMove(
-            addDaysUtc(state.origStart, deltaDays),
-            duration,
-            dragConstraints,
-          );
-          startDate = moved.start;
-          if (state.hadDueDate) endDate = moved.end;
-        }
+        const durationMs = planSpanMs(state.origStart, state.origEnd);
+        const moved = constrainPlanMoveByMs(
+          shiftPlanByDragAmount(state.origStart, dragAmount, layout),
+          durationMs,
+          dragConstraints,
+        );
+        startDate = moved.start;
+        if (state.hadDueDate) endDate = moved.end;
       } else if (state.mode === "resize-start") {
         startDate = constrainPlanResizeStart(
-          minutePrecision
-            ? shiftPlanDateTime(state.origStart, deltaMs)
-            : addDaysUtc(state.origStart, pixelDeltaToDays(clientX - state.startX, layout)),
+          shiftPlanByDragAmount(state.origStart, dragAmount, layout),
           state.origEnd,
           dragConstraints,
         );
       } else {
         endDate = constrainPlanResizeEnd(
           state.origStart,
-          minutePrecision
-            ? shiftPlanDateTime(state.origEnd, deltaMs)
-            : addDaysUtc(state.origEnd, pixelDeltaToDays(clientX - state.startX, layout)),
+          shiftPlanByDragAmount(state.origEnd, dragAmount, layout),
           maxContributionDate,
         );
       }

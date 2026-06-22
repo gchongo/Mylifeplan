@@ -47,8 +47,8 @@ export const HOUR_WIDTH = 56;
 const DAY_WIDTH = 36;
 const WEEK_WIDTH = 88;
 const MONTH_DAY_WIDTH = 32;
-const YEAR_WEEK_WIDTH = 28;
-const FIVEY_YEAR_WIDTH = 88;
+export const YEAR_WEEK_WIDTH = 28;
+export const FIVEY_YEAR_WIDTH = 88;
 
 const WEEKDAY_SHORT = ["日", "一", "二", "三", "四", "五", "六"];
 const MONTH_NAMES = [
