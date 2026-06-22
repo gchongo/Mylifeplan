@@ -56,7 +56,8 @@ import {
 } from "@/lib/gantt-plan-bind";
 import { buildParentChildForkLines } from "@/lib/gantt-tree-lines";
 import { contributionsForGanttRow } from "@/lib/gantt-contribution-display";
-import { datePartOf } from "@/lib/dates";
+import { datePartOf, planLocalDatePart } from "@/lib/dates";
+import { cn } from "@/lib/utils";
 import { isPlanOverdue, getActiveSubPlanOverrunTail, getParentRolledUpOverrunTail, type PlanOverrunTail } from "@/lib/gantt-plan-status";
 import {
   getPlanActualExecutionFill,
@@ -87,8 +88,6 @@ import { deriveParentStatus } from "@/lib/services/plan-rollup";
 import type { GanttContribution, GanttItem, PlanStatus } from "@/types";
 import { apiJson } from "@/lib/client-api";
 import { dispatchPlanUpdated, PLAN_UPDATED_EVENT } from "@/lib/plan-events";
-import { planLocalDatePart } from "@/lib/dates";
-
 const ROW_GROUP_GAP = 8;
 const DEFAULT_LABEL_WIDTH = 200;
 const MIN_LABEL_WIDTH = 120;
