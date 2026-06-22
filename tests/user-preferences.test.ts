@@ -28,6 +28,11 @@ describe("user preferences", () => {
         timezone: "UTC",
         contributionMarker: { color: "#FF0000", size: "md", shape: "square" },
       } as never),
-    ).toEqual({ ...DEFAULT_USER_PREFERENCES, timezone: "UTC" });
+    ).toEqual({
+      timezone: "UTC",
+      theme: DEFAULT_USER_PREFERENCES.theme,
+      language: DEFAULT_USER_PREFERENCES.language,
+      ganttActualLine: DEFAULT_USER_PREFERENCES.ganttActualLine,
+    });
   });
 });

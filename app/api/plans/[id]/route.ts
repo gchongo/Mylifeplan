@@ -61,6 +61,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       ...(parsed.data.endDate !== undefined && {
         endDate: parsed.data.endDate || null,
       }),
+      ...(parsed.data.actualStartDate !== undefined && {
+        actualStartDate: parsed.data.actualStartDate || null,
+      }),
+      ...(parsed.data.actualEndDate !== undefined && {
+        actualEndDate: parsed.data.actualEndDate || null,
+      }),
     };
 
     const plan = await updatePlan(session.userId, id, input);

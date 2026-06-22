@@ -18,6 +18,8 @@ export function GanttTaskListControls({
   labelVisible = true,
   onToggleLabelPanel,
   onCreatePlan,
+  showActualTimeline,
+  onToggleActualTimeline,
   drawerTheme = false,
 }: {
   allExpanded: boolean;
@@ -28,6 +30,8 @@ export function GanttTaskListControls({
   labelVisible?: boolean;
   onToggleLabelPanel?: () => void;
   onCreatePlan?: () => void;
+  showActualTimeline?: boolean;
+  onToggleActualTimeline?: () => void;
   drawerTheme?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -95,6 +99,28 @@ export function GanttTaskListControls({
           >
             ▶
           </span>
+        </button>
+      )}
+
+      {onToggleActualTimeline && (
+        <button
+          type="button"
+          data-no-pan
+          onClick={onToggleActualTimeline}
+          className={cn(
+            "flex shrink-0 items-center justify-center rounded-md border text-[10px] font-medium",
+            compact ? "h-6 px-1.5" : "h-7 px-2 text-xs",
+            showActualTimeline
+              ? "border-brand-300 bg-brand-50 text-brand-700 dark:border-brand-700 dark:bg-brand-950/50 dark:text-brand-200"
+              : drawerTheme
+                ? "border-gray-200 bg-gray-50 text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
+                : "border-gray-200 bg-white text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400",
+          )}
+          title={showActualTimeline ? "隐藏实际执行线" : "显示实际执行线"}
+          aria-label={showActualTimeline ? "隐藏实际执行线" : "显示实际执行线"}
+          aria-pressed={showActualTimeline}
+        >
+          实际
         </button>
       )}
 

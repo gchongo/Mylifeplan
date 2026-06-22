@@ -15,6 +15,8 @@ const planBaseSchema = z.object({
   parentPlanId: z.string().optional().nullable(),
   startDate: optionalDateTime,
   endDate: optionalDateTime,
+  actualStartDate: optionalDateTime,
+  actualEndDate: optionalDateTime,
   status: z.enum(["not_started", "in_progress", "done", "archived"]).optional(),
   priority: z.enum(["high", "medium", "low"]).optional().nullable(),
   color: z
@@ -25,7 +27,12 @@ const planBaseSchema = z.object({
 });
 
 function refinePlanDates(
-  data: { startDate?: string | null; endDate?: string | null },
+  data: {
+    startDate?: string | null;
+    endDate?: string | null;
+    actualStartDate?: string | null;
+    actualEndDate?: string | null;
+  },
   ctx: z.RefinementCtx,
 ) {
   const error = validateDateFields({
@@ -34,6 +41,18 @@ function refinePlanDates(
   });
   if (error) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: error, path: ["endDate"] });
+  }
+
+  if (data.actualStartDate && data.actualEndDate) {
+    const startMs = Date.parse(data.actualStartDate);
+    const endMs = Date.parse(data.actualEndDate);
+    if (!Number.isNaN(startMs) && !Number.isNaN(endMs) && endMs < startMs) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "实际结束时间不能早于实际开始时间",
+        path: ["actualEndDate"],
+      });
+    }
   }
 }
 

@@ -65,7 +65,10 @@ export default async function PlanDetailPage({
           parentPlanId: plan.parentPlanId,
           startDate: serialized.startDate,
           endDate: serialized.endDate,
+          actualStartDate: serialized.actualStartDate,
+          actualEndDate: serialized.actualEndDate,
           status: plan.status,
+          color: plan.color,
         }}
         ancestors={ancestors}
         subPlans={plan.subPlans.map((sp) => {

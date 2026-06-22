@@ -15,6 +15,7 @@ import {
   normalizeUserPreferences,
   readUserPreferences,
   writeUserPreferences,
+  type GanttActualLinePreferences,
   type LanguagePreference,
   type ThemePreference,
   type UserPreferences,
@@ -27,6 +28,7 @@ interface SettingsContextValue {
   setTimezone: (timezone: string) => void;
   setTheme: (theme: ThemePreference) => void;
   setLanguage: (language: LanguagePreference) => void;
+  setGanttActualLine: (patch: Partial<GanttActualLinePreferences>) => void;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -68,6 +70,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setTimezone: (timezone) => updatePreferences({ timezone }),
       setTheme: (theme) => updatePreferences({ theme }),
       setLanguage: (language) => updatePreferences({ language }),
+      setGanttActualLine: (patch) =>
+        updatePreferences({
+          ganttActualLine: { ...preferences.ganttActualLine, ...patch },
+        }),
     }),
     [preferences, ready, updatePreferences],
   );

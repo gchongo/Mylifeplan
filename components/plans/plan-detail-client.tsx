@@ -239,10 +239,14 @@ export function PlanDetailClient({
 
           {!embedded && (
             <dl className="grid grid-cols-2 gap-2 text-sm">
-              <dt className="text-gray-500">开始</dt>
+              <dt className="text-gray-500">计划开始</dt>
               <dd>{formatPlanDateTimeDisplay(plan.startDate)}</dd>
-              <dt className="text-gray-500">结束</dt>
+              <dt className="text-gray-500">计划结束</dt>
               <dd>{formatPlanDateTimeDisplay(plan.endDate)}</dd>
+              <dt className="text-gray-500">实际开始</dt>
+              <dd>{formatPlanDateTimeDisplay(plan.actualStartDate)}</dd>
+              <dt className="text-gray-500">实际结束</dt>
+              <dd>{formatPlanDateTimeDisplay(plan.actualEndDate)}</dd>
             </dl>
           )}
         </CardContent>

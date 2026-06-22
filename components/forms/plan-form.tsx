@@ -23,6 +23,8 @@ export interface PlanFormValues {
   parentPlanId?: string | null;
   startDate?: string | null;
   endDate?: string | null;
+  actualStartDate?: string | null;
+  actualEndDate?: string | null;
   status?: string;
   color?: string | null;
 }
@@ -64,6 +66,8 @@ export function PlanForm({
     const description = String(fd.get("description") ?? "").trim();
     const startDate = String(fd.get("startDate") ?? "") || null;
     const endDate = String(fd.get("endDate") ?? "") || null;
+    const actualStartDate = String(fd.get("actualStartDate") ?? "") || null;
+    const actualEndDate = String(fd.get("actualEndDate") ?? "") || null;
     const status = String(fd.get("status") ?? "not_started");
     const color = String(fd.get("color") ?? "").trim() || null;
 
@@ -74,6 +78,8 @@ export function PlanForm({
       parentPlanId,
       startDate,
       endDate,
+      actualStartDate: isEdit ? actualStartDate : undefined,
+      actualEndDate: isEdit ? actualEndDate : undefined,
       color,
       ...(isEdit && { status }),
     };
@@ -129,17 +135,33 @@ export function PlanForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <Input
           name="startDate"
-          label="开始时间"
+          label="计划开始"
           type="datetime-local"
           defaultValue={toDatetimeLocalInput(plan?.startDate ?? defaultStartDate)}
         />
         <Input
           name="endDate"
-          label="结束时间"
+          label="计划结束"
           type="datetime-local"
           defaultValue={toDatetimeLocalInput(plan?.endDate ?? defaultEndDate)}
         />
       </div>
+      {isEdit && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Input
+            name="actualStartDate"
+            label="实际开始"
+            type="datetime-local"
+            defaultValue={toDatetimeLocalInput(plan?.actualStartDate)}
+          />
+          <Input
+            name="actualEndDate"
+            label="实际结束"
+            type="datetime-local"
+            defaultValue={toDatetimeLocalInput(plan?.actualEndDate)}
+          />
+        </div>
+      )}
       {isEdit && (
         <Select
           name="status"

@@ -29,6 +29,8 @@ type PlanRow = {
   title: string;
   startDate: Date | null;
   endDate: Date | null;
+  actualStartDate: Date | null;
+  actualEndDate: Date | null;
   parentPlanId: string | null;
   status: string;
   color: string | null;
@@ -75,6 +77,8 @@ export async function getGanttItems(
       title: true,
       startDate: true,
       endDate: true,
+      actualStartDate: true,
+      actualEndDate: true,
       parentPlanId: true,
       status: true,
       color: true,
@@ -88,6 +92,8 @@ export async function getGanttItems(
   for (const plan of allPlans) {
     const startDate = formatDateOnly(plan.startDate);
     const endDate = formatDateOnly(plan.endDate);
+    const actualStartDate = formatPlanDateTime(plan.actualStartDate);
+    const actualEndDate = formatPlanDateTime(plan.actualEndDate);
     const routable = { startDate, endDate };
     if (!shouldShowInGantt(routable) || !startDate) continue;
 
@@ -102,6 +108,8 @@ export async function getGanttItems(
       title: plan.title,
       startDate,
       endDate,
+      actualStartDate,
+      actualEndDate,
       effectiveEnd,
       isVirtualEnd,
       parentId: plan.parentPlanId,

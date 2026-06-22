@@ -1,18 +1,35 @@
 export type ThemePreference = "system" | "light" | "dark";
 export type LanguagePreference = "zh-CN" | "en-US";
+export type GanttActualLineStyle = "solid" | "dashed" | "dotted";
+
+export interface GanttActualLinePreferences {
+  enabled: boolean;
+  color: string;
+  width: 1 | 2 | 3;
+  style: GanttActualLineStyle;
+}
 
 export interface UserPreferences {
   timezone: string;
   theme: ThemePreference;
   language: LanguagePreference;
+  ganttActualLine: GanttActualLinePreferences;
 }
 
 export const USER_PREFERENCES_STORAGE_KEY = "mylifeplan-user-preferences";
+
+export const DEFAULT_GANTT_ACTUAL_LINE: GanttActualLinePreferences = {
+  enabled: true,
+  color: "#4B5563",
+  width: 2,
+  style: "solid",
+};
 
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   timezone: "auto",
   theme: "system",
   language: "zh-CN",
+  ganttActualLine: DEFAULT_GANTT_ACTUAL_LINE,
 };
 
 export const TIMEZONE_OPTIONS = [
@@ -37,12 +54,58 @@ export const LANGUAGE_OPTIONS = [
   { value: "en-US", label: "English" },
 ] as const;
 
+export const GANTT_ACTUAL_LINE_STYLE_OPTIONS = [
+  { value: "solid", label: "实线" },
+  { value: "dashed", label: "虚线" },
+  { value: "dotted", label: "点线" },
+] as const;
+
+export const GANTT_ACTUAL_LINE_WIDTH_OPTIONS = [
+  { value: 1, label: "细" },
+  { value: 2, label: "中" },
+  { value: 3, label: "粗" },
+] as const;
+
+const GANTT_ACTUAL_LINE_COLORS = [
+  "#4B5563",
+  "#1F2937",
+  "#6366F1",
+  "#2563EB",
+  "#0891B2",
+  "#059669",
+  "#CA8A04",
+  "#DC2626",
+  "#DB2777",
+] as const;
+
 function isTheme(value: unknown): value is ThemePreference {
   return value === "system" || value === "light" || value === "dark";
 }
 
 function isLanguage(value: unknown): value is LanguagePreference {
   return value === "zh-CN" || value === "en-US";
+}
+
+function isLineStyle(value: unknown): value is GanttActualLineStyle {
+  return value === "solid" || value === "dashed" || value === "dotted";
+}
+
+function isHexColor(value: unknown): value is string {
+  return typeof value === "string" && /^#[0-9A-Fa-f]{6}$/.test(value);
+}
+
+export function normalizeGanttActualLinePreferences(
+  raw: Partial<GanttActualLinePreferences> | null | undefined,
+): GanttActualLinePreferences {
+  const widthRaw = raw?.width;
+  const width: 1 | 2 | 3 =
+    widthRaw === 1 || widthRaw === 2 || widthRaw === 3 ? widthRaw : DEFAULT_GANTT_ACTUAL_LINE.width;
+  return {
+    enabled: typeof raw?.enabled === "boolean" ? raw.enabled : DEFAULT_GANTT_ACTUAL_LINE.enabled,
+    color: isHexColor(raw?.color) ? raw.color : DEFAULT_GANTT_ACTUAL_LINE.color,
+    width,
+    style: isLineStyle(raw?.style) ? raw.style : DEFAULT_GANTT_ACTUAL_LINE.style,
+  };
 }
 
 export function normalizeUserPreferences(raw: Partial<UserPreferences> | null | undefined): UserPreferences {
@@ -54,6 +117,7 @@ export function normalizeUserPreferences(raw: Partial<UserPreferences> | null | 
     timezone,
     theme: isTheme(raw?.theme) ? raw.theme : DEFAULT_USER_PREFERENCES.theme,
     language: isLanguage(raw?.language) ? raw.language : DEFAULT_USER_PREFERENCES.language,
+    ganttActualLine: normalizeGanttActualLinePreferences(raw?.ganttActualLine),
   };
 }
 
@@ -100,3 +164,5 @@ export function applyUserPreferences(prefs: UserPreferences) {
   applyThemePreference(prefs.theme);
   applyLanguagePreference(prefs.language);
 }
+
+export { GANTT_ACTUAL_LINE_COLORS };

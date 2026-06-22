@@ -4,6 +4,7 @@ import Link from "next/link";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
+import { GanttActualLineSettings } from "@/components/settings/gantt-actual-line-settings";
 import { LANGUAGE_OPTIONS, THEME_OPTIONS, TIMEZONE_OPTIONS, resolveTimezone } from "@/lib/user-preferences";
 import { useSettings } from "@/components/settings/settings-provider";
 
@@ -28,7 +29,7 @@ function SettingsSection({
 }
 
 export function SettingsPageClient({ userEmail }: { userEmail?: string | null }) {
-  const { preferences, ready, setTimezone, setTheme, setLanguage } = useSettings();
+  const { preferences, ready, setTimezone, setTheme, setLanguage, setGanttActualLine } = useSettings();
   const effectiveTimezone = resolveTimezone(preferences.timezone);
 
   return (
@@ -72,6 +73,17 @@ export function SettingsPageClient({ userEmail }: { userEmail?: string | null })
           disabled={!ready}
           options={[...THEME_OPTIONS]}
           onChange={(e) => setTheme(e.target.value as typeof preferences.theme)}
+        />
+      </SettingsSection>
+
+      <SettingsSection
+        title="甘特图 · 实际执行线"
+        description="控制计划条内实际开始与结束连线的显示与样式。"
+      >
+        <GanttActualLineSettings
+          value={preferences.ganttActualLine}
+          disabled={!ready}
+          onChange={setGanttActualLine}
         />
       </SettingsSection>
 

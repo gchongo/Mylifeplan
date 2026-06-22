@@ -249,6 +249,8 @@ export async function createPlan(userId: string, input: CreatePlanInput): Promis
         parentPlanId: input.parentPlanId || null,
         startDate: parsePlanDateTime(input.startDate),
         endDate: parsePlanDateTime(input.endDate),
+        actualStartDate: parsePlanDateTime(input.actualStartDate),
+        actualEndDate: parsePlanDateTime(input.actualEndDate),
         status: input.status ?? "not_started",
         priority: input.priority ?? null,
         color: input.color ?? null,
@@ -341,6 +343,26 @@ export async function updatePlan(
   const nextEndDate =
     input.endDate !== undefined ? parsePlanDateTime(input.endDate) : existing.endDate;
 
+  let nextActualStart =
+    input.actualStartDate !== undefined
+      ? parsePlanDateTime(input.actualStartDate)
+      : existing.actualStartDate;
+  let nextActualEnd =
+    input.actualEndDate !== undefined
+      ? parsePlanDateTime(input.actualEndDate)
+      : existing.actualEndDate;
+
+  const nextStatus = input.status ?? existing.status;
+  if (input.status !== undefined && input.status !== existing.status) {
+    const now = new Date();
+    if (nextStatus === "in_progress" && !nextActualStart && input.actualStartDate === undefined) {
+      nextActualStart = now;
+    }
+    if (nextStatus === "done" && !nextActualEnd && input.actualEndDate === undefined) {
+      nextActualEnd = now;
+    }
+  }
+
   if (input.startDate !== undefined || input.endDate !== undefined) {
     const contribError = await validatePlanCoversContributions(
       userId,
@@ -370,6 +392,18 @@ export async function updatePlan(
         ...(input.parentPlanId !== undefined && { parentPlanId: input.parentPlanId || null }),
         ...(input.startDate !== undefined && { startDate: parsePlanDateTime(input.startDate) }),
         ...(input.endDate !== undefined && { endDate: parsePlanDateTime(input.endDate) }),
+        ...(input.actualStartDate !== undefined ||
+        (input.status !== undefined &&
+          input.status !== existing.status &&
+          nextActualStart !== existing.actualStartDate)
+          ? { actualStartDate: nextActualStart }
+          : {}),
+        ...(input.actualEndDate !== undefined ||
+        (input.status !== undefined &&
+          input.status !== existing.status &&
+          nextActualEnd !== existing.actualEndDate)
+          ? { actualEndDate: nextActualEnd }
+          : {}),
         ...(input.status !== undefined && { status: input.status }),
         ...(input.priority !== undefined && { priority: input.priority ?? null }),
         ...(input.color !== undefined && { color: input.color ?? null }),
@@ -418,5 +452,7 @@ export function serializePlan(plan: Plan) {
     ...plan,
     startDate: formatPlanDateTime(plan.startDate),
     endDate: formatPlanDateTime(plan.endDate),
+    actualStartDate: formatPlanDateTime(plan.actualStartDate),
+    actualEndDate: formatPlanDateTime(plan.actualEndDate),
   };
 }

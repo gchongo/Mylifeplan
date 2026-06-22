@@ -16,6 +16,8 @@ export interface GanttItem {
   title: string;
   startDate: string;
   endDate?: string | null;
+  actualStartDate?: string | null;
+  actualEndDate?: string | null;
   effectiveEnd: string;
   isVirtualEnd: boolean;
   parentId?: string | null;

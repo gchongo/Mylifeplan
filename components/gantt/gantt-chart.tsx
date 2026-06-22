@@ -17,7 +17,9 @@ import {
 } from "@/lib/gantt-title-column";
 import { GanttDrawerOpenTab, GanttTitleDrawerBody, GanttTitleDrawerControls } from "@/components/gantt/gantt-title-drawer";
 import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribution-drawer";
+import { GanttActualExecutionLine } from "@/components/gantt/gantt-actual-execution-line";
 import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
+import { useSettings } from "@/components/settings/settings-provider";
 import { GanttPlanDrawerPanel } from "@/components/gantt/gantt-plan-drawer";
 import { PlanContributionComposeModal } from "@/components/forms/plan-contribution-compose-modal";
 import type { PlanContributionComposeMode } from "@/components/forms/plan-contribution-compose-form";
@@ -47,6 +49,12 @@ import { buildParentChildForkLines } from "@/lib/gantt-tree-lines";
 import { contributionsForGanttRow } from "@/lib/gantt-contribution-display";
 import { datePartOf } from "@/lib/dates";
 import { isPlanOverdue, getActiveSubPlanOverrunTail, getParentRolledUpOverrunTail, type PlanOverrunTail } from "@/lib/gantt-plan-status";
+import {
+  getParentActualExecutionFill,
+  getPlanActualExecutionSpan,
+  nowPlanIso,
+  type PlanExecutionSpan,
+} from "@/lib/gantt-actual-timeline";
 import {
   CONTRIBUTION_POINT_WIDTH_PX,
   contributionIntervalFillStyle,
@@ -294,6 +302,10 @@ export const GanttChart = forwardRef<
     Map<string, { start: string; end: string }>
   >(() => new Map());
   const [hoveredRootId, setHoveredRootId] = useState<string | null>(null);
+
+  const { preferences, setGanttActualLine } = useSettings();
+  const actualLinePrefs = preferences.ganttActualLine;
+  const showActualTimeline = actualLinePrefs.enabled;
 
   const effectiveLabelWidth = labelVisible ? labelWidth : 0;
 
@@ -898,6 +910,33 @@ export const GanttChart = forwardRef<
     );
   }
 
+  function renderExecutionFillTail(
+    tail: PlanExecutionSpan,
+    barHeightPx: number,
+    rowHeight: number,
+    tone: "green" | "red",
+  ) {
+    const { left, width } = barMetricsFromDates(tail.from, tail.to, layout);
+    const top = (rowHeight - barHeightPx) / 2;
+    return (
+      <div
+        className={cn(
+          "pointer-events-none absolute z-[4] rounded-r-full",
+          tone === "green"
+            ? "bg-emerald-400/50 dark:bg-emerald-500/45"
+            : "bg-red-400/55 dark:bg-red-500/50",
+        )}
+        style={{
+          left,
+          width: Math.max(width, 4),
+          top,
+          height: barHeightPx,
+        }}
+        aria-hidden
+      />
+    );
+  }
+
   function renderContributionMarkers(
     rowContributions: GanttContribution[],
     spanStart: string,
@@ -1038,9 +1077,19 @@ export const GanttChart = forwardRef<
     const displayStatus = itemDisplayStatus(item, items);
     const overdue = isPlanOverdue(item, planById);
     const barStyle = planBarStyle(item, row.depth, groupColor, displayStatus, overdue);
-    const activeOverrunTail = getActiveSubPlanOverrunTail(item, planById);
+    const actualNowIso = nowPlanIso();
+    const parentActualFill =
+      showActualTimeline && !item.contributionOnly
+        ? getParentActualExecutionFill(item, items, actualNowIso)
+        : { green: null, red: null };
+    const executionSpan =
+      showActualTimeline && !item.contributionOnly
+        ? getPlanActualExecutionSpan(item, actualNowIso)
+        : null;
+    const activeOverrunTail =
+      !showActualTimeline ? getActiveSubPlanOverrunTail(item, planById) : null;
     const parentOverrunTail =
-      !activeOverrunTail && !item.contributionOnly
+      !showActualTimeline && !activeOverrunTail && !item.contributionOnly
         ? getParentRolledUpOverrunTail(item, items)
         : null;
     const shellWidth =
@@ -1112,8 +1161,26 @@ export const GanttChart = forwardRef<
         style={{ height: row.height, marginTop: row.gapBefore, width: timelineWidth }}
         onMouseEnter={() => setHoveredRootId(row.rootId)}
       >
-        {!item.contributionOnly && activeOverrunTail && renderPlanOverrunTail(activeOverrunTail, barStyle.barHeightPx, row.height)}
-        {!item.contributionOnly && parentOverrunTail && renderPlanOverrunTail(parentOverrunTail, barStyle.barHeightPx, row.height)}
+        {!item.contributionOnly && parentActualFill.red &&
+          renderExecutionFillTail(parentActualFill.red, barStyle.barHeightPx, row.height, "red")}
+        {!item.contributionOnly && parentActualFill.green &&
+          renderExecutionFillTail(parentActualFill.green, barStyle.barHeightPx, row.height, "green")}
+        {!item.contributionOnly && activeOverrunTail &&
+          renderPlanOverrunTail(activeOverrunTail, barStyle.barHeightPx, row.height)}
+        {!item.contributionOnly && parentOverrunTail &&
+          renderPlanOverrunTail(parentOverrunTail, barStyle.barHeightPx, row.height)}
+        {!item.contributionOnly && executionSpan && (() => {
+          const lineMetrics = barMetricsFromDates(executionSpan.from, executionSpan.to, layout);
+          return (
+            <GanttActualExecutionLine
+              left={lineMetrics.left}
+              width={lineMetrics.width}
+              top={(row.height - barStyle.barHeightPx) / 2}
+              height={barStyle.barHeightPx}
+              prefs={actualLinePrefs}
+            />
+          );
+        })()}
         {!item.contributionOnly && (
           <GanttDraggableBar
             item={item}
@@ -1200,6 +1267,10 @@ export const GanttChart = forwardRef<
         showExpandToggle={expandablePlanIds.length > 0}
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
+        showActualTimeline={showActualTimeline}
+        onToggleActualTimeline={() =>
+          setGanttActualLine({ enabled: !actualLinePrefs.enabled })
+        }
         onCloseDrawer={toggleLabelPanel}
         onCreatePlan={() => openCreatePlan()}
       />

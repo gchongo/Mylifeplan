@@ -87,6 +87,8 @@ model Plan {
   parentPlanId String?       @map("parent_plan_id")
   startDate    DateTime?     @map("start_date")
   endDate      DateTime?     @map("end_date")
+  actualStartDate DateTime?  @map("actual_start_date")
+  actualEndDate   DateTime?  @map("actual_end_date")
   status       PlanStatus    @default(not_started)
   color        String?       @default("#6366F1")
   priority     PlanPriority?
