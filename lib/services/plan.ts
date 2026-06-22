@@ -11,6 +11,7 @@ import {
   validateManualStatusChange,
 } from "@/lib/services/plan-rollup";
 import { isPlanStartBeforeParent } from "@/lib/gantt-plan-bind";
+import { applyStatusChangeToActualDates } from "@/lib/plan-status-actual-dates";
 import type { createPlanSchema } from "@/lib/validations/plan";
 import type { z } from "zod";
 
@@ -363,13 +364,16 @@ export async function updatePlan(
     input.status !== undefined &&
     input.status !== existing.status
   ) {
-    const now = new Date();
-    if (nextStatus === "in_progress" && !nextActualStart && input.actualStartDate === undefined) {
-      nextActualStart = now;
-    }
-    if (nextStatus === "done" && !nextActualEnd && input.actualEndDate === undefined) {
-      nextActualEnd = now;
-    }
+    const applied = applyStatusChangeToActualDates({
+      previousStatus: existing.status,
+      nextStatus,
+      actualStart: nextActualStart,
+      actualEnd: nextActualEnd,
+      explicitActualStart: input.actualStartDate !== undefined,
+      explicitActualEnd: input.actualEndDate !== undefined,
+    });
+    nextActualStart = applied.actualStart;
+    nextActualEnd = applied.actualEnd;
   }
 
   const allowManualActual =
