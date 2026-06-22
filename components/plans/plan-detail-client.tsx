@@ -20,7 +20,7 @@ import {
 } from "@/components/plans/plan-detail-actions-menu";
 import { PlanStatusMenuButton } from "@/components/plans/plan-status-menu";
 import { formatPlanDateTimeDisplay } from "@/lib/dates";
-import { describeAggregatedActualTimes } from "@/lib/gantt-actual-timeline";
+import { describeAggregatedActualTimes, type AggregatedChildNode } from "@/lib/gantt-actual-timeline";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import type { PlanRelationNode } from "@/lib/plan-relationship";
 import type { PlanStatus } from "@/types";
@@ -181,13 +181,14 @@ export function PlanDetailClient({
   const hasSubPlans = subPlans.length > 0;
   const aggregatedActual = hasSubPlans
     ? describeAggregatedActualTimes(
-        subPlans.map((sp) => ({
-          id: sp.id,
-          status: sp.status,
-          endDate: sp.endDate ?? null,
-          actualStartDate: sp.actualStartDate ?? null,
-          actualEndDate: sp.actualEndDate ?? null,
-        })),
+        subPlans.map(
+          (sp): AggregatedChildNode => ({
+            status: sp.status,
+            endDate: sp.endDate ?? null,
+            actualStartDate: sp.actualStartDate ?? null,
+            actualEndDate: sp.actualEndDate ?? null,
+          }),
+        ),
       )
     : null;
 
