@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 import { requireSession } from "@/lib/auth/get-session";
 import { handleProtectedRouteError } from "@/lib/api/route-auth";
+import { parseFeedItemTypeFilter } from "@/lib/feed-filters";
 import { prisma } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
@@ -12,9 +13,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const limit = Math.min(Number(searchParams.get("limit") ?? 20), 100);
     const cursor = searchParams.get("cursor");
+    const itemType = parseFeedItemTypeFilter(searchParams.get("itemType"));
 
     const items = await prisma.feed.findMany({
-      where: { userId: session.userId },
+      where: {
+        userId: session.userId,
+        ...(itemType ? { itemType } : {}),
+      },
       orderBy: { createdAt: "desc" },
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),

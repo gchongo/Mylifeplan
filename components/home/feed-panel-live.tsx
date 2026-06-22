@@ -5,9 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState, Loading } from "@/components/ui/feedback";
 import { FeedComposer } from "@/components/feed/feed-composer";
+import { FeedTypeFilter } from "@/components/feed/feed-type-filter";
 import { FeedItemCard, type FeedItemCardData } from "@/components/feed/feed-item-card";
 import { PlanDetailModal } from "@/components/plans/plan-detail-modal";
 import { PanelExpandButton } from "@/components/home/panel-expand-button";
+import type { FeedTypeFilter as FeedTypeFilterId } from "@/lib/feed-filters";
 import type { FeedActionType, FeedItemType } from "@prisma/client";
 import { cn } from "@/lib/utils";
 import { apiJson } from "@/lib/client-api";
@@ -33,24 +35,34 @@ export function FeedPanelLive({
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<FeedTypeFilterId>("all");
   const [planModalId, setPlanModalId] = useState<string | null>(null);
 
   const load = useCallback(
-    async (cursor?: string | null, append = false) => {
-      const qs = cursor ? `?cursor=${cursor}&limit=${pageSize}` : `?limit=${pageSize}`;
+    async (
+      cursor?: string | null,
+      append = false,
+      filter: FeedTypeFilterId = typeFilter,
+    ) => {
+      const params = new URLSearchParams({ limit: String(pageSize) });
+      if (cursor) params.set("cursor", cursor);
+      if (filter !== "all") params.set("itemType", filter);
       const data = await apiJson<{ items?: FeedRow[]; nextCursor?: string | null }>(
-        `/api/feed${qs}`,
+        `/api/feed?${params.toString()}`,
       );
       const rows: FeedRow[] = data.items ?? [];
       setItems((prev) => (append ? [...prev, ...rows] : rows));
       setNextCursor(data.nextCursor ?? null);
     },
-    [pageSize],
+    [pageSize, typeFilter],
   );
 
   useEffect(() => {
-    load().catch(() => setItems([])).finally(() => setLoading(false));
-  }, [load]);
+    setLoading(true);
+    load(null, false, typeFilter)
+      .catch(() => setItems([]))
+      .finally(() => setLoading(false));
+  }, [load, typeFilter]);
 
   async function loadMore() {
     if (!nextCursor) return;
@@ -64,8 +76,17 @@ export function FeedPanelLive({
 
   function refreshFeed() {
     setLoading(true);
-    load().finally(() => setLoading(false));
+    load(null, false, typeFilter).finally(() => setLoading(false));
   }
+
+  const emptyDescription =
+    typeFilter === "all"
+      ? "在上方发表框选择备忘、计划或贡献后发布。"
+      : typeFilter === "plan"
+        ? "暂无计划相关动态，创建或更新计划后会显示在这里。"
+        : typeFilter === "memo"
+          ? "暂无备忘相关动态，发布便签后会显示在这里。"
+          : "暂无贡献相关动态，记录贡献后会显示在这里。";
 
   return (
     <Card
@@ -83,14 +104,12 @@ export function FeedPanelLive({
       )}
 
       <CardContent className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-0">
+        <FeedTypeFilter value={typeFilter} onChange={setTypeFilter} />
         <FeedComposer onPublished={refreshFeed} />
 
         {loading && <Loading label="加载动态…" />}
         {!loading && items.length === 0 && (
-          <EmptyState
-            title="暂无动态"
-            description="在上方发表框选择备忘、计划或贡献后发布。"
-          />
+          <EmptyState title="暂无动态" description={emptyDescription} />
         )}
 
         {!loading && items.length > 0 && (
