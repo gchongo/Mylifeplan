@@ -26,7 +26,7 @@ export function feedItemMeta(
   const completed = actionType === "complete";
 
   if (itemType === "memo") {
-    return { label: "备忘", completed, archived };
+    return { label: "便签", completed, archived };
   }
   if (itemType === "contribution") {
     return { label: "贡献", completed, archived };
@@ -53,6 +53,39 @@ export function splitTextWithLinks(text: string): Array<{ type: "text" | "link";
   return parts.length > 0 ? parts : [{ type: "text", value: text }];
 }
 
+export function feedActionPhrase(
+  actionType: FeedActionType,
+  itemType: FeedItemType,
+): string {
+  const type =
+    itemType === "memo" ? "便签" : itemType === "contribution" ? "贡献" : "计划";
+  switch (actionType) {
+    case "create":
+      return `新建了${type}`;
+    case "update":
+      return `更新了${type}`;
+    case "complete":
+      return `完成了${type}`;
+    case "archive":
+      return `归档了${type}`;
+    default:
+      return `更新了${type}`;
+  }
+}
+
+export function feedExcerpt(text: string | null | undefined, max = 160): string | null {
+  if (!text?.trim()) return null;
+  const plain = text
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/[#>*`_~]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!plain) return null;
+  if (plain.length <= max) return plain;
+  return `${plain.slice(0, max)}…`;
+}
+
 export function feedDisplayText(
   itemType: FeedItemType,
   actionType: FeedActionType,
@@ -60,19 +93,5 @@ export function feedDisplayText(
 ): string {
   if (content?.trim()) return content.trim();
 
-  const action =
-    actionType === "create"
-      ? "新建"
-      : actionType === "update"
-        ? "更新"
-        : actionType === "complete"
-          ? "完成"
-          : "归档";
-  const type =
-    itemType === "memo"
-      ? "备忘"
-      : itemType === "contribution"
-        ? "贡献"
-        : "计划";
-  return `${action}了${type}`;
+  return feedActionPhrase(actionType, itemType);
 }

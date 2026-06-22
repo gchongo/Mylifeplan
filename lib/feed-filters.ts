@@ -5,7 +5,7 @@ export type FeedTypeFilter = "all" | FeedItemType;
 export const FEED_TYPE_FILTERS: { id: FeedTypeFilter; label: string }[] = [
   { id: "all", label: "全部" },
   { id: "plan", label: "计划" },
-  { id: "memo", label: "备忘" },
+  { id: "memo", label: "便签" },
   { id: "contribution", label: "贡献" },
 ];
 

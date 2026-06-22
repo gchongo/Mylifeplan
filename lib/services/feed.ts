@@ -30,7 +30,7 @@ const ACTION_LABELS: Record<FeedActionType, string> = {
 export function feedTypeLabel(itemType: FeedItemType | "task"): string {
   switch (itemType) {
     case "memo":
-      return "备忘录";
+      return "便签";
     case "contribution":
       return "贡献";
     case "plan":

@@ -5,6 +5,7 @@ export const runtime = "nodejs";
 import { requireSession } from "@/lib/auth/get-session";
 import { handleProtectedRouteError } from "@/lib/api/route-auth";
 import { parseFeedItemTypeFilter } from "@/lib/feed-filters";
+import { enrichFeedItems } from "@/lib/feed-enrich";
 import { prisma } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
@@ -31,7 +32,13 @@ export async function GET(request: NextRequest) {
       nextCursor = extra?.id ?? null;
     }
 
-    return jsonOk({ items, nextCursor });
+    return jsonOk({
+      items: (await enrichFeedItems(session.userId, items)).map((item) => ({
+        ...item,
+        createdAt: item.createdAt.toISOString(),
+      })),
+      nextCursor,
+    });
   } catch (error) {
     return handleProtectedRouteError(error, "api/feed GET");
   }

@@ -192,6 +192,7 @@ async function applyPlanStatusIfChanged(
   prevStatus: PlanStatus,
   nextStatus: PlanStatus,
   tx: Tx,
+  planTitle: string,
 ) {
   if (prevStatus === nextStatus) return;
 
@@ -200,7 +201,7 @@ async function applyPlanStatusIfChanged(
     itemType: "plan",
     itemId: planId,
     actionType: feedActionForPlan(prevStatus, nextStatus),
-    content: undefined,
+    content: planTitle,
   });
 }
 
@@ -246,7 +247,14 @@ async function rollupParentPlan(userId: string, parentPlanId: string | null, tx:
   });
   await syncMemoForPlan(updated, tx);
   if (statusChanged) {
-    await applyPlanStatusIfChanged(userId, parent.id, parent.status, nextStatus, tx);
+    await applyPlanStatusIfChanged(
+      userId,
+      parent.id,
+      parent.status,
+      nextStatus,
+      tx,
+      updated.title,
+    );
   }
   await rollupParentPlan(userId, parent.parentPlanId, tx);
 }
@@ -461,7 +469,14 @@ export async function updatePlan(
     }
 
     if (input.status !== undefined && input.status !== existing.status) {
-      await applyPlanStatusIfChanged(userId, planId, existing.status, plan.status, tx);
+      await applyPlanStatusIfChanged(
+        userId,
+        planId,
+        existing.status,
+        plan.status,
+        tx,
+        plan.title,
+      );
     } else {
       await writeFeed({
         userId,

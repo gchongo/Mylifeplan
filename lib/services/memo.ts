@@ -61,6 +61,24 @@ export async function createStandaloneMemo(
   });
 }
 
+function memoUpdateWritesFeed(data: {
+  title?: string;
+  description?: string | null;
+  body?: string | null;
+  content?: string;
+  startDate?: string | null;
+  endDate?: string | null;
+}): boolean {
+  return (
+    data.title !== undefined ||
+    data.description !== undefined ||
+    data.body !== undefined ||
+    data.content !== undefined ||
+    data.startDate !== undefined ||
+    data.endDate !== undefined
+  );
+}
+
 export async function updateMemoById(
   userId: string,
   memoId: string,
@@ -116,13 +134,15 @@ export async function updateMemoById(
         });
       }
 
-      await writeFeed({
-        userId,
-        itemType: "plan",
-        itemId: updated.id,
-        actionType: "update",
-        content: updated.title,
-      });
+      if (memoUpdateWritesFeed(data)) {
+        await writeFeed({
+          userId,
+          itemType: "plan",
+          itemId: updated.id,
+          actionType: "update",
+          content: updated.title,
+        });
+      }
 
       return { type: "plan" as const, item: updated };
     });
@@ -144,13 +164,15 @@ export async function updateMemoById(
       },
     });
 
-    await writeFeed({
-      userId,
-      itemType: "memo",
-      itemId: updated.id,
-      actionType: "update",
-      content: updated.title,
-    });
+    if (memoUpdateWritesFeed(data)) {
+      await writeFeed({
+        userId,
+        itemType: "memo",
+        itemId: updated.id,
+        actionType: "update",
+        content: updated.title,
+      });
+    }
 
     return { type: "memo" as const, item: updated };
   });

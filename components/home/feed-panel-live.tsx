@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState, Loading } from "@/components/ui/feedback";
 import { FeedComposer } from "@/components/feed/feed-composer";
 import { FeedTypeFilter } from "@/components/feed/feed-type-filter";
-import { FeedItemCard, type FeedItemCardData } from "@/components/feed/feed-item-card";
+import { FeedItemCard } from "@/components/feed/feed-item-card";
 import { PlanDetailModal } from "@/components/plans/plan-detail-modal";
 import { PanelExpandButton } from "@/components/home/panel-expand-button";
 import type { FeedTypeFilter as FeedTypeFilterId } from "@/lib/feed-filters";
@@ -21,6 +21,10 @@ interface FeedRow {
   actionType: FeedActionType;
   content: string | null;
   createdAt: string;
+  headline: string;
+  excerpt: string | null;
+  contextLabel: string | null;
+  actionPhrase: string;
 }
 
 export function FeedPanelLive({
@@ -81,11 +85,11 @@ export function FeedPanelLive({
 
   const emptyDescription =
     typeFilter === "all"
-      ? "在上方发表框选择备忘、计划或贡献后发布。"
+      ? "在上方发表框选择便签、计划或贡献后发布。"
       : typeFilter === "plan"
         ? "暂无计划相关动态，创建或更新计划后会显示在这里。"
         : typeFilter === "memo"
-          ? "暂无备忘相关动态，发布便签后会显示在这里。"
+          ? "暂无便签相关动态，发布便签后会显示在这里。"
           : "暂无贡献相关动态，记录贡献后会显示在这里。";
 
   return (
@@ -104,8 +108,8 @@ export function FeedPanelLive({
       )}
 
       <CardContent className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-0">
-        <FeedTypeFilter value={typeFilter} onChange={setTypeFilter} />
         <FeedComposer onPublished={refreshFeed} />
+        <FeedTypeFilter value={typeFilter} onChange={setTypeFilter} />
 
         {loading && <Loading label="加载动态…" />}
         {!loading && items.length === 0 && (
@@ -116,14 +120,16 @@ export function FeedPanelLive({
           <>
             <ul
               className={cn(
-                "feed-item-list min-h-0 flex-1 space-y-3 overflow-y-auto pr-0.5",
-                fullPage && "space-y-4",
+                "feed-item-list min-h-0 flex-1 overflow-y-auto pr-0.5",
+                typeFilter === "contribution" ? "space-y-0 px-1" : "space-y-3",
+                fullPage && typeFilter !== "contribution" && "space-y-4",
               )}
             >
               {items.map((item) => (
                 <li key={item.id}>
                   <FeedItemCard
-                    item={item as FeedItemCardData}
+                    item={item}
+                    logStyle={item.itemType === "contribution"}
                     onPlanClick={(id) => setPlanModalId(id)}
                   />
                 </li>

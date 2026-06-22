@@ -3,7 +3,6 @@
 import Link from "next/link";
 import type { FeedActionType, FeedItemType } from "@prisma/client";
 import {
-  feedDisplayText,
   feedItemHref,
   feedItemMeta,
   formatFeedCardDate,
@@ -18,35 +17,22 @@ export interface FeedItemCardData {
   actionType: FeedActionType;
   content: string | null;
   createdAt: string;
+  headline: string;
+  excerpt: string | null;
+  contextLabel: string | null;
+  actionPhrase: string;
 }
 
-export function FeedItemCard({
-  item,
-  onPlanClick,
+function ExcerptText({
+  text,
+  className,
 }: {
-  item: FeedItemCardData;
-  onPlanClick?: (planId: string) => void;
+  text: string;
+  className?: string;
 }) {
-  const href = feedItemHref(item.itemType, item.itemId);
-  const isPlan = item.itemType === "plan";
-  const meta = feedItemMeta(item.itemType, item.actionType);
-  const text = feedDisplayText(item.itemType, item.actionType, item.content);
   const parts = splitTextWithLinks(text);
-  const dateLabel = formatFeedCardDate(item.createdAt);
-
-  const body = (
-    <div
-      className={cn(
-        "text-sm leading-relaxed text-gray-800",
-        meta.completed && "text-gray-500 line-through",
-        meta.archived && "text-gray-400",
-      )}
-    >
-      {meta.completed && (
-        <span className="mr-1.5 inline-flex h-4 w-4 items-center justify-center rounded border border-gray-300 bg-gray-100 text-[10px] text-gray-600">
-          ✓
-        </span>
-      )}
+  return (
+    <p className={cn("text-sm leading-relaxed text-gray-600 dark:text-gray-400", className)}>
       {parts.map((part, i) =>
         part.type === "link" ? (
           <a
@@ -63,38 +49,113 @@ export function FeedItemCard({
           <span key={i}>{part.value}</span>
         ),
       )}
+    </p>
+  );
+}
+
+export function FeedItemCard({
+  item,
+  onPlanClick,
+  logStyle = false,
+}: {
+  item: FeedItemCardData;
+  onPlanClick?: (planId: string) => void;
+  logStyle?: boolean;
+}) {
+  const href = feedItemHref(item.itemType, item.itemId);
+  const isPlan = item.itemType === "plan";
+  const isContribution = item.itemType === "contribution";
+  const meta = feedItemMeta(item.itemType, item.actionType);
+  const dateLabel = formatFeedCardDate(item.createdAt);
+
+  const body = (
+    <div className="space-y-1">
+      {isContribution ? (
+        <>
+          <h3
+            className={cn(
+              "text-base font-bold leading-snug text-gray-900 dark:text-gray-100",
+              meta.archived && "text-gray-400",
+            )}
+          >
+            {item.headline}
+          </h3>
+          {item.contextLabel && (
+            <p className="text-xs text-gray-400 dark:text-gray-500">{item.contextLabel}</p>
+          )}
+          {item.excerpt && <ExcerptText text={item.excerpt} className="mt-2 line-clamp-4" />}
+        </>
+      ) : (
+        <>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {meta.completed && (
+              <span className="mr-1.5 inline-flex h-4 w-4 items-center justify-center rounded border border-gray-300 bg-gray-100 text-[10px] text-gray-600">
+                ✓
+              </span>
+            )}
+            {item.actionPhrase}
+          </p>
+          <h3
+            className={cn(
+              "text-base font-semibold leading-snug text-gray-900 dark:text-gray-100",
+              meta.completed && "text-gray-500 line-through",
+              meta.archived && "text-gray-400",
+            )}
+          >
+            {item.headline}
+          </h3>
+          {item.excerpt && !isPlan && (
+            <ExcerptText text={item.excerpt} className="line-clamp-2" />
+          )}
+        </>
+      )}
     </div>
   );
 
+  const interactiveBody =
+    isPlan && onPlanClick ? (
+      <button
+        type="button"
+        className="block w-full text-left hover:opacity-90"
+        onClick={() => onPlanClick(item.itemId)}
+      >
+        {body}
+      </button>
+    ) : href ? (
+      <Link href={href} className="block hover:opacity-90">
+        {body}
+      </Link>
+    ) : (
+      body
+    );
+
+  if (isContribution || logStyle) {
+    return (
+      <article className="feed-item-log border-b border-gray-200 py-4 last:border-b-0 dark:border-gray-800">
+        <header className="mb-2 flex items-center justify-between gap-2">
+          <time className="text-xs text-gray-500" dateTime={item.createdAt}>
+            {dateLabel}
+          </time>
+          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-500 dark:bg-gray-800">
+            {meta.label}
+          </span>
+        </header>
+        {interactiveBody}
+      </article>
+    );
+  }
+
   return (
-    <article className="feed-item-card rounded-xl border border-gray-200 bg-white shadow-sm">
-      <header className="flex items-center justify-between gap-2 border-b border-gray-100 px-3 py-2">
+    <article className="feed-item-card rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+      <header className="flex items-center justify-between gap-2 border-b border-gray-100 px-3 py-2 dark:border-gray-800">
         <time className="text-xs text-gray-500" dateTime={item.createdAt}>
           {dateLabel}
         </time>
-        <div className="flex items-center gap-1">
-          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-500">
-            {meta.label}
-          </span>
-        </div>
+        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-500 dark:bg-gray-800">
+          {meta.label}
+        </span>
       </header>
-      <div className="px-3 py-2.5">
-        {isPlan && onPlanClick ? (
-          <button
-            type="button"
-            className="block w-full text-left hover:opacity-90"
-            onClick={() => onPlanClick(item.itemId)}
-          >
-            {body}
-          </button>
-        ) : href ? (
-          <Link href={href} className="block hover:opacity-90">
-            {body}
-          </Link>
-        ) : (
-          body
-        )}
-      </div>
+      <div className="px-3 py-2.5">{interactiveBody}</div>
     </article>
   );
 }
