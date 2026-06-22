@@ -58,6 +58,48 @@ export function datePartOf(value: string | Date | null | undefined): string | nu
   return formatDateOnly(value);
 }
 
+/** 仅日期或 UTC 零点：视为「整日」计划 */
+export function isDateOnlyPlanInstant(value: string | null | undefined): boolean {
+  if (!value) return false;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return true;
+  if (!value.includes("T")) return false;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return false;
+  return (
+    d.getUTCHours() === 0 &&
+    d.getUTCMinutes() === 0 &&
+    d.getUTCSeconds() === 0 &&
+    d.getUTCMilliseconds() === 0
+  );
+}
+
+export function planLocalDatePart(value: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const d = parsePlanDateTime(value);
+  if (!d) return value.slice(0, 10);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** 甘特天视图：整日计划起止（本地 0:00 / 23:59） */
+export function planDayStartLocalIso(date: string): string {
+  return `${planLocalDatePart(date)}T00:00:00`;
+}
+
+export function planDayEndLocalIso(date: string): string {
+  return `${planLocalDatePart(date)}T23:59:59`;
+}
+
+export function planRangeEdgeMs(value: string, edge: "start" | "end"): number | null {
+  if (!value) return null;
+  if (isDateOnlyPlanInstant(value)) {
+    const [y, m, d] = planLocalDatePart(value).split("-").map(Number);
+    if (edge === "start") return Date.UTC(y, m - 1, d, 0, 0, 0, 0);
+    return Date.UTC(y, m - 1, d, 23, 59, 59, 999);
+  }
+  return parsePlanDateTime(value)?.getTime() ?? null;
+}
+
 export function formatPlanDateTimeDisplay(value: string | Date | null | undefined): string {
   if (!value) return "—";
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {

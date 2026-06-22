@@ -4,7 +4,7 @@ import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getEffectiveEndDate } from "@/lib/content-router";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
-import { barMetricsFromDates, type TimelineLayout } from "@/lib/gantt-scale";
+import { ganttPlanBarMetrics, type TimelineLayout } from "@/lib/gantt-scale";
 import {
   constrainPlanMoveByMs,
   pixelDeltaToDragAmount,
@@ -52,6 +52,7 @@ export function GanttDraggableBar({
   onPreviewDates,
   onDragEnd,
   shellWidth,
+  isVirtualEnd = false,
 }: {
   item: GanttItem;
   layout: TimelineLayout;
@@ -75,6 +76,7 @@ export function GanttDraggableBar({
   onPreviewDates?: (planId: string, preview: { start: string; end: string } | null) => void;
   onDragEnd?: () => void;
   shellWidth?: number;
+  isVirtualEnd?: boolean;
 }) {
   const [dragging, setDragging] = useState<DragState | null>(null);
   const [preview, setPreview] = useState<{ start: string; end: string } | null>(null);
@@ -243,7 +245,7 @@ export function GanttDraggableBar({
   const activePreview = dragging ? preview : previewOverride ?? null;
 
   const metrics = activePreview
-    ? barMetricsFromDates(activePreview.start, activePreview.end, layout)
+    ? ganttPlanBarMetrics(activePreview.start, activePreview.end, layout, { isVirtualEnd })
     : { left, width };
 
   const rowHeight = hitRowHeight ?? 28;

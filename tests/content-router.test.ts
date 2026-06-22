@@ -43,6 +43,16 @@ describe("content-router", () => {
     expect(effectiveEnd).toBe("2025-03-01");
   });
 
+  it("有带时刻的 due → 保留 ISO", () => {
+    const item = {
+      startDate: "2025-01-01T08:00:00.000Z",
+      dueDate: "2025-03-01T14:30:00.000Z",
+    };
+    const { effectiveEnd, isVirtualEnd } = getEffectiveEndDate(item);
+    expect(isVirtualEnd).toBe(false);
+    expect(effectiveEnd).toBe("2025-03-01T14:30:00.000Z");
+  });
+
   it("禁止 due without start", () => {
     expect(validateDateFields({ dueDate: "2025-03-01" })).toMatch(/开始时间/);
   });

@@ -3,7 +3,7 @@ import {
   shouldShowInCalendar,
   shouldShowInGantt,
 } from "@/lib/content-router";
-import { formatDateOnly, formatPlanDateTime } from "@/lib/dates";
+import { formatDateOnly, formatPlanDateTime, planRangeEdgeMs } from "@/lib/dates";
 import { prisma } from "@/lib/db";
 import { getContributionsInRange } from "@/lib/services/contribution";
 import { isPlanOverdue, type PlanOverdueNode } from "@/lib/gantt-plan-status";
@@ -19,9 +19,10 @@ function parseRange(from?: string | null, to?: string | null) {
 }
 
 function overlapsRange(start: string, end: string, from: Date, to: Date): boolean {
-  const s = new Date(start + "T00:00:00.000Z");
-  const e = new Date(end + "T23:59:59.999Z");
-  return s <= to && e >= from;
+  const startMs = planRangeEdgeMs(start, "start");
+  const endMs = planRangeEdgeMs(end, "end");
+  if (startMs == null || endMs == null) return false;
+  return startMs <= to.getTime() && endMs >= from.getTime();
 }
 
 type PlanRow = {
@@ -45,7 +46,7 @@ function findAnchorDate(
   while (cur) {
     const p = byId.get(cur);
     if (!p) break;
-    const start = formatDateOnly(p.startDate);
+    const start = formatPlanDateTime(p.startDate);
     if (start) return start;
     cur = p.parentPlanId;
   }
@@ -90,8 +91,8 @@ export async function getGanttItems(
   const onGantt = new Set<string>();
 
   for (const plan of allPlans) {
-    const startDate = formatDateOnly(plan.startDate);
-    const endDate = formatDateOnly(plan.endDate);
+    const startDate = formatPlanDateTime(plan.startDate);
+    const endDate = formatPlanDateTime(plan.endDate);
     const actualStartDate = formatPlanDateTime(plan.actualStartDate);
     const actualEndDate = formatPlanDateTime(plan.actualEndDate);
     const routable = { startDate, endDate };
@@ -142,7 +143,9 @@ export async function getGanttItems(
 
   return items.sort((a, b) => {
     if (a.isUnscheduled !== b.isUnscheduled) return a.isUnscheduled ? 1 : -1;
-    return a.startDate.localeCompare(b.startDate);
+    const aMs = planRangeEdgeMs(a.startDate, "start") ?? 0;
+    const bMs = planRangeEdgeMs(b.startDate, "start") ?? 0;
+    return aMs - bMs || a.startDate.localeCompare(b.startDate);
   });
 }
 
@@ -190,7 +193,9 @@ export async function getGanttData(
   return {
     items: items.sort((a, b) => {
       if (a.isUnscheduled !== b.isUnscheduled) return a.isUnscheduled ? 1 : -1;
-      return a.startDate.localeCompare(b.startDate);
+      const aMs = planRangeEdgeMs(a.startDate, "start") ?? 0;
+      const bMs = planRangeEdgeMs(b.startDate, "start") ?? 0;
+      return aMs - bMs || a.startDate.localeCompare(b.startDate);
     }),
     contributions: contributions.filter((c) => visiblePlanIds.has(c.planId)),
   };

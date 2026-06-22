@@ -3,6 +3,8 @@
  * M2 阶段补全完整逻辑与单测。
  */
 
+import { formatPlanDateTime, isDateOnlyPlanInstant, parsePlanDateTime } from "@/lib/dates";
+
 export const DEFAULT_GANTT_SPAN_DAYS = 365;
 
 export type RoutableEntity = {
@@ -26,6 +28,17 @@ function formatDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+function normalizeEndString(end: string | Date): string {
+  if (typeof end === "string") {
+    if (isDateOnlyPlanInstant(end)) return end.slice(0, 10);
+    const parsed = parsePlanDateTime(end);
+    return parsed ? formatPlanDateTime(parsed)! : end;
+  }
+  const iso = formatPlanDateTime(end);
+  if (!iso) return formatDate(toDateOnly(end));
+  return isDateOnlyPlanInstant(iso) ? iso.slice(0, 10) : iso;
+}
+
 export function getEffectiveEndDate(
   item: RoutableEntity,
   today: Date = new Date(),
@@ -34,7 +47,7 @@ export function getEffectiveEndDate(
   const end = item.dueDate ?? item.endDate;
 
   if (end) {
-    return { effectiveEnd: formatDate(toDateOnly(end)), isVirtualEnd: false };
+    return { effectiveEnd: normalizeEndString(end), isVirtualEnd: false };
   }
 
   if (!start) {

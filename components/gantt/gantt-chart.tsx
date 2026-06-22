@@ -27,6 +27,7 @@ import { PlanStatusMenuButton } from "@/components/plans/plan-status-menu";
 import { Button, EmptyState, Loading as LoadingView } from "@/components/ui";
 import { DrawerLayout } from "@/components/ui/drawer";
 import {
+  ganttPlanBarMetrics,
   barMetricsFromDates,
   buildTimelineLayout,
   dateToX,
@@ -400,7 +401,9 @@ export const GanttChart = forwardRef<
       const preview = barPreview.get(row.item.id);
       const start = preview?.start ?? row.item.startDate;
       const end = preview?.end ?? row.item.effectiveEnd;
-      const { left } = barMetricsFromDates(start, end, layout);
+      const { left } = ganttPlanBarMetrics(start, end, layout, {
+        isVirtualEnd: row.item.isVirtualEnd,
+      });
       return {
         itemId: row.item.id,
         depth: row.depth,
@@ -1112,7 +1115,9 @@ export const GanttChart = forwardRef<
     const previewDates = barPreview.get(item.id);
     const displayStart = previewDates?.start ?? item.startDate;
     const displayEnd = previewDates?.end ?? item.effectiveEnd;
-    const { left, width } = barMetricsFromDates(displayStart, displayEnd, layout);
+    const { left, width } = ganttPlanBarMetrics(displayStart, displayEnd, layout, {
+      isVirtualEnd: item.isVirtualEnd,
+    });
     const displayStatus = itemDisplayStatus(item, items);
     const overdue = isPlanOverdue(item, planById);
     const barStyle = planBarStyle(item, row.depth, groupColor, displayStatus, overdue);
@@ -1133,7 +1138,9 @@ export const GanttChart = forwardRef<
         : null;
     const shellWidth =
       activeOverrunTail != null
-        ? barMetricsFromDates(displayStart, activeOverrunTail.from, layout).width
+        ? ganttPlanBarMetrics(displayStart, activeOverrunTail.from, layout, {
+            isVirtualEnd: item.isVirtualEnd,
+          }).width
         : undefined;
     const isRootWithChildren =
       row.depth === 0 &&
@@ -1143,7 +1150,9 @@ export const GanttChart = forwardRef<
     const isSelected = selectedPlanId === item.id;
 
     if (item.isUnscheduled) {
-      const anchorLeft = barMetricsFromDates(displayStart, displayEnd, layout).left;
+      const anchorLeft = ganttPlanBarMetrics(displayStart, displayEnd, layout, {
+        isVirtualEnd: item.isVirtualEnd,
+      }).left;
       return (
         <div
           key={`bar-${item.id}-${idx}`}
@@ -1247,6 +1256,7 @@ export const GanttChart = forwardRef<
             maxContributionDate={contribBounds?.max}
             previewOverride={previewDates ?? null}
             onPreviewDates={isRootWithChildren ? onRootDragPreview : undefined}
+            isVirtualEnd={item.isVirtualEnd}
             onDragEnd={clearBarPreview}
             onUpdated={handleItemUpdated}
             onTaskClick={() => openPlan(item.id)}

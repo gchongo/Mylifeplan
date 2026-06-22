@@ -1,4 +1,12 @@
-import { todayStr as localTodayStr } from "@/lib/dates";
+import {
+  isDateOnlyPlanInstant,
+  planDayEndLocalIso,
+  planDayStartLocalIso,
+  planLocalDatePart,
+  todayStr as localTodayStr,
+} from "@/lib/dates";
+
+export { isDateOnlyPlanInstant } from "@/lib/dates";
 
 export const GANTT_SCALES = [
   { id: "day", label: "天" },
@@ -308,28 +316,14 @@ function datePartAndLocalTime(date: string): { dateStr: string; hour: number; mi
 }
 
 export function planDateOnly(date: string): string {
-  return datePartAndLocalTime(date).dateStr;
-}
-
-/** 仅日期或 UTC 零点：甘特条尾按当日 23:59 对齐；含具体时刻则保留 */
-export function isDateOnlyPlanInstant(value: string): boolean {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return true;
-  if (!value.includes("T")) return false;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return false;
-  return (
-    d.getUTCHours() === 0 &&
-    d.getUTCMinutes() === 0 &&
-    d.getUTCSeconds() === 0 &&
-    d.getUTCMilliseconds() === 0
-  );
+  return planLocalDatePart(date);
 }
 
 /** 甘特图上的时刻 X：仅日期对齐到当日结束（23:59 / 列右缘） */
 export function ganttInstantToX(date: string, layout: TimelineLayout): number {
   if (isDateOnlyPlanInstant(date)) {
     if (layout.scale === "day") {
-      return dateToX(`${planDateOnly(date)}T23:59:59`, layout);
+      return dateToX(planDayEndLocalIso(date), layout);
     }
     const bounds = getDateColumnBounds(date, layout);
     if (bounds) return bounds.left + bounds.width;
@@ -440,6 +434,53 @@ export function getTimelineSpanMetrics(
   return {
     left: Math.max(0, left),
     width: Math.max(barPadding ? minUnit * 0.5 : 2, endX - left),
+  };
+}
+
+export function ganttPlanVisualStartX(startDate: string, layout: TimelineLayout): number {
+  if (layout.scale === "day") {
+    if (isDateOnlyPlanInstant(startDate)) {
+      return dateToX(planDayStartLocalIso(startDate), layout);
+    }
+    return dateToX(startDate, layout);
+  }
+  const bounds = getDateColumnBounds(startDate, layout);
+  if (bounds) return bounds.left;
+  return dateToX(startDate, layout);
+}
+
+export function ganttPlanVisualEndX(
+  endDate: string,
+  layout: TimelineLayout,
+  isVirtualEnd = false,
+): number {
+  if (layout.scale === "day") {
+    if (isDateOnlyPlanInstant(endDate) || isVirtualEnd) {
+      return dateToX(planDayEndLocalIso(endDate), layout);
+    }
+    return dateToX(endDate, layout);
+  }
+  const bounds = getDateColumnBounds(endDate, layout);
+  if (bounds) return bounds.left + bounds.width;
+  return dateToX(endDate, layout);
+}
+
+/** 计划条像素：天视图支持分钟；周/月/年按日列占满 */
+export function ganttPlanBarMetrics(
+  startDate: string,
+  endDate: string,
+  layout: TimelineLayout,
+  options: { isVirtualEnd?: boolean } = {},
+): { left: number; width: number } {
+  const left = ganttPlanVisualStartX(startDate, layout);
+  const endX = ganttPlanVisualEndX(endDate, layout, options.isVirtualEnd);
+  const minUnit =
+    layout.scale === "day"
+      ? HOUR_WIDTH / 4
+      : layout.totalWidth / Math.max(layout.columns.length, 1);
+  return {
+    left: Math.max(0, left),
+    width: Math.max(minUnit * 0.5, endX - left),
   };
 }
 
