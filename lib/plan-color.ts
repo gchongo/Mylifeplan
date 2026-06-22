@@ -69,6 +69,22 @@ export interface PlanLabelAppearance {
   bgStyle?: CSSProperties;
 }
 
+/** 甘特图计划条高度：一级 > 二级 > 三级 */
+export const GANTT_PLAN_BAR_HEIGHT_BY_DEPTH = [30, 24, 18] as const;
+
+/** 甘特图行高：与条高配套，保证垂直居中留白 */
+export const GANTT_PLAN_ROW_HEIGHT_BY_DEPTH = [36, 32, 28] as const;
+
+export function ganttPlanBarHeightPx(depth: number): number {
+  const idx = Math.min(Math.max(depth, 0), GANTT_PLAN_BAR_HEIGHT_BY_DEPTH.length - 1);
+  return GANTT_PLAN_BAR_HEIGHT_BY_DEPTH[idx]!;
+}
+
+export function ganttPlanRowHeightPx(depth: number): number {
+  const idx = Math.min(Math.max(depth, 0), GANTT_PLAN_ROW_HEIGHT_BY_DEPTH.length - 1);
+  return GANTT_PLAN_ROW_HEIGHT_BY_DEPTH[idx]!;
+}
+
 export function getGroupColoredBarAppearance(
   groupColor: string | null | undefined,
   depth: number,
@@ -80,16 +96,22 @@ export function getGroupColoredBarAppearance(
   const fillAlpha = isRoot ? 0.45 : Math.max(0.2, 0.34 - depth * 0.05);
 
   return {
-    shellClass: isRoot ? "border-[1.5px] border-solid shadow-sm" : "border border-solid shadow-sm",
+    shellClass: isRoot
+      ? "border-[1.5px] border-solid shadow-sm"
+      : depth === 1
+        ? "border border-solid shadow-sm"
+        : "border border-solid shadow-sm",
     shellStyle: {
-      borderColor: planColorRgba(c, 0.88),
+      borderColor: planColorRgba(c, isRoot ? 0.88 : depth === 1 ? 0.82 : 0.76),
       backgroundColor: planColorRgba(c, fillAlpha),
       opacity: muted ? 0.78 : 1,
     },
     textClass: isRoot
       ? "font-semibold text-slate-900 dark:text-slate-50"
-      : "font-normal text-slate-800 dark:text-slate-200",
-    barHeightPx: isRoot ? 32 : 22,
+      : depth === 1
+        ? "font-medium text-slate-800 dark:text-slate-200"
+        : "font-normal text-slate-800 dark:text-slate-200",
+    barHeightPx: ganttPlanBarHeightPx(depth),
     statusDotClass,
   };
 }

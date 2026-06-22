@@ -263,7 +263,7 @@ export function GanttDraggableBar({
       : { left, width };
 
   const rowHeight = hitRowHeight ?? 28;
-  const textLeading = Math.max(barHeightPx - 2, 18);
+  const textLeading = Math.max(barHeightPx - 2, 14);
   const visibleShellWidth = Math.min(Math.max(shellWidth ?? metrics.width, 8), metrics.width);
 
   return (

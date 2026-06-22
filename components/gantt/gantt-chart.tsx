@@ -78,6 +78,7 @@ import {
 import {
   getGroupColoredBarAppearance,
   getPlanLabelAppearance,
+  ganttPlanRowHeightPx,
   resolveEffectivePlanColor,
 } from "@/lib/plan-color";
 import { GRID_BORDER, GRID_ROW_BORDER } from "@/lib/gantt-grid-colors";
@@ -87,8 +88,6 @@ import { apiJson } from "@/lib/client-api";
 import { dispatchPlanUpdated, PLAN_UPDATED_EVENT } from "@/lib/plan-events";
 import { cn } from "@/lib/utils";
 
-const ROW_HEIGHT = 36;
-const ROW_HEIGHT_CHILD = 28;
 const ROW_GROUP_GAP = 8;
 const DEFAULT_LABEL_WIDTH = 200;
 const MIN_LABEL_WIDTH = 120;
@@ -202,7 +201,7 @@ function buildPlanTreeRows(plans: GanttItem[], expanded: Set<string>): GanttRow[
       rows.push({
         item,
         depth,
-        height: depth > 0 ? ROW_HEIGHT_CHILD : ROW_HEIGHT,
+        height: ganttPlanRowHeightPx(depth),
         gapBefore: depth === 0 && rows.length > 0 ? ROW_GROUP_GAP : 0,
         rootId: currentRoot,
       });
