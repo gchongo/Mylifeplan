@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   buildTimelineLayout,
+  dateToX,
   getDateColumnBounds,
+  getExecutionFillSpanMetrics,
   getTimelineSpanMetrics,
+  ganttInstantToX,
+  isDateOnlyPlanInstant,
   scaleTimelineToViewport,
 } from "@/lib/gantt-scale";
 
@@ -25,6 +29,27 @@ describe("getDateColumnBounds", () => {
       { snapEndToDate: today },
     );
     expect(metrics.left + metrics.width).toBe(bounds.left + bounds.width);
+  });
+});
+
+describe("execution fill span metrics", () => {
+  it("aligns date-only plan end to column right edge", () => {
+    const layout = buildTimelineLayout("week", "2026-06-20");
+    const planEnd = "2026-06-30T00:00:00.000Z";
+    const actualEnd = "2026-07-02T00:00:00.000Z";
+    const planBounds = getDateColumnBounds(planEnd, layout)!;
+    const actualBounds = getDateColumnBounds(actualEnd, layout)!;
+    const metrics = getExecutionFillSpanMetrics(planEnd, actualEnd, layout);
+    expect(metrics.left).toBe(planBounds.left + planBounds.width);
+    expect(metrics.left + metrics.width).toBe(actualBounds.left + actualBounds.width);
+  });
+
+  it("snaps date-only to day end on day scale", () => {
+    const layout = buildTimelineLayout("day", "2026-06-30");
+    const dayEnd = ganttInstantToX("2026-06-30T00:00:00.000Z", layout);
+    const dayStart = dateToX("2026-06-30", layout);
+    expect(dayEnd).toBeGreaterThan(dayStart);
+    expect(isDateOnlyPlanInstant("2026-06-30T14:30:00.000Z")).toBe(false);
   });
 });
 

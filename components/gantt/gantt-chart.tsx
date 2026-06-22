@@ -31,6 +31,7 @@ import {
   buildTimelineLayout,
   dateToX,
   getDateColumnBounds,
+  getExecutionFillSpanMetrics,
   getTimelineSpanMetrics,
   HOUR_WIDTH,
   isTodayInColumn,
@@ -952,10 +953,10 @@ export const GanttChart = forwardRef<
     rowHeight: number,
     tone: "green" | "red",
   ) {
-    const snapEnd =
+    const snapToday =
       tail.endKind === "open" || planDateOnly(tail.to) === today ? today : undefined;
-    const { left, width } = getTimelineSpanMetrics(tail.from, tail.to, layout, {
-      snapEndToDate: snapEnd,
+    const { left, width } = getExecutionFillSpanMetrics(tail.from, tail.to, layout, {
+      snapEndToToday: snapToday,
     });
     const top = (rowHeight - barHeightPx) / 2;
     return (

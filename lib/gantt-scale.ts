@@ -311,6 +311,54 @@ export function planDateOnly(date: string): string {
   return datePartAndLocalTime(date).dateStr;
 }
 
+/** 仅日期或 UTC 零点：甘特条尾按当日 23:59 对齐；含具体时刻则保留 */
+export function isDateOnlyPlanInstant(value: string): boolean {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return true;
+  if (!value.includes("T")) return false;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return false;
+  return (
+    d.getUTCHours() === 0 &&
+    d.getUTCMinutes() === 0 &&
+    d.getUTCSeconds() === 0 &&
+    d.getUTCMilliseconds() === 0
+  );
+}
+
+/** 甘特图上的时刻 X：仅日期对齐到当日结束（23:59 / 列右缘） */
+export function ganttInstantToX(date: string, layout: TimelineLayout): number {
+  if (isDateOnlyPlanInstant(date)) {
+    if (layout.scale === "day") {
+      return dateToX(`${planDateOnly(date)}T23:59:59`, layout);
+    }
+    const bounds = getDateColumnBounds(date, layout);
+    if (bounds) return bounds.left + bounds.width;
+  }
+  return dateToX(date, layout);
+}
+
+/** 提前/超期色条：起止均按 day-end 规则对齐，开放终点可 snap 到今天列 */
+export function getExecutionFillSpanMetrics(
+  from: string,
+  to: string,
+  layout: TimelineLayout,
+  options: { snapEndToToday?: string } = {},
+): { left: number; width: number } {
+  const left = ganttInstantToX(from, layout);
+  let right: number;
+  if (options.snapEndToToday) {
+    const bounds = getDateColumnBounds(options.snapEndToToday, layout);
+    right = bounds ? bounds.left + bounds.width : ganttInstantToX(to, layout);
+  } else {
+    right = ganttInstantToX(to, layout);
+  }
+  const spanLeft = Math.min(left, right);
+  return {
+    left: Math.max(0, spanLeft),
+    width: Math.max(2, Math.abs(right - left)),
+  };
+}
+
 /** 日期所在列在时间轴上的 left / width（天视图含当天全部小时列） */
 export function getDateColumnBounds(
   date: string,
