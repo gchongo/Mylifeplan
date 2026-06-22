@@ -30,8 +30,11 @@ import {
   barMetricsFromDates,
   buildTimelineLayout,
   dateToX,
+  getDateColumnBounds,
+  getTimelineSpanMetrics,
   HOUR_WIDTH,
   isTodayInColumn,
+  planDateOnly,
   scaleTimelineToViewport,
   shiftAnchor,
   todayStr,
@@ -335,7 +338,13 @@ export const GanttChart = forwardRef<
   const { from, to } = layout;
   const timelineWidth = layout.totalWidth;
   const today = todayStr();
-  const todayX = dateToX(today, layout);
+  const todayColumnBounds = useMemo(
+    () => getDateColumnBounds(today, layout),
+    [today, layout],
+  );
+  const todayX = todayColumnBounds
+    ? todayColumnBounds.left + todayColumnBounds.width / 2
+    : dateToX(today, layout);
   const todayVisible = today >= layout.from && today <= layout.to;
 
   useEffect(() => {
@@ -715,6 +724,9 @@ export const GanttChart = forwardRef<
     });
   }
 
+  const todayColumnClass =
+    "bg-red-50/90 dark:bg-red-950/40";
+
   function renderTimelineHeaderOnly() {
     return (
       <div
@@ -728,10 +740,14 @@ export const GanttChart = forwardRef<
               <div
                 key={col.key}
                 className={cn(
-                  "bg-white py-1 text-center dark:bg-gray-950",
+                  "py-1 text-center",
                   GRID_BORDER,
-                  col.isWeekend && "bg-gray-50 dark:bg-gray-900/70",
-                  isToday && "ring-1 ring-inset ring-red-200/80 dark:ring-red-500/40",
+                  isToday
+                    ? todayColumnClass
+                    : cn(
+                        "bg-white dark:bg-gray-950",
+                        col.isWeekend && "bg-gray-50 dark:bg-gray-900/70",
+                      ),
                 )}
                 style={{ width: col.width }}
               >
@@ -764,18 +780,26 @@ export const GanttChart = forwardRef<
         className="pointer-events-none absolute left-0 top-0 flex"
         style={{ width: timelineWidth, height }}
       >
-        {layout.columns.map((col) => (
-          <div
-            key={col.key}
-            className={cn(
-              "h-full bg-white dark:bg-gray-950",
-              GRID_BORDER,
-              col.isWeekend && "bg-gray-50 dark:bg-gray-900/70",
-              col.isOtherMonth && "opacity-80",
-            )}
-            style={{ width: col.width }}
-          />
-        ))}
+        {layout.columns.map((col) => {
+          const isToday = isTodayInColumn(today, col);
+          return (
+            <div
+              key={col.key}
+              className={cn(
+                "h-full",
+                GRID_BORDER,
+                isToday
+                  ? todayColumnClass
+                  : cn(
+                      "bg-white dark:bg-gray-950",
+                      col.isWeekend && "bg-gray-50 dark:bg-gray-900/70",
+                      col.isOtherMonth && "opacity-80",
+                    ),
+              )}
+              style={{ width: col.width }}
+            />
+          );
+        })}
         {rowLines.map((top, i) => (
           <div
             key={`row-grid-${i}`}
@@ -783,12 +807,6 @@ export const GanttChart = forwardRef<
             style={{ top, width: timelineWidth }}
           />
         ))}
-        {todayVisible && (
-          <div
-            className="absolute bottom-0 top-0 w-px bg-red-400 dark:bg-red-500"
-            style={{ left: todayX }}
-          />
-        )}
       </div>
     );
   }
@@ -916,7 +934,11 @@ export const GanttChart = forwardRef<
     rowHeight: number,
     tone: "green" | "red",
   ) {
-    const { left, width } = barMetricsFromDates(tail.from, tail.to, layout);
+    const snapEnd =
+      tail.endKind === "open" || planDateOnly(tail.to) === today ? today : undefined;
+    const { left, width } = getTimelineSpanMetrics(tail.from, tail.to, layout, {
+      snapEndToDate: snapEnd,
+    });
     const top = (rowHeight - barHeightPx) / 2;
     return (
       <div
@@ -1170,7 +1192,12 @@ export const GanttChart = forwardRef<
         {!item.contributionOnly && parentOverrunTail &&
           renderPlanOverrunTail(parentOverrunTail, barStyle.barHeightPx, row.height)}
         {!item.contributionOnly && executionSpan && (() => {
-          const lineMetrics = barMetricsFromDates(executionSpan.from, executionSpan.to, layout);
+          const lineMetrics = getTimelineSpanMetrics(
+            executionSpan.from,
+            executionSpan.to,
+            layout,
+            executionSpan.endKind === "open" ? { snapEndToDate: today } : {},
+          );
           return (
             <GanttActualExecutionLine
               left={lineMetrics.left}

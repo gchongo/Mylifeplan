@@ -307,6 +307,35 @@ function datePartAndLocalTime(date: string): { dateStr: string; hour: number; mi
   return { dateStr, hour: d.getHours(), minute: d.getMinutes() };
 }
 
+export function planDateOnly(date: string): string {
+  return datePartAndLocalTime(date).dateStr;
+}
+
+/** 日期所在列在时间轴上的 left / width（天视图含当天全部小时列） */
+export function getDateColumnBounds(
+  date: string,
+  layout: TimelineLayout,
+): { left: number; width: number } | null {
+  const dateStr = planDateOnly(date);
+  let offset = 0;
+  let matchLeft: number | null = null;
+  let matchWidth = 0;
+
+  for (const col of layout.columns) {
+    const contains = dateStr >= col.startDate && dateStr <= col.endDate;
+    if (contains) {
+      if (matchLeft == null) matchLeft = offset;
+      matchWidth += col.width;
+    } else if (matchLeft != null) {
+      break;
+    }
+    offset += col.width;
+  }
+
+  if (matchLeft == null) return null;
+  return { left: matchLeft, width: matchWidth };
+}
+
 export function dateToX(date: string, layout: TimelineLayout): number {
   if (layout.scale === "day" && layout.columns.length > 0) {
     const { dateStr, hour, minute } = datePartAndLocalTime(date);
@@ -336,21 +365,42 @@ export function dateToX(date: string, layout: TimelineLayout): number {
   return ((dMs - fromMs) / span) * layout.totalWidth;
 }
 
+export function getTimelineSpanMetrics(
+  startDate: string,
+  endDate: string,
+  layout: TimelineLayout,
+  options: { snapEndToDate?: string; barPadding?: boolean } = {},
+): { left: number; width: number } {
+  const { snapEndToDate, barPadding = false } = options;
+  const left = dateToX(startDate, layout);
+  const minUnit =
+    layout.scale === "day"
+      ? HOUR_WIDTH * 0.25
+      : layout.totalWidth / Math.max(layout.columns.length, 1);
+
+  let endX: number;
+  if (snapEndToDate) {
+    const bounds = getDateColumnBounds(snapEndToDate, layout);
+    endX = bounds ? bounds.left + bounds.width : dateToX(endDate, layout);
+  } else {
+    endX = dateToX(endDate, layout);
+    if (barPadding && layout.scale !== "day") {
+      endX += minUnit * 0.8;
+    }
+  }
+
+  return {
+    left: Math.max(0, left),
+    width: Math.max(barPadding ? minUnit * 0.5 : 2, endX - left),
+  };
+}
+
 export function barMetricsFromDates(
   startDate: string,
   endDate: string,
   layout: TimelineLayout,
 ): { left: number; width: number } {
-  const left = dateToX(startDate, layout);
-  const endX = dateToX(endDate, layout);
-  const minWidth =
-    layout.scale === "day"
-      ? HOUR_WIDTH * 0.25
-      : layout.totalWidth / Math.max(layout.columns.length, 1);
-  return {
-    left: Math.max(0, left),
-    width: Math.max(minWidth * 0.5, endX - left + (layout.scale === "day" ? 0 : minWidth * 0.8)),
-  };
+  return getTimelineSpanMetrics(startDate, endDate, layout, { barPadding: true });
 }
 
 function scaleDefaultRange(scale: GanttScaleId, anchor: string): { from: string; to: string } {
