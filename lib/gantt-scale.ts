@@ -338,36 +338,109 @@ export function planDateOnly(date: string): string {
   return planLocalDatePart(date);
 }
 
-/** 甘特图上的时刻 X：仅日期对齐到当日结束（23:59 / 列右缘） */
-export function ganttInstantToX(date: string, layout: TimelineLayout): number {
-  if (isDateOnlyPlanInstant(date)) {
-    if (layout.scale === "day") {
-      return dateToX(planDayEndLocalIso(date), layout);
+/** 实际执行时刻：天视图保留时分；周/月/年对齐到日列左缘 */
+export function ganttActualVisualStartX(date: string, layout: TimelineLayout): number {
+  if (layout.scale === "day") {
+    if (isDateOnlyPlanInstant(date)) {
+      return dateToX(planDayStartLocalIso(date), layout);
     }
-    const bounds = getDateColumnBounds(date, layout);
-    if (bounds) return bounds.left + bounds.width;
+    return dateToX(date, layout);
   }
+  const bounds = getDateColumnBounds(date, layout);
+  if (bounds) return bounds.left;
   return dateToX(date, layout);
 }
 
-/** 提前/超期色条：起止均按 day-end 规则对齐，开放终点可 snap 到今天列 */
+/** 实际执行时刻：天视图保留时分；周/月/年对齐到日列右缘 */
+export function ganttActualVisualEndX(date: string, layout: TimelineLayout): number {
+  if (layout.scale === "day") {
+    if (isDateOnlyPlanInstant(date)) {
+      return dateToX(planDayEndLocalIso(date), layout);
+    }
+    return dateToX(date, layout);
+  }
+  const bounds = getDateColumnBounds(date, layout);
+  if (bounds) return bounds.left + bounds.width;
+  return dateToX(date, layout);
+}
+
+/** @deprecated 使用 ganttActualVisualEndX */
+export function ganttInstantToX(date: string, layout: TimelineLayout): number {
+  return ganttActualVisualEndX(date, layout);
+}
+
+export type ExecutionFillEndpoint = "actual" | "plan";
+
+function executionFillEndpointX(
+  date: string,
+  layout: TimelineLayout,
+  endpoint: ExecutionFillEndpoint,
+  edge: "start" | "end",
+  isVirtualPlanEnd = false,
+): number {
+  if (endpoint === "plan") {
+    return edge === "end"
+      ? ganttPlanVisualEndX(date, layout, isVirtualPlanEnd)
+      : ganttPlanVisualStartX(date, layout);
+  }
+  return edge === "end" ? ganttActualVisualEndX(date, layout) : ganttActualVisualStartX(date, layout);
+}
+
+/** 提前/超期色条：计划端与条右缘对齐，实际端与执行线端点对齐 */
 export function getExecutionFillSpanMetrics(
   from: string,
   to: string,
   layout: TimelineLayout,
-  options: { snapEndToToday?: string } = {},
+  options: {
+    snapEndToToday?: string;
+    fromEndpoint?: ExecutionFillEndpoint;
+    toEndpoint?: ExecutionFillEndpoint;
+    isVirtualPlanEnd?: boolean;
+  } = {},
 ): { left: number; width: number } {
-  const left = ganttInstantToX(from, layout);
+  const {
+    snapEndToToday,
+    fromEndpoint = "actual",
+    toEndpoint = "actual",
+    isVirtualPlanEnd = false,
+  } = options;
+
+  const left = executionFillEndpointX(from, layout, fromEndpoint, "end", isVirtualPlanEnd);
   let right: number;
-  if (options.snapEndToToday) {
-    const bounds = getDateColumnBounds(options.snapEndToToday, layout);
-    right = bounds ? bounds.left + bounds.width : ganttInstantToX(to, layout);
+  if (snapEndToToday && toEndpoint === "actual") {
+    const bounds = getDateColumnBounds(snapEndToToday, layout);
+    right = bounds
+      ? bounds.left + bounds.width
+      : executionFillEndpointX(to, layout, toEndpoint, "end", isVirtualPlanEnd);
   } else {
-    right = ganttInstantToX(to, layout);
+    right = executionFillEndpointX(to, layout, toEndpoint, "end", isVirtualPlanEnd);
   }
+
   const spanLeft = Math.min(left, right);
   return {
     left: Math.max(0, spanLeft),
+    width: Math.max(2, Math.abs(right - left)),
+  };
+}
+
+/** 实际执行线：与绿/红填充共用同一套视觉坐标 */
+export function getExecutionLineSpanMetrics(
+  startDate: string,
+  endDate: string,
+  layout: TimelineLayout,
+  options: { endKind?: "fixed" | "open"; snapEndToToday?: string } = {},
+): { left: number; width: number } {
+  const { endKind = "fixed", snapEndToToday } = options;
+  const left = ganttActualVisualStartX(startDate, layout);
+  let right: number;
+  if (endKind === "open" && snapEndToToday) {
+    const bounds = getDateColumnBounds(snapEndToToday, layout);
+    right = bounds ? bounds.left + bounds.width : ganttActualVisualEndX(endDate, layout);
+  } else {
+    right = ganttActualVisualEndX(endDate, layout);
+  }
+  return {
+    left: Math.max(0, left),
     width: Math.max(2, Math.abs(right - left)),
   };
 }

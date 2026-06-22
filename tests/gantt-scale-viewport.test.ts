@@ -4,8 +4,11 @@ import {
   dateToX,
   getDateColumnBounds,
   getExecutionFillSpanMetrics,
+  getExecutionLineSpanMetrics,
   getTimelineSpanMetrics,
+  ganttActualVisualEndX,
   ganttInstantToX,
+  ganttPlanBarMetrics,
   isDateOnlyPlanInstant,
   scaleTimelineToViewport,
 } from "@/lib/gantt-scale";
@@ -33,20 +36,37 @@ describe("getDateColumnBounds", () => {
 });
 
 describe("execution fill span metrics", () => {
-  it("aligns date-only plan end to column right edge", () => {
+  it("aligns overdue red span from plan bar end to actual completion", () => {
     const layout = buildTimelineLayout("week", "2026-06-20");
     const planEnd = "2026-06-30T00:00:00.000Z";
     const actualEnd = "2026-07-02T00:00:00.000Z";
-    const planBounds = getDateColumnBounds(planEnd, layout)!;
-    const actualBounds = getDateColumnBounds(actualEnd, layout)!;
-    const metrics = getExecutionFillSpanMetrics(planEnd, actualEnd, layout);
-    expect(metrics.left).toBe(planBounds.left + planBounds.width);
-    expect(metrics.left + metrics.width).toBe(actualBounds.left + actualBounds.width);
+    const bar = ganttPlanBarMetrics("2026-06-01", planEnd, layout);
+    const metrics = getExecutionFillSpanMetrics(planEnd, actualEnd, layout, {
+      fromEndpoint: "plan",
+      toEndpoint: "actual",
+    });
+    expect(metrics.left).toBe(bar.left + bar.width);
+    const line = getExecutionLineSpanMetrics("2026-06-01T09:00:00.000Z", actualEnd, layout);
+    expect(metrics.left + metrics.width).toBe(line.left + line.width);
+  });
+
+  it("aligns early-completion green end with plan bar end on week scale", () => {
+    const layout = buildTimelineLayout("week", "2026-06-20");
+    const planEnd = "2026-06-30T00:00:00.000Z";
+    const actualEnd = "2026-06-20T15:30:00.000Z";
+    const bar = ganttPlanBarMetrics("2026-06-01", planEnd, layout);
+    const metrics = getExecutionFillSpanMetrics(actualEnd, planEnd, layout, {
+      fromEndpoint: "actual",
+      toEndpoint: "plan",
+    });
+    expect(metrics.left + metrics.width).toBe(bar.left + bar.width);
+    const line = getExecutionLineSpanMetrics("2026-06-01T09:00:00.000Z", actualEnd, layout);
+    expect(metrics.left).toBe(line.left + line.width);
   });
 
   it("snaps date-only to day end on day scale", () => {
     const layout = buildTimelineLayout("day", "2026-06-30");
-    const dayEnd = ganttInstantToX("2026-06-30T00:00:00.000Z", layout);
+    const dayEnd = ganttActualVisualEndX("2026-06-30T00:00:00.000Z", layout);
     const dayStart = dateToX("2026-06-30", layout);
     expect(dayEnd).toBeGreaterThan(dayStart);
     expect(isDateOnlyPlanInstant("2026-06-30T14:30:00.000Z")).toBe(false);

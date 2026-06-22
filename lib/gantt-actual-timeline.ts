@@ -1,4 +1,4 @@
-import { formatPlanDateTime, parsePlanDateTime } from "@/lib/dates";
+import { formatPlanDateTime, parsePlanDateTime, planRangeEdgeMs } from "@/lib/dates";
 import { normalizeStatusKey } from "@/lib/task-status-style";
 import type { GanttItem } from "@/types";
 
@@ -265,7 +265,7 @@ function getLeafActualExecutionFill(
     return { green: null, red: null };
   }
 
-  const planEndMs = timeMs(item.endDate);
+  const planEndMs = planRangeEdgeMs(item.endDate, "end");
   const actualEndMs = timeMs(item.actualEndDate);
   if (planEndMs == null || actualEndMs == null) {
     return { green: null, red: null };

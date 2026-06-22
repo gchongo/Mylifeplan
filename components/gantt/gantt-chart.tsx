@@ -33,7 +33,7 @@ import {
   dateToX,
   getDateColumnBounds,
   getExecutionFillSpanMetrics,
-  getTimelineSpanMetrics,
+  getExecutionLineSpanMetrics,
   HOUR_WIDTH,
   isTodayInColumn,
   planDateOnly,
@@ -954,11 +954,16 @@ export const GanttChart = forwardRef<
     barHeightPx: number,
     rowHeight: number,
     tone: "green" | "red",
+    isVirtualPlanEnd: boolean,
   ) {
+    const isGreen = tone === "green";
     const snapToday =
       tail.endKind === "open" || planDateOnly(tail.to) === today ? today : undefined;
     const { left, width } = getExecutionFillSpanMetrics(tail.from, tail.to, layout, {
       snapEndToToday: snapToday,
+      fromEndpoint: isGreen ? "actual" : "plan",
+      toEndpoint: isGreen ? "plan" : "actual",
+      isVirtualPlanEnd,
     });
     const top = (rowHeight - barHeightPx) / 2;
     return (
@@ -1211,19 +1216,21 @@ export const GanttChart = forwardRef<
         onMouseEnter={() => setHoveredRootId(row.rootId)}
       >
         {!item.contributionOnly && actualExecutionFill.red &&
-          renderExecutionFillTail(actualExecutionFill.red, barStyle.barHeightPx, row.height, "red")}
+          renderExecutionFillTail(actualExecutionFill.red, barStyle.barHeightPx, row.height, "red", item.isVirtualEnd)}
         {!item.contributionOnly && actualExecutionFill.green &&
-          renderExecutionFillTail(actualExecutionFill.green, barStyle.barHeightPx, row.height, "green")}
+          renderExecutionFillTail(actualExecutionFill.green, barStyle.barHeightPx, row.height, "green", item.isVirtualEnd)}
         {!item.contributionOnly && activeOverrunTail &&
           renderPlanOverrunTail(activeOverrunTail, barStyle.barHeightPx, row.height)}
         {!item.contributionOnly && parentOverrunTail &&
           renderPlanOverrunTail(parentOverrunTail, barStyle.barHeightPx, row.height)}
         {!item.contributionOnly && executionSpan && (() => {
-          const lineMetrics = getTimelineSpanMetrics(
+          const lineMetrics = getExecutionLineSpanMetrics(
             executionSpan.from,
             executionSpan.to,
             layout,
-            executionSpan.endKind === "open" ? { snapEndToDate: today } : {},
+            executionSpan.endKind === "open"
+              ? { endKind: "open", snapEndToToday: today }
+              : { endKind: "fixed" },
           );
           return (
             <GanttActualExecutionLine
