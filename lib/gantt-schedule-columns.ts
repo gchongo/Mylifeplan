@@ -86,6 +86,74 @@ export function scheduleColumnIndexAtScroll(scrollLeft: number): number {
   return Math.max(0, Math.round(scrollLeft / GANTT_SCHEDULE_UNIFORM_COL_WIDTH));
 }
 
+export const GANTT_SCHEDULE_EDITABLE_COLUMN_IDS = [
+  "planStart",
+  "planEnd",
+  "actualStart",
+  "actualEnd",
+] as const;
+
+export type GanttScheduleEditableColumnId = (typeof GANTT_SCHEDULE_EDITABLE_COLUMN_IDS)[number];
+
+export function isScheduleColumnEditable(
+  id: GanttScheduleColumnId,
+): id is GanttScheduleEditableColumnId {
+  return (GANTT_SCHEDULE_EDITABLE_COLUMN_IDS as readonly string[]).includes(id);
+}
+
+export function scheduleColumnPlanField(
+  id: GanttScheduleEditableColumnId,
+): "startDate" | "endDate" | "actualStartDate" | "actualEndDate" {
+  switch (id) {
+    case "planStart":
+      return "startDate";
+    case "planEnd":
+      return "endDate";
+    case "actualStart":
+      return "actualStartDate";
+    case "actualEnd":
+      return "actualEndDate";
+  }
+}
+
+export function getScheduleEditRawValue(
+  columnId: GanttScheduleEditableColumnId,
+  item: GanttItem,
+): string | null {
+  switch (columnId) {
+    case "planStart":
+      return item.startDate ?? null;
+    case "planEnd":
+      return item.endDate ?? null;
+    case "actualStart":
+      return item.actualStartDate ?? null;
+    case "actualEnd":
+      return item.actualEndDate ?? null;
+  }
+}
+
+export function planHasRollupActuals(planId: string, allPlans: GanttItem[]): boolean {
+  return allPlans.some(
+    (p) => p.parentId === planId && p.status !== "archived",
+  );
+}
+
+export function isScheduleCellEditable(
+  columnId: GanttScheduleColumnId,
+  item: GanttItem,
+  allPlans: GanttItem[],
+): boolean {
+  if (!isScheduleColumnEditable(columnId)) return false;
+  if (item.contributionOnly) return false;
+  if (
+    (columnId === "actualStart" || columnId === "actualEnd") &&
+    planHasRollupActuals(item.id, allPlans)
+  ) {
+    return false;
+  }
+  return true;
+}
+
 function formatScheduleDate(value: string | null | undefined): string {
   if (!value) return "—";
   const d = parsePlanDateTime(value);

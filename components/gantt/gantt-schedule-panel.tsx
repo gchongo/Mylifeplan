@@ -6,10 +6,14 @@ import { GANTT_TITLE_DRAWER_CLASS, GANTT_TITLE_ROW_CLASS } from "@/lib/gantt-tit
 import {
   GANTT_SCHEDULE_TABLE_HEADER_HEIGHT,
   getScheduleCellValue,
+  getScheduleEditRawValue,
+  isScheduleCellEditable,
+  isScheduleColumnEditable,
   scheduleColumnsTotalWidth,
   visibleScheduleColumnDefs,
   type GanttScheduleColumnId,
 } from "@/lib/gantt-schedule-columns";
+import { GanttScheduleEditableCell } from "@/components/gantt/gantt-schedule-editable-cell";
 import { cn } from "@/lib/utils";
 import type { GanttItem } from "@/types";
 
@@ -198,6 +202,7 @@ export function GanttScheduleColumnPanel({
   scrollLeft,
   rows,
   allPlans,
+  onPlanFieldUpdated,
 }: {
   width: number;
   bodyHeight: number;
@@ -211,6 +216,7 @@ export function GanttScheduleColumnPanel({
     item: GanttItem;
   }[];
   allPlans: GanttItem[];
+  onPlanFieldUpdated?: () => void;
 }) {
   const columnDefs = visibleScheduleColumnDefs(visibleColumns);
   const columnsWidth = scheduleColumnsTotalWidth(visibleColumns);
@@ -237,6 +243,31 @@ export function GanttScheduleColumnPanel({
               >
                 {columnDefs.map((col) => {
                   const cell = getScheduleCellValue(col.id, row.item, allPlans);
+                  const editable = isScheduleCellEditable(col.id, row.item, allPlans);
+
+                  if (editable && onPlanFieldUpdated && isScheduleColumnEditable(col.id)) {
+                    return (
+                      <GanttScheduleEditableCell
+                        key={col.id}
+                        columnId={col.id}
+                        planId={row.item.id}
+                        rawValue={getScheduleEditRawValue(col.id, row.item)}
+                        cell={cell}
+                        width={col.width}
+                        onSaved={onPlanFieldUpdated}
+                      />
+                    );
+                  }
+
+                  const readOnlyTitle =
+                    (col.id === "actualStart" || col.id === "actualEnd") &&
+                    !editable &&
+                    !row.item.contributionOnly
+                      ? "由子计划汇总，请在子计划上修改"
+                      : cell.virtual
+                        ? `${cell.text}（预估截止）`
+                        : undefined;
+
                   return (
                     <div
                       key={col.id}
@@ -248,7 +279,7 @@ export function GanttScheduleColumnPanel({
                         !cell.muted && !cell.virtual && !cell.highlight && "text-gray-600 dark:text-gray-300",
                       )}
                       style={{ width: col.width }}
-                      title={cell.virtual ? `${cell.text}（预估截止）` : cell.text}
+                      title={readOnlyTitle}
                     >
                       {cell.text}
                     </div>

@@ -1703,6 +1703,10 @@ export const GanttChart = forwardRef<
                   scrollLeft={scheduleScrollLeft}
                   rows={mappedRows}
                   allPlans={items}
+                  onPlanFieldUpdated={() => {
+                    refetchGantt();
+                    dispatchPlanUpdated();
+                  }}
                 />
               )}
             </div>
