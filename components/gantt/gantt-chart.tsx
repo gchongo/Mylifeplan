@@ -16,8 +16,15 @@ import {
   GANTT_TITLE_ROW_CLASS,
 } from "@/lib/gantt-title-column";
 import { GanttDrawerOpenTab, GanttTitleDrawerControls } from "@/components/gantt/gantt-title-drawer";
-import { GanttSchedulePanel } from "@/components/gantt/gantt-schedule-panel";
+import {
+  GanttTitlePanel,
+  GanttTitleTableHeader,
+  GanttScheduleColumnPanel,
+  GanttScheduleColumnHeader,
+  GanttScheduleColumnNav,
+} from "@/components/gantt/gantt-schedule-panel";
 import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribution-drawer";
+import { GanttScheduleColumnPicker } from "@/components/gantt/gantt-schedule-column-picker";
 import { GanttActualExecutionLine } from "@/components/gantt/gantt-actual-execution-line";
 import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
 import { useSettings } from "@/components/settings/settings-provider";
@@ -91,29 +98,49 @@ import { apiJson } from "@/lib/client-api";
 import { dispatchPlanUpdated, PLAN_UPDATED_EVENT } from "@/lib/plan-events";
 import {
   DEFAULT_VISIBLE_SCHEDULE_COLUMNS,
+  GANTT_SCHEDULE_TABLE_HEADER_HEIGHT,
   readStoredScheduleColumns,
+  scheduleColumnsTotalWidth,
+  visibleScheduleColumnDefs,
   writeStoredScheduleColumns,
   type GanttScheduleColumnId,
 } from "@/lib/gantt-schedule-columns";
+import {
+  DEFAULT_SCHEDULE_WIDTH,
+  DEFAULT_TITLE_WIDTH,
+  MAX_SCHEDULE_WIDTH,
+  MAX_TITLE_WIDTH,
+  MIN_SCHEDULE_WIDTH,
+  MIN_TITLE_WIDTH,
+  readStoredScheduleVisible,
+  readStoredScheduleWidth,
+  readStoredTitleVisible,
+  readStoredTitleWidth,
+  writeStoredScheduleVisible,
+  writeStoredScheduleWidth,
+  writeStoredTitleVisible,
+  writeStoredTitleWidth,
+} from "@/lib/gantt-panel-prefs";
 const ROW_GROUP_GAP = 8;
-const DEFAULT_LABEL_WIDTH = 320;
-const MIN_LABEL_WIDTH = 200;
-const MAX_LABEL_WIDTH = 720;
-const GANTT_LABEL_WIDTH_KEY = "mylifeplan-gantt-label-width";
-const GANTT_LABEL_VISIBLE_KEY = "mylifeplan-gantt-label-visible";
-const TIMELINE_HEADER_HEIGHT = 28;
 const DRAWER_TRANSITION_MS = 300;
+const TIMELINE_DATE_HEADER_HEIGHT = 28;
+const TIMELINE_SUBHEADER_HEIGHT = GANTT_SCHEDULE_TABLE_HEADER_HEIGHT;
 
-function readStoredLabelWidth() {
-  if (typeof window === "undefined") return DEFAULT_LABEL_WIDTH;
-  const n = parseInt(localStorage.getItem(GANTT_LABEL_WIDTH_KEY) ?? "", 10);
-  if (Number.isNaN(n)) return DEFAULT_LABEL_WIDTH;
-  return Math.min(MAX_LABEL_WIDTH, Math.max(MIN_LABEL_WIDTH, n));
+function scrollLeftForColumnIndex(columns: GanttScheduleColumnId[], index: number) {
+  return visibleScheduleColumnDefs(columns)
+    .slice(0, index)
+    .reduce((sum, col) => sum + col.width, 0);
 }
 
-function readStoredLabelVisible() {
-  if (typeof window === "undefined") return true;
-  return localStorage.getItem(GANTT_LABEL_VISIBLE_KEY) !== "false";
+function columnIndexAtScroll(columns: GanttScheduleColumnId[], scrollLeft: number) {
+  const defs = visibleScheduleColumnDefs(columns);
+  let x = 0;
+  for (let i = 0; i < defs.length; i++) {
+    const col = defs[i]!;
+    if (scrollLeft < x + col.width) return i;
+    x += col.width;
+  }
+  return Math.max(0, defs.length - 1);
 }
 
 function asPlanStatus(status: string | undefined | null): PlanStatus {
@@ -311,12 +338,16 @@ export const GanttChart = forwardRef<
   const [selectedContributionId, setSelectedContributionId] = useState<string | null>(null);
   const [scrollViewportHeight, setScrollViewportHeight] = useState(480);
   const [timelineViewportWidth, setTimelineViewportWidth] = useState(0);
-  const [labelWidth, setLabelWidth] = useState(DEFAULT_LABEL_WIDTH);
-  const [labelVisible, setLabelVisible] = useState(true);
+  const [titleWidth, setTitleWidth] = useState(DEFAULT_TITLE_WIDTH);
+  const [scheduleWidth, setScheduleWidth] = useState(DEFAULT_SCHEDULE_WIDTH);
+  const [titlePanelVisible, setTitlePanelVisible] = useState(true);
+  const [schedulePanelVisible, setSchedulePanelVisible] = useState(true);
   const [scheduleColumns, setScheduleColumns] = useState<GanttScheduleColumnId[]>(
     DEFAULT_VISIBLE_SCHEDULE_COLUMNS,
   );
-  const [isResizingLabel, setIsResizingLabel] = useState(false);
+  const [scheduleScrollLeft, setScheduleScrollLeft] = useState(0);
+  const [isResizingTitle, setIsResizingTitle] = useState(false);
+  const [isResizingSchedule, setIsResizingSchedule] = useState(false);
   const [barPreview, setBarPreview] = useState<
     Map<string, { start: string; end: string }>
   >(() => new Map());
@@ -335,13 +366,29 @@ export const GanttChart = forwardRef<
     [todayColumnPrefs],
   );
 
-  const effectiveLabelWidth = labelVisible ? labelWidth : 0;
+  const effectiveTitleWidth = titlePanelVisible ? titleWidth : 0;
+  const effectiveScheduleWidth = schedulePanelVisible ? scheduleWidth : 0;
+  const effectiveLeftWidth = effectiveTitleWidth + effectiveScheduleWidth;
+  const leftSubheaderVisible = titlePanelVisible || schedulePanelVisible;
+  const timelineHeaderHeight = leftSubheaderVisible
+    ? TIMELINE_DATE_HEADER_HEIGHT + TIMELINE_SUBHEADER_HEIGHT
+    : TIMELINE_DATE_HEADER_HEIGHT;
+  const scheduleColumnsWidth = scheduleColumnsTotalWidth(scheduleColumns);
+  const scheduleMaxScroll = Math.max(0, scheduleColumnsWidth - scheduleWidth);
+  const canScheduleScrollPrev = scheduleScrollLeft > 0;
+  const canScheduleScrollNext = scheduleScrollLeft < scheduleMaxScroll - 0.5;
 
   useEffect(() => {
-    setLabelWidth(readStoredLabelWidth());
-    setLabelVisible(readStoredLabelVisible());
+    setTitleWidth(readStoredTitleWidth());
+    setScheduleWidth(readStoredScheduleWidth());
+    setTitlePanelVisible(readStoredTitleVisible());
+    setSchedulePanelVisible(readStoredScheduleVisible());
     setScheduleColumns(readStoredScheduleColumns());
   }, []);
+
+  useEffect(() => {
+    setScheduleScrollLeft((prev) => Math.min(prev, scheduleMaxScroll));
+  }, [scheduleMaxScroll, scheduleColumns, scheduleWidth]);
 
   function handleScheduleColumnsChange(next: GanttScheduleColumnId[]) {
     setScheduleColumns(next);
@@ -350,11 +397,11 @@ export const GanttChart = forwardRef<
 
   useEffect(() => {
     onTitleColumnLayout?.({
-      width: labelVisible ? labelWidth : 0,
-      visible: labelVisible,
+      width: effectiveLeftWidth,
+      visible: titlePanelVisible || schedulePanelVisible,
       collapsedWidth: GANTT_DRAWER_TOGGLE_WIDTH,
     });
-  }, [labelWidth, labelVisible, onTitleColumnLayout]);
+  }, [effectiveLeftWidth, titlePanelVisible, schedulePanelVisible, onTitleColumnLayout]);
 
   const dataBounds = useMemo(() => dataBoundsFromItems(items), [items]);
 
@@ -442,37 +489,62 @@ export const GanttChart = forwardRef<
     return map;
   }, [items, contributions]);
 
-  const toggleLabelPanel = useCallback(() => {
-    setLabelVisible((prev) => {
+  const toggleTitlePanel = useCallback(() => {
+    setTitlePanelVisible((prev) => {
       const next = !prev;
-      localStorage.setItem(GANTT_LABEL_VISIBLE_KEY, String(next));
+      writeStoredTitleVisible(next);
       return next;
     });
   }, []);
 
-  const startLabelResize = useCallback((clientX: number) => {
+  const toggleSchedulePanel = useCallback(() => {
+    setSchedulePanelVisible((prev) => {
+      const next = !prev;
+      writeStoredScheduleVisible(next);
+      return next;
+    });
+  }, []);
+
+  const openLeftPanels = useCallback(() => {
+    setTitlePanelVisible(true);
+    setSchedulePanelVisible(true);
+    writeStoredTitleVisible(true);
+    writeStoredScheduleVisible(true);
+  }, []);
+
+  const scrollScheduleColumns = useCallback((delta: -1 | 1) => {
+    setScheduleScrollLeft((prev) => {
+      const defs = visibleScheduleColumnDefs(scheduleColumns);
+      if (defs.length === 0) return 0;
+      const currentIdx = columnIndexAtScroll(scheduleColumns, prev);
+      const nextIdx = Math.max(0, Math.min(defs.length - 1, currentIdx + delta));
+      return Math.min(scrollLeftForColumnIndex(scheduleColumns, nextIdx), scheduleMaxScroll);
+    });
+  }, [scheduleColumns, scheduleMaxScroll]);
+
+  const startTitleResize = useCallback((clientX: number) => {
     const startX = clientX;
-    const startWidth = labelWidth;
-    setIsResizingLabel(true);
+    const startWidth = titleWidth;
+    setIsResizingTitle(true);
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
 
     function onMove(e: MouseEvent) {
       const next = Math.min(
-        MAX_LABEL_WIDTH,
-        Math.max(MIN_LABEL_WIDTH, startWidth + (e.clientX - startX)),
+        MAX_TITLE_WIDTH,
+        Math.max(MIN_TITLE_WIDTH, startWidth + (e.clientX - startX)),
       );
-      setLabelWidth(next);
+      setTitleWidth(next);
     }
 
     function onUp(e: MouseEvent) {
       const next = Math.min(
-        MAX_LABEL_WIDTH,
-        Math.max(MIN_LABEL_WIDTH, startWidth + (e.clientX - startX)),
+        MAX_TITLE_WIDTH,
+        Math.max(MIN_TITLE_WIDTH, startWidth + (e.clientX - startX)),
       );
-      setLabelWidth(next);
-      localStorage.setItem(GANTT_LABEL_WIDTH_KEY, String(next));
-      setIsResizingLabel(false);
+      setTitleWidth(next);
+      writeStoredTitleWidth(next);
+      setIsResizingTitle(false);
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
       window.removeEventListener("mousemove", onMove);
@@ -481,7 +553,40 @@ export const GanttChart = forwardRef<
 
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
-  }, [labelWidth]);
+  }, [titleWidth]);
+
+  const startScheduleResize = useCallback((clientX: number) => {
+    const startX = clientX;
+    const startWidth = scheduleWidth;
+    setIsResizingSchedule(true);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    function onMove(e: MouseEvent) {
+      const next = Math.min(
+        MAX_SCHEDULE_WIDTH,
+        Math.max(MIN_SCHEDULE_WIDTH, startWidth + (e.clientX - startX)),
+      );
+      setScheduleWidth(next);
+    }
+
+    function onUp(e: MouseEvent) {
+      const next = Math.min(
+        MAX_SCHEDULE_WIDTH,
+        Math.max(MIN_SCHEDULE_WIDTH, startWidth + (e.clientX - startX)),
+      );
+      setScheduleWidth(next);
+      writeStoredScheduleWidth(next);
+      setIsResizingSchedule(false);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    }
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, [scheduleWidth]);
 
   const expandablePlanIds = useMemo(() => {
     return filteredPlans
@@ -544,14 +649,14 @@ export const GanttChart = forwardRef<
 
     const update = () => {
       setScrollViewportHeight(scroll.clientHeight);
-      const w = Math.floor(container.clientWidth - effectiveLabelWidth);
+      const w = Math.floor(container.clientWidth - effectiveLeftWidth);
       setTimelineViewportWidth((prev) => (Math.abs(prev - w) > 4 ? w : prev));
     };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(container);
     return () => ro.disconnect();
-  }, [isLoading, fullPage, effectiveLabelWidth]);
+  }, [isLoading, fullPage, effectiveLeftWidth]);
 
   const syncTimelineHeaderScroll = useCallback(() => {
     const left = scrollRef.current?.scrollLeft ?? 0;
@@ -563,21 +668,21 @@ export const GanttChart = forwardRef<
   const scrollToToday = useCallback(() => {
     const el = scrollRef.current;
     if (!el || !todayVisible) return false;
-    const offset = effectiveLabelWidth + todayX - el.clientWidth / 2;
+    const offset = effectiveLeftWidth + todayX - el.clientWidth / 2;
     el.scrollLeft = Math.max(0, offset);
     syncTimelineHeaderScroll();
     return true;
-  }, [todayVisible, todayX, effectiveLabelWidth, syncTimelineHeaderScroll]);
+  }, [todayVisible, todayX, effectiveLeftWidth, syncTimelineHeaderScroll]);
 
   const scrollToAnchor = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return false;
     const anchorX = dateToX(anchor, layout);
-    const offset = effectiveLabelWidth + anchorX - el.clientWidth / 2;
+    const offset = effectiveLeftWidth + anchorX - el.clientWidth / 2;
     el.scrollLeft = Math.max(0, offset);
     syncTimelineHeaderScroll();
     return true;
-  }, [anchor, layout, effectiveLabelWidth, syncTimelineHeaderScroll]);
+  }, [anchor, layout, effectiveLeftWidth, syncTimelineHeaderScroll]);
 
   useEffect(() => {
     scrolledToToday.current = false;
@@ -615,7 +720,7 @@ export const GanttChart = forwardRef<
 
   useLayoutEffect(() => {
     syncTimelineHeaderScroll();
-  }, [syncTimelineHeaderScroll, timelineWidth, labelWidth, labelVisible, rows.length]);
+  }, [syncTimelineHeaderScroll, timelineWidth, titleWidth, scheduleWidth, titlePanelVisible, schedulePanelVisible, rows.length]);
 
   function preserveScrollLeft() {
     pendingScrollLeft.current = scrollRef.current?.scrollLeft ?? 0;
@@ -727,7 +832,7 @@ export const GanttChart = forwardRef<
 
   function handlePanStart(e: React.MouseEvent) {
     if (e.button !== 0) return;
-    if (isResizingLabel) return;
+    if (isResizingTitle || isResizingSchedule) return;
     const target = e.target as HTMLElement;
     if (target.closest("[data-gantt-bar]")) return;
     if (target.closest("button, a, input, textarea, select, [data-no-pan]")) return;
@@ -765,10 +870,13 @@ export const GanttChart = forwardRef<
   function renderTimelineHeaderOnly() {
     return (
       <div
-        className={GANTT_STICKY_HEADER_CLASS}
-        style={{ width: timelineWidth, height: TIMELINE_HEADER_HEIGHT, minHeight: TIMELINE_HEADER_HEIGHT }}
+        className={cn(GANTT_STICKY_HEADER_CLASS, "flex flex-col")}
+        style={{ width: timelineWidth, height: timelineHeaderHeight, minHeight: timelineHeaderHeight }}
       >
-        <div className="flex w-full bg-white text-xs dark:bg-gray-950">
+        <div
+          className="flex w-full flex-1 bg-white text-xs dark:bg-gray-950"
+          style={{ height: TIMELINE_DATE_HEADER_HEIGHT, minHeight: TIMELINE_DATE_HEADER_HEIGHT }}
+        >
           {layout.columns.map((col) => {
             const isToday = isTodayInColumn(today, col);
             const todayStyle = todayColumnCellStyle(isToday);
@@ -808,6 +916,13 @@ export const GanttChart = forwardRef<
             );
           })}
         </div>
+        {leftSubheaderVisible && (
+          <div
+            className="shrink-0 border-b border-gray-100 bg-blue-50/40 dark:border-gray-800 dark:bg-blue-950/20"
+            style={{ height: TIMELINE_SUBHEADER_HEIGHT, minHeight: TIMELINE_SUBHEADER_HEIGHT }}
+            aria-hidden
+          />
+        )}
       </div>
     );
   }
@@ -1351,10 +1466,80 @@ export const GanttChart = forwardRef<
         onToggleActualTimeline={() =>
           setGanttActualLine({ enabled: !actualLinePrefs.enabled })
         }
-        onCloseDrawer={toggleLabelPanel}
+        onToggleTitlePanel={toggleTitlePanel}
+        onToggleSchedulePanel={toggleSchedulePanel}
+        titlePanelVisible={titlePanelVisible}
+        schedulePanelVisible={schedulePanelVisible}
         onCreatePlan={() => openCreatePlan()}
         scheduleColumns={scheduleColumns}
         onScheduleColumnsChange={handleScheduleColumnsChange}
+      />
+    );
+  }
+
+  function renderScheduleHeaderNav() {
+    return (
+      <GanttScheduleColumnNav
+        canScrollPrev={canScheduleScrollPrev}
+        canScrollNext={canScheduleScrollNext}
+        onScrollPrev={() => scrollScheduleColumns(-1)}
+        onScrollNext={() => scrollScheduleColumns(1)}
+        onClose={toggleSchedulePanel}
+        trailing={
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-1">
+            {!titlePanelVisible && (
+              <>
+                <button
+                  type="button"
+                  data-no-pan
+                  onClick={toggleTitlePanel}
+                  className="rounded-md border border-gray-200 bg-gray-50 px-1.5 text-[10px] font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
+                  title="显示标题列"
+                >
+                  标题
+                </button>
+                <GanttScheduleColumnPicker
+                  visibleColumns={scheduleColumns}
+                  onChange={handleScheduleColumnsChange}
+                  compact
+                />
+              </>
+            )}
+          </div>
+        }
+      />
+    );
+  }
+
+  const isResizingPanels = isResizingTitle || isResizingSchedule;
+
+  function renderPanelResizeHandle(
+    left: number,
+    ariaLabel: string,
+    onStart: (clientX: number) => void,
+    active: boolean,
+  ) {
+    return (
+      <div
+        data-no-pan
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={ariaLabel}
+        className={cn(
+          "absolute z-40 w-2 -translate-x-1/2 cursor-col-resize touch-none select-none",
+          "hover:bg-blue-400/20",
+          active && "bg-blue-500/25",
+        )}
+        style={{
+          left,
+          top: -timelineHeaderHeight,
+          height: `calc(100% + ${timelineHeaderHeight}px)`,
+        }}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onStart(e.clientX);
+        }}
       />
     );
   }
@@ -1363,30 +1548,73 @@ export const GanttChart = forwardRef<
     return (
       <div className="relative z-30 flex shrink-0 overflow-visible">
         <GanttDrawerOpenTab
-          headerHeight={TIMELINE_HEADER_HEIGHT}
-          visible={!labelVisible}
-          onOpen={toggleLabelPanel}
+          headerHeight={timelineHeaderHeight}
+          visible={!titlePanelVisible && !schedulePanelVisible}
+          onOpen={openLeftPanels}
         />
+
         <div
           className={cn(
             "shrink-0 overflow-visible",
-            !isResizingLabel && "transition-[width] duration-300 ease-in-out",
+            !isResizingPanels && "transition-[width] duration-300 ease-in-out",
           )}
           style={{
-            width: labelVisible ? labelWidth : 0,
-            transitionDuration: isResizingLabel ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
+            width: effectiveTitleWidth,
+            transitionDuration: isResizingPanels ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
           }}
         >
-          <div
-            className={cn(
-              GANTT_STICKY_HEADER_CLASS,
-              "items-center overflow-visible border-r border-blue-200/80 dark:border-blue-900/50",
-            )}
-            style={{ width: labelWidth, height: TIMELINE_HEADER_HEIGHT, minHeight: TIMELINE_HEADER_HEIGHT }}
-          >
-            {renderLabelHeaderControls()}
-          </div>
+          {titlePanelVisible && (
+            <div
+              className={cn(
+                GANTT_STICKY_HEADER_CLASS,
+                "flex flex-col overflow-visible border-r border-blue-200/80 dark:border-blue-900/50",
+              )}
+              style={{ width: titleWidth, height: timelineHeaderHeight, minHeight: timelineHeaderHeight }}
+            >
+              <div
+                className="flex shrink-0 items-center overflow-visible"
+                style={{ height: TIMELINE_DATE_HEADER_HEIGHT, minHeight: TIMELINE_DATE_HEADER_HEIGHT }}
+              >
+                {renderLabelHeaderControls()}
+              </div>
+              <GanttTitleTableHeader width={titleWidth} />
+            </div>
+          )}
         </div>
+
+        <div
+          className={cn(
+            "shrink-0 overflow-visible",
+            !isResizingPanels && "transition-[width] duration-300 ease-in-out",
+          )}
+          style={{
+            width: effectiveScheduleWidth,
+            transitionDuration: isResizingPanels ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
+          }}
+        >
+          {schedulePanelVisible && (
+            <div
+              className={cn(
+                GANTT_STICKY_HEADER_CLASS,
+                "flex flex-col overflow-visible border-r border-blue-200/80 dark:border-blue-900/50",
+              )}
+              style={{ width: scheduleWidth, height: timelineHeaderHeight, minHeight: timelineHeaderHeight }}
+            >
+              <div
+                className="flex shrink-0 items-center overflow-hidden"
+                style={{ height: TIMELINE_DATE_HEADER_HEIGHT, minHeight: TIMELINE_DATE_HEADER_HEIGHT }}
+              >
+                {renderScheduleHeaderNav()}
+              </div>
+              <GanttScheduleColumnHeader
+                width={scheduleWidth}
+                visibleColumns={scheduleColumns}
+                scrollLeft={scheduleScrollLeft}
+              />
+            </div>
+          )}
+        </div>
+
         <div className="relative min-w-0 flex-1 overflow-hidden">
           <div ref={headerTimelineRef} className="will-change-transform">
             {renderTimelineHeaderOnly()}
@@ -1397,31 +1625,37 @@ export const GanttChart = forwardRef<
   }
 
   function renderScrollBody() {
+    const mappedRows = rows.map((row, idx) => ({
+      key: `label-${row.item.id}-${idx}`,
+      height: row.height,
+      gapBefore: row.gapBefore,
+      tightBelow: rowTightBelow(row, rows[idx + 1]),
+      item: row.item,
+    }));
+
     return (
       <div className="relative min-h-0 flex-1">
-        {labelVisible && (
-          <div
-            data-no-pan
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="调整计划列表宽度"
-            className={cn(
-              "absolute z-40 w-2 -translate-x-1/2 cursor-col-resize touch-none select-none",
-              "hover:bg-blue-400/20",
-              isResizingLabel && "bg-blue-500/25",
-            )}
-            style={{
-              left: labelWidth,
-              top: -TIMELINE_HEADER_HEIGHT,
-              height: `calc(100% + ${TIMELINE_HEADER_HEIGHT}px)`,
-            }}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              startLabelResize(e.clientX);
-            }}
-          />
-        )}
+        {titlePanelVisible && schedulePanelVisible &&
+          renderPanelResizeHandle(
+            effectiveTitleWidth,
+            "调整标题列宽度",
+            startTitleResize,
+            isResizingTitle,
+          )}
+        {schedulePanelVisible &&
+          renderPanelResizeHandle(
+            effectiveLeftWidth,
+            "调整时间列宽度",
+            startScheduleResize,
+            isResizingSchedule,
+          )}
+        {titlePanelVisible && !schedulePanelVisible &&
+          renderPanelResizeHandle(
+            effectiveTitleWidth,
+            "调整标题列宽度",
+            startTitleResize,
+            isResizingTitle,
+          )}
 
         <div
           ref={scrollRef}
@@ -1429,35 +1663,39 @@ export const GanttChart = forwardRef<
           onMouseDown={handlePanStart}
           className={cn(
             "h-full min-h-0 w-full max-w-full min-w-0 overflow-x-auto overflow-y-auto",
-            isResizingLabel && "cursor-col-resize select-none",
-            isPanning ? "cursor-grabbing select-none" : !isResizingLabel && "cursor-grab",
+            isResizingPanels && "cursor-col-resize select-none",
+            isPanning ? "cursor-grabbing select-none" : !isResizingPanels && "cursor-grab",
           )}
         >
           <div className="relative flex min-h-0 w-max">
             <div
               className={cn(
-                "sticky left-0 z-20 shrink-0 overflow-hidden",
-                !isResizingLabel && "transition-[width] duration-300 ease-in-out",
+                "sticky left-0 z-20 flex shrink-0 overflow-hidden",
+                !isResizingPanels && "transition-[width] duration-300 ease-in-out",
               )}
               style={{
-                width: labelVisible ? labelWidth : 0,
-                transitionDuration: isResizingLabel ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
+                width: effectiveLeftWidth,
+                transitionDuration: isResizingPanels ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
               }}
             >
-              <GanttSchedulePanel
-                width={labelWidth}
-                bodyHeight={bodyAreaHeight}
-                visibleColumns={scheduleColumns}
-                allPlans={items}
-                rows={rows.map((row, idx) => ({
-                  key: `label-${row.item.id}-${idx}`,
-                  height: row.height,
-                  gapBefore: row.gapBefore,
-                  tightBelow: rowTightBelow(row, rows[idx + 1]),
-                  item: row.item,
-                }))}
-                renderTitleCell={(_row, idx) => renderPlanTitleCell(rows[idx]!, idx, { compact: true })}
-              />
+              {titlePanelVisible && (
+                <GanttTitlePanel
+                  width={titleWidth}
+                  bodyHeight={bodyAreaHeight}
+                  rows={mappedRows}
+                  renderTitleCell={(_row, idx) => renderPlanTitleCell(rows[idx]!, idx, { compact: true })}
+                />
+              )}
+              {schedulePanelVisible && (
+                <GanttScheduleColumnPanel
+                  width={scheduleWidth}
+                  bodyHeight={bodyAreaHeight}
+                  visibleColumns={scheduleColumns}
+                  scrollLeft={scheduleScrollLeft}
+                  rows={mappedRows}
+                  allPlans={items}
+                />
+              )}
             </div>
 
             <div className="flex shrink-0 flex-col">

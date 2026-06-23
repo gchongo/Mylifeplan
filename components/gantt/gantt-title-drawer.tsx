@@ -34,8 +34,8 @@ export function GanttDrawerOpenTab({
           : "pointer-events-none -translate-x-full opacity-0",
       )}
       style={{ width: GANTT_DRAWER_TOGGLE_WIDTH, height: headerHeight }}
-      title="显示计划列表"
-      aria-label="显示计划列表"
+      title="显示侧栏"
+      aria-label="显示侧栏"
       onClick={onOpen}
     >
       <GanttPanelExpandChevron className="text-blue-600 dark:text-blue-300" />
@@ -91,18 +91,26 @@ export function GanttTitleDrawerControls({
   onToggleActualTimeline,
   scheduleColumns,
   onScheduleColumnsChange,
+  onToggleTitlePanel,
+  onToggleSchedulePanel,
+  titlePanelVisible,
+  schedulePanelVisible,
 }: {
   allExpanded: boolean;
   onToggleExpandAll: () => void;
   showExpandToggle: boolean;
   statusFilter: Set<VisualStatusKey>;
   onStatusFilterChange: (next: Set<VisualStatusKey>) => void;
-  onCloseDrawer: () => void;
+  onCloseDrawer?: () => void;
   onCreatePlan: () => void;
   showActualTimeline?: boolean;
   onToggleActualTimeline?: () => void;
   scheduleColumns?: GanttScheduleColumnId[];
   onScheduleColumnsChange?: (next: GanttScheduleColumnId[]) => void;
+  onToggleTitlePanel?: () => void;
+  onToggleSchedulePanel?: () => void;
+  titlePanelVisible?: boolean;
+  schedulePanelVisible?: boolean;
 }) {
   return (
     <GanttTaskListControls
@@ -111,8 +119,10 @@ export function GanttTitleDrawerControls({
       showExpandToggle={showExpandToggle}
       statusFilter={statusFilter}
       onStatusFilterChange={onStatusFilterChange}
-      labelVisible
-      onToggleLabelPanel={onCloseDrawer}
+      titlePanelVisible={titlePanelVisible}
+      schedulePanelVisible={schedulePanelVisible}
+      onToggleTitlePanel={onToggleTitlePanel ?? onCloseDrawer}
+      onToggleSchedulePanel={onToggleSchedulePanel}
       onCreatePlan={onCreatePlan}
       showActualTimeline={showActualTimeline}
       onToggleActualTimeline={onToggleActualTimeline}

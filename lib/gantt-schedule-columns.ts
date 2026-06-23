@@ -3,6 +3,7 @@ import { formatCompletionPercent, planCompletionPercent } from "@/lib/gantt-plan
 import type { GanttItem } from "@/types";
 
 export const GANTT_TITLE_COL_WIDTH = 140;
+export const GANTT_SCHEDULE_TABLE_HEADER_HEIGHT = 26;
 export const GANTT_SCHEDULE_COLUMNS_STORAGE_KEY = "mylifeplan-gantt-schedule-columns";
 
 export const GANTT_SCHEDULE_COLUMN_IDS = [

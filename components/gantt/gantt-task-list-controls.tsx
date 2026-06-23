@@ -17,8 +17,10 @@ export function GanttTaskListControls({
   showExpandToggle,
   statusFilter,
   onStatusFilterChange,
-  labelVisible = true,
-  onToggleLabelPanel,
+  titlePanelVisible = true,
+  schedulePanelVisible = true,
+  onToggleTitlePanel,
+  onToggleSchedulePanel,
   onCreatePlan,
   showActualTimeline,
   onToggleActualTimeline,
@@ -31,8 +33,10 @@ export function GanttTaskListControls({
   showExpandToggle: boolean;
   statusFilter: Set<VisualStatusKey>;
   onStatusFilterChange: (next: Set<VisualStatusKey>) => void;
-  labelVisible?: boolean;
-  onToggleLabelPanel?: () => void;
+  titlePanelVisible?: boolean;
+  schedulePanelVisible?: boolean;
+  onToggleTitlePanel?: () => void;
+  onToggleSchedulePanel?: () => void;
   onCreatePlan?: () => void;
   showActualTimeline?: boolean;
   onToggleActualTimeline?: () => void;
@@ -69,20 +73,57 @@ export function GanttTaskListControls({
 
   return (
     <div className={cn("flex h-full w-full items-center gap-1 px-2", !compact && "border-b border-blue-200/70 py-1.5 dark:border-blue-900/50")}>
-      {onToggleLabelPanel && labelVisible && (
+      {onToggleTitlePanel && titlePanelVisible && (
         <button
           type="button"
           data-no-pan
-          onClick={onToggleLabelPanel}
+          onClick={onToggleTitlePanel}
           className={cn(
             "flex shrink-0 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800",
             compact ? "h-6 w-6" : "h-7 w-7 text-blue-700 hover:bg-blue-200/50 dark:text-blue-200 dark:hover:bg-blue-900/50",
           )}
-          title="收起计划列表"
-          aria-label="收起计划列表"
+          title="收起标题列"
+          aria-label="收起标题列"
         >
           <GanttPanelCollapseChevron className="text-blue-600 dark:text-blue-300" />
         </button>
+      )}
+
+      {onToggleTitlePanel && onToggleSchedulePanel && (
+        <div className="flex shrink-0 items-center gap-0.5">
+          <button
+            type="button"
+            data-no-pan
+            onClick={onToggleTitlePanel}
+            className={cn(
+              "rounded-md border px-1.5 text-[10px] font-medium",
+              compact ? "h-6" : "h-7 text-xs",
+              titlePanelVisible
+                ? "border-blue-400 bg-blue-100 text-blue-800 dark:border-blue-600 dark:bg-blue-900/50 dark:text-blue-100"
+                : "border-gray-200 bg-gray-50 text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400",
+            )}
+            title={titlePanelVisible ? "隐藏标题列" : "显示标题列"}
+            aria-pressed={titlePanelVisible}
+          >
+            标题
+          </button>
+          <button
+            type="button"
+            data-no-pan
+            onClick={onToggleSchedulePanel}
+            className={cn(
+              "rounded-md border px-1.5 text-[10px] font-medium",
+              compact ? "h-6" : "h-7 text-xs",
+              schedulePanelVisible
+                ? "border-blue-400 bg-blue-100 text-blue-800 dark:border-blue-600 dark:bg-blue-900/50 dark:text-blue-100"
+                : "border-gray-200 bg-gray-50 text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400",
+            )}
+            title={schedulePanelVisible ? "隐藏时间列" : "显示时间列"}
+            aria-pressed={schedulePanelVisible}
+          >
+            时间
+          </button>
+        </div>
       )}
 
       {showExpandToggle && (
