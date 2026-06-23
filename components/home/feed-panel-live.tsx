@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { EmptyState, Loading } from "@/components/ui/feedback";
 import { FeedComposer } from "@/components/feed/feed-composer";
 import { FeedTypeFilter } from "@/components/feed/feed-type-filter";
@@ -43,6 +42,8 @@ export function FeedPanelLive({
   const [typeFilter, setTypeFilter] = useState<FeedTypeFilterId>("all");
   const [planModalId, setPlanModalId] = useState<string | null>(null);
   const [contributionModalId, setContributionModalId] = useState<string | null>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const loadMoreRef = useRef<HTMLLIElement>(null);
 
   const load = useCallback(
     async (
@@ -63,6 +64,16 @@ export function FeedPanelLive({
     [pageSize, typeFilter],
   );
 
+  const loadMore = useCallback(async () => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      await load(nextCursor, true);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [load, loadingMore, nextCursor]);
+
   useEffect(() => {
     setLoading(true);
     load(null, false, typeFilter)
@@ -70,15 +81,23 @@ export function FeedPanelLive({
       .finally(() => setLoading(false));
   }, [load, typeFilter]);
 
-  async function loadMore() {
-    if (!nextCursor) return;
-    setLoadingMore(true);
-    try {
-      await load(nextCursor, true);
-    } finally {
-      setLoadingMore(false);
-    }
-  }
+  useEffect(() => {
+    const root = listRef.current;
+    const sentinel = loadMoreRef.current;
+    if (!root || !sentinel || !nextCursor) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          void loadMore();
+        }
+      },
+      { root, rootMargin: "120px", threshold: 0 },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [items.length, nextCursor, loadMore]);
 
   function refreshFeed() {
     setLoading(true);
@@ -121,6 +140,7 @@ export function FeedPanelLive({
         {!loading && items.length > 0 && (
           <>
             <ul
+              ref={listRef}
               className={cn(
                 "feed-item-list scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain pr-0.5",
                 typeFilter === "contribution" ? "space-y-0 px-1" : "space-y-3",
@@ -137,6 +157,7 @@ export function FeedPanelLive({
                   />
                 </li>
               ))}
+              {nextCursor && <li ref={loadMoreRef} className="h-1 shrink-0" aria-hidden />}
             </ul>
             <PlanDetailModal
               planId={planModalId}
@@ -150,17 +171,6 @@ export function FeedPanelLive({
               onClose={() => setContributionModalId(null)}
               onChanged={refreshFeed}
             />
-            {nextCursor && (
-              <Button
-                className="shrink-0"
-                variant="secondary"
-                size="sm"
-                onClick={loadMore}
-                disabled={loadingMore}
-              >
-                {loadingMore ? "加载中…" : "加载更多"}
-              </Button>
-            )}
           </>
         )}
       </CardContent>

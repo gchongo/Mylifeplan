@@ -35,11 +35,8 @@ function SummaryChartsRow({ summary }: { summary: PlanSummaryStats }) {
   const strokeWidth = Math.max(10, Math.round(donutSize * 0.14));
 
   return (
-    <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1 rounded-lg border border-gray-100 bg-white/60 p-2 dark:border-gray-800 dark:bg-gray-900/40">
-      <p className="text-[10px] font-medium text-gray-500">状态分布</p>
-      <p className="text-[10px] font-medium text-gray-500">执行情况</p>
-
-      <div className="flex items-center justify-center self-center">
+    <div className="flex items-stretch gap-3 rounded-lg border border-gray-100 bg-white/60 p-2.5 dark:border-gray-800 dark:bg-gray-900/40">
+      <div className="flex w-[38%] min-w-[5.5rem] max-w-[7.5rem] shrink-0 items-center justify-center self-center">
         <DonutChart
           segments={summary.statusSegments}
           size={donutSize}
@@ -50,7 +47,7 @@ function SummaryChartsRow({ summary }: { summary: PlanSummaryStats }) {
         />
       </div>
 
-      <div ref={barsRef} className="flex min-h-[72px] items-center self-stretch">
+      <div ref={barsRef} className="flex min-h-[72px] min-w-0 flex-1 items-center self-stretch border-l border-gray-100 pl-3 dark:border-gray-800">
         {summary.executionSegments.length > 0 ? (
           <HorizontalBars segments={summary.executionSegments} dense className="w-full" />
         ) : (
@@ -78,7 +75,7 @@ export function SummaryPanelLive({ className }: { className?: string }) {
         <PanelExpandButton href="/summary" label="总结" />
       </div>
 
-      <CardContent className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain p-0 pr-0.5">
+      <CardContent className="min-h-0 flex-1 overflow-hidden p-0 pr-0.5">
         {loading && <Loading label="加载…" className="py-6" />}
         {!loading && error && (
           <EmptyState

@@ -45,11 +45,11 @@ export default async function PlansPage() {
   }));
 
   return (
-    <div className="flex min-h-0 flex-col gap-4 px-4 py-2 lg:px-6">
-      <div>
-        <h1 className="text-xl font-semibold text-gray-900">计划看板</h1>
+    <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden px-4 lg:px-6">
+      <div className="shrink-0 pt-2">
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">计划看板</h1>
       </div>
-      <PlanKanbanBoard initialPlans={initialPlans} />
+      <PlanKanbanBoard initialPlans={initialPlans} className="min-h-0 flex-1" />
     </div>
   );
 }

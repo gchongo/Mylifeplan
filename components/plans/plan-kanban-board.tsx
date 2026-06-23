@@ -112,7 +112,7 @@ function KanbanColumn({
   return (
     <div
       className={cn(
-        "flex min-h-[420px] min-w-[240px] flex-1 flex-col rounded-xl bg-gray-100/80 p-2 transition-colors",
+        "flex h-full min-h-0 min-w-[240px] flex-1 flex-col rounded-xl bg-gray-100/80 p-2 transition-colors",
         isTarget && "ring-2 ring-brand-400 ring-offset-1",
       )}
       onDragOver={(e) => {
@@ -133,7 +133,7 @@ function KanbanColumn({
         <span className="text-xs text-gray-400">{plans.length}</span>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain scrollbar-hide">
         {plans.map((plan) => (
           <PlanKanbanCard
             key={plan.id}
@@ -157,7 +157,13 @@ function KanbanColumn({
   );
 }
 
-export function PlanKanbanBoard({ initialPlans }: { initialPlans: KanbanPlan[] }) {
+export function PlanKanbanBoard({
+  initialPlans,
+  className,
+}: {
+  initialPlans: KanbanPlan[];
+  className?: string;
+}) {
   const [plans, setPlans] = useState(initialPlans);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<KanbanColumnId | null>(null);
@@ -247,20 +253,20 @@ export function PlanKanbanBoard({ initialPlans }: { initialPlans: KanbanPlan[] }
   );
 
   return (
-    <div className="flex min-h-0 flex-col gap-3">
-      <div>
+    <div className={cn("flex min-h-0 flex-col gap-3", className)}>
+      <div className="shrink-0">
         <p className="text-sm text-gray-500">
           与备忘录、甘特图共用同一份计划数据。无日期计划显示在「无状态」；拖入其他列会自动设置状态，并在需要时补上开始时间以进入甘特图。
         </p>
       </div>
 
       {error && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        <p className="shrink-0 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
       )}
 
       <div
         className={cn(
-          "flex gap-3 overflow-x-auto pb-2",
+          "scrollbar-hide flex min-h-0 flex-1 gap-3 overflow-x-auto overflow-y-hidden overscroll-contain pb-2",
           moving && "pointer-events-none opacity-80",
         )}
       >

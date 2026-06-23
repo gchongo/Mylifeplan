@@ -86,6 +86,7 @@ export function DrawerLayout({
 
   function startResize(clientX: number) {
     if (!onPanelWidthPxChange || panelWidthPx == null) return;
+    const applyWidth = onPanelWidthPxChange;
     const startX = clientX;
     const startWidth = panelWidthPx;
     const maxWidth =
@@ -96,13 +97,13 @@ export function DrawerLayout({
     function onMove(e: MouseEvent) {
       const delta = startX - e.clientX;
       const next = Math.min(maxWidth, Math.max(panelMinWidthPx, startWidth + delta));
-      onPanelWidthPxChange(next);
+      applyWidth(next);
     }
 
     function onUp(e: MouseEvent) {
       const delta = startX - e.clientX;
       const next = Math.min(maxWidth, Math.max(panelMinWidthPx, startWidth + delta));
-      onPanelWidthPxChange(next);
+      applyWidth(next);
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
       window.removeEventListener("mousemove", onMove);

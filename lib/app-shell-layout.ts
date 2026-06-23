@@ -5,6 +5,7 @@ export function isAppShellFullBleed(pathname: string): boolean {
     pathname === "/gantt" ||
     pathname === "/calendar" ||
     pathname === "/feed" ||
-    pathname === "/summary"
+    pathname === "/summary" ||
+    pathname === "/plans"
   );
 }

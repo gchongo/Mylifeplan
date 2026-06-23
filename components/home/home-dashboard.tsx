@@ -3,7 +3,7 @@
 import { CalendarPanelLive } from "@/components/home/calendar-panel-live";
 import { FeedPanelLive } from "@/components/home/feed-panel-live";
 import { SummaryPanelLive } from "@/components/home/summary-panel-live";
-import { ResizableHomeLayout } from "@/components/home/resizable-home-layout";
+import { FixedHomeLayout } from "@/components/home/fixed-home-layout";
 import { MobileHomeTabs } from "@/components/layout/mobile-tab-bar";
 import type { HomeTab } from "@/types";
 import { useSearchParams } from "next/navigation";
@@ -32,9 +32,9 @@ export function HomeDashboard() {
         <MobileHomeTabs active={mobileTab} onChange={handleTabChange} />
       </div>
 
-      {/* 桌面：可拖拽调整宽/高 */}
+      {/* 桌面：左侧信息流可调宽；右侧总结/日历固定高度比 */}
       <div className="hidden min-h-0 min-w-0 w-full max-w-full flex-1 overflow-hidden lg:flex">
-        <ResizableHomeLayout />
+        <FixedHomeLayout />
       </div>
 
       {/* 移动：单 Tab */}
