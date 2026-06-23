@@ -91,7 +91,21 @@ describe("applyStatusChangeToActualDates", () => {
     ).toEqual({ actualStart: start, actualEnd: customEnd });
   });
 
-  it("sets actual start from plan start when completing directly", () => {
+  it("clears actual dates when reverting to not started", () => {
+    expect(
+      applyStatusChangeToActualDates({
+        previousStatus: "done",
+        nextStatus: "not_started",
+        actualStart: start,
+        actualEnd: end,
+        explicitActualStart: false,
+        explicitActualEnd: false,
+        now,
+      }),
+    ).toEqual({ actualStart: null, actualEnd: null });
+  });
+
+  it("sets actual start to now when completing directly from not started", () => {
     const planStart = new Date("2026-06-01T09:00:00.000Z");
     expect(
       applyStatusChangeToActualDates({
@@ -104,6 +118,6 @@ describe("applyStatusChangeToActualDates", () => {
         planStart,
         now,
       }),
-    ).toEqual({ actualStart: planStart, actualEnd: now });
+    ).toEqual({ actualStart: now, actualEnd: now });
   });
 });

@@ -5,9 +5,15 @@ import {
   scheduleColumnPlanField,
   type GanttScheduleEditableColumnId,
 } from "@/lib/gantt-schedule-columns";
-import { toDatetimeLocalInput } from "@/lib/dates";
+import { normalizePlanDateInput, toDatetimeLocalInput, type PlanDateTimeEdge } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { ScheduleCellValue } from "@/lib/gantt-schedule-columns";
+
+function scheduleFieldEdge(
+  field: ReturnType<typeof scheduleColumnPlanField>,
+): PlanDateTimeEdge {
+  return field === "endDate" || field === "actualEndDate" ? "end" : "start";
+}
 
 export function GanttScheduleEditableCell({
   columnId,
@@ -96,10 +102,13 @@ export function GanttScheduleEditableCell({
   async function commit() {
     if (saving) return;
     const field = scheduleColumnPlanField(columnId);
-    const nextIso = draft.trim()
-      ? new Date(draft).toISOString()
+    const edge = scheduleFieldEdge(field);
+    const normalizedDraft = draft.trim() ? normalizePlanDateInput(draft, edge) : null;
+    const nextIso = normalizedDraft ? new Date(normalizedDraft).toISOString() : null;
+    const prevNormalized = rawValue?.trim()
+      ? normalizePlanDateInput(toDatetimeLocalInput(rawValue), edge)
       : null;
-    const prevIso = rawValue?.trim() ? new Date(rawValue).toISOString() : null;
+    const prevIso = prevNormalized ? new Date(prevNormalized).toISOString() : null;
     if (nextIso === prevIso || (!nextIso && !prevIso)) {
       setEditing(false);
       return;
@@ -111,7 +120,7 @@ export function GanttScheduleEditableCell({
       const res = await fetch(`/api/plans/${planId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [field]: draft.trim() || null }),
+        body: JSON.stringify({ [field]: normalizedDraft }),
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {

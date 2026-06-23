@@ -7,6 +7,7 @@ export function applyStatusChangeToActualDates(args: {
   actualEnd: Date | null;
   explicitActualStart: boolean;
   explicitActualEnd: boolean;
+  /** @deprecated 未开始→已完成时实开固定为 now，不再使用计划开始日 */
   planStart?: Date | null;
   now?: Date;
 }): { actualStart: Date | null; actualEnd: Date | null } {
@@ -17,9 +18,15 @@ export function applyStatusChangeToActualDates(args: {
     actualEnd,
     explicitActualStart,
     explicitActualEnd,
-    planStart = null,
     now = new Date(),
   } = args;
+
+  if (
+    nextStatus === "not_started" &&
+    (previousStatus === "in_progress" || previousStatus === "done")
+  ) {
+    return { actualStart: null, actualEnd: null };
+  }
 
   let nextActualStart = actualStart;
   let nextActualEnd = actualEnd;
@@ -29,7 +36,7 @@ export function applyStatusChangeToActualDates(args: {
   }
 
   if (!explicitActualStart && nextStatus === "done" && !nextActualStart) {
-    nextActualStart = planStart ?? now;
+    nextActualStart = now;
   }
 
   if (

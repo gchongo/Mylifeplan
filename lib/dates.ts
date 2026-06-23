@@ -23,15 +23,54 @@ export function formatDateOnly(value: Date | null | undefined): string | null {
 }
 
 /** 解析日期或 datetime-local / ISO 字符串 */
-export function parsePlanDateTime(value: string | null | undefined): Date | null {
+export type PlanDateTimeEdge = "start" | "end";
+
+function parseDateOnlyLocal(value: string, edge: PlanDateTimeEdge): Date {
+  const [y, m, d] = value.split("-").map(Number);
+  if (edge === "end") {
+    return new Date(y, m - 1, d, 23, 59, 59, 999);
+  }
+  return new Date(y, m - 1, d, 0, 0, 0, 0);
+}
+
+/** 手动选日未带时分时：开始类字段 00:00，结束类字段 23:59 */
+export function normalizePlanDateInput(
+  value: string | null | undefined,
+  edge: PlanDateTimeEdge,
+): string | null {
+  if (!value?.trim()) return null;
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return edge === "end" ? `${trimmed}T23:59` : `${trimmed}T00:00`;
+  }
+  const dateTime = trimmed.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})$/);
+  if (dateTime && edge === "end" && dateTime[2] === "00" && dateTime[3] === "00") {
+    return `${dateTime[1]}T23:59`;
+  }
+  return trimmed;
+}
+
+export function parsePlanDateTime(
+  value: string | null | undefined,
+  edge: PlanDateTimeEdge = "start",
+): Date | null {
   if (!value) return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return parseDateOnly(trimmed);
+  const normalized = normalizePlanDateInput(trimmed, edge) ?? trimmed;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    return parseDateOnlyLocal(normalized, edge);
   }
-  const d = new Date(trimmed);
+  const d = new Date(normalized);
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+export function parsePlanStartDateTime(value: string | null | undefined): Date | null {
+  return parsePlanDateTime(value, "start");
+}
+
+export function parsePlanEndDateTime(value: string | null | undefined): Date | null {
+  return parsePlanDateTime(value, "end");
 }
 
 export function formatPlanDateTime(value: Date | null | undefined): string | null {

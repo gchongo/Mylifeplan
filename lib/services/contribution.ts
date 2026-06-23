@@ -1,5 +1,5 @@
 import type { PlanContribution, ContributionImage } from "@prisma/client";
-import { parseDateOnly, parsePlanDateTime, formatPlanDateTime, toDatetimeLocalInput, datePartOf } from "@/lib/dates";
+import { parseDateOnly, parsePlanDateTime, parsePlanEndDateTime, formatPlanDateTime, toDatetimeLocalInput, datePartOf } from "@/lib/dates";
 import { prisma } from "@/lib/db";
 import { normalizePlanColor } from "@/lib/plan-color";
 import { writeFeed } from "@/lib/services/feed";
@@ -122,7 +122,7 @@ export async function createContribution(userId: string, input: CreateContributi
         description: input.description?.trim() || body?.slice(0, 500) || null,
         body,
         occurredOn: parsePlanDateTime(input.occurredOn)!,
-        occurredEndOn: endStr ? parsePlanDateTime(endStr) : null,
+        occurredEndOn: endStr ? parsePlanEndDateTime(endStr) : null,
         markerColor: input.markerColor ? normalizePlanColor(input.markerColor) : null,
       },
       include: { plan: { select: { title: true } }, images: true },
@@ -191,7 +191,7 @@ export async function updateContribution(
           occurredOn: parsePlanDateTime(input.occurredOn)!,
         }),
         ...(endStr !== undefined && {
-          occurredEndOn: endStr ? parsePlanDateTime(endStr) : null,
+          occurredEndOn: endStr ? parsePlanEndDateTime(endStr) : null,
         }),
         ...(input.markerColor !== undefined && {
           markerColor: input.markerColor ? normalizePlanColor(input.markerColor) : null,

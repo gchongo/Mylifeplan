@@ -165,8 +165,8 @@ function formatScheduleDate(value: string | null | undefined): string {
 }
 
 function daySpanMs(start: string, end: string): number | null {
-  const a = parsePlanDateTime(start)?.getTime();
-  const b = parsePlanDateTime(end)?.getTime();
+  const a = parsePlanDateTime(start, "start")?.getTime();
+  const b = parsePlanDateTime(end, "end")?.getTime();
   if (a == null || b == null) return null;
   return Math.max(0, b - a);
 }

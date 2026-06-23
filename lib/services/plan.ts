@@ -2,7 +2,7 @@ import type { Plan, PlanStatus } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
 import { isPlanUnscheduled, shouldShowInMemo, validateDateFields, getEffectiveEndDate } from "@/lib/content-router";
 import { UNSCHEDULED_BLOCKED_HINT } from "@/lib/kanban-board";
-import { parsePlanDateTime, formatPlanDateTime, formatDateOnly, toDatetimeLocalInput } from "@/lib/dates";
+import { parsePlanDateTime, formatPlanDateTime, formatDateOnly, toDatetimeLocalInput, parsePlanStartDateTime, parsePlanEndDateTime } from "@/lib/dates";
 import { prisma } from "@/lib/db";
 import { writeFeed } from "@/lib/services/feed";
 import { deleteMemoForPlan, syncMemoForPlan } from "@/lib/services/memo-sync";
@@ -266,7 +266,7 @@ export async function createPlan(userId: string, input: CreatePlanInput): Promis
   const hierarchyError = await validatePlanHierarchy(userId, input.parentPlanId);
   if (hierarchyError) throw new Error(hierarchyError);
 
-  const parsedStart = parsePlanDateTime(input.startDate);
+  const parsedStart = parsePlanStartDateTime(input.startDate);
   const parentStartError = await validatePlanStartAfterParent(
     userId,
     input.parentPlanId,
@@ -282,10 +282,10 @@ export async function createPlan(userId: string, input: CreatePlanInput): Promis
         description: input.description?.trim() || null,
         type: input.type ?? "goal",
         parentPlanId: input.parentPlanId || null,
-        startDate: parsePlanDateTime(input.startDate),
-        endDate: parsePlanDateTime(input.endDate),
-        actualStartDate: parsePlanDateTime(input.actualStartDate),
-        actualEndDate: parsePlanDateTime(input.actualEndDate),
+        startDate: parsePlanStartDateTime(input.startDate),
+        endDate: parsePlanEndDateTime(input.endDate),
+        actualStartDate: parsePlanStartDateTime(input.actualStartDate),
+        actualEndDate: parsePlanEndDateTime(input.actualEndDate),
         status: input.status ?? "not_started",
         priority: input.priority ?? null,
         color: input.color ?? null,
@@ -365,7 +365,7 @@ export async function updatePlan(
   }
 
   const parsedNextStart =
-    input.startDate !== undefined ? parsePlanDateTime(input.startDate) : existing.startDate;
+    input.startDate !== undefined ? parsePlanStartDateTime(input.startDate) : existing.startDate;
   const parentStartError = await validatePlanStartAfterParent(
     userId,
     parentPlanId,
@@ -374,9 +374,9 @@ export async function updatePlan(
   if (parentStartError) throw new Error(parentStartError);
 
   const nextStartDate =
-    input.startDate !== undefined ? parsePlanDateTime(input.startDate) : existing.startDate;
+    input.startDate !== undefined ? parsePlanStartDateTime(input.startDate) : existing.startDate;
   const nextEndDate =
-    input.endDate !== undefined ? parsePlanDateTime(input.endDate) : existing.endDate;
+    input.endDate !== undefined ? parsePlanEndDateTime(input.endDate) : existing.endDate;
 
   const subPlanCount = await prisma.plan.count({
     where: { parentPlanId: planId, userId },
@@ -385,11 +385,11 @@ export async function updatePlan(
 
   let nextActualStart =
     input.actualStartDate !== undefined
-      ? parsePlanDateTime(input.actualStartDate)
+      ? parsePlanStartDateTime(input.actualStartDate)
       : existing.actualStartDate;
   let nextActualEnd =
     input.actualEndDate !== undefined
-      ? parsePlanDateTime(input.actualEndDate)
+      ? parsePlanEndDateTime(input.actualEndDate)
       : existing.actualEndDate;
 
   const nextStatus = input.status ?? existing.status;
@@ -446,8 +446,8 @@ export async function updatePlan(
         }),
         ...(input.type !== undefined && { type: input.type }),
         ...(input.parentPlanId !== undefined && { parentPlanId: input.parentPlanId || null }),
-        ...(input.startDate !== undefined && { startDate: parsePlanDateTime(input.startDate) }),
-        ...(input.endDate !== undefined && { endDate: parsePlanDateTime(input.endDate) }),
+        ...(input.startDate !== undefined && { startDate: parsePlanStartDateTime(input.startDate) }),
+        ...(input.endDate !== undefined && { endDate: parsePlanEndDateTime(input.endDate) }),
         ...(allowManualActual ||
         (allowStatusActual && nextActualStart !== existing.actualStartDate)
           ? { actualStartDate: nextActualStart }
