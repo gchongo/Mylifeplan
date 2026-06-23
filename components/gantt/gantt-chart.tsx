@@ -24,7 +24,6 @@ import {
   GanttScheduleColumnNav,
 } from "@/components/gantt/gantt-schedule-panel";
 import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribution-drawer";
-import { GanttScheduleColumnPicker } from "@/components/gantt/gantt-schedule-column-picker";
 import { GanttActualExecutionLine } from "@/components/gantt/gantt-actual-execution-line";
 import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
 import { useSettings } from "@/components/settings/settings-provider";
@@ -103,7 +102,6 @@ import {
   readStoredScheduleColumns,
   scheduleColumnIndexAtScroll,
   scheduleScrollLeftForIndex,
-  writeStoredScheduleColumns,
   type GanttScheduleColumnId,
 } from "@/lib/gantt-schedule-columns";
 import {
@@ -383,11 +381,6 @@ export const GanttChart = forwardRef<
   useEffect(() => {
     setScheduleScrollLeft((prev) => Math.min(prev, scheduleMaxScroll));
   }, [scheduleMaxScroll, scheduleColumns, scheduleViewportCols]);
-
-  function handleScheduleColumnsChange(next: GanttScheduleColumnId[]) {
-    setScheduleColumns(next);
-    writeStoredScheduleColumns(next);
-  }
 
   useEffect(() => {
     onTitleColumnLayout?.({
@@ -1473,8 +1466,6 @@ export const GanttChart = forwardRef<
         }
         onToggleTitlePanel={hideTitlePanel}
         onCreatePlan={() => openCreatePlan()}
-        scheduleColumns={scheduleColumns}
-        onScheduleColumnsChange={handleScheduleColumnsChange}
       />
     );
   }
@@ -1487,13 +1478,6 @@ export const GanttChart = forwardRef<
         onScrollPrev={() => scrollScheduleColumns(-1)}
         onScrollNext={() => scrollScheduleColumns(1)}
         onHidePanel={hideSchedulePanel}
-        trailing={(
-          <GanttScheduleColumnPicker
-            visibleColumns={scheduleColumns}
-            onChange={handleScheduleColumnsChange}
-            compact
-          />
-        )}
       />
     );
   }
@@ -1541,7 +1525,7 @@ export const GanttChart = forwardRef<
           title="显示计划列表"
         />
         <GanttDrawerOpenTab
-          headerHeight={timelineHeaderHeight}
+          headerHeight={TIMELINE_DATE_HEADER_HEIGHT}
           left={effectiveTitleWidth}
           visible={titlePanelVisible && !schedulePanelVisible}
           onOpen={openSchedulePanel}

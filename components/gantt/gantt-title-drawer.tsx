@@ -2,10 +2,8 @@
 
 import { GanttTaskListControls } from "@/components/gantt/gantt-task-list-controls";
 import { GanttPanelExpandChevron } from "@/components/gantt/gantt-panel-chevron";
-import type { GanttScheduleColumnId } from "@/lib/gantt-schedule-columns";
 import {
   GANTT_DRAWER_TOGGLE_WIDTH,
-  GANTT_STICKY_HEADER_CLASS,
   GANTT_TITLE_DRAWER_CLASS,
 } from "@/lib/gantt-title-column";
 import type { VisualStatusKey } from "@/lib/task-status-style";
@@ -95,8 +93,6 @@ export function GanttTitleDrawerControls({
   onCreatePlan,
   showActualTimeline,
   onToggleActualTimeline,
-  scheduleColumns,
-  onScheduleColumnsChange,
   onToggleTitlePanel,
 }: {
   allExpanded: boolean;
@@ -108,8 +104,6 @@ export function GanttTitleDrawerControls({
   onCreatePlan: () => void;
   showActualTimeline?: boolean;
   onToggleActualTimeline?: () => void;
-  scheduleColumns?: GanttScheduleColumnId[];
-  onScheduleColumnsChange?: (next: GanttScheduleColumnId[]) => void;
   onToggleTitlePanel?: () => void;
 }) {
   return (
@@ -123,8 +117,6 @@ export function GanttTitleDrawerControls({
       onCreatePlan={onCreatePlan}
       showActualTimeline={showActualTimeline}
       onToggleActualTimeline={onToggleActualTimeline}
-      scheduleColumns={scheduleColumns}
-      onScheduleColumnsChange={onScheduleColumnsChange}
       drawerTheme
     />
   );
