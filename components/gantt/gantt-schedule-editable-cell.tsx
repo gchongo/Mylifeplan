@@ -25,11 +25,18 @@ export function GanttScheduleEditableCell({
   onSaved: () => void;
 }) {
   const popoverId = useId();
+  const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const editingRef = useRef(false);
+  const savingRef = useRef(false);
+  const outsideCommitTimerRef = useRef<number | null>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  editingRef.current = editing;
+  savingRef.current = saving;
 
   useEffect(() => {
     if (!editing) return;
@@ -41,6 +48,43 @@ export function GanttScheduleEditableCell({
     } catch {
       // showPicker may require a user gesture; focus is enough
     }
+  }, [editing]);
+
+  function scheduleCommitOnBlur(relatedTarget: EventTarget | null) {
+    if (relatedTarget && containerRef.current?.contains(relatedTarget as Node)) return;
+    scheduleOutsideCommit();
+  }
+
+  function scheduleOutsideCommit() {
+    if (outsideCommitTimerRef.current != null) {
+      window.clearTimeout(outsideCommitTimerRef.current);
+    }
+    outsideCommitTimerRef.current = window.setTimeout(() => {
+      outsideCommitTimerRef.current = null;
+      if (savingRef.current || !editingRef.current) return;
+      if (containerRef.current?.contains(document.activeElement)) return;
+      void commit();
+    }, 150);
+  }
+
+  useEffect(() => {
+    if (!editing) {
+      if (outsideCommitTimerRef.current != null) {
+        window.clearTimeout(outsideCommitTimerRef.current);
+        outsideCommitTimerRef.current = null;
+      }
+      return;
+    }
+
+    function onPointerDown(event: PointerEvent) {
+      const root = containerRef.current;
+      if (!root || root.contains(event.target as Node)) return;
+      if (savingRef.current) return;
+      scheduleOutsideCommit();
+    }
+
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
   }, [editing]);
 
   function openEditor() {
@@ -85,14 +129,20 @@ export function GanttScheduleEditableCell({
 
   function cancel() {
     if (saving) return;
+    if (outsideCommitTimerRef.current != null) {
+      window.clearTimeout(outsideCommitTimerRef.current);
+      outsideCommitTimerRef.current = null;
+    }
     setEditing(false);
     setError("");
   }
 
-  const label = cell.text === "—" ? "点击设置时间" : `点击修改：${cell.text}`;
+  const label =
+    cell.text === "—" ? "双击设置时间，点击外部保存" : `双击修改：${cell.text}，点击外部保存`;
 
   return (
     <div
+      ref={containerRef}
       className="relative flex h-full shrink-0 items-center justify-center"
       style={{ width }}
     >
@@ -100,7 +150,7 @@ export function GanttScheduleEditableCell({
         type="button"
         data-no-pan
         disabled={editing}
-        onClick={openEditor}
+        onDoubleClick={openEditor}
         className={cn(
           "flex h-full w-full items-center justify-center border-l border-blue-100/80 px-0.5 text-center text-[10px] tabular-nums leading-tight transition-colors dark:border-blue-900/35",
           "cursor-pointer hover:bg-blue-100/70 dark:hover:bg-blue-900/35",
@@ -110,7 +160,7 @@ export function GanttScheduleEditableCell({
           !cell.muted && !cell.virtual && !cell.highlight && "text-gray-600 dark:text-gray-300",
           editing && "invisible",
         )}
-        title={cell.virtual ? `${cell.text}（预估截止，点击设置正式截止）` : label}
+        title={cell.virtual ? `${cell.text}（预估截止，双击设置正式截止）` : label}
         aria-label={label}
       >
         {cell.text}
@@ -136,6 +186,7 @@ export function GanttScheduleEditableCell({
             value={draft}
             disabled={saving}
             onChange={(e) => setDraft(e.target.value)}
+            onBlur={(e) => scheduleCommitOnBlur(e.relatedTarget)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
