@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { GanttActualLineSettings } from "@/components/settings/gantt-actual-line-settings";
 import { GanttTodayColumnSettings } from "@/components/settings/gantt-today-column-settings";
+import { CalendarWeekNumberSettings } from "@/components/settings/calendar-week-number-settings";
 import { LANGUAGE_OPTIONS, THEME_OPTIONS, TIMEZONE_OPTIONS, resolveTimezone } from "@/lib/user-preferences";
 import { useSettings } from "@/components/settings/settings-provider";
 
@@ -30,7 +31,7 @@ function SettingsSection({
 }
 
 export function SettingsPageClient({ userEmail }: { userEmail?: string | null }) {
-  const { preferences, ready, setTimezone, setTheme, setLanguage, setGanttActualLine, setGanttTodayColumn } =
+  const { preferences, ready, setTimezone, setTheme, setLanguage, setGanttActualLine, setGanttTodayColumn, setCalendarWeekNumbers } =
     useSettings();
   const effectiveTimezone = resolveTimezone(preferences.timezone);
 
@@ -75,6 +76,17 @@ export function SettingsPageClient({ userEmail }: { userEmail?: string | null })
           disabled={!ready}
           options={[...THEME_OPTIONS]}
           onChange={(e) => setTheme(e.target.value as typeof preferences.theme)}
+        />
+      </SettingsSection>
+
+      <SettingsSection
+        title="日历 · 周数"
+        description="在月历网格左侧显示周数，便于对照全年进度。"
+      >
+        <CalendarWeekNumberSettings
+          value={preferences.calendarWeekNumbers}
+          disabled={!ready}
+          onChange={setCalendarWeekNumbers}
         />
       </SettingsSection>
 

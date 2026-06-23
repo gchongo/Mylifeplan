@@ -18,6 +18,7 @@ import {
   type GanttActualLinePreferences,
   type GanttContributionMarkerPreferences,
   type GanttTodayColumnPreferences,
+  type CalendarWeekNumberPreferences,
   type LanguagePreference,
   type ThemePreference,
   type UserPreferences,
@@ -33,6 +34,7 @@ interface SettingsContextValue {
   setGanttActualLine: (patch: Partial<GanttActualLinePreferences>) => void;
   setGanttContributionMarkers: (patch: Partial<GanttContributionMarkerPreferences>) => void;
   setGanttTodayColumn: (patch: Partial<GanttTodayColumnPreferences>) => void;
+  setCalendarWeekNumbers: (patch: Partial<CalendarWeekNumberPreferences>) => void;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -85,6 +87,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setGanttTodayColumn: (patch) =>
         updatePreferences({
           ganttTodayColumn: { ...preferences.ganttTodayColumn, ...patch },
+        }),
+      setCalendarWeekNumbers: (patch) =>
+        updatePreferences({
+          calendarWeekNumbers: { ...preferences.calendarWeekNumbers, ...patch },
         }),
     }),
     [preferences, ready, updatePreferences],

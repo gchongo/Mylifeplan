@@ -2,6 +2,8 @@ export type ThemePreference = "system" | "light" | "dark";
 export type LanguagePreference = "zh-CN" | "en-US";
 export type GanttActualLineStyle = "solid" | "dashed" | "dotted";
 export type GanttTodayColumnFillStyle = "solid" | "striped" | "dotted";
+export type CalendarWeekNumberMode = "iso" | "month-ordinal";
+export type CalendarWeekNumberFormat = "number" | "week-label";
 
 export interface GanttActualLinePreferences {
   enabled: boolean;
@@ -22,6 +24,12 @@ export interface GanttContributionMarkerPreferences {
   enabled: boolean;
 }
 
+export interface CalendarWeekNumberPreferences {
+  enabled: boolean;
+  mode: CalendarWeekNumberMode;
+  format: CalendarWeekNumberFormat;
+}
+
 export interface UserPreferences {
   timezone: string;
   theme: ThemePreference;
@@ -29,6 +37,7 @@ export interface UserPreferences {
   ganttActualLine: GanttActualLinePreferences;
   ganttContributionMarkers: GanttContributionMarkerPreferences;
   ganttTodayColumn: GanttTodayColumnPreferences;
+  calendarWeekNumbers: CalendarWeekNumberPreferences;
 }
 
 export const USER_PREFERENCES_STORAGE_KEY = "mylifeplan-user-preferences";
@@ -51,6 +60,12 @@ export const DEFAULT_GANTT_CONTRIBUTION_MARKERS: GanttContributionMarkerPreferen
   enabled: true,
 };
 
+export const DEFAULT_CALENDAR_WEEK_NUMBERS: CalendarWeekNumberPreferences = {
+  enabled: true,
+  mode: "iso",
+  format: "number",
+};
+
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   timezone: "auto",
   theme: "system",
@@ -58,6 +73,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   ganttActualLine: DEFAULT_GANTT_ACTUAL_LINE,
   ganttContributionMarkers: DEFAULT_GANTT_CONTRIBUTION_MARKERS,
   ganttTodayColumn: DEFAULT_GANTT_TODAY_COLUMN,
+  calendarWeekNumbers: DEFAULT_CALENDAR_WEEK_NUMBERS,
 };
 
 export const TIMEZONE_OPTIONS = [
@@ -92,6 +108,16 @@ export const GANTT_ACTUAL_LINE_WIDTH_OPTIONS = [
   { value: 1, label: "细" },
   { value: 2, label: "中" },
   { value: 3, label: "粗" },
+] as const;
+
+export const CALENDAR_WEEK_NUMBER_MODE_OPTIONS = [
+  { value: "iso", label: "ISO 周年（周一至周日为一周）" },
+  { value: "month-ordinal", label: "月内周序（当月第 1、2、3… 周）" },
+] as const;
+
+export const CALENDAR_WEEK_NUMBER_FORMAT_OPTIONS = [
+  { value: "number", label: "仅数字（如 12）" },
+  { value: "week-label", label: "带「周」字（如 第12周）" },
 ] as const;
 
 export const GANTT_TODAY_COLUMN_FILL_OPTIONS = [
@@ -140,6 +166,14 @@ function isTodayColumnFillStyle(value: unknown): value is GanttTodayColumnFillSt
   return value === "solid" || value === "striped" || value === "dotted";
 }
 
+function isCalendarWeekNumberMode(value: unknown): value is CalendarWeekNumberMode {
+  return value === "iso" || value === "month-ordinal";
+}
+
+function isCalendarWeekNumberFormat(value: unknown): value is CalendarWeekNumberFormat {
+  return value === "number" || value === "week-label";
+}
+
 function isHexColor(value: unknown): value is string {
   return typeof value === "string" && /^#[0-9A-Fa-f]{6}$/.test(value);
 }
@@ -177,6 +211,19 @@ export function normalizeGanttTodayColumnPreferences(
   };
 }
 
+export function normalizeCalendarWeekNumberPreferences(
+  raw: Partial<CalendarWeekNumberPreferences> | null | undefined,
+): CalendarWeekNumberPreferences {
+  return {
+    enabled:
+      typeof raw?.enabled === "boolean" ? raw.enabled : DEFAULT_CALENDAR_WEEK_NUMBERS.enabled,
+    mode: isCalendarWeekNumberMode(raw?.mode) ? raw.mode : DEFAULT_CALENDAR_WEEK_NUMBERS.mode,
+    format: isCalendarWeekNumberFormat(raw?.format)
+      ? raw.format
+      : DEFAULT_CALENDAR_WEEK_NUMBERS.format,
+  };
+}
+
 export function normalizeGanttContributionMarkerPreferences(
   raw: Partial<GanttContributionMarkerPreferences> | null | undefined,
 ): GanttContributionMarkerPreferences {
@@ -203,6 +250,7 @@ export function normalizeUserPreferences(raw: Partial<UserPreferences> | null | 
         (raw as { contributionMarker?: { enabled?: boolean } } | undefined)?.contributionMarker,
     ),
     ganttTodayColumn: normalizeGanttTodayColumnPreferences(raw?.ganttTodayColumn),
+    calendarWeekNumbers: normalizeCalendarWeekNumberPreferences(raw?.calendarWeekNumbers),
   };
 }
 

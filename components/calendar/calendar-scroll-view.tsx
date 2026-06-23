@@ -14,10 +14,10 @@ import {
   CalendarEmptyDayCell,
   useCalendarCellMin,
 } from "@/components/calendar/calendar-day-cell";
+import { useSettings } from "@/components/settings/settings-provider";
 import type { CalendarDisplayMode } from "@/lib/calendar-display";
 import {
   addMonths,
-  buildMonthCells,
   extendMonths,
   formatMonthTitle,
   initialMonthWindow,
@@ -26,6 +26,10 @@ import {
   type MonthKey,
   WEEKDAY_LABELS,
 } from "@/lib/calendar-month-grid";
+import {
+  buildMonthWeekRows,
+  formatCalendarWeekNumber,
+} from "@/lib/calendar-week-number";
 import type { CalendarItem } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -71,6 +75,10 @@ export const CalendarScrollView = forwardRef<
   const prependingRef = useRef(false);
   const didInitialScroll = useRef(false);
   const cellMin = useCalendarCellMin(displayMode, fullPage);
+  const { preferences } = useSettings();
+  const weekPrefs = preferences.calendarWeekNumbers;
+  const showWeekNumbers = weekPrefs.enabled;
+  const weekColClass = weekPrefs.format === "week-label" ? "w-11 shrink-0" : "w-7 shrink-0";
 
   useEffect(() => {
     onMonthsChange(months);
@@ -206,13 +214,26 @@ export const CalendarScrollView = forwardRef<
 
   return (
     <div ref={outerRef} className="flex h-0 min-h-0 w-full flex-1 flex-col overflow-hidden">
-      <div className="grid shrink-0 grid-cols-7 border-b border-gray-200 bg-white text-center text-[11px] text-gray-500">
-        {WEEKDAY_LABELS.map((w) => (
-          <div key={w} className="py-1.5 font-medium">
-            {w}
+      {showWeekNumbers ? (
+        <div className="flex shrink-0 border-b border-gray-200 bg-white text-center text-[11px] text-gray-500">
+          <div className={cn(weekColClass, "py-1.5 font-medium")}>周</div>
+          <div className="grid min-w-0 flex-1 grid-cols-7">
+            {WEEKDAY_LABELS.map((w) => (
+              <div key={w} className="py-1.5 font-medium">
+                {w}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      ) : (
+        <div className="grid shrink-0 grid-cols-7 border-b border-gray-200 bg-white text-center text-[11px] text-gray-500">
+          {WEEKDAY_LABELS.map((w) => (
+            <div key={w} className="py-1.5 font-medium">
+              {w}
+            </div>
+          ))}
+        </div>
+      )}
       <div
         ref={scrollRef}
         onScroll={handleScroll}
@@ -222,7 +243,7 @@ export const CalendarScrollView = forwardRef<
         {months.map((key, index) => {
           const id = monthKeyId(key);
           const showYear = index === 0 || months[index - 1]!.year !== key.year;
-          const cells = buildMonthCells(key.year, key.month);
+          const weekRows = buildMonthWeekRows(key.year, key.month);
           const title = formatMonthTitle(key, showYear);
           const isCurrentMonth = key.year === todayKey.year && key.month === todayKey.month;
 
@@ -236,27 +257,73 @@ export const CalendarScrollView = forwardRef<
               >
                 {title}
               </h3>
-              <div className="grid grid-cols-7 gap-px">
-                {cells.map((day, idx) => {
-                  if (day === null) {
-                    return <CalendarEmptyDayCell key={`e-${id}-${idx}`} cellMin={cellMin} />;
-                  }
-                  return (
-                    <CalendarDayCell
-                      key={`${id}-${day}`}
-                      year={key.year}
-                      month={key.month}
-                      day={day}
-                      items={items}
-                      displayMode={displayMode}
-                      fullPage={fullPage}
-                      todayStr={todayStr}
-                      selectedDate={selectedDate}
-                      onSelectDate={onSelectDate}
-                    />
-                  );
-                })}
-              </div>
+              {showWeekNumbers ? (
+                <div className="flex flex-col gap-px">
+                  {weekRows.map((week, weekIndex) => (
+                    <div key={`${id}-w${weekIndex}`} className="flex gap-px">
+                      <div
+                        className={cn(
+                          weekColClass,
+                          "flex items-start justify-center bg-gray-50 pt-1.5 text-[11px] font-medium text-gray-500",
+                          cellMin,
+                        )}
+                      >
+                        {formatCalendarWeekNumber(
+                          weekPrefs,
+                          key.year,
+                          key.month,
+                          week,
+                          weekIndex,
+                          weekRows.length,
+                        )}
+                      </div>
+                      <div className="grid min-w-0 flex-1 grid-cols-7 gap-px">
+                        {week.map((day, idx) => {
+                          if (day === null) {
+                            return <CalendarEmptyDayCell key={`e-${id}-${weekIndex}-${idx}`} cellMin={cellMin} />;
+                          }
+                          return (
+                            <CalendarDayCell
+                              key={`${id}-${day}`}
+                              year={key.year}
+                              month={key.month}
+                              day={day}
+                              items={items}
+                              displayMode={displayMode}
+                              fullPage={fullPage}
+                              todayStr={todayStr}
+                              selectedDate={selectedDate}
+                              onSelectDate={onSelectDate}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-7 gap-px">
+                  {weekRows.flat().map((day, idx) => {
+                    if (day === null) {
+                      return <CalendarEmptyDayCell key={`e-${id}-${idx}`} cellMin={cellMin} />;
+                    }
+                    return (
+                      <CalendarDayCell
+                        key={`${id}-${day}`}
+                        year={key.year}
+                        month={key.month}
+                        day={day}
+                        items={items}
+                        displayMode={displayMode}
+                        fullPage={fullPage}
+                        todayStr={todayStr}
+                        selectedDate={selectedDate}
+                        onSelectDate={onSelectDate}
+                      />
+                    );
+                  })}
+                </div>
+              )}
             </section>
           );
         })}

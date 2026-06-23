@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_CALENDAR_WEEK_NUMBERS,
   DEFAULT_GANTT_TODAY_COLUMN,
   DEFAULT_USER_PREFERENCES,
+  normalizeCalendarWeekNumberPreferences,
   normalizeGanttTodayColumnPreferences,
   normalizeUserPreferences,
   resolveTimezone,
@@ -37,6 +39,20 @@ describe("user preferences", () => {
       ganttActualLine: DEFAULT_USER_PREFERENCES.ganttActualLine,
       ganttContributionMarkers: DEFAULT_USER_PREFERENCES.ganttContributionMarkers,
       ganttTodayColumn: DEFAULT_USER_PREFERENCES.ganttTodayColumn,
+      calendarWeekNumbers: DEFAULT_USER_PREFERENCES.calendarWeekNumbers,
+    });
+  });
+
+  it("normalizes calendar week number prefs", () => {
+    expect(
+      normalizeCalendarWeekNumberPreferences({
+        enabled: false,
+        mode: "invalid",
+        format: "invalid",
+      } as never),
+    ).toEqual({
+      ...DEFAULT_CALENDAR_WEEK_NUMBERS,
+      enabled: false,
     });
   });
 
