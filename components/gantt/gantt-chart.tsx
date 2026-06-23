@@ -1199,32 +1199,33 @@ export const GanttChart = forwardRef<
       >
         {rows.map((row, idx) => {
           const item = row.item;
-          if (item.isUnscheduled || item.contributionOnly) return null;
+          let markers: ReturnType<typeof renderContributionMarkers> = null;
 
-          const previewDates = barPreview.get(item.id);
-          const displayStart = previewDates?.start ?? item.startDate;
-          const displayEnd = previewDates?.end ?? item.effectiveEnd;
-          const rootItem = planById.get(row.rootId) ?? item;
-          const groupColor = resolveEffectivePlanColor(rootItem, rootItem);
-          const displayStatus = itemDisplayStatus(item, items);
-          const overdue = isPlanOverdue(item, planById);
-          const barStyle = planBarStyle(item, row.depth, groupColor, displayStatus, overdue);
-          const rowContributions = contributionsForGanttRow(
-            item.id,
-            contributions,
-            planById,
-            expanded,
-            visibleRowIds,
-          );
-          const markers = renderContributionMarkers(
-            rowContributions,
-            displayStart,
-            displayEnd,
-            item.id,
-            barStyle.barHeightPx,
-            row.height,
-          );
-          if (!markers) return null;
+          if (!item.isUnscheduled && !item.contributionOnly) {
+            const previewDates = barPreview.get(item.id);
+            const displayStart = previewDates?.start ?? item.startDate;
+            const displayEnd = previewDates?.end ?? item.effectiveEnd;
+            const rootItem = planById.get(row.rootId) ?? item;
+            const groupColor = resolveEffectivePlanColor(rootItem, rootItem);
+            const displayStatus = itemDisplayStatus(item, items);
+            const overdue = isPlanOverdue(item, planById);
+            const barStyle = planBarStyle(item, row.depth, groupColor, displayStatus, overdue);
+            const rowContributions = contributionsForGanttRow(
+              item.id,
+              contributions,
+              planById,
+              expanded,
+              visibleRowIds,
+            );
+            markers = renderContributionMarkers(
+              rowContributions,
+              displayStart,
+              displayEnd,
+              item.id,
+              barStyle.barHeightPx,
+              row.height,
+            );
+          }
 
           return (
             <div
