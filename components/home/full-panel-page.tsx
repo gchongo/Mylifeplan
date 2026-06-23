@@ -14,7 +14,7 @@ export function FullPanelPage({
   return (
     <div
       className={cn(
-        "flex h-[calc(100vh-5.5rem)] min-w-0 max-w-full flex-col overflow-hidden",
+        "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
         centered && "bg-gray-50",
       )}
     >

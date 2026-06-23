@@ -27,8 +27,10 @@ export function HomeDashboard() {
   }, []);
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] w-full min-w-0 max-w-full flex-col overflow-hidden lg:h-[calc(100vh-5.5rem)]">
-      <MobileHomeTabs active={mobileTab} onChange={handleTabChange} />
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="mb-4 shrink-0 px-4 pt-4 lg:hidden">
+        <MobileHomeTabs active={mobileTab} onChange={handleTabChange} />
+      </div>
 
       {/* 桌面：可拖拽调整宽/高 */}
       <div className="hidden min-h-0 min-w-0 w-full max-w-full flex-1 overflow-hidden lg:flex">

@@ -148,7 +148,7 @@ export function ResizableHomeLayout() {
   return (
     <div
       ref={layoutRef}
-      className="flex h-full min-h-0 w-full min-w-0 max-w-full overflow-hidden"
+      className="flex h-full min-h-0 w-full min-w-0 max-w-full flex-1 overflow-hidden"
     >
       <div
         className="h-full min-h-0 min-w-0 shrink-0 overflow-hidden"

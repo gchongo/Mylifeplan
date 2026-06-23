@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { SettingsProvider } from "@/components/settings/settings-provider";
 import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 import { SidebarNavDrawer } from "@/components/layout/sidebar-brand";
 import { SidebarNavMenu } from "@/components/layout/sidebar-nav";
 import { TopBar } from "@/components/layout/top-bar";
+import { isAppShellFullBleed } from "@/lib/app-shell-layout";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "mylifeplan-sidebar-open";
@@ -56,6 +58,9 @@ export function AppShellClient({
     localStorage.setItem(STORAGE_KEY, "false");
   }, []);
 
+  const pathname = usePathname();
+  const fullBleed = isAppShellFullBleed(pathname);
+
   return (
     <SettingsProvider>
       <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-950">
@@ -94,7 +99,14 @@ export function AppShellClient({
         )}
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col pb-16 lg:pb-0">
-          <main className="min-w-0 flex-1 overflow-x-hidden p-4 lg:p-6">{children}</main>
+          <main
+            className={cn(
+              "flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden",
+              !fullBleed && "p-4 lg:p-6",
+            )}
+          >
+            {children}
+          </main>
         </div>
       </div>
 

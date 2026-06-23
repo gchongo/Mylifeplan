@@ -44,7 +44,7 @@ export function MobileHomeTabs({
   onChange: (tab: HomeTab) => void;
 }) {
   return (
-    <div className="mb-4 flex rounded-lg border border-gray-200 bg-gray-50 p-1 lg:hidden">
+    <div className="mb-0 flex rounded-lg border border-gray-200 bg-gray-50 p-1 lg:hidden">
       {tabs.map((tab) => (
         <button
           key={tab.id}
