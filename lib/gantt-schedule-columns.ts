@@ -4,6 +4,7 @@ import type { GanttItem } from "@/types";
 
 export const GANTT_TITLE_COL_WIDTH = 140;
 export const GANTT_SCHEDULE_TABLE_HEADER_HEIGHT = 26;
+export const GANTT_SCHEDULE_UNIFORM_COL_WIDTH = 72;
 export const GANTT_SCHEDULE_COLUMNS_STORAGE_KEY = "mylifeplan-gantt-schedule-columns";
 
 export const GANTT_SCHEDULE_COLUMN_IDS = [
@@ -67,11 +68,22 @@ export function writeStoredScheduleColumns(ids: GanttScheduleColumnId[]) {
 }
 
 export function visibleScheduleColumnDefs(ids: GanttScheduleColumnId[]): GanttScheduleColumnDef[] {
-  return ids.map((id) => COLUMN_BY_ID.get(id)!).filter(Boolean);
+  return ids
+    .map((id) => COLUMN_BY_ID.get(id)!)
+    .filter(Boolean)
+    .map((col) => ({ ...col, width: GANTT_SCHEDULE_UNIFORM_COL_WIDTH }));
 }
 
 export function scheduleColumnsTotalWidth(ids: GanttScheduleColumnId[]): number {
-  return visibleScheduleColumnDefs(ids).reduce((sum, c) => sum + c.width, 0);
+  return ids.length * GANTT_SCHEDULE_UNIFORM_COL_WIDTH;
+}
+
+export function scheduleScrollLeftForIndex(index: number): number {
+  return Math.max(0, index) * GANTT_SCHEDULE_UNIFORM_COL_WIDTH;
+}
+
+export function scheduleColumnIndexAtScroll(scrollLeft: number): number {
+  return Math.max(0, Math.round(scrollLeft / GANTT_SCHEDULE_UNIFORM_COL_WIDTH));
 }
 
 function formatScheduleDate(value: string | null | undefined): string {

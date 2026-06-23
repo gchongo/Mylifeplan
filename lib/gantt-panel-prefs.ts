@@ -1,14 +1,18 @@
-import { GANTT_TITLE_COL_WIDTH } from "@/lib/gantt-schedule-columns";
+import {
+  GANTT_SCHEDULE_UNIFORM_COL_WIDTH,
+  GANTT_TITLE_COL_WIDTH,
+} from "@/lib/gantt-schedule-columns";
 
 export const MIN_TITLE_WIDTH = 120;
 export const MAX_TITLE_WIDTH = 360;
 export const DEFAULT_TITLE_WIDTH = 200;
 
-export const MIN_SCHEDULE_WIDTH = 120;
-export const MAX_SCHEDULE_WIDTH = 480;
-export const DEFAULT_SCHEDULE_WIDTH = 240;
+export const MIN_SCHEDULE_VIEWPORT_COLS = 1;
+export const MAX_SCHEDULE_VIEWPORT_COLS = 8;
+export const DEFAULT_SCHEDULE_VIEWPORT_COLS = 3;
 
 const GANTT_TITLE_WIDTH_KEY = "mylifeplan-gantt-title-width";
+const GANTT_SCHEDULE_VIEWPORT_COLS_KEY = "mylifeplan-gantt-schedule-viewport-cols";
 const GANTT_SCHEDULE_WIDTH_KEY = "mylifeplan-gantt-schedule-width";
 const GANTT_TITLE_VISIBLE_KEY = "mylifeplan-gantt-title-visible";
 const GANTT_SCHEDULE_VISIBLE_KEY = "mylifeplan-gantt-schedule-visible";
@@ -34,6 +38,18 @@ function readLegacyLabelVisible(): boolean | null {
   return raw === null ? null : raw !== "false";
 }
 
+export function scheduleWidthFromViewportCols(cols: number): number {
+  return cols * GANTT_SCHEDULE_UNIFORM_COL_WIDTH;
+}
+
+export function viewportColsFromScheduleWidth(width: number): number {
+  return clamp(
+    Math.round(width / GANTT_SCHEDULE_UNIFORM_COL_WIDTH),
+    MIN_SCHEDULE_VIEWPORT_COLS,
+    MAX_SCHEDULE_VIEWPORT_COLS,
+  );
+}
+
 export function readStoredTitleWidth(): number {
   if (typeof window === "undefined") return DEFAULT_TITLE_WIDTH;
   const n = parseInt(localStorage.getItem(GANTT_TITLE_WIDTH_KEY) ?? "", 10);
@@ -45,16 +61,22 @@ export function readStoredTitleWidth(): number {
   return DEFAULT_TITLE_WIDTH;
 }
 
-export function readStoredScheduleWidth(): number {
-  if (typeof window === "undefined") return DEFAULT_SCHEDULE_WIDTH;
-  const n = parseInt(localStorage.getItem(GANTT_SCHEDULE_WIDTH_KEY) ?? "", 10);
-  if (!Number.isNaN(n)) return clamp(n, MIN_SCHEDULE_WIDTH, MAX_SCHEDULE_WIDTH);
+export function readStoredScheduleViewportCols(): number {
+  if (typeof window === "undefined") return DEFAULT_SCHEDULE_VIEWPORT_COLS;
+  const colsRaw = parseInt(localStorage.getItem(GANTT_SCHEDULE_VIEWPORT_COLS_KEY) ?? "", 10);
+  if (!Number.isNaN(colsRaw)) {
+    return clamp(colsRaw, MIN_SCHEDULE_VIEWPORT_COLS, MAX_SCHEDULE_VIEWPORT_COLS);
+  }
+  const widthRaw = parseInt(localStorage.getItem(GANTT_SCHEDULE_WIDTH_KEY) ?? "", 10);
+  if (!Number.isNaN(widthRaw)) {
+    return viewportColsFromScheduleWidth(widthRaw);
+  }
   const legacy = readLegacyLabelWidth();
   if (legacy != null) {
     const title = readStoredTitleWidth();
-    return clamp(legacy - title, MIN_SCHEDULE_WIDTH, MAX_SCHEDULE_WIDTH);
+    return viewportColsFromScheduleWidth(Math.max(GANTT_SCHEDULE_UNIFORM_COL_WIDTH, legacy - title));
   }
-  return DEFAULT_SCHEDULE_WIDTH;
+  return DEFAULT_SCHEDULE_VIEWPORT_COLS;
 }
 
 export function readStoredTitleVisible(): boolean {
@@ -78,9 +100,13 @@ export function writeStoredTitleWidth(width: number) {
   localStorage.setItem(GANTT_TITLE_WIDTH_KEY, String(width));
 }
 
-export function writeStoredScheduleWidth(width: number) {
+export function writeStoredScheduleViewportCols(cols: number) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(GANTT_SCHEDULE_WIDTH_KEY, String(width));
+  localStorage.setItem(GANTT_SCHEDULE_VIEWPORT_COLS_KEY, String(cols));
+  localStorage.setItem(
+    GANTT_SCHEDULE_WIDTH_KEY,
+    String(scheduleWidthFromViewportCols(cols)),
+  );
 }
 
 export function writeStoredTitleVisible(visible: boolean) {

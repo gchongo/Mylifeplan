@@ -99,25 +99,27 @@ import { dispatchPlanUpdated, PLAN_UPDATED_EVENT } from "@/lib/plan-events";
 import {
   DEFAULT_VISIBLE_SCHEDULE_COLUMNS,
   GANTT_SCHEDULE_TABLE_HEADER_HEIGHT,
+  GANTT_SCHEDULE_UNIFORM_COL_WIDTH,
   readStoredScheduleColumns,
-  scheduleColumnsTotalWidth,
-  visibleScheduleColumnDefs,
+  scheduleColumnIndexAtScroll,
+  scheduleScrollLeftForIndex,
   writeStoredScheduleColumns,
   type GanttScheduleColumnId,
 } from "@/lib/gantt-schedule-columns";
 import {
-  DEFAULT_SCHEDULE_WIDTH,
+  DEFAULT_SCHEDULE_VIEWPORT_COLS,
   DEFAULT_TITLE_WIDTH,
-  MAX_SCHEDULE_WIDTH,
+  MAX_SCHEDULE_VIEWPORT_COLS,
   MAX_TITLE_WIDTH,
-  MIN_SCHEDULE_WIDTH,
+  MIN_SCHEDULE_VIEWPORT_COLS,
   MIN_TITLE_WIDTH,
   readStoredScheduleVisible,
-  readStoredScheduleWidth,
+  readStoredScheduleViewportCols,
   readStoredTitleVisible,
   readStoredTitleWidth,
+  scheduleWidthFromViewportCols,
   writeStoredScheduleVisible,
-  writeStoredScheduleWidth,
+  writeStoredScheduleViewportCols,
   writeStoredTitleVisible,
   writeStoredTitleWidth,
 } from "@/lib/gantt-panel-prefs";
@@ -125,23 +127,6 @@ const ROW_GROUP_GAP = 8;
 const DRAWER_TRANSITION_MS = 300;
 const TIMELINE_DATE_HEADER_HEIGHT = 28;
 const TIMELINE_SUBHEADER_HEIGHT = GANTT_SCHEDULE_TABLE_HEADER_HEIGHT;
-
-function scrollLeftForColumnIndex(columns: GanttScheduleColumnId[], index: number) {
-  return visibleScheduleColumnDefs(columns)
-    .slice(0, index)
-    .reduce((sum, col) => sum + col.width, 0);
-}
-
-function columnIndexAtScroll(columns: GanttScheduleColumnId[], scrollLeft: number) {
-  const defs = visibleScheduleColumnDefs(columns);
-  let x = 0;
-  for (let i = 0; i < defs.length; i++) {
-    const col = defs[i]!;
-    if (scrollLeft < x + col.width) return i;
-    x += col.width;
-  }
-  return Math.max(0, defs.length - 1);
-}
 
 function asPlanStatus(status: string | undefined | null): PlanStatus {
   if (status === "not_started" || status === "in_progress" || status === "done" || status === "archived") {
@@ -339,7 +324,7 @@ export const GanttChart = forwardRef<
   const [scrollViewportHeight, setScrollViewportHeight] = useState(480);
   const [timelineViewportWidth, setTimelineViewportWidth] = useState(0);
   const [titleWidth, setTitleWidth] = useState(DEFAULT_TITLE_WIDTH);
-  const [scheduleWidth, setScheduleWidth] = useState(DEFAULT_SCHEDULE_WIDTH);
+  const [scheduleViewportCols, setScheduleViewportCols] = useState(DEFAULT_SCHEDULE_VIEWPORT_COLS);
   const [titlePanelVisible, setTitlePanelVisible] = useState(true);
   const [schedulePanelVisible, setSchedulePanelVisible] = useState(true);
   const [scheduleColumns, setScheduleColumns] = useState<GanttScheduleColumnId[]>(
@@ -366,6 +351,7 @@ export const GanttChart = forwardRef<
     [todayColumnPrefs],
   );
 
+  const scheduleWidth = scheduleWidthFromViewportCols(scheduleViewportCols);
   const effectiveTitleWidth = titlePanelVisible ? titleWidth : 0;
   const effectiveScheduleWidth = schedulePanelVisible ? scheduleWidth : 0;
   const effectiveLeftWidth = effectiveTitleWidth + effectiveScheduleWidth;
@@ -373,22 +359,30 @@ export const GanttChart = forwardRef<
   const timelineHeaderHeight = leftSubheaderVisible
     ? TIMELINE_DATE_HEADER_HEIGHT + TIMELINE_SUBHEADER_HEIGHT
     : TIMELINE_DATE_HEADER_HEIGHT;
-  const scheduleColumnsWidth = scheduleColumnsTotalWidth(scheduleColumns);
-  const scheduleMaxScroll = Math.max(0, scheduleColumnsWidth - scheduleWidth);
-  const canScheduleScrollPrev = scheduleScrollLeft > 0;
-  const canScheduleScrollNext = scheduleScrollLeft < scheduleMaxScroll - 0.5;
+  const scheduleMaxScrollIndex = Math.max(0, scheduleColumns.length - scheduleViewportCols);
+  const scheduleScrollIndex = scheduleColumnIndexAtScroll(scheduleScrollLeft);
+  const canScheduleScrollPrev = scheduleScrollIndex > 0;
+  const canScheduleScrollNext = scheduleScrollIndex < scheduleMaxScrollIndex;
+  const scheduleMaxScroll = scheduleScrollLeftForIndex(scheduleMaxScrollIndex);
 
   useEffect(() => {
     setTitleWidth(readStoredTitleWidth());
-    setScheduleWidth(readStoredScheduleWidth());
+    setScheduleViewportCols(readStoredScheduleViewportCols());
     setTitlePanelVisible(readStoredTitleVisible());
     setSchedulePanelVisible(readStoredScheduleVisible());
     setScheduleColumns(readStoredScheduleColumns());
   }, []);
 
   useEffect(() => {
+    if (!titlePanelVisible && schedulePanelVisible) {
+      setSchedulePanelVisible(false);
+      writeStoredScheduleVisible(false);
+    }
+  }, [titlePanelVisible, schedulePanelVisible]);
+
+  useEffect(() => {
     setScheduleScrollLeft((prev) => Math.min(prev, scheduleMaxScroll));
-  }, [scheduleMaxScroll, scheduleColumns, scheduleWidth]);
+  }, [scheduleMaxScroll, scheduleColumns, scheduleViewportCols]);
 
   function handleScheduleColumnsChange(next: GanttScheduleColumnId[]) {
     setScheduleColumns(next);
@@ -489,21 +483,24 @@ export const GanttChart = forwardRef<
     return map;
   }, [items, contributions]);
 
-  const toggleTitlePanel = useCallback(() => {
-    setTitlePanelVisible((prev) => {
-      const next = !prev;
-      writeStoredTitleVisible(next);
-      return next;
-    });
+  const hideTitlePanel = useCallback(() => {
+    setTitlePanelVisible(false);
+    setSchedulePanelVisible(false);
+    writeStoredTitleVisible(false);
+    writeStoredScheduleVisible(false);
   }, []);
 
-  const toggleSchedulePanel = useCallback(() => {
-    setSchedulePanelVisible((prev) => {
-      const next = !prev;
-      writeStoredScheduleVisible(next);
-      return next;
-    });
+  const hideSchedulePanel = useCallback(() => {
+    setSchedulePanelVisible(false);
+    writeStoredScheduleVisible(false);
+    setScheduleScrollLeft(0);
   }, []);
+
+  const openSchedulePanel = useCallback(() => {
+    if (!titlePanelVisible) return;
+    setSchedulePanelVisible(true);
+    writeStoredScheduleVisible(true);
+  }, [titlePanelVisible]);
 
   const openLeftPanels = useCallback(() => {
     setTitlePanelVisible(true);
@@ -514,13 +511,20 @@ export const GanttChart = forwardRef<
 
   const scrollScheduleColumns = useCallback((delta: -1 | 1) => {
     setScheduleScrollLeft((prev) => {
-      const defs = visibleScheduleColumnDefs(scheduleColumns);
-      if (defs.length === 0) return 0;
-      const currentIdx = columnIndexAtScroll(scheduleColumns, prev);
-      const nextIdx = Math.max(0, Math.min(defs.length - 1, currentIdx + delta));
-      return Math.min(scrollLeftForColumnIndex(scheduleColumns, nextIdx), scheduleMaxScroll);
+      const currentIdx = scheduleColumnIndexAtScroll(prev);
+      const nextIdx = Math.max(0, Math.min(scheduleMaxScrollIndex, currentIdx + delta));
+      return scheduleScrollLeftForIndex(nextIdx);
     });
-  }, [scheduleColumns, scheduleMaxScroll]);
+  }, [scheduleMaxScrollIndex]);
+
+  const setScheduleViewportColsSnapped = useCallback((cols: number) => {
+    const next = Math.min(
+      MAX_SCHEDULE_VIEWPORT_COLS,
+      Math.max(MIN_SCHEDULE_VIEWPORT_COLS, cols),
+    );
+    setScheduleViewportCols(next);
+    writeStoredScheduleViewportCols(next);
+  }, []);
 
   const startTitleResize = useCallback((clientX: number) => {
     const startX = clientX;
@@ -557,26 +561,27 @@ export const GanttChart = forwardRef<
 
   const startScheduleResize = useCallback((clientX: number) => {
     const startX = clientX;
-    const startWidth = scheduleWidth;
+    const startCols = scheduleViewportCols;
     setIsResizingSchedule(true);
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
 
     function onMove(e: MouseEvent) {
+      const deltaCols = Math.round((e.clientX - startX) / GANTT_SCHEDULE_UNIFORM_COL_WIDTH);
       const next = Math.min(
-        MAX_SCHEDULE_WIDTH,
-        Math.max(MIN_SCHEDULE_WIDTH, startWidth + (e.clientX - startX)),
+        MAX_SCHEDULE_VIEWPORT_COLS,
+        Math.max(MIN_SCHEDULE_VIEWPORT_COLS, startCols + deltaCols),
       );
-      setScheduleWidth(next);
+      setScheduleViewportCols(next);
     }
 
     function onUp(e: MouseEvent) {
+      const deltaCols = Math.round((e.clientX - startX) / GANTT_SCHEDULE_UNIFORM_COL_WIDTH);
       const next = Math.min(
-        MAX_SCHEDULE_WIDTH,
-        Math.max(MIN_SCHEDULE_WIDTH, startWidth + (e.clientX - startX)),
+        MAX_SCHEDULE_VIEWPORT_COLS,
+        Math.max(MIN_SCHEDULE_VIEWPORT_COLS, startCols + deltaCols),
       );
-      setScheduleWidth(next);
-      writeStoredScheduleWidth(next);
+      setScheduleViewportColsSnapped(next);
       setIsResizingSchedule(false);
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
@@ -586,7 +591,7 @@ export const GanttChart = forwardRef<
 
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
-  }, [scheduleWidth]);
+  }, [scheduleViewportCols, setScheduleViewportColsSnapped]);
 
   const expandablePlanIds = useMemo(() => {
     return filteredPlans
@@ -720,7 +725,7 @@ export const GanttChart = forwardRef<
 
   useLayoutEffect(() => {
     syncTimelineHeaderScroll();
-  }, [syncTimelineHeaderScroll, timelineWidth, titleWidth, scheduleWidth, titlePanelVisible, schedulePanelVisible, rows.length]);
+  }, [syncTimelineHeaderScroll, timelineWidth, titleWidth, scheduleViewportCols, titlePanelVisible, schedulePanelVisible, rows.length]);
 
   function preserveScrollLeft() {
     pendingScrollLeft.current = scrollRef.current?.scrollLeft ?? 0;
@@ -1466,10 +1471,7 @@ export const GanttChart = forwardRef<
         onToggleActualTimeline={() =>
           setGanttActualLine({ enabled: !actualLinePrefs.enabled })
         }
-        onToggleTitlePanel={toggleTitlePanel}
-        onToggleSchedulePanel={toggleSchedulePanel}
-        titlePanelVisible={titlePanelVisible}
-        schedulePanelVisible={schedulePanelVisible}
+        onToggleTitlePanel={hideTitlePanel}
         onCreatePlan={() => openCreatePlan()}
         scheduleColumns={scheduleColumns}
         onScheduleColumnsChange={handleScheduleColumnsChange}
@@ -1484,29 +1486,14 @@ export const GanttChart = forwardRef<
         canScrollNext={canScheduleScrollNext}
         onScrollPrev={() => scrollScheduleColumns(-1)}
         onScrollNext={() => scrollScheduleColumns(1)}
-        onClose={toggleSchedulePanel}
-        trailing={
-          <div className="flex min-w-0 flex-1 items-center justify-end gap-1">
-            {!titlePanelVisible && (
-              <>
-                <button
-                  type="button"
-                  data-no-pan
-                  onClick={toggleTitlePanel}
-                  className="rounded-md border border-gray-200 bg-gray-50 px-1.5 text-[10px] font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
-                  title="显示标题列"
-                >
-                  标题
-                </button>
-                <GanttScheduleColumnPicker
-                  visibleColumns={scheduleColumns}
-                  onChange={handleScheduleColumnsChange}
-                  compact
-                />
-              </>
-            )}
-          </div>
-        }
+        onHidePanel={hideSchedulePanel}
+        trailing={(
+          <GanttScheduleColumnPicker
+            visibleColumns={scheduleColumns}
+            onChange={handleScheduleColumnsChange}
+            compact
+          />
+        )}
       />
     );
   }
@@ -1549,8 +1536,16 @@ export const GanttChart = forwardRef<
       <div className="relative z-30 flex shrink-0 overflow-visible">
         <GanttDrawerOpenTab
           headerHeight={timelineHeaderHeight}
-          visible={!titlePanelVisible && !schedulePanelVisible}
+          visible={!titlePanelVisible}
           onOpen={openLeftPanels}
+          title="显示计划列表"
+        />
+        <GanttDrawerOpenTab
+          headerHeight={timelineHeaderHeight}
+          left={effectiveTitleWidth}
+          visible={titlePanelVisible && !schedulePanelVisible}
+          onOpen={openSchedulePanel}
+          title="显示时间列"
         />
 
         <div

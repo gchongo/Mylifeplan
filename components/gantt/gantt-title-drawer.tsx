@@ -15,27 +15,33 @@ export function GanttDrawerOpenTab({
   headerHeight,
   visible,
   onOpen,
+  left = 0,
+  title = "显示侧栏",
 }: {
   headerHeight: number;
   visible: boolean;
   onOpen: () => void;
+  left?: number;
+  title?: string;
 }) {
   return (
     <button
       type="button"
       data-no-pan
       className={cn(
-        "absolute left-0 top-0 z-50 flex items-center justify-center",
+        "absolute top-0 z-50 flex items-center justify-center",
         "rounded-r-md border border-l-0 border-blue-200 bg-blue-50 shadow-md",
         "hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/80 dark:hover:bg-blue-900/60",
         "transition-[opacity,transform] duration-300 ease-in-out",
         visible
           ? "translate-x-0 opacity-100"
-          : "pointer-events-none -translate-x-full opacity-0",
+          : "pointer-events-none opacity-0",
+        left === 0 && !visible && "-translate-x-full",
+        left !== 0 && !visible && "pointer-events-none opacity-0",
       )}
-      style={{ width: GANTT_DRAWER_TOGGLE_WIDTH, height: headerHeight }}
-      title="显示侧栏"
-      aria-label="显示侧栏"
+      style={{ left, width: GANTT_DRAWER_TOGGLE_WIDTH, height: headerHeight }}
+      title={title}
+      aria-label={title}
       onClick={onOpen}
     >
       <GanttPanelExpandChevron className="text-blue-600 dark:text-blue-300" />
@@ -92,9 +98,6 @@ export function GanttTitleDrawerControls({
   scheduleColumns,
   onScheduleColumnsChange,
   onToggleTitlePanel,
-  onToggleSchedulePanel,
-  titlePanelVisible,
-  schedulePanelVisible,
 }: {
   allExpanded: boolean;
   onToggleExpandAll: () => void;
@@ -108,9 +111,6 @@ export function GanttTitleDrawerControls({
   scheduleColumns?: GanttScheduleColumnId[];
   onScheduleColumnsChange?: (next: GanttScheduleColumnId[]) => void;
   onToggleTitlePanel?: () => void;
-  onToggleSchedulePanel?: () => void;
-  titlePanelVisible?: boolean;
-  schedulePanelVisible?: boolean;
 }) {
   return (
     <GanttTaskListControls
@@ -119,10 +119,7 @@ export function GanttTitleDrawerControls({
       showExpandToggle={showExpandToggle}
       statusFilter={statusFilter}
       onStatusFilterChange={onStatusFilterChange}
-      titlePanelVisible={titlePanelVisible}
-      schedulePanelVisible={schedulePanelVisible}
       onToggleTitlePanel={onToggleTitlePanel ?? onCloseDrawer}
-      onToggleSchedulePanel={onToggleSchedulePanel}
       onCreatePlan={onCreatePlan}
       showActualTimeline={showActualTimeline}
       onToggleActualTimeline={onToggleActualTimeline}

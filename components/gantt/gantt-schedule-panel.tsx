@@ -19,7 +19,7 @@ export function GanttTitleTableHeader({ width }: { width: number }) {
       className="flex shrink-0 border-b border-blue-200/80 bg-blue-100/50 dark:border-blue-900/50 dark:bg-blue-900/30"
       style={{ width, height: GANTT_SCHEDULE_TABLE_HEADER_HEIGHT, minHeight: GANTT_SCHEDULE_TABLE_HEADER_HEIGHT }}
     >
-      <div className="flex w-full items-center px-2 text-[10px] font-medium text-gray-500 dark:text-gray-400">
+      <div className="flex w-full items-center justify-center text-center text-[10px] font-medium text-gray-500 dark:text-gray-400">
         任务
       </div>
     </div>
@@ -67,23 +67,23 @@ export function GanttScheduleColumnNav({
   canScrollNext,
   onScrollPrev,
   onScrollNext,
-  onClose,
+  onHidePanel,
   trailing,
 }: {
   canScrollPrev: boolean;
   canScrollNext: boolean;
   onScrollPrev: () => void;
   onScrollNext: () => void;
-  onClose?: () => void;
+  onHidePanel?: () => void;
   trailing?: ReactNode;
 }) {
   return (
-    <div className="flex h-full w-full items-center gap-1 px-1.5">
-      {onClose && (
+    <div className="flex h-full w-full items-center gap-0.5 px-1">
+      {onHidePanel && (
         <button
           type="button"
           data-no-pan
-          onClick={onClose}
+          onClick={onHidePanel}
           className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
           title="收起时间列"
           aria-label="收起时间列"
@@ -91,28 +91,33 @@ export function GanttScheduleColumnNav({
           <GanttPanelCollapseChevron className="text-blue-600 dark:text-blue-300" />
         </button>
       )}
-      <button
-        type="button"
-        data-no-pan
-        disabled={!canScrollPrev}
-        onClick={onScrollPrev}
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-35 dark:text-gray-300 dark:hover:bg-gray-800"
-        title="上一列"
-        aria-label="上一列"
-      >
-        ‹
-      </button>
-      <button
-        type="button"
-        data-no-pan
-        disabled={!canScrollNext}
-        onClick={onScrollNext}
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-35 dark:text-gray-300 dark:hover:bg-gray-800"
-        title="下一列"
-        aria-label="下一列"
-      >
-        ›
-      </button>
+      <div className="flex min-w-0 flex-1 items-center justify-center gap-0.5">
+        <button
+          type="button"
+          data-no-pan
+          disabled={!canScrollPrev}
+          onClick={onScrollPrev}
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-35 dark:text-gray-300 dark:hover:bg-gray-800"
+          title="上一列"
+          aria-label="上一列"
+        >
+          ‹
+        </button>
+        <span className="shrink-0 text-[10px] font-medium text-gray-500 dark:text-gray-400">
+          时间
+        </span>
+        <button
+          type="button"
+          data-no-pan
+          disabled={!canScrollNext}
+          onClick={onScrollNext}
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-35 dark:text-gray-300 dark:hover:bg-gray-800"
+          title="下一列"
+          aria-label="下一列"
+        >
+          ›
+        </button>
+      </div>
       {trailing}
     </div>
   );
