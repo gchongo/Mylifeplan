@@ -16,6 +16,7 @@ import {
   readUserPreferences,
   writeUserPreferences,
   type GanttActualLinePreferences,
+  type GanttContributionMarkerPreferences,
   type GanttTodayColumnPreferences,
   type LanguagePreference,
   type ThemePreference,
@@ -30,6 +31,7 @@ interface SettingsContextValue {
   setTheme: (theme: ThemePreference) => void;
   setLanguage: (language: LanguagePreference) => void;
   setGanttActualLine: (patch: Partial<GanttActualLinePreferences>) => void;
+  setGanttContributionMarkers: (patch: Partial<GanttContributionMarkerPreferences>) => void;
   setGanttTodayColumn: (patch: Partial<GanttTodayColumnPreferences>) => void;
 }
 
@@ -75,6 +77,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setGanttActualLine: (patch) =>
         updatePreferences({
           ganttActualLine: { ...preferences.ganttActualLine, ...patch },
+        }),
+      setGanttContributionMarkers: (patch) =>
+        updatePreferences({
+          ganttContributionMarkers: { ...preferences.ganttContributionMarkers, ...patch },
         }),
       setGanttTodayColumn: (patch) =>
         updatePreferences({

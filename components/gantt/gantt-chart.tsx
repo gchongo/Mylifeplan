@@ -336,10 +336,12 @@ export const GanttChart = forwardRef<
   >(() => new Map());
   const [hoveredRootId, setHoveredRootId] = useState<string | null>(null);
 
-  const { preferences, setGanttActualLine } = useSettings();
+  const { preferences } = useSettings();
   const actualLinePrefs = preferences.ganttActualLine;
+  const contributionMarkerPrefs = preferences.ganttContributionMarkers;
   const todayColumnPrefs = preferences.ganttTodayColumn;
   const showActualTimeline = actualLinePrefs.enabled;
+  const showContributionMarkers = contributionMarkerPrefs.enabled;
   const todayColumnBg = useMemo(
     () => ganttTodayColumnBackground(todayColumnPrefs),
     [todayColumnPrefs],
@@ -1119,12 +1121,9 @@ export const GanttChart = forwardRef<
     rowContributions: GanttContribution[],
     spanStart: string,
     spanEnd: string,
-    barLeft: number,
-    barWidth: number,
     rowPlanId: string,
     barHeightPx: number,
     rowHeight: number,
-    strip?: { top: number; height: number },
   ) {
     const visible = rowContributions.filter((c) => {
       if (!isDateWithinPlanSpan(c.occurredOn, spanStart, spanEnd)) return false;
@@ -1134,21 +1133,11 @@ export const GanttChart = forwardRef<
 
     if (visible.length === 0) return null;
 
-    const barOrigin = Math.max(barLeft, 0);
     const markerHeight = contributionMarkerHeight(barHeightPx);
-    const containerHeight = strip?.height ?? rowHeight;
-    const markerTop = (strip?.top ?? 0) + (containerHeight - markerHeight) / 2;
+    const markerTop = (rowHeight - markerHeight) / 2;
 
     return (
-      <div
-        className="pointer-events-none absolute overflow-hidden"
-        style={{
-          left: barOrigin,
-          width: Math.max(barWidth, 8),
-          top: strip?.top ?? 0,
-          height: containerHeight,
-        }}
-      >
+      <>
         {visible.map((c) => {
           const color = resolveContributionMarkerColor(c, planById);
           const title = c.title;
@@ -1156,7 +1145,6 @@ export const GanttChart = forwardRef<
           if (isContributionInterval(c)) {
             const end = c.occurredEndOn!;
             const { left, width } = barMetricsFromDates(c.occurredOn, end, layout);
-            const relLeft = left - barOrigin;
             return (
               <button
                 key={`contrib-span-${rowPlanId}-${c.id}`}
@@ -1165,9 +1153,9 @@ export const GanttChart = forwardRef<
                 onClick={() => openContribution(c.id)}
                 className="pointer-events-auto absolute z-10 rounded-full ring-1 ring-white/80 hover:brightness-110 dark:ring-gray-900/80"
                 style={{
-                  left: Math.max(0, relLeft),
+                  left: Math.max(0, left),
                   width: Math.max(width, 4),
-                  top: markerTop - (strip?.top ?? 0),
+                  top: markerTop,
                   height: markerHeight,
                   ...contributionIntervalFillStyle(color),
                 }}
@@ -1177,7 +1165,7 @@ export const GanttChart = forwardRef<
             );
           }
 
-          const x = dateToX(c.occurredOn, layout) - barOrigin;
+          const x = dateToX(c.occurredOn, layout);
           return (
             <button
               key={`contrib-point-${rowPlanId}-${c.id}`}
@@ -1188,13 +1176,64 @@ export const GanttChart = forwardRef<
               style={{
                 left: Math.max(0, x),
                 width: CONTRIBUTION_POINT_WIDTH_PX,
-                top: markerTop - (strip?.top ?? 0),
+                top: markerTop,
                 height: markerHeight,
                 backgroundColor: color,
               }}
               title={title}
               aria-label={`${title}（时间点）`}
             />
+          );
+        })}
+      </>
+    );
+  }
+
+  function renderContributionLayer() {
+    if (!showContributionMarkers) return null;
+
+    return (
+      <div
+        className="pointer-events-none absolute left-0 top-0 z-[4]"
+        style={{ width: timelineWidth, minHeight: bodyAreaHeight }}
+      >
+        {rows.map((row, idx) => {
+          const item = row.item;
+          if (item.isUnscheduled || item.contributionOnly) return null;
+
+          const previewDates = barPreview.get(item.id);
+          const displayStart = previewDates?.start ?? item.startDate;
+          const displayEnd = previewDates?.end ?? item.effectiveEnd;
+          const rootItem = planById.get(row.rootId) ?? item;
+          const groupColor = resolveEffectivePlanColor(rootItem, rootItem);
+          const displayStatus = itemDisplayStatus(item, items);
+          const overdue = isPlanOverdue(item, planById);
+          const barStyle = planBarStyle(item, row.depth, groupColor, displayStatus, overdue);
+          const rowContributions = contributionsForGanttRow(
+            item.id,
+            contributions,
+            planById,
+            expanded,
+            visibleRowIds,
+          );
+          const markers = renderContributionMarkers(
+            rowContributions,
+            displayStart,
+            displayEnd,
+            item.id,
+            barStyle.barHeightPx,
+            row.height,
+          );
+          if (!markers) return null;
+
+          return (
+            <div
+              key={`contrib-layer-${item.id}-${idx}`}
+              className="relative"
+              style={{ height: row.height, marginTop: row.gapBefore, width: timelineWidth }}
+            >
+              {markers}
+            </div>
           );
         })}
       </div>
@@ -1330,13 +1369,6 @@ export const GanttChart = forwardRef<
     const parentPreview = parentPlan ? barPreview.get(parentPlan.id) : undefined;
     const minStartDate = parentPreview?.start ?? parentPlan?.startDate;
     const contribBounds = contributionBoundsByPlan.get(item.id);
-    const rowContributions = contributionsForGanttRow(
-      item.id,
-      contributions,
-      planById,
-      expanded,
-      visibleRowIds,
-    );
 
     return (
       <div
@@ -1406,17 +1438,6 @@ export const GanttChart = forwardRef<
             style={{ left: Math.max(left, 0), width: Math.max(width, 24) }}
           />
         )}
-        {!item.contributionOnly &&
-          renderContributionMarkers(
-            rowContributions,
-            displayStart,
-            displayEnd,
-            left,
-            width,
-            item.id,
-            barStyle.barHeightPx,
-            row.height,
-          )}
       </div>
     );
   }
@@ -1460,10 +1481,6 @@ export const GanttChart = forwardRef<
         showExpandToggle={expandablePlanIds.length > 0}
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
-        showActualTimeline={showActualTimeline}
-        onToggleActualTimeline={() =>
-          setGanttActualLine({ enabled: !actualLinePrefs.enabled })
-        }
         onToggleTitlePanel={hideTitlePanel}
         onCreatePlan={() => openCreatePlan()}
       />
@@ -1705,6 +1722,7 @@ export const GanttChart = forwardRef<
                     {renderBar(row, idx)}
                   </div>
                 ))}
+                {renderContributionLayer()}
               </div>
             </div>
           </div>

@@ -18,11 +18,16 @@ export interface GanttTodayColumnPreferences {
   fillStyle: GanttTodayColumnFillStyle;
 }
 
+export interface GanttContributionMarkerPreferences {
+  enabled: boolean;
+}
+
 export interface UserPreferences {
   timezone: string;
   theme: ThemePreference;
   language: LanguagePreference;
   ganttActualLine: GanttActualLinePreferences;
+  ganttContributionMarkers: GanttContributionMarkerPreferences;
   ganttTodayColumn: GanttTodayColumnPreferences;
 }
 
@@ -42,11 +47,16 @@ export const DEFAULT_GANTT_TODAY_COLUMN: GanttTodayColumnPreferences = {
   fillStyle: "solid",
 };
 
+export const DEFAULT_GANTT_CONTRIBUTION_MARKERS: GanttContributionMarkerPreferences = {
+  enabled: true,
+};
+
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   timezone: "auto",
   theme: "system",
   language: "zh-CN",
   ganttActualLine: DEFAULT_GANTT_ACTUAL_LINE,
+  ganttContributionMarkers: DEFAULT_GANTT_CONTRIBUTION_MARKERS,
   ganttTodayColumn: DEFAULT_GANTT_TODAY_COLUMN,
 };
 
@@ -167,6 +177,17 @@ export function normalizeGanttTodayColumnPreferences(
   };
 }
 
+export function normalizeGanttContributionMarkerPreferences(
+  raw: Partial<GanttContributionMarkerPreferences> | null | undefined,
+): GanttContributionMarkerPreferences {
+  return {
+    enabled:
+      typeof raw?.enabled === "boolean"
+        ? raw.enabled
+        : DEFAULT_GANTT_CONTRIBUTION_MARKERS.enabled,
+  };
+}
+
 export function normalizeUserPreferences(raw: Partial<UserPreferences> | null | undefined): UserPreferences {
   const timezone =
     typeof raw?.timezone === "string" && raw.timezone.trim()
@@ -177,6 +198,10 @@ export function normalizeUserPreferences(raw: Partial<UserPreferences> | null | 
     theme: isTheme(raw?.theme) ? raw.theme : DEFAULT_USER_PREFERENCES.theme,
     language: isLanguage(raw?.language) ? raw.language : DEFAULT_USER_PREFERENCES.language,
     ganttActualLine: normalizeGanttActualLinePreferences(raw?.ganttActualLine),
+    ganttContributionMarkers: normalizeGanttContributionMarkerPreferences(
+      raw?.ganttContributionMarkers ??
+        (raw as { contributionMarker?: { enabled?: boolean } } | undefined)?.contributionMarker,
+    ),
     ganttTodayColumn: normalizeGanttTodayColumnPreferences(raw?.ganttTodayColumn),
   };
 }

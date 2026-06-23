@@ -91,8 +91,6 @@ export function GanttTitleDrawerControls({
   onStatusFilterChange,
   onCloseDrawer,
   onCreatePlan,
-  showActualTimeline,
-  onToggleActualTimeline,
   onToggleTitlePanel,
 }: {
   allExpanded: boolean;
@@ -102,8 +100,6 @@ export function GanttTitleDrawerControls({
   onStatusFilterChange: (next: Set<VisualStatusKey>) => void;
   onCloseDrawer?: () => void;
   onCreatePlan: () => void;
-  showActualTimeline?: boolean;
-  onToggleActualTimeline?: () => void;
   onToggleTitlePanel?: () => void;
 }) {
   return (
@@ -115,8 +111,6 @@ export function GanttTitleDrawerControls({
       onStatusFilterChange={onStatusFilterChange}
       onToggleTitlePanel={onToggleTitlePanel ?? onCloseDrawer}
       onCreatePlan={onCreatePlan}
-      showActualTimeline={showActualTimeline}
-      onToggleActualTimeline={onToggleActualTimeline}
       drawerTheme
     />
   );

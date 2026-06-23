@@ -35,6 +35,7 @@ describe("user preferences", () => {
       theme: DEFAULT_USER_PREFERENCES.theme,
       language: DEFAULT_USER_PREFERENCES.language,
       ganttActualLine: DEFAULT_USER_PREFERENCES.ganttActualLine,
+      ganttContributionMarkers: DEFAULT_USER_PREFERENCES.ganttContributionMarkers,
       ganttTodayColumn: DEFAULT_USER_PREFERENCES.ganttTodayColumn,
     });
   });
