@@ -21,7 +21,8 @@ import {
   GanttTitleTableHeader,
   GanttScheduleColumnPanel,
   GanttScheduleColumnHeader,
-  GanttScheduleColumnNav,
+  GanttScheduleDateRowBar,
+  GANTT_SCHEDULE_DATE_ROW_CONTROLS_WIDTH,
 } from "@/components/gantt/gantt-schedule-panel";
 import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribution-drawer";
 import { GanttActualExecutionLine } from "@/components/gantt/gantt-actual-execution-line";
@@ -1476,20 +1477,12 @@ export const GanttChart = forwardRef<
     );
   }
 
-  function renderScheduleHeaderNav() {
-    return (
-      <GanttScheduleColumnNav
-        variant="inline"
-        canScrollPrev={canScheduleScrollPrev}
-        canScrollNext={canScheduleScrollNext}
-        onScrollPrev={() => scrollScheduleColumns(-1)}
-        onScrollNext={() => scrollScheduleColumns(1)}
-        onHidePanel={hideSchedulePanel}
-      />
-    );
-  }
-
   const isResizingPanels = isResizingTitle || isResizingSchedule;
+
+  const scheduleHeaderSpacerWidth = Math.max(
+    0,
+    scheduleWidth - GANTT_SCHEDULE_DATE_ROW_CONTROLS_WIDTH,
+  );
 
   function renderPanelResizeHandle(
     left: number,
@@ -1568,32 +1561,31 @@ export const GanttChart = forwardRef<
             )}
           </div>
 
-          <div className="relative min-w-0 flex-1 overflow-hidden bg-white dark:bg-gray-950">
-            {schedulePanelVisible && (
+          {titlePanelVisible && schedulePanelVisible && (
+            <>
+              <GanttScheduleDateRowBar
+                canScrollPrev={canScheduleScrollPrev}
+                canScrollNext={canScheduleScrollNext}
+                onScrollPrev={() => scrollScheduleColumns(-1)}
+                onScrollNext={() => scrollScheduleColumns(1)}
+                onHidePanel={hideSchedulePanel}
+              />
               <div
                 className={cn(
-                  "pointer-events-none absolute top-0 bottom-0 left-0 border-r border-blue-200/60 bg-white dark:border-blue-900/40 dark:bg-gray-950",
+                  "shrink-0 border-r border-blue-200/60 bg-white dark:border-blue-900/40 dark:bg-gray-950",
                   !isResizingPanels && "transition-[width] duration-300 ease-in-out",
                 )}
                 style={{
-                  width: scheduleWidth,
+                  width: scheduleHeaderSpacerWidth,
                   transitionDuration: isResizingPanels ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
                 }}
                 aria-hidden
               />
-            )}
-            <div
-              ref={headerTimelineRef}
-              className={cn(
-                "relative will-change-transform",
-                !isResizingPanels && "transition-[margin] duration-300 ease-in-out",
-              )}
-              style={{
-                marginLeft: schedulePanelVisible ? scheduleWidth : 0,
-                width: timelineWidth,
-                transitionDuration: isResizingPanels ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
-              }}
-            >
+            </>
+          )}
+
+          <div className="relative min-w-0 flex-1 overflow-hidden bg-white dark:bg-gray-950">
+            <div ref={headerTimelineRef} className="relative will-change-transform" style={{ width: timelineWidth }}>
               {renderTimelineDateCells()}
             </div>
           </div>
@@ -1632,7 +1624,6 @@ export const GanttChart = forwardRef<
                   width={scheduleWidth}
                   visibleColumns={scheduleColumns}
                   scrollLeft={scheduleScrollLeft}
-                  leading={renderScheduleHeaderNav()}
                 />
               )}
             </div>

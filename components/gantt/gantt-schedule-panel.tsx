@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { GanttPanelCollapseChevron } from "@/components/gantt/gantt-panel-chevron";
-import { GANTT_TITLE_DRAWER_CLASS, GANTT_TITLE_ROW_CLASS } from "@/lib/gantt-title-column";
+import { GANTT_DRAWER_TOGGLE_WIDTH, GANTT_TITLE_DRAWER_CLASS, GANTT_TITLE_ROW_CLASS } from "@/lib/gantt-title-column";
 import {
   GANTT_SCHEDULE_TABLE_HEADER_HEIGHT,
   getScheduleCellValue,
@@ -34,30 +34,19 @@ export function GanttScheduleColumnHeader({
   width,
   visibleColumns,
   scrollLeft,
-  leading,
 }: {
   width: number;
   visibleColumns: GanttScheduleColumnId[];
   scrollLeft: number;
-  leading?: ReactNode;
 }) {
   const columnDefs = visibleScheduleColumnDefs(visibleColumns);
   const columnsWidth = scheduleColumnsTotalWidth(visibleColumns);
-  const leadingWidth = leading ? 52 : 0;
 
   return (
     <div
       className="flex shrink-0 overflow-hidden border-b border-blue-200/80 bg-blue-100/50 dark:border-blue-900/50 dark:bg-blue-900/30"
       style={{ width, height: GANTT_SCHEDULE_TABLE_HEADER_HEIGHT, minHeight: GANTT_SCHEDULE_TABLE_HEADER_HEIGHT }}
     >
-      {leading && (
-        <div
-          className="flex shrink-0 items-center border-r border-blue-200/60 dark:border-blue-900/40"
-          style={{ width: leadingWidth, height: GANTT_SCHEDULE_TABLE_HEADER_HEIGHT }}
-        >
-          {leading}
-        </div>
-      )}
       <div className="min-w-0 flex-1 overflow-hidden">
         <div
           className="flex"
@@ -75,6 +64,52 @@ export function GanttScheduleColumnHeader({
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+const SCHEDULE_DATE_ROW_EDGE_BTN =
+  "flex shrink-0 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800";
+
+/** 日期行：收起/展开 + ‹ › 共约三格宽 */
+export const GANTT_SCHEDULE_DATE_ROW_CONTROLS_WIDTH = 68;
+
+/** 日期行：收起 + ‹ ›（仅时间列展开时，约占三格宽） */
+export function GanttScheduleDateRowBar({
+  canScrollPrev,
+  canScrollNext,
+  onScrollPrev,
+  onScrollNext,
+  onHidePanel,
+}: {
+  canScrollPrev: boolean;
+  canScrollNext: boolean;
+  onScrollPrev: () => void;
+  onScrollNext: () => void;
+  onHidePanel: () => void;
+}) {
+  return (
+    <div
+      className="flex shrink-0 items-center gap-0.5 border-r border-blue-200/80 bg-blue-50/80 px-0.5 dark:border-blue-900/50 dark:bg-blue-950/40"
+      style={{ width: GANTT_SCHEDULE_DATE_ROW_CONTROLS_WIDTH, height: "100%" }}
+    >
+      <button
+        type="button"
+        data-no-pan
+        onClick={onHidePanel}
+        className={cn(SCHEDULE_DATE_ROW_EDGE_BTN, "h-6 w-6")}
+        title="收起时间列"
+        aria-label="收起时间列"
+      >
+        <GanttPanelCollapseChevron className="text-blue-600 dark:text-blue-300" />
+      </button>
+      <GanttScheduleColumnNav
+        variant="inline"
+        canScrollPrev={canScrollPrev}
+        canScrollNext={canScrollNext}
+        onScrollPrev={onScrollPrev}
+        onScrollNext={onScrollNext}
+      />
     </div>
   );
 }
