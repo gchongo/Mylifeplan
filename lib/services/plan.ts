@@ -11,7 +11,10 @@ import {
   validateManualStatusChange,
 } from "@/lib/services/plan-rollup";
 import { isPlanStartBeforeParent } from "@/lib/gantt-plan-bind";
-import { applyStatusChangeToActualDates } from "@/lib/plan-status-actual-dates";
+import {
+  reconcilePlanStatusAndActualDates,
+  resolveInitialPlanStatusAndActualDates,
+} from "@/lib/plan-status-actual-dates";
 import { aggregateParentActualDates } from "@/lib/plan-actual-rollup";
 import type { createPlanSchema } from "@/lib/validations/plan";
 import type { z } from "zod";
@@ -274,6 +277,18 @@ export async function createPlan(userId: string, input: CreatePlanInput): Promis
   );
   if (parentStartError) throw new Error(parentStartError);
 
+  const initialActualStart = parsePlanStartDateTime(input.actualStartDate);
+  const initialActualEnd = parsePlanEndDateTime(input.actualEndDate);
+  const initialActualStartExplicit = input.actualStartDate != null && input.actualStartDate !== "";
+  const initialActualEndExplicit = input.actualEndDate != null && input.actualEndDate !== "";
+  const initialResolved = resolveInitialPlanStatusAndActualDates({
+    requestedStatus: input.status,
+    actualStart: initialActualStart,
+    actualEnd: initialActualEnd,
+    actualStartExplicit: initialActualStartExplicit,
+    actualEndExplicit: initialActualEndExplicit,
+  });
+
   return prisma.$transaction(async (tx) => {
     const plan = await tx.plan.create({
       data: {
@@ -284,9 +299,9 @@ export async function createPlan(userId: string, input: CreatePlanInput): Promis
         parentPlanId: input.parentPlanId || null,
         startDate: parsePlanStartDateTime(input.startDate),
         endDate: parsePlanEndDateTime(input.endDate),
-        actualStartDate: parsePlanStartDateTime(input.actualStartDate),
-        actualEndDate: parsePlanEndDateTime(input.actualEndDate),
-        status: input.status ?? "not_started",
+        actualStartDate: initialResolved.actualStart,
+        actualEndDate: initialResolved.actualEnd,
+        status: initialResolved.status,
         priority: input.priority ?? null,
         color: input.color ?? null,
       },
@@ -392,32 +407,30 @@ export async function updatePlan(
       ? parsePlanEndDateTime(input.actualEndDate)
       : existing.actualEndDate;
 
-  const nextStatus = input.status ?? existing.status;
-  if (
-    !hasSubPlans &&
-    input.status !== undefined &&
-    input.status !== existing.status
-  ) {
-    const applied = applyStatusChangeToActualDates({
+  let nextStatus = input.status ?? existing.status;
+
+  if (!hasSubPlans) {
+    const reconciled = reconcilePlanStatusAndActualDates({
       previousStatus: existing.status,
-      nextStatus,
+      requestedStatus: input.status,
       actualStart: nextActualStart,
       actualEnd: nextActualEnd,
-      explicitActualStart: input.actualStartDate !== undefined,
-      explicitActualEnd: input.actualEndDate !== undefined,
-      planStart: existing.startDate,
+      previousActualStart: existing.actualStartDate,
+      previousActualEnd: existing.actualEndDate,
+      statusExplicit: input.status !== undefined,
+      actualStartExplicit: input.actualStartDate !== undefined,
+      actualEndExplicit: input.actualEndDate !== undefined,
     });
-    nextActualStart = applied.actualStart;
-    nextActualEnd = applied.actualEnd;
+    nextStatus = reconciled.status;
+    nextActualStart = reconciled.actualStart;
+    nextActualEnd = reconciled.actualEnd;
   }
 
-  const allowManualActual =
-    !hasSubPlans &&
-    (input.actualStartDate !== undefined || input.actualEndDate !== undefined);
-  const allowStatusActual =
-    !hasSubPlans &&
-    input.status !== undefined &&
-    input.status !== existing.status;
+  const actualStartChanged =
+    (nextActualStart?.getTime() ?? null) !== (existing.actualStartDate?.getTime() ?? null);
+  const actualEndChanged =
+    (nextActualEnd?.getTime() ?? null) !== (existing.actualEndDate?.getTime() ?? null);
+  const statusChanged = nextStatus !== existing.status;
 
   if (input.startDate !== undefined || input.endDate !== undefined) {
     const contribError = await validatePlanCoversContributions(
@@ -449,15 +462,9 @@ export async function updatePlan(
         ...(input.parentPlanId !== undefined && { parentPlanId: input.parentPlanId || null }),
         ...(input.startDate !== undefined && { startDate: parsePlanStartDateTime(input.startDate) }),
         ...(input.endDate !== undefined && { endDate: parsePlanEndDateTime(input.endDate) }),
-        ...(allowManualActual ||
-        (allowStatusActual && nextActualStart !== existing.actualStartDate)
-          ? { actualStartDate: nextActualStart }
-          : {}),
-        ...(allowManualActual ||
-        (allowStatusActual && nextActualEnd !== existing.actualEndDate)
-          ? { actualEndDate: nextActualEnd }
-          : {}),
-        ...(input.status !== undefined && { status: input.status }),
+        ...(!hasSubPlans && actualStartChanged ? { actualStartDate: nextActualStart } : {}),
+        ...(!hasSubPlans && actualEndChanged ? { actualEndDate: nextActualEnd } : {}),
+        ...(statusChanged && { status: nextStatus }),
         ...(input.priority !== undefined && { priority: input.priority ?? null }),
         ...(input.color !== undefined && { color: input.color ?? null }),
       },
@@ -469,7 +476,7 @@ export async function updatePlan(
       await shiftDescendantPlanDates(tx, userId, planId, startDeltaMs);
     }
 
-    if (input.status !== undefined && input.status !== existing.status) {
+    if (statusChanged) {
       await applyPlanStatusIfChanged(
         userId,
         planId,

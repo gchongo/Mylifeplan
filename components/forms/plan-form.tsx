@@ -90,8 +90,16 @@ export function PlanForm({
       parentPlanId,
       startDate: normalizedStart ? datetimeLocalToIso(normalizedStart) : null,
       endDate: normalizedEnd ? datetimeLocalToIso(normalizedEnd) : null,
-      actualStartDate: normalizedActualStart ? datetimeLocalToIso(normalizedActualStart) : undefined,
-      actualEndDate: normalizedActualEnd ? datetimeLocalToIso(normalizedActualEnd) : undefined,
+      actualStartDate: canEditActual
+        ? normalizedActualStart
+          ? datetimeLocalToIso(normalizedActualStart)
+          : null
+        : undefined,
+      actualEndDate: canEditActual
+        ? normalizedActualEnd
+          ? datetimeLocalToIso(normalizedActualEnd)
+          : null
+        : undefined,
       color,
       ...(isEdit && { status }),
     };
