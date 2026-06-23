@@ -101,7 +101,7 @@ export function CalendarPanelLive({
     initialMonthWindow(todayMonth),
   );
   const [selectedDate, setSelectedDate] = useState(todayStr);
-  const [drawerDate, setDrawerDate] = useState<string | null>(null);
+  const [drawerDate, setDrawerDate] = useState<string | null>(() => (fullPage ? null : todayStr));
   const [weekAnchor, setWeekAnchor] = useState(today);
   const [items, setItems] = useState<CalendarItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -274,6 +274,7 @@ export function CalendarPanelLive({
           onClose={closeDayDrawer}
           detailExpandable={fullPage}
           onDataChange={reloadCalendar}
+          widthClass={fullPage ? undefined : "w-[42%] min-w-[11.5rem] max-w-[13.5rem]"}
         >
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             {fullPage && (

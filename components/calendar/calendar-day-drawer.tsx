@@ -43,6 +43,7 @@ export function CalendarDayDrawer({
   onClose,
   detailExpandable = false,
   onDataChange,
+  widthClass,
   children,
 }: {
   dateStr: string | null;
@@ -51,12 +52,14 @@ export function CalendarDayDrawer({
   onClose: () => void;
   detailExpandable?: boolean;
   onDataChange?: () => void;
+  widthClass?: string;
   children: React.ReactNode;
 }) {
   return (
     <DrawerLayout
       open={open}
       onClose={onClose}
+      widthClass={widthClass}
       panel={
         <CalendarDayDrawerPanel
           dateStr={dateStr}
