@@ -67,24 +67,39 @@ export function MiniStat({
   value,
   color,
   hint,
+  compact = false,
 }: {
   label: string;
   value: number | string;
   color?: string;
   hint?: string;
+  compact?: boolean;
 }) {
   return (
     <div
-      className="rounded-lg border border-gray-100 bg-gray-50/80 px-1.5 py-1.5 text-center dark:border-gray-800 dark:bg-gray-800/40"
+      className={cn(
+        "rounded-lg border border-gray-100 bg-gray-50/80 text-center dark:border-gray-800 dark:bg-gray-800/40",
+        compact ? "px-1 py-1" : "px-1.5 py-1.5",
+      )}
       title={hint}
     >
       <p
-        className="text-base font-bold tabular-nums leading-none text-gray-900 dark:text-gray-100"
+        className={cn(
+          "font-bold tabular-nums leading-none text-gray-900 dark:text-gray-100",
+          compact ? "text-sm" : "text-base",
+        )}
         style={color ? { color } : undefined}
       >
         {value}
       </p>
-      <p className="mt-0.5 truncate text-[10px] leading-tight text-gray-500">{label}</p>
+      <p
+        className={cn(
+          "mt-0.5 truncate leading-tight text-gray-500",
+          compact ? "text-[9px]" : "text-[10px]",
+        )}
+      >
+        {label}
+      </p>
     </div>
   );
 }
@@ -118,9 +133,15 @@ export function getPrimaryPlanStatValue(
   }
 }
 
-export function PrimaryPlanStats({ summary }: { summary: PlanSummaryStats }) {
+export function PrimaryPlanStats({
+  summary,
+  singleRow = false,
+}: {
+  summary: PlanSummaryStats;
+  singleRow?: boolean;
+}) {
   return (
-    <div className="grid grid-cols-3 gap-1.5">
+    <div className={cn("grid gap-1", singleRow ? "grid-cols-6" : "grid-cols-3 gap-1.5")}>
       {PRIMARY_PLAN_STAT_ITEMS.map((item) => (
         <MiniStat
           key={item.key}
@@ -128,6 +149,7 @@ export function PrimaryPlanStats({ summary }: { summary: PlanSummaryStats }) {
           value={getPrimaryPlanStatValue(summary, item.key)}
           color={item.color}
           hint={"hint" in item ? item.hint : undefined}
+          compact={singleRow}
         />
       ))}
     </div>
@@ -221,9 +243,11 @@ export function DonutChart({
 export function HorizontalBars({
   segments,
   dense = false,
+  className,
 }: {
   segments: SummarySegment[];
   dense?: boolean;
+  className?: string;
 }) {
   const max = Math.max(1, ...segments.map((s) => s.value));
 
@@ -232,7 +256,7 @@ export function HorizontalBars({
   }
 
   return (
-    <ul className={dense ? "space-y-1.5" : "space-y-3"}>
+    <ul className={cn(dense ? "space-y-1.5" : "space-y-3", className)}>
       {segments.map((seg) => (
         <li key={seg.label}>
           <div
