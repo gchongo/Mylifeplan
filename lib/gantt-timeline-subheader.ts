@@ -1,10 +1,6 @@
-import {
-  formatCalendarWeekNumber,
-  isoWeekYearAndNumber,
-  buildMonthWeekRows,
-} from "@/lib/calendar-week-number";
+import { isoWeekYearAndNumber } from "@/lib/calendar-week-number";
 import type { HeaderSpan, TimelineColumn, TimelineLayout } from "@/lib/gantt-scale";
-import type { CalendarWeekNumberPreferences } from "@/lib/user-preferences";
+import type { CalendarWeekNumberFormat } from "@/lib/user-preferences";
 
 const WEEKDAY_CN = ["日", "一", "二", "三", "四", "五", "六"] as const;
 
@@ -45,20 +41,9 @@ function hourPeriodKey(col: TimelineColumn): string {
   return `${col.startDate}-${hourPeriodLabel(hour)}`;
 }
 
-function weekLabelForMonday(weekMonday: string, prefs: CalendarWeekNumberPreferences): string {
-  const [y, m, d] = weekMonday.split("-").map(Number);
-  const monthIndex = m - 1;
-  const weekRows = buildMonthWeekRows(y, monthIndex);
-  let weekIndex = weekRows.findIndex((row) => row.some((day) => day === d));
-  if (weekIndex < 0) {
-    if (prefs.mode === "iso") {
-      const n = isoWeekYearAndNumber(weekMonday).week;
-      return prefs.format === "week-label" ? `第${n}周` : String(n);
-    }
-    weekIndex = 0;
-  }
-  const week = weekRows[weekIndex] ?? [null, null, null, null, null, null, d];
-  return formatCalendarWeekNumber(prefs, y, monthIndex, week, weekIndex, weekRows.length);
+function isoYearWeekLabel(weekMonday: string, format: CalendarWeekNumberFormat): string {
+  const { week } = isoWeekYearAndNumber(weekMonday);
+  return format === "week-label" ? `第${week}周` : String(week);
 }
 
 function mergeColumnSpans(
@@ -97,14 +82,14 @@ function buildWeekSubheaderSpans(columns: TimelineColumn[]): HeaderSpan[] {
 
 function buildMonthSubheaderSpans(
   columns: TimelineColumn[],
-  weekPrefs: CalendarWeekNumberPreferences,
+  weekFormat: CalendarWeekNumberFormat,
 ): HeaderSpan[] {
   const labels = new Map<string, string>();
   return mergeColumnSpans(columns, (col) => startOfWeekMonday(col.startDate), (col) => {
     const monday = startOfWeekMonday(col.startDate);
     let label = labels.get(monday);
     if (!label) {
-      label = weekLabelForMonday(monday, weekPrefs);
+      label = isoYearWeekLabel(monday, weekFormat);
       labels.set(monday, label);
     }
     return label;
@@ -128,7 +113,7 @@ function buildFiveYearSubheaderSpans(columns: TimelineColumn[]): HeaderSpan[] {
 
 export function buildTimelineSubheaderSpans(
   layout: TimelineLayout,
-  weekPrefs: CalendarWeekNumberPreferences,
+  weekFormat: CalendarWeekNumberFormat = "number",
 ): HeaderSpan[] {
   const { scale, columns } = layout;
   if (columns.length === 0) return [];
@@ -139,7 +124,7 @@ export function buildTimelineSubheaderSpans(
     case "week":
       return buildWeekSubheaderSpans(columns);
     case "month":
-      return buildMonthSubheaderSpans(columns, weekPrefs);
+      return buildMonthSubheaderSpans(columns, weekFormat);
     case "year":
       return buildYearSubheaderSpans(columns);
     case "5year":

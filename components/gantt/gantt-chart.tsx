@@ -404,8 +404,8 @@ export const GanttChart = forwardRef<
   }, [scale, anchor, dataBounds, timelineViewportWidth]);
 
   const timelineSubheaderSpans = useMemo(
-    () => buildTimelineSubheaderSpans(layout, preferences.calendarWeekNumbers),
-    [layout, preferences.calendarWeekNumbers],
+    () => buildTimelineSubheaderSpans(layout, preferences.calendarWeekNumbers.format),
+    [layout, preferences.calendarWeekNumbers.format],
   );
 
   const { from, to } = layout;
@@ -928,7 +928,7 @@ export const GanttChart = forwardRef<
   function renderTimelineSubheaderCells() {
     return (
       <div
-        className="flex bg-blue-50/40 text-[10px] text-gray-600 dark:bg-blue-950/20 dark:text-gray-300"
+        className="flex bg-blue-50/50 text-[11px] text-gray-700 dark:bg-blue-950/30 dark:text-gray-200"
         style={{
           width: timelineWidth,
           height: TIMELINE_SUBHEADER_HEIGHT,
@@ -938,13 +938,10 @@ export const GanttChart = forwardRef<
         {timelineSubheaderSpans.map((span, index) => (
           <div
             key={`${span.key}-${index}`}
-            className={cn(
-              "flex items-center justify-center border-r border-gray-200/80 dark:border-gray-700/80",
-              GRID_BORDER,
-            )}
+            className="box-border flex shrink-0 items-center justify-center border-r-2 border-solid border-gray-300 dark:border-gray-600"
             style={{ width: span.width }}
           >
-            <span className="truncate px-0.5 font-medium">{span.label}</span>
+            <span className="w-full text-center font-medium leading-none">{span.label}</span>
           </div>
         ))}
       </div>
