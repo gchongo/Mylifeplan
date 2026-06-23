@@ -91,27 +91,32 @@ export function GanttScheduleColumnNav({
           <GanttPanelCollapseChevron className="text-blue-600 dark:text-blue-300" />
         </button>
       )}
-      <div className="flex min-w-0 flex-1 items-center justify-center gap-0.5">
+      <div className="flex min-w-0 flex-1 items-center justify-center gap-1">
         <button
           type="button"
           data-no-pan
           disabled={!canScrollPrev}
           onClick={onScrollPrev}
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-35 dark:text-gray-300 dark:hover:bg-gray-800"
+          className={cn(
+            "flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-base font-semibold leading-none",
+            "text-blue-700 hover:bg-blue-100/80 dark:text-blue-200 dark:hover:bg-blue-900/40",
+            "disabled:cursor-not-allowed disabled:text-gray-400 disabled:opacity-60 dark:disabled:text-gray-500",
+          )}
           title="上一列"
           aria-label="上一列"
         >
           ‹
         </button>
-        <span className="shrink-0 text-[10px] font-medium text-gray-500 dark:text-gray-400">
-          时间
-        </span>
         <button
           type="button"
           data-no-pan
           disabled={!canScrollNext}
           onClick={onScrollNext}
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-35 dark:text-gray-300 dark:hover:bg-gray-800"
+          className={cn(
+            "flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-base font-semibold leading-none",
+            "text-blue-700 hover:bg-blue-100/80 dark:text-blue-200 dark:hover:bg-blue-900/40",
+            "disabled:cursor-not-allowed disabled:text-gray-400 disabled:opacity-60 dark:disabled:text-gray-500",
+          )}
           title="下一列"
           aria-label="下一列"
         >
