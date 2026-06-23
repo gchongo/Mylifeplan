@@ -79,6 +79,15 @@ export function formatPlanDateTime(value: Date | null | undefined): string | nul
   return value.toISOString();
 }
 
+/** 甘特计开/实开等列：本地日历日期 YYYY/MM/DD（与 datetime-local 一致） */
+export function formatPlanLocalDateSlash(value: string | Date | null | undefined): string {
+  if (!value) return "—";
+  const d = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(d.getTime())) return "—";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}`;
+}
+
 /** 供 `<input type="datetime-local" />` 使用的值 */
 export function toDatetimeLocalInput(value: string | Date | null | undefined): string {
   if (!value) return "";

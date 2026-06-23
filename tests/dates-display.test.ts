@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatPlanDateTimeDisplay, localDateStr, todayStr } from "@/lib/dates";
+import { formatPlanDateTimeDisplay, formatPlanLocalDateSlash, localDateStr, todayStr } from "@/lib/dates";
 
 describe("local dates", () => {
   it("todayStr uses local calendar date", () => {
@@ -8,6 +8,12 @@ describe("local dates", () => {
     const expected = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     expect(todayStr()).toBe(expected);
     expect(localDateStr(d)).toBe(expected);
+  });
+
+  it("formatPlanLocalDateSlash uses local calendar date", () => {
+    const d = new Date(2026, 5, 24, 3, 40);
+    expect(formatPlanLocalDateSlash(d)).toBe("2026/06/24");
+    expect(formatPlanLocalDateSlash(d.toISOString())).toBe("2026/06/24");
   });
 
   it("formatPlanDateTimeDisplay always includes minutes", () => {

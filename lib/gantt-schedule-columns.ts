@@ -1,4 +1,4 @@
-import { parsePlanDateTime } from "@/lib/dates";
+import { parsePlanDateTime, formatPlanLocalDateSlash } from "@/lib/dates";
 import { formatCompletionPercent, planCompletionPercent } from "@/lib/gantt-plan-completion";
 import type { GanttItem } from "@/types";
 
@@ -156,12 +156,7 @@ export function isScheduleCellEditable(
 
 function formatScheduleDate(value: string | null | undefined): string {
   if (!value) return "—";
-  const d = parsePlanDateTime(value);
-  if (!d) return "—";
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  return `${y}/${m}/${day}`;
+  return formatPlanLocalDateSlash(value);
 }
 
 function daySpanMs(start: string, end: string): number | null {

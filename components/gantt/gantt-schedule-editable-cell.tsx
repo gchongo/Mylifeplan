@@ -5,7 +5,12 @@ import {
   scheduleColumnPlanField,
   type GanttScheduleEditableColumnId,
 } from "@/lib/gantt-schedule-columns";
-import { normalizePlanDateInput, toDatetimeLocalInput, type PlanDateTimeEdge } from "@/lib/dates";
+import {
+  normalizePlanDateInput,
+  nowDatetimeLocal,
+  toDatetimeLocalInput,
+  type PlanDateTimeEdge,
+} from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { ScheduleCellValue } from "@/lib/gantt-schedule-columns";
 
@@ -33,15 +38,12 @@ export function GanttScheduleEditableCell({
   const popoverId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const editingRef = useRef(false);
   const savingRef = useRef(false);
-  const outsideCommitTimerRef = useRef<number | null>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  editingRef.current = editing;
   savingRef.current = saving;
 
   useEffect(() => {
@@ -56,45 +58,11 @@ export function GanttScheduleEditableCell({
     }
   }, [editing]);
 
-  function scheduleCommitOnBlur(relatedTarget: EventTarget | null) {
-    if (relatedTarget && containerRef.current?.contains(relatedTarget as Node)) return;
-    scheduleOutsideCommit();
-  }
-
-  function scheduleOutsideCommit() {
-    if (outsideCommitTimerRef.current != null) {
-      window.clearTimeout(outsideCommitTimerRef.current);
-    }
-    outsideCommitTimerRef.current = window.setTimeout(() => {
-      outsideCommitTimerRef.current = null;
-      if (savingRef.current || !editingRef.current) return;
-      if (containerRef.current?.contains(document.activeElement)) return;
-      void commit();
-    }, 150);
-  }
-
-  useEffect(() => {
-    if (!editing) {
-      if (outsideCommitTimerRef.current != null) {
-        window.clearTimeout(outsideCommitTimerRef.current);
-        outsideCommitTimerRef.current = null;
-      }
-      return;
-    }
-
-    function onPointerDown(event: PointerEvent) {
-      const root = containerRef.current;
-      if (!root || root.contains(event.target as Node)) return;
-      if (savingRef.current) return;
-      scheduleOutsideCommit();
-    }
-
-    document.addEventListener("pointerdown", onPointerDown, true);
-    return () => document.removeEventListener("pointerdown", onPointerDown, true);
-  }, [editing]);
-
   function openEditor() {
-    setDraft(toDatetimeLocalInput(rawValue));
+    const initial = rawValue?.trim()
+      ? toDatetimeLocalInput(rawValue)
+      : nowDatetimeLocal();
+    setDraft(initial);
     setError("");
     setEditing(true);
   }
@@ -138,16 +106,31 @@ export function GanttScheduleEditableCell({
 
   function cancel() {
     if (saving) return;
-    if (outsideCommitTimerRef.current != null) {
-      window.clearTimeout(outsideCommitTimerRef.current);
-      outsideCommitTimerRef.current = null;
-    }
     setEditing(false);
     setError("");
   }
 
+  function clearDraft() {
+    setDraft("");
+    inputRef.current?.focus();
+  }
+
+  function setToday() {
+    setDraft(nowDatetimeLocal());
+    inputRef.current?.focus();
+  }
+
   const label =
-    cell.text === "—" ? "双击设置时间，点击外部保存" : `双击修改：${cell.text}，点击外部保存`;
+    cell.text === "—" ? "双击设置时间" : `双击修改：${cell.text}`;
+
+  const columnTitle =
+    columnId === "planStart"
+      ? "计划开始"
+      : columnId === "planEnd"
+        ? "计划结束"
+        : columnId === "actualStart"
+          ? "实际开始"
+          : "实际结束";
 
   return (
     <div
@@ -177,16 +160,13 @@ export function GanttScheduleEditableCell({
 
       {editing && (
         <div
-          className="absolute left-1/2 top-full z-[80] mt-0.5 w-max max-w-[min(16rem,calc(100vw-2rem))] -translate-x-1/2 rounded-md border border-blue-200 bg-white p-2 shadow-lg dark:border-blue-800 dark:bg-gray-900"
+          className="absolute left-1/2 top-full z-[80] mt-0.5 w-max min-w-[14rem] max-w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 rounded-md border border-blue-200 bg-white p-2 shadow-lg dark:border-blue-800 dark:bg-gray-900"
           data-no-pan
           role="dialog"
           aria-labelledby={popoverId}
         >
           <p id={popoverId} className="mb-1 text-[10px] font-medium text-gray-500 dark:text-gray-400">
-            {columnId === "planStart" && "计划开始"}
-            {columnId === "planEnd" && "计划结束"}
-            {columnId === "actualStart" && "实际开始"}
-            {columnId === "actualEnd" && "实际结束"}
+            {columnTitle}
           </p>
           <input
             ref={inputRef}
@@ -195,7 +175,6 @@ export function GanttScheduleEditableCell({
             value={draft}
             disabled={saving}
             onChange={(e) => setDraft(e.target.value)}
-            onBlur={(e) => scheduleCommitOnBlur(e.relatedTarget)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -209,24 +188,42 @@ export function GanttScheduleEditableCell({
             className="w-full rounded border border-gray-200 px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-950"
           />
           {error && <p className="mt-1 text-[10px] text-red-600">{error}</p>}
-          <div className="mt-2 flex justify-end gap-1">
+          <div className="mt-2 grid grid-cols-4 gap-1 border-t border-gray-100 pt-2 dark:border-gray-800">
             <button
               type="button"
               data-no-pan
               disabled={saving}
-              onClick={cancel}
-              className="rounded px-2 py-0.5 text-[10px] text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+              onClick={clearDraft}
+              className="rounded px-1 py-1 text-[10px] text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/50"
             >
-              取消
+              清除
+            </button>
+            <button
+              type="button"
+              data-no-pan
+              disabled={saving}
+              onClick={setToday}
+              className="rounded px-1 py-1 text-[10px] text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/50"
+            >
+              今天
             </button>
             <button
               type="button"
               data-no-pan
               disabled={saving}
               onClick={() => void commit()}
-              className="rounded bg-blue-600 px-2 py-0.5 text-[10px] text-white hover:bg-blue-700 disabled:opacity-50"
+              className="rounded bg-blue-600 px-1 py-1 text-[10px] font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
-              {saving ? "保存中…" : "保存"}
+              {saving ? "…" : "确认"}
+            </button>
+            <button
+              type="button"
+              data-no-pan
+              disabled={saving}
+              onClick={cancel}
+              className="rounded px-1 py-1 text-[10px] text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
+              取消
             </button>
           </div>
         </div>
