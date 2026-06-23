@@ -61,9 +61,26 @@ export function AppShellClient({
   const pathname = usePathname();
   const fullBleed = isAppShellFullBleed(pathname);
 
+  useEffect(() => {
+    if (!fullBleed) return;
+    const prevHtml = document.documentElement.style.overflow;
+    const prevBody = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.documentElement.style.overflow = prevHtml;
+      document.body.style.overflow = prevBody;
+    };
+  }, [fullBleed]);
+
   return (
     <SettingsProvider>
-      <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-950">
+      <div
+        className={cn(
+          "flex flex-col bg-gray-50 dark:bg-gray-950",
+          fullBleed ? "h-screen max-h-[100dvh] overflow-hidden" : "min-h-screen",
+        )}
+      >
       <TopBar
         title={title}
         userEmail={userEmail}
@@ -71,7 +88,7 @@ export function AppShellClient({
         onNavToggle={toggleNav}
       />
 
-      <div className="relative flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {!isDesktop && navOpen && (
           <button
             type="button"
@@ -98,10 +115,11 @@ export function AppShellClient({
           )
         )}
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col pb-16 lg:pb-0">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pb-16 lg:pb-0">
           <main
             className={cn(
               "flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden",
+              fullBleed ? "overflow-hidden" : "overflow-y-auto",
               !fullBleed && "p-4 lg:p-6",
             )}
           >

@@ -237,7 +237,7 @@ export const CalendarScrollView = forwardRef<
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="h-0 min-h-0 flex-1 overflow-y-auto overscroll-contain bg-gray-100"
+        className="scrollbar-hide h-0 min-h-0 flex-1 overflow-y-auto overscroll-contain bg-gray-100"
         tabIndex={0}
       >
         {months.map((key, index) => {

@@ -78,7 +78,7 @@ export function SummaryPanelLive({ className }: { className?: string }) {
         <PanelExpandButton href="/summary" label="总结" />
       </div>
 
-      <CardContent className="min-h-0 flex-1 overflow-y-auto p-0 pr-0.5">
+      <CardContent className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain p-0 pr-0.5">
         {loading && <Loading label="加载…" className="py-6" />}
         {!loading && error && (
           <EmptyState

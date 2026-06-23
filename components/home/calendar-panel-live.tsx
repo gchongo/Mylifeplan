@@ -336,7 +336,7 @@ export function CalendarPanelLive({
               </div>
             )}
             {!loading && viewMode === "week" && (
-              <div className="grid min-h-0 flex-1 grid-cols-7 gap-px overflow-y-auto bg-gray-100 text-xs">
+              <div className="scrollbar-hide grid min-h-0 flex-1 grid-cols-7 gap-px overflow-y-auto overscroll-contain bg-gray-100 text-xs">
                 {weekDays.map((ds) => {
                   const list = itemsOnDate(items, ds);
                   const d = parseInt(ds.slice(8, 10), 10);
@@ -384,7 +384,7 @@ export function CalendarPanelLive({
             )}
             {!loading && viewMode === "day" && (
               <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white">
-                <ul className="min-h-0 flex-1 space-y-0 overflow-y-auto">
+                <ul className="scrollbar-hide min-h-0 flex-1 space-y-0 overflow-y-auto overscroll-contain">
                   {dayItems.length === 0 ? (
                     <li className="px-4 py-6 text-sm text-gray-400">当天暂无安排</li>
                   ) : (

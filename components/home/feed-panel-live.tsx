@@ -122,7 +122,7 @@ export function FeedPanelLive({
           <>
             <ul
               className={cn(
-                "feed-item-list min-h-0 flex-1 overflow-y-auto pr-0.5",
+                "feed-item-list scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain pr-0.5",
                 typeFilter === "contribution" ? "space-y-0 px-1" : "space-y-3",
                 fullPage && typeFilter !== "contribution" && "space-y-4",
               )}
