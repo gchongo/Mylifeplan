@@ -28,6 +28,7 @@ import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribut
 import { GanttActualExecutionLine } from "@/components/gantt/gantt-actual-execution-line";
 import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
 import { useSettings } from "@/components/settings/settings-provider";
+import { buildTimelineSubheaderSpans } from "@/lib/gantt-timeline-subheader";
 import { GanttPlanDrawerPanel } from "@/components/gantt/gantt-plan-drawer";
 import { PlanContributionComposeModal } from "@/components/forms/plan-contribution-compose-modal";
 import type { PlanContributionComposeMode } from "@/components/forms/plan-contribution-compose-form";
@@ -298,6 +299,7 @@ export const GanttChart = forwardRef<
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const headerTimelineRef = useRef<HTMLDivElement>(null);
+  const headerTimelineSubRef = useRef<HTMLDivElement>(null);
   const scrolledToToday = useRef(false);
   const scrollTarget = useRef<"today" | "anchor">("today");
   const panRef = useRef<{ startX: number; startScrollLeft: number } | null>(null);
@@ -357,9 +359,7 @@ export const GanttChart = forwardRef<
   const effectiveScheduleWidth = schedulePanelVisible ? scheduleWidth : 0;
   const effectiveLeftWidth = effectiveTitleWidth + effectiveScheduleWidth;
   const leftSubheaderVisible = titlePanelVisible || schedulePanelVisible;
-  const timelineHeaderHeight = leftSubheaderVisible
-    ? TIMELINE_DATE_HEADER_HEIGHT + TIMELINE_SUBHEADER_HEIGHT
-    : TIMELINE_DATE_HEADER_HEIGHT;
+  const timelineHeaderHeight = TIMELINE_DATE_HEADER_HEIGHT + TIMELINE_SUBHEADER_HEIGHT;
   const scheduleMaxScrollIndex = Math.max(0, scheduleColumns.length - scheduleViewportCols);
   const scheduleScrollIndex = scheduleColumnIndexAtScroll(scheduleScrollLeft);
   const canScheduleScrollPrev = scheduleScrollIndex > 0;
@@ -402,6 +402,11 @@ export const GanttChart = forwardRef<
     }
     return base;
   }, [scale, anchor, dataBounds, timelineViewportWidth]);
+
+  const timelineSubheaderSpans = useMemo(
+    () => buildTimelineSubheaderSpans(layout, preferences.calendarWeekNumbers),
+    [layout, preferences.calendarWeekNumbers],
+  );
 
   const { from, to } = layout;
   const timelineWidth = layout.totalWidth;
@@ -661,8 +666,12 @@ export const GanttChart = forwardRef<
 
   const syncTimelineHeaderScroll = useCallback(() => {
     const left = scrollRef.current?.scrollLeft ?? 0;
+    const transform = `translateX(-${left}px)`;
     if (headerTimelineRef.current) {
-      headerTimelineRef.current.style.transform = `translateX(-${left}px)`;
+      headerTimelineRef.current.style.transform = transform;
+    }
+    if (headerTimelineSubRef.current) {
+      headerTimelineSubRef.current.style.transform = transform;
     }
   }, []);
 
@@ -895,7 +904,7 @@ export const GanttChart = forwardRef<
                   className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-gray-200 px-1 text-[10px] font-semibold text-gray-800 dark:bg-gray-700 dark:text-gray-100"
                   style={todayColumnLabel}
                 >
-                  {col.headerBottom.replace(/^\S+\s/, "")}
+                  {col.headerBottom}
                 </span>
               ) : (
                 <span
@@ -912,6 +921,32 @@ export const GanttChart = forwardRef<
             </div>
           );
         })}
+      </div>
+    );
+  }
+
+  function renderTimelineSubheaderCells() {
+    return (
+      <div
+        className="flex bg-blue-50/40 text-[10px] text-gray-600 dark:bg-blue-950/20 dark:text-gray-300"
+        style={{
+          width: timelineWidth,
+          height: TIMELINE_SUBHEADER_HEIGHT,
+          minHeight: TIMELINE_SUBHEADER_HEIGHT,
+        }}
+      >
+        {timelineSubheaderSpans.map((span, index) => (
+          <div
+            key={`${span.key}-${index}`}
+            className={cn(
+              "flex items-center justify-center border-r border-gray-200/80 dark:border-gray-700/80",
+              GRID_BORDER,
+            )}
+            style={{ width: span.width }}
+          >
+            <span className="truncate px-0.5 font-medium">{span.label}</span>
+          </div>
+        ))}
       </div>
     );
   }
@@ -1591,49 +1626,56 @@ export const GanttChart = forwardRef<
           </div>
         </div>
 
-        {leftSubheaderVisible && (
-          <div
-            className="flex shrink-0 overflow-visible"
-            style={{ height: TIMELINE_SUBHEADER_HEIGHT, minHeight: TIMELINE_SUBHEADER_HEIGHT }}
-          >
-            <div
-              className={cn(
-                "shrink-0 overflow-visible border-r border-blue-200/80 dark:border-blue-900/50",
-                !isResizingPanels && "transition-[width] duration-300 ease-in-out",
-              )}
-              style={{
-                width: effectiveTitleWidth,
-                transitionDuration: isResizingPanels ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
-              }}
-            >
-              {titlePanelVisible && <GanttTitleTableHeader width={titleWidth} />}
-            </div>
+        <div
+          className="flex shrink-0 overflow-visible"
+          style={{ height: TIMELINE_SUBHEADER_HEIGHT, minHeight: TIMELINE_SUBHEADER_HEIGHT }}
+        >
+          {leftSubheaderVisible && (
+            <>
+              <div
+                className={cn(
+                  "shrink-0 overflow-visible border-r border-blue-200/80 dark:border-blue-900/50",
+                  !isResizingPanels && "transition-[width] duration-300 ease-in-out",
+                )}
+                style={{
+                  width: effectiveTitleWidth,
+                  transitionDuration: isResizingPanels ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
+                }}
+              >
+                {titlePanelVisible && <GanttTitleTableHeader width={titleWidth} />}
+              </div>
 
-            <div
-              className={cn(
-                "shrink-0 overflow-visible border-r border-blue-200/80 dark:border-blue-900/50",
-                !isResizingPanels && "transition-[width] duration-300 ease-in-out",
-              )}
-              style={{
-                width: effectiveScheduleWidth,
-                transitionDuration: isResizingPanels ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
-              }}
-            >
-              {schedulePanelVisible && (
-                <GanttScheduleColumnHeader
-                  width={scheduleWidth}
-                  visibleColumns={scheduleColumns}
-                  scrollLeft={scheduleScrollLeft}
-                />
-              )}
-            </div>
+              <div
+                className={cn(
+                  "shrink-0 overflow-visible border-r border-blue-200/80 dark:border-blue-900/50",
+                  !isResizingPanels && "transition-[width] duration-300 ease-in-out",
+                )}
+                style={{
+                  width: effectiveScheduleWidth,
+                  transitionDuration: isResizingPanels ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
+                }}
+              >
+                {schedulePanelVisible && (
+                  <GanttScheduleColumnHeader
+                    width={scheduleWidth}
+                    visibleColumns={scheduleColumns}
+                    scrollLeft={scheduleScrollLeft}
+                  />
+                )}
+              </div>
+            </>
+          )}
 
+          <div className="relative min-w-0 flex-1 overflow-hidden border-b border-gray-100 bg-blue-50/40 dark:border-gray-800 dark:bg-blue-950/20">
             <div
-              className="min-w-0 flex-1 border-b border-gray-100 bg-blue-50/40 dark:border-gray-800 dark:bg-blue-950/20"
-              aria-hidden
-            />
+              ref={headerTimelineSubRef}
+              className="relative will-change-transform"
+              style={{ width: timelineWidth }}
+            >
+              {renderTimelineSubheaderCells()}
+            </div>
           </div>
-        )}
+        </div>
       </div>
     );
   }

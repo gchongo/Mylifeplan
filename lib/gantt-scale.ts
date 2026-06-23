@@ -58,7 +58,6 @@ const MONTH_DAY_WIDTH = 32;
 export const YEAR_WEEK_WIDTH = 28;
 export const FIVEY_YEAR_WIDTH = 88;
 
-const WEEKDAY_SHORT = ["日", "一", "二", "三", "四", "五", "六"];
 const MONTH_NAMES = [
   "一月",
   "二月",
@@ -241,7 +240,6 @@ function buildWeekDayColumns(from: string, to: string): TimelineColumn[] {
   const columns: TimelineColumn[] = [];
   let day = from;
   while (day <= to) {
-    const dow = utcDayOfWeek(day);
     const dayNum = parseInt(day.slice(8, 10), 10);
     const [y, m] = day.split("-").map(Number);
     columns.push({
@@ -251,7 +249,7 @@ function buildWeekDayColumns(from: string, to: string): TimelineColumn[] {
       width: DAY_WIDTH,
       topGroupKey: `${y}-${m}`,
       topGroupLabel: `${y}年${m}月`,
-      headerBottom: `${WEEKDAY_SHORT[dow]} ${dayNum}`,
+      headerBottom: `${dayNum}`,
       isWeekend: isWeekendDate(day),
     });
     day = addDaysUtc(day, 1);

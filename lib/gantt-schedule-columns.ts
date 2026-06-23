@@ -33,7 +33,7 @@ export const GANTT_SCHEDULE_COLUMNS: GanttScheduleColumnDef[] = [
   { id: "actualStart", label: "实际开始", shortLabel: "实开", width: 78 },
   { id: "actualEnd", label: "实际结束", shortLabel: "实止", width: 78 },
   { id: "actualDays", label: "实际天数", shortLabel: "实天", width: 52 },
-  { id: "completion", label: "完成率", shortLabel: "%", width: 48 },
+  { id: "completion", label: "完成率", shortLabel: "完成率%", width: 48 },
 ];
 
 const COLUMN_BY_ID = new Map(GANTT_SCHEDULE_COLUMNS.map((c) => [c.id, c]));
