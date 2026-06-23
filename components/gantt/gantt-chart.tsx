@@ -15,7 +15,8 @@ import {
   GANTT_STICKY_HEADER_CLASS,
   GANTT_TITLE_ROW_CLASS,
 } from "@/lib/gantt-title-column";
-import { GanttDrawerOpenTab, GanttTitleDrawerBody, GanttTitleDrawerControls } from "@/components/gantt/gantt-title-drawer";
+import { GanttDrawerOpenTab, GanttTitleDrawerControls } from "@/components/gantt/gantt-title-drawer";
+import { GanttSchedulePanel } from "@/components/gantt/gantt-schedule-panel";
 import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribution-drawer";
 import { GanttActualExecutionLine } from "@/components/gantt/gantt-actual-execution-line";
 import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
@@ -88,10 +89,16 @@ import { deriveParentStatus } from "@/lib/services/plan-rollup";
 import type { GanttContribution, GanttItem, PlanStatus } from "@/types";
 import { apiJson } from "@/lib/client-api";
 import { dispatchPlanUpdated, PLAN_UPDATED_EVENT } from "@/lib/plan-events";
+import {
+  DEFAULT_VISIBLE_SCHEDULE_COLUMNS,
+  readStoredScheduleColumns,
+  writeStoredScheduleColumns,
+  type GanttScheduleColumnId,
+} from "@/lib/gantt-schedule-columns";
 const ROW_GROUP_GAP = 8;
-const DEFAULT_LABEL_WIDTH = 200;
-const MIN_LABEL_WIDTH = 120;
-const MAX_LABEL_WIDTH = 560;
+const DEFAULT_LABEL_WIDTH = 320;
+const MIN_LABEL_WIDTH = 200;
+const MAX_LABEL_WIDTH = 720;
 const GANTT_LABEL_WIDTH_KEY = "mylifeplan-gantt-label-width";
 const GANTT_LABEL_VISIBLE_KEY = "mylifeplan-gantt-label-visible";
 const TIMELINE_HEADER_HEIGHT = 28;
@@ -306,6 +313,9 @@ export const GanttChart = forwardRef<
   const [timelineViewportWidth, setTimelineViewportWidth] = useState(0);
   const [labelWidth, setLabelWidth] = useState(DEFAULT_LABEL_WIDTH);
   const [labelVisible, setLabelVisible] = useState(true);
+  const [scheduleColumns, setScheduleColumns] = useState<GanttScheduleColumnId[]>(
+    DEFAULT_VISIBLE_SCHEDULE_COLUMNS,
+  );
   const [isResizingLabel, setIsResizingLabel] = useState(false);
   const [barPreview, setBarPreview] = useState<
     Map<string, { start: string; end: string }>
@@ -330,7 +340,13 @@ export const GanttChart = forwardRef<
   useEffect(() => {
     setLabelWidth(readStoredLabelWidth());
     setLabelVisible(readStoredLabelVisible());
+    setScheduleColumns(readStoredScheduleColumns());
   }, []);
+
+  function handleScheduleColumnsChange(next: GanttScheduleColumnId[]) {
+    setScheduleColumns(next);
+    writeStoredScheduleColumns(next);
+  }
 
   useEffect(() => {
     onTitleColumnLayout?.({
@@ -833,7 +849,11 @@ export const GanttChart = forwardRef<
     );
   }
 
-  function renderLabel(row: GanttRow, idx: number) {
+  function renderPlanTitleCell(
+    row: GanttRow,
+    idx: number,
+    opts?: { compact?: boolean },
+  ) {
     const item = row.item;
     const nextRow = rows[idx + 1];
     const tightBelow = rowTightBelow(row, nextRow);
@@ -843,26 +863,23 @@ export const GanttChart = forwardRef<
     const isExpanded = expanded.has(item.id);
     const displayStatus = itemDisplayStatus(item, items);
     const hasRollup = itemHasRollup(item, items);
-    const overdue = isPlanOverdue(item, planById);
     const rootItem = planById.get(row.rootId) ?? item;
     const groupColor = resolveEffectivePlanColor(rootItem, rootItem);
     const labelStyle = getPlanLabelAppearance(groupColor);
     const isSelected = selectedPlanId === item.id;
+    const compact = opts?.compact ?? false;
 
     return (
       <div
-        key={`label-${item.id}-${idx}`}
         className={cn(
-          "group flex items-center gap-1 overflow-hidden px-2 transition-colors duration-300 ease-out motion-reduce:transition-none",
+          "group flex h-full items-center gap-0.5 overflow-hidden px-1 transition-colors duration-300 ease-out motion-reduce:transition-none",
           labelStyle.stripeClass,
           labelStyle.bgClass,
           isSelected && "bg-brand-50/70 ring-1 ring-inset ring-brand-400/35 dark:bg-brand-950/25 dark:ring-brand-500/30",
-          !tightBelow && GANTT_TITLE_ROW_CLASS,
+          !tightBelow && !compact && GANTT_TITLE_ROW_CLASS,
         )}
         style={{
-          height: row.height,
-          marginTop: row.gapBefore,
-          paddingLeft: 12 + row.depth * 18,
+          paddingLeft: 4 + row.depth * 14,
           ...labelStyle.bgStyle,
           ...labelStyle.stripeStyle,
         }}
@@ -887,14 +904,14 @@ export const GanttChart = forwardRef<
           className={cn(
             "min-w-0 flex-1 truncate text-left hover:text-blue-700 dark:hover:text-blue-200",
             row.depth === 0
-              ? "text-sm font-semibold text-slate-900 dark:text-slate-50"
-              : "text-sm font-normal text-slate-600 dark:text-slate-300",
+              ? "text-xs font-semibold text-slate-900 dark:text-slate-50"
+              : "text-xs font-normal text-slate-600 dark:text-slate-300",
           )}
           title={item.title}
         >
           {item.title}
           {item.isUnscheduled && (
-            <span className="ml-1.5 text-[10px] font-normal text-violet-600 dark:text-violet-400">
+            <span className="ml-1 text-[9px] font-normal text-violet-600 dark:text-violet-400">
               未排期
             </span>
           )}
@@ -908,7 +925,7 @@ export const GanttChart = forwardRef<
               openCreatePlan(item.id);
             }}
             className={cn(
-              "flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-base leading-none text-blue-600",
+              "flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-sm leading-none text-blue-600",
               "opacity-0 transition-opacity hover:bg-blue-200/60 group-hover:opacity-100",
               "dark:text-blue-300 dark:hover:bg-blue-900/50",
             )}
@@ -1336,6 +1353,8 @@ export const GanttChart = forwardRef<
         }
         onCloseDrawer={toggleLabelPanel}
         onCreatePlan={() => openCreatePlan()}
+        scheduleColumns={scheduleColumns}
+        onScheduleColumnsChange={handleScheduleColumnsChange}
       />
     );
   }
@@ -1425,10 +1444,19 @@ export const GanttChart = forwardRef<
                 transitionDuration: isResizingLabel ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
               }}
             >
-              <GanttTitleDrawerBody
+              <GanttSchedulePanel
                 width={labelWidth}
                 bodyHeight={bodyAreaHeight}
-                body={rows.map((row, idx) => renderLabel(row, idx))}
+                visibleColumns={scheduleColumns}
+                allPlans={items}
+                rows={rows.map((row, idx) => ({
+                  key: `label-${row.item.id}-${idx}`,
+                  height: row.height,
+                  gapBefore: row.gapBefore,
+                  tightBelow: rowTightBelow(row, rows[idx + 1]),
+                  item: row.item,
+                }))}
+                renderTitleCell={(_row, idx) => renderPlanTitleCell(rows[idx]!, idx, { compact: true })}
               />
             </div>
 

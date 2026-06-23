@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { GanttPanelCollapseChevron } from "@/components/gantt/gantt-panel-chevron";
+import { GanttScheduleColumnPicker } from "@/components/gantt/gantt-schedule-column-picker";
+import type { GanttScheduleColumnId } from "@/lib/gantt-schedule-columns";
 import {
   STATUS_LEGEND,
   STATUS_STYLES,
@@ -20,6 +22,8 @@ export function GanttTaskListControls({
   onCreatePlan,
   showActualTimeline,
   onToggleActualTimeline,
+  scheduleColumns,
+  onScheduleColumnsChange,
   drawerTheme = false,
 }: {
   allExpanded: boolean;
@@ -32,6 +36,8 @@ export function GanttTaskListControls({
   onCreatePlan?: () => void;
   showActualTimeline?: boolean;
   onToggleActualTimeline?: () => void;
+  scheduleColumns?: GanttScheduleColumnId[];
+  onScheduleColumnsChange?: (next: GanttScheduleColumnId[]) => void;
   drawerTheme?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -122,6 +128,14 @@ export function GanttTaskListControls({
         >
           实际
         </button>
+      )}
+
+      {scheduleColumns && onScheduleColumnsChange && (
+        <GanttScheduleColumnPicker
+          visibleColumns={scheduleColumns}
+          onChange={onScheduleColumnsChange}
+          compact={compact}
+        />
       )}
 
       <div ref={ref} className="relative z-50 min-w-0 flex-1">
