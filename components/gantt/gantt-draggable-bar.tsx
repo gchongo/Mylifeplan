@@ -10,6 +10,7 @@ import {
   pixelDeltaToDragAmount,
   planSpanMs,
   shiftPlanByDragAmount,
+  type PlanDragMode,
 } from "@/lib/gantt-plan-drag";
 import {
   constrainPlanResizeEnd,
@@ -19,7 +20,7 @@ import {
 import type { GanttItem } from "@/types";
 import { cn } from "@/lib/utils";
 
-type DragMode = "move" | "resize-start" | "resize-end";
+type DragMode = PlanDragMode;
 
 interface DragState {
   mode: DragMode;
@@ -73,7 +74,11 @@ export function GanttDraggableBar({
   minContributionDate?: string;
   maxContributionDate?: string;
   previewOverride?: { start: string; end: string } | null;
-  onPreviewDates?: (planId: string, preview: { start: string; end: string } | null) => void;
+  onPreviewDates?: (
+    planId: string,
+    preview: { start: string; end: string } | null,
+    mode?: PlanDragMode,
+  ) => void;
   onDragEnd?: () => void;
   shellWidth?: number;
   isVirtualEnd?: boolean;
@@ -97,7 +102,7 @@ export function GanttDraggableBar({
       const dragAmount = pixelDeltaToDragAmount(clientX - state.startX, layout);
       if (dragAmount === 0 && state.mode === "move") {
         setPreview(null);
-        onPreviewDates?.(item.id, null);
+        onPreviewDates?.(item.id, null, state.mode);
         return;
       }
 
@@ -106,7 +111,7 @@ export function GanttDraggableBar({
         const rawStart = shiftPlanByDragAmount(state.origStart, dragAmount, layout);
         const { start, end } = constrainPlanMoveByMs(rawStart, durationMs, dragConstraints);
         setPreview({ start, end });
-        onPreviewDates?.(item.id, { start, end });
+        onPreviewDates?.(item.id, { start, end }, state.mode);
         return;
       }
 
@@ -114,14 +119,14 @@ export function GanttDraggableBar({
         const rawStart = shiftPlanByDragAmount(state.origStart, dragAmount, layout);
         const start = constrainPlanResizeStart(rawStart, state.origEnd, dragConstraints);
         setPreview({ start, end: state.origEnd });
-        onPreviewDates?.(item.id, { start, end: state.origEnd });
+        onPreviewDates?.(item.id, { start, end: state.origEnd }, state.mode);
         return;
       }
 
       const rawEnd = shiftPlanByDragAmount(state.origEnd, dragAmount, layout);
       const end = constrainPlanResizeEnd(state.origStart, rawEnd, maxContributionDate);
       setPreview({ start: state.origStart, end });
-      onPreviewDates?.(item.id, { start: state.origStart, end });
+      onPreviewDates?.(item.id, { start: state.origStart, end }, state.mode);
     },
     [layout, item.id, onPreviewDates, dragConstraints, maxContributionDate],
   );
@@ -161,9 +166,16 @@ export function GanttDraggableBar({
 
       setSaving(true);
       try {
-        const body: { startDate: string; endDate?: string | null } = { startDate };
+        const body: {
+          startDate: string;
+          endDate?: string | null;
+          shiftDescendants?: boolean;
+        } = { startDate };
         if (state.hadDueDate || state.mode === "resize-end") {
           body.endDate = endDate;
+        }
+        if (state.mode === "move") {
+          body.shiftDescendants = true;
         }
 
         const res = await fetch(`/api/plans/${item.id}`, {
@@ -216,7 +228,7 @@ export function GanttDraggableBar({
       dragRef.current = null;
       setDragging(null);
       setPreview(null);
-      onPreviewDates?.(item.id, null);
+      onPreviewDates?.(item.id, null, state?.mode);
       onDragEnd?.();
     }
 

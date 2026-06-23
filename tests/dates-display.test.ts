@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatPlanDateTimeDisplay, formatPlanLocalDateSlash, localDateStr, todayStr } from "@/lib/dates";
+import {
+  datetimeLocalToIso,
+  formatPlanDateTimeDisplay,
+  formatPlanLocalDateSlash,
+  localDateStr,
+  todayStr,
+} from "@/lib/dates";
 
 describe("local dates", () => {
   it("todayStr uses local calendar date", () => {
@@ -8,6 +14,17 @@ describe("local dates", () => {
     const expected = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     expect(todayStr()).toBe(expected);
     expect(localDateStr(d)).toBe(expected);
+  });
+
+  it("datetimeLocalToIso keeps local wall clock as instant", () => {
+    const iso = datetimeLocalToIso("2026-06-23T19:58");
+    expect(iso).toBeTruthy();
+    const d = new Date(iso!);
+    expect(d.getFullYear()).toBe(2026);
+    expect(d.getMonth()).toBe(5);
+    expect(d.getDate()).toBe(23);
+    expect(d.getHours()).toBe(19);
+    expect(d.getMinutes()).toBe(58);
   });
 
   it("formatPlanLocalDateSlash uses local calendar date", () => {

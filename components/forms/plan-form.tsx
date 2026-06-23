@@ -7,7 +7,7 @@ import { ErrorMessage } from "@/components/ui/feedback";
 import { Input, Select, Textarea } from "@/components/ui";
 import { ParentPlanSelect } from "@/components/forms/parent-plan-select";
 import { PlanColorPicker } from "@/components/forms/plan-color-picker";
-import { toDatetimeLocalInput } from "@/lib/dates";
+import { toDatetimeLocalInput, datetimeLocalToIso, normalizePlanDateInput } from "@/lib/dates";
 
 const statusOptions = [
   { value: "not_started", label: "未开始" },
@@ -76,15 +76,22 @@ export function PlanForm({
 
     const canEditActual = isEdit && !hasSubPlans;
 
+    const normalizedStart = startDate ? normalizePlanDateInput(startDate, "start") : null;
+    const normalizedEnd = endDate ? normalizePlanDateInput(endDate, "end") : null;
+    const normalizedActualStart =
+      canEditActual && actualStartDate ? normalizePlanDateInput(actualStartDate, "start") : null;
+    const normalizedActualEnd =
+      canEditActual && actualEndDate ? normalizePlanDateInput(actualEndDate, "end") : null;
+
     const payload = {
       title,
       description: description || null,
       type: plan?.type ?? "goal",
       parentPlanId,
-      startDate,
-      endDate,
-      actualStartDate: canEditActual ? actualStartDate : undefined,
-      actualEndDate: canEditActual ? actualEndDate : undefined,
+      startDate: normalizedStart ? datetimeLocalToIso(normalizedStart) : null,
+      endDate: normalizedEnd ? datetimeLocalToIso(normalizedEnd) : null,
+      actualStartDate: normalizedActualStart ? datetimeLocalToIso(normalizedActualStart) : undefined,
+      actualEndDate: normalizedActualEnd ? datetimeLocalToIso(normalizedActualEnd) : undefined,
       color,
       ...(isEdit && { status }),
     };

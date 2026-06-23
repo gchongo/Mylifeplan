@@ -12,6 +12,8 @@ const MINUTE_MS = 60_000;
 const DAY_MS = 86_400_000;
 const THIRTY_MIN_MS = 30 * MINUTE_MS;
 
+export type PlanDragMode = "move" | "resize-start" | "resize-end";
+
 export type TimelineDragUnit = "30min" | "day" | "week" | "year";
 
 export function timelineDragUnit(layout: TimelineLayout): TimelineDragUnit {

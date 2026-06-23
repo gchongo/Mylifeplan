@@ -1,4 +1,4 @@
-import { parsePlanDateTime, formatPlanLocalDateSlash } from "@/lib/dates";
+import { parsePlanDateTime, formatPlanLocalDateSlash, formatPlanDateTimeCompact } from "@/lib/dates";
 import { formatCompletionPercent, planCompletionPercent } from "@/lib/gantt-plan-completion";
 import type { GanttItem } from "@/types";
 
@@ -159,6 +159,11 @@ function formatScheduleDate(value: string | null | undefined): string {
   return formatPlanLocalDateSlash(value);
 }
 
+function formatScheduleDateTime(value: string | null | undefined): string {
+  if (!value) return "—";
+  return formatPlanDateTimeCompact(value);
+}
+
 function daySpanMs(start: string, end: string): number | null {
   const a = parsePlanDateTime(start, "start")?.getTime();
   const b = parsePlanDateTime(end, "end")?.getTime();
@@ -200,9 +205,9 @@ export function getScheduleCellValue(
       return { text: formatDayCount(daySpanMs(item.startDate, end)) };
     }
     case "actualStart":
-      return { text: formatScheduleDate(item.actualStartDate), muted: !item.actualStartDate };
+      return { text: formatScheduleDateTime(item.actualStartDate), muted: !item.actualStartDate };
     case "actualEnd":
-      return { text: formatScheduleDate(item.actualEndDate), muted: !item.actualEndDate };
+      return { text: formatScheduleDateTime(item.actualEndDate), muted: !item.actualEndDate };
     case "actualDays": {
       if (!item.actualStartDate) return { text: "—", muted: true };
       const end = item.actualEndDate ?? null;

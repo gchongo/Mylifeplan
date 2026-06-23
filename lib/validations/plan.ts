@@ -18,6 +18,8 @@ const planBaseSchema = z.object({
   actualStartDate: optionalDateTime,
   actualEndDate: optionalDateTime,
   status: z.enum(["not_started", "in_progress", "done", "archived"]).optional(),
+  /** 甘特拖动整条计划条时，是否同步平移所有子计划日期 */
+  shiftDescendants: z.boolean().optional(),
   priority: z.enum(["high", "medium", "low"]).optional().nullable(),
   color: z
     .string()

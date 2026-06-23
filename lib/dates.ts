@@ -25,8 +25,50 @@ export function formatDateOnly(value: Date | null | undefined): string | null {
 /** 解析日期或 datetime-local / ISO 字符串 */
 export type PlanDateTimeEdge = "start" | "end";
 
+/** Node 上无时区 datetime 默认按中国标准时间理解（与主要用户群一致） */
+const SERVER_NAIVE_WALL_CLOCK_ZONE = "Asia/Shanghai";
+
+/** 将某时区墙上的 YYYY-MM-DD HH:mm 转为 UTC 时刻（供 Node 解析无时区字符串） */
+export function wallClockInZoneToUtc(
+  y: number,
+  mo: number,
+  d: number,
+  h: number,
+  min: number,
+  timeZone: string,
+): Date {
+  const desiredUtc = Date.UTC(y, mo - 1, d, h, min);
+  const probe = new Date(desiredUtc);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(probe);
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((p) => p.type === type)?.value ?? 0);
+  const shownUtc = Date.UTC(
+    get("year"),
+    get("month") - 1,
+    get("day"),
+    get("hour"),
+    get("minute"),
+  );
+  return new Date(probe.getTime() + (desiredUtc - shownUtc));
+}
+
 function parseDateOnlyLocal(value: string, edge: PlanDateTimeEdge): Date {
   const [y, m, d] = value.split("-").map(Number);
+  if (typeof window === "undefined") {
+    if (edge === "end") {
+      const end = wallClockInZoneToUtc(y, m, d, 23, 59, SERVER_NAIVE_WALL_CLOCK_ZONE);
+      return new Date(end.getTime() + 59_999);
+    }
+    return wallClockInZoneToUtc(y, m, d, 0, 0, SERVER_NAIVE_WALL_CLOCK_ZONE);
+  }
   if (edge === "end") {
     return new Date(y, m - 1, d, 23, 59, 59, 999);
   }
@@ -50,6 +92,18 @@ export function normalizePlanDateInput(
   return trimmed;
 }
 
+export function datetimeLocalToIso(value: string | null | undefined): string | null {
+  if (!value?.trim()) return null;
+  const trimmed = value.trim();
+  const local = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if (local) {
+    const d = new Date(+local[1], +local[2] - 1, +local[3], +local[4], +local[5], 0, 0);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  const d = new Date(trimmed);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 export function parsePlanDateTime(
   value: string | null | undefined,
   edge: PlanDateTimeEdge = "start",
@@ -57,7 +111,28 @@ export function parsePlanDateTime(
   if (!value) return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
+  if (/[zZ]$/.test(trimmed) || /[+-]\d{2}:\d{2}$/.test(trimmed)) {
+    const d = new Date(trimmed);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
   const normalized = normalizePlanDateInput(trimmed, edge) ?? trimmed;
+  const local = normalized.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if (local) {
+    const y = +local[1];
+    const mo = +local[2];
+    const d = +local[3];
+    const h = +local[4];
+    const min = +local[5];
+    if (typeof window === "undefined") {
+      const zoned = wallClockInZoneToUtc(y, mo, d, h, min, SERVER_NAIVE_WALL_CLOCK_ZONE);
+      if (edge === "end" && h === 23 && min === 59) {
+        return new Date(zoned.getTime() + 59_999);
+      }
+      return Number.isNaN(zoned.getTime()) ? null : zoned;
+    }
+    const browserLocal = new Date(y, mo - 1, d, h, min, 0, 0);
+    return Number.isNaN(browserLocal.getTime()) ? null : browserLocal;
+  }
   if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
     return parseDateOnlyLocal(normalized, edge);
   }

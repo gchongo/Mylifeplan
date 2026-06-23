@@ -433,6 +433,7 @@ export async function updatePlan(
     input.startDate !== undefined && existing.startDate && parsedNextStart
       ? parsedNextStart.getTime() - existing.startDate.getTime()
       : 0;
+  const shouldShiftDescendants = input.shiftDescendants === true;
 
   const prevParentId = existing.parentPlanId;
 
@@ -464,7 +465,7 @@ export async function updatePlan(
 
     await syncMemoForPlan(plan, tx);
 
-    if (startDeltaMs !== 0) {
+    if (startDeltaMs !== 0 && shouldShiftDescendants) {
       await shiftDescendantPlanDates(tx, userId, planId, startDeltaMs);
     }
 

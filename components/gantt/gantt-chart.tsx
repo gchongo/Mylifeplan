@@ -1263,7 +1263,11 @@ export const GanttChart = forwardRef<
   }
 
   const onRootDragPreview = useCallback(
-    (rootId: string, preview: { start: string; end: string } | null) => {
+    (
+      rootId: string,
+      preview: { start: string; end: string } | null,
+      mode?: "move" | "resize-start" | "resize-end",
+    ) => {
       if (!preview) {
         setBarPreview(new Map());
         return;
@@ -1273,7 +1277,11 @@ export const GanttChart = forwardRef<
         setBarPreview(new Map());
         return;
       }
-      setBarPreview(buildBoundGroupPreview(root, preview, items));
+      if (mode === "move") {
+        setBarPreview(buildBoundGroupPreview(root, preview, items));
+        return;
+      }
+      setBarPreview(new Map([[rootId, preview]]));
     },
     [items, planById],
   );
