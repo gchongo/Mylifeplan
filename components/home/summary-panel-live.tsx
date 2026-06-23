@@ -7,8 +7,7 @@ import { PanelExpandButton } from "@/components/home/panel-expand-button";
 import {
   DonutChart,
   HorizontalBars,
-  Legend,
-  MiniStat,
+  PrimaryPlanStats,
   usePlanSummary,
 } from "@/components/summary/summary-widgets";
 import { cn } from "@/lib/utils";
@@ -45,39 +44,29 @@ export function SummaryPanelLive({ className }: { className?: string }) {
           />
         )}
         {!loading && !error && summary && (
-          <div className="flex flex-col gap-3">
-            <div className="grid grid-cols-4 gap-1.5">
-              <MiniStat label="进行中" value={summary.byStatus.in_progress} color="#3b82f6" />
-              <MiniStat label="已完成" value={summary.byStatus.done} color="#22c55e" />
-              <MiniStat label="未开始" value={summary.byStatus.not_started} color="#f59e0b" />
-              <MiniStat label="超截止" value={summary.execution.deadlineOverdue} color="#ef4444" />
-            </div>
+          <div className="flex flex-col gap-2.5">
+            <PrimaryPlanStats summary={summary} />
 
-            <div className="flex items-start gap-3 rounded-lg border border-gray-100 bg-white/60 p-2 dark:border-gray-800 dark:bg-gray-900/40">
-              <DonutChart
-                segments={summary.statusSegments}
-                size={88}
-                strokeWidth={14}
-                centerValue={`${summary.completionRate}%`}
-                centerLabel="完成率"
-                centerValueClassName="text-sm"
-              />
-              <div className="min-w-0 flex-1 pt-1">
-                <Legend segments={summary.statusSegments} dense />
+            <div className="flex items-start gap-2 rounded-lg border border-gray-100 bg-white/60 p-2 dark:border-gray-800 dark:bg-gray-900/40">
+              <div className="shrink-0">
+                <DonutChart
+                  segments={summary.statusSegments}
+                  size={84}
+                  strokeWidth={13}
+                  centerValue={`${summary.completionRate}%`}
+                  centerLabel="完成率"
+                  centerValueClassName="text-sm"
+                />
+                <p className="mt-0.5 text-center text-[9px] text-gray-400">状态分布</p>
               </div>
-            </div>
-
-            {summary.executionSegments.length > 0 && (
-              <div className="rounded-lg border border-gray-100 bg-white/60 p-2 dark:border-gray-800 dark:bg-gray-900/40">
-                <p className="mb-1.5 text-[10px] font-medium text-gray-500">执行情况</p>
-                <HorizontalBars segments={summary.executionSegments.slice(0, 5)} dense />
+              <div className="min-w-0 flex-1">
+                <p className="mb-1 text-[10px] font-medium text-gray-500">执行情况</p>
+                {summary.executionSegments.length > 0 ? (
+                  <HorizontalBars segments={summary.executionSegments} dense />
+                ) : (
+                  <p className="text-[10px] text-gray-400">暂无执行数据</p>
+                )}
               </div>
-            )}
-
-            <div className="grid grid-cols-3 gap-1.5 text-center">
-              <MiniStat label="计划" value={summary.totals.active} />
-              <MiniStat label="便签" value={summary.totals.memos} />
-              <MiniStat label="贡献" value={summary.totals.contributions} />
             </div>
 
             {summary.recentCompletions.length > 0 && (

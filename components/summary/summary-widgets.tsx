@@ -66,13 +66,18 @@ export function MiniStat({
   label,
   value,
   color,
+  hint,
 }: {
   label: string;
   value: number | string;
   color?: string;
+  hint?: string;
 }) {
   return (
-    <div className="rounded-lg border border-gray-100 bg-gray-50/80 px-1.5 py-1.5 text-center dark:border-gray-800 dark:bg-gray-800/40">
+    <div
+      className="rounded-lg border border-gray-100 bg-gray-50/80 px-1.5 py-1.5 text-center dark:border-gray-800 dark:bg-gray-800/40"
+      title={hint}
+    >
       <p
         className="text-base font-bold tabular-nums leading-none text-gray-900 dark:text-gray-100"
         style={color ? { color } : undefined}
@@ -80,6 +85,51 @@ export function MiniStat({
         {value}
       </p>
       <p className="mt-0.5 truncate text-[10px] leading-tight text-gray-500">{label}</p>
+    </div>
+  );
+}
+
+export const PRIMARY_PLAN_STAT_ITEMS = [
+  { key: "total", label: "计划总数", color: "#6366f1", hint: "含已归档" },
+  { key: "in_progress", label: "进行中", color: "#3b82f6" },
+  { key: "done", label: "已完成", color: "#22c55e" },
+  { key: "not_started", label: "未开始", color: "#f59e0b" },
+  { key: "deadlineOverdue", label: "已超截止", color: "#ef4444", hint: "未完成且已过截止" },
+  { key: "earlyCompleted", label: "提前完成", color: "#10b981", hint: "实际早于计划截止" },
+] as const;
+
+export function getPrimaryPlanStatValue(
+  summary: PlanSummaryStats,
+  key: (typeof PRIMARY_PLAN_STAT_ITEMS)[number]["key"],
+): number {
+  switch (key) {
+    case "total":
+      return summary.totals.plans;
+    case "in_progress":
+      return summary.byStatus.in_progress;
+    case "done":
+      return summary.byStatus.done;
+    case "not_started":
+      return summary.byStatus.not_started;
+    case "deadlineOverdue":
+      return summary.execution.deadlineOverdue;
+    case "earlyCompleted":
+      return summary.execution.earlyCompleted;
+  }
+}
+
+export function PrimaryPlanStats({ summary }: { summary: PlanSummaryStats }) {
+  return (
+    <div className="grid grid-cols-3 gap-1.5">
+      {PRIMARY_PLAN_STAT_ITEMS.map((item) => (
+        <MiniStat
+          key={item.key}
+          label={item.label}
+          value={getPrimaryPlanStatValue(summary, item.key)}
+          color={item.color}
+          hint={"hint" in item ? item.hint : undefined}
+        />
+      ))}
     </div>
   );
 }

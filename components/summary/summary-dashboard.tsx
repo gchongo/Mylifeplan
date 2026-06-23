@@ -8,8 +8,9 @@ import {
   DonutChart,
   HorizontalBars,
   Legend,
-  MiniStat,
+  PRIMARY_PLAN_STAT_ITEMS,
   StatCard,
+  getPrimaryPlanStatValue,
   usePlanSummary,
 } from "@/components/summary/summary-widgets";
 import { cn } from "@/lib/utils";
@@ -33,7 +34,7 @@ export function SummaryDashboard() {
   }
   if (!summary) return <EmptyState title="暂无数据" description="创建计划后会在这里显示统计。" />;
 
-  const { totals, byStatus, execution, completionRate } = summary;
+  const { totals, byStatus } = summary;
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6">
@@ -43,22 +44,27 @@ export function SummaryDashboard() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <StatCard label="计划总数" value={totals.plans} hint={`有效 ${totals.active}`} accentClass="bg-indigo-500" />
-        <StatCard label="进行中" value={byStatus.in_progress} accentClass="bg-blue-500" />
-        <StatCard label="已完成" value={byStatus.done} accentClass="bg-green-500" />
-        <StatCard label="未开始" value={byStatus.not_started} accentClass="bg-amber-500" />
-        <StatCard
-          label="已超截止"
-          value={execution.deadlineOverdue}
-          hint="未完成且已过截止"
-          accentClass="bg-red-500"
-        />
-        <StatCard
-          label="提前完成"
-          value={execution.earlyCompleted}
-          hint="实际早于计划截止"
-          accentClass="bg-emerald-500"
-        />
+        {PRIMARY_PLAN_STAT_ITEMS.map((item) => (
+          <StatCard
+            key={item.key}
+            label={item.label}
+            value={getPrimaryPlanStatValue(summary, item.key)}
+            hint={"hint" in item ? item.hint : undefined}
+            accentClass={
+              item.key === "total"
+                ? "bg-indigo-500"
+                : item.key === "in_progress"
+                  ? "bg-blue-500"
+                  : item.key === "done"
+                    ? "bg-green-500"
+                    : item.key === "not_started"
+                      ? "bg-amber-500"
+                      : item.key === "deadlineOverdue"
+                        ? "bg-red-500"
+                        : "bg-emerald-500"
+            }
+          />
+        ))}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -69,7 +75,7 @@ export function SummaryDashboard() {
           <CardContent className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:justify-between">
             <DonutChart
               segments={summary.statusSegments}
-              centerValue={`${completionRate}%`}
+              centerValue={`${summary.completionRate}%`}
               centerLabel="完成率"
             />
             <div className="w-full sm:max-w-[200px]">
