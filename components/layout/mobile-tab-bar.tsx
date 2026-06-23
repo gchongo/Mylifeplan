@@ -6,7 +6,7 @@ import type { HomeTab } from "@/types";
 
 const tabs: { id: HomeTab; label: string; href: string }[] = [
   { id: "feed", label: "动态", href: "/?tab=feed" },
-  { id: "gantt", label: "全局", href: "/?tab=gantt" },
+  { id: "summary", label: "总结", href: "/?tab=summary" },
   { id: "calendar", label: "执行", href: "/?tab=calendar" },
 ];
 
@@ -25,7 +25,9 @@ export function MobileTabBar() {
             href={tab.href}
             className="flex flex-col items-center py-2.5 text-xs text-gray-600 hover:text-brand-600"
           >
-            <span className="text-base">{tab.id === "feed" ? "📋" : tab.id === "gantt" ? "📊" : "📅"}</span>
+            <span className="text-base">
+              {tab.id === "feed" ? "📋" : tab.id === "summary" ? "📊" : "📅"}
+            </span>
             {tab.label}
           </Link>
         ))}

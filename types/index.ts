@@ -58,4 +58,4 @@ export interface FeedItem {
   createdAt: string;
 }
 
-export type HomeTab = "feed" | "gantt" | "calendar";
+export type HomeTab = "feed" | "summary" | "calendar";

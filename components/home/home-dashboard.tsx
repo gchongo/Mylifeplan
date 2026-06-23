@@ -2,19 +2,23 @@
 
 import { CalendarPanelLive } from "@/components/home/calendar-panel-live";
 import { FeedPanelLive } from "@/components/home/feed-panel-live";
-import { GanttPanelLive } from "@/components/home/gantt-panel-live";
+import { SummaryPanelLive } from "@/components/home/summary-panel-live";
 import { ResizableHomeLayout } from "@/components/home/resizable-home-layout";
 import { MobileHomeTabs } from "@/components/layout/mobile-tab-bar";
 import type { HomeTab } from "@/types";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 
+function resolveMobileTab(tabParam: string | null): HomeTab {
+  if (tabParam === "calendar") return "calendar";
+  if (tabParam === "summary" || tabParam === "gantt") return "summary";
+  return "feed";
+}
+
 export function HomeDashboard() {
   const searchParams = useSearchParams();
-  const tabParam = searchParams.get("tab") as HomeTab | null;
-  const [mobileTab, setMobileTab] = useState<HomeTab>(
-    tabParam === "gantt" || tabParam === "calendar" ? tabParam : "feed",
-  );
+  const tabParam = searchParams.get("tab");
+  const [mobileTab, setMobileTab] = useState<HomeTab>(() => resolveMobileTab(tabParam));
 
   const handleTabChange = useCallback((tab: HomeTab) => {
     setMobileTab(tab);
@@ -34,7 +38,7 @@ export function HomeDashboard() {
       {/* 移动：单 Tab */}
       <div className="min-h-0 min-w-0 flex-1 overflow-hidden lg:hidden">
         {mobileTab === "feed" && <FeedPanelLive />}
-        {mobileTab === "gantt" && <GanttPanelLive />}
+        {mobileTab === "summary" && <SummaryPanelLive />}
         {mobileTab === "calendar" && <CalendarPanelLive />}
       </div>
     </div>

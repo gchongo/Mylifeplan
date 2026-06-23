@@ -3,25 +3,25 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CalendarPanelLive } from "@/components/home/calendar-panel-live";
 import { FeedPanelLive } from "@/components/home/feed-panel-live";
-import { GanttPanelLive } from "@/components/home/gantt-panel-live";
+import { SummaryPanelLive } from "@/components/home/summary-panel-live";
 import { PanelResizeHandle } from "@/components/home/panel-resize-handle";
 
 const STORAGE_FEED_WIDTH = "mylifeplan-home-feed-width";
-const STORAGE_GANTT_HEIGHT = "mylifeplan-home-gantt-height";
+const STORAGE_SUMMARY_HEIGHT = "mylifeplan-home-gantt-height";
 
 const RESIZE_HANDLE_SIZE = 12;
 
 const DEFAULT_FEED_WIDTH = 320;
-const DEFAULT_GANTT_RATIO = 0.58;
+const DEFAULT_SUMMARY_RATIO = 0.48;
 
 const MIN_FEED_WIDTH = 240;
 const MAX_FEED_WIDTH = 480;
 const MAX_FEED_WIDTH_RATIO = 0.38;
 const MIN_RIGHT_COLUMN_WIDTH = 380;
 
-const MIN_GANTT_HEIGHT = 160;
+const MIN_SUMMARY_HEIGHT = 180;
 const MIN_CALENDAR_HEIGHT = 180;
-const MAX_GANTT_HEIGHT_RATIO = 0.72;
+const MAX_SUMMARY_HEIGHT_RATIO = 0.62;
 
 function readNumber(key: string): number | null {
   if (typeof window === "undefined") return null;
@@ -35,7 +35,7 @@ export function ResizableHomeLayout() {
   const layoutRef = useRef<HTMLDivElement>(null);
   const rightColRef = useRef<HTMLDivElement>(null);
   const [feedWidth, setFeedWidth] = useState(DEFAULT_FEED_WIDTH);
-  const [ganttHeight, setGanttHeight] = useState<number | null>(null);
+  const [summaryHeight, setSummaryHeight] = useState<number | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
   const maxFeedWidthFor = useCallback((totalWidth: number) => {
@@ -53,19 +53,19 @@ export function ResizableHomeLayout() {
     [maxFeedWidthFor],
   );
 
-  const clampGanttHeight = useCallback((height: number, colHeight?: number) => {
+  const clampSummaryHeight = useCallback((height: number, colHeight?: number) => {
     const colH = colHeight ?? rightColRef.current?.clientHeight ?? 600;
     const maxByCalendar = colH - MIN_CALENDAR_HEIGHT - RESIZE_HANDLE_SIZE;
-    const maxByRatio = Math.floor(colH * MAX_GANTT_HEIGHT_RATIO);
+    const maxByRatio = Math.floor(colH * MAX_SUMMARY_HEIGHT_RATIO);
     const max = Math.min(maxByCalendar, maxByRatio);
-    return Math.min(max, Math.max(MIN_GANTT_HEIGHT, height));
+    return Math.min(max, Math.max(MIN_SUMMARY_HEIGHT, height));
   }, []);
 
   useEffect(() => {
     const w = readNumber(STORAGE_FEED_WIDTH);
-    const h = readNumber(STORAGE_GANTT_HEIGHT);
+    const h = readNumber(STORAGE_SUMMARY_HEIGHT);
     if (w !== null) setFeedWidth(w);
-    if (h !== null) setGanttHeight(h);
+    if (h !== null) setSummaryHeight(h);
     setHydrated(true);
   }, []);
 
@@ -73,8 +73,8 @@ export function ResizableHomeLayout() {
     if (!hydrated) return;
 
     setFeedWidth((w) => clampFeedWidth(w));
-    setGanttHeight((h) => (h === null ? h : clampGanttHeight(h)));
-  }, [hydrated, clampFeedWidth, clampGanttHeight]);
+    setSummaryHeight((h) => (h === null ? h : clampSummaryHeight(h)));
+  }, [hydrated, clampFeedWidth, clampSummaryHeight]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -84,19 +84,19 @@ export function ResizableHomeLayout() {
 
     const ro = new ResizeObserver(() => {
       setFeedWidth((w) => clampFeedWidth(w));
-      setGanttHeight((h) => (h === null ? h : clampGanttHeight(h!, col.clientHeight)));
+      setSummaryHeight((h) => (h === null ? h : clampSummaryHeight(h!, col.clientHeight)));
     });
     ro.observe(layout);
     ro.observe(col);
     return () => ro.disconnect();
-  }, [hydrated, clampFeedWidth, clampGanttHeight]);
+  }, [hydrated, clampFeedWidth, clampSummaryHeight]);
 
-  const resolveGanttHeight = useCallback(() => {
+  const resolveSummaryHeight = useCallback(() => {
     const col = rightColRef.current;
-    if (!col) return 280;
-    if (ganttHeight !== null) return clampGanttHeight(ganttHeight, col.clientHeight);
-    return clampGanttHeight(Math.round(col.clientHeight * DEFAULT_GANTT_RATIO), col.clientHeight);
-  }, [ganttHeight, clampGanttHeight]);
+    if (!col) return 260;
+    if (summaryHeight !== null) return clampSummaryHeight(summaryHeight, col.clientHeight);
+    return clampSummaryHeight(Math.round(col.clientHeight * DEFAULT_SUMMARY_RATIO), col.clientHeight);
+  }, [summaryHeight, clampSummaryHeight]);
 
   function startFeedWidthDrag(e: React.MouseEvent) {
     e.preventDefault();
@@ -119,22 +119,22 @@ export function ResizableHomeLayout() {
     window.addEventListener("mouseup", onUp);
   }
 
-  function startGanttHeightDrag(e: React.MouseEvent) {
+  function startSummaryHeightDrag(e: React.MouseEvent) {
     e.preventDefault();
     const col = rightColRef.current;
     if (!col) return;
 
     const startY = e.clientY;
-    const startHeight = resolveGanttHeight();
+    const startHeight = resolveSummaryHeight();
     let latest = startHeight;
 
     function onMove(ev: MouseEvent) {
-      latest = clampGanttHeight(startHeight + ev.clientY - startY, col!.clientHeight);
-      setGanttHeight(latest);
+      latest = clampSummaryHeight(startHeight + ev.clientY - startY, col!.clientHeight);
+      setSummaryHeight(latest);
     }
 
     function onUp() {
-      localStorage.setItem(STORAGE_GANTT_HEIGHT, String(Math.round(latest)));
+      localStorage.setItem(STORAGE_SUMMARY_HEIGHT, String(Math.round(latest)));
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     }
@@ -143,7 +143,7 @@ export function ResizableHomeLayout() {
     window.addEventListener("mouseup", onUp);
   }
 
-  const ganttH = hydrated ? resolveGanttHeight() : undefined;
+  const summaryH = hydrated ? resolveSummaryHeight() : undefined;
 
   return (
     <div
@@ -163,11 +163,11 @@ export function ResizableHomeLayout() {
         ref={rightColRef}
         className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
       >
-        <div className="min-h-0 min-w-0 shrink-0 overflow-hidden" style={{ height: ganttH }}>
-          <GanttPanelLive />
+        <div className="min-h-0 min-w-0 shrink-0 overflow-hidden" style={{ height: summaryH }}>
+          <SummaryPanelLive />
         </div>
 
-        <PanelResizeHandle orientation="horizontal" onMouseDown={startGanttHeightDrag} />
+        <PanelResizeHandle orientation="horizontal" onMouseDown={startSummaryHeightDrag} />
 
         <div
           className="min-h-0 min-w-0 flex-1 overflow-hidden"
