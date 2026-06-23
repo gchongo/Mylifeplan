@@ -9,23 +9,19 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  CalendarDayCell,
-  CalendarEmptyDayCell,
-  useCalendarCellMin,
-} from "@/components/calendar/calendar-day-cell";
+import { CalendarWeekRow } from "@/components/calendar/calendar-week-row";
 import type { CalendarDisplayMode } from "@/lib/calendar-display";
 import {
   addMonths,
-  buildMonthCells,
-  extendMonths,
   formatMonthTitle,
   initialMonthWindow,
+  extendMonths,
   monthKeyFromDate,
   monthKeyId,
   type MonthKey,
   WEEKDAY_LABELS,
 } from "@/lib/calendar-month-grid";
+import { buildMonthWeekRows, weekDateStrings } from "@/lib/calendar-week-layout";
 import type { CalendarItem } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -70,7 +66,6 @@ export const CalendarScrollView = forwardRef<
   const monthRefs = useRef<Map<string, HTMLElement>>(new Map());
   const prependingRef = useRef(false);
   const didInitialScroll = useRef(false);
-  const cellMin = useCalendarCellMin(displayMode, fullPage);
 
   useEffect(() => {
     onMonthsChange(months);
@@ -222,7 +217,7 @@ export const CalendarScrollView = forwardRef<
         {months.map((key, index) => {
           const id = monthKeyId(key);
           const showYear = index === 0 || months[index - 1]!.year !== key.year;
-          const cells = buildMonthCells(key.year, key.month);
+          const weekRows = buildMonthWeekRows(key.year, key.month);
           const title = formatMonthTitle(key, showYear);
           const isCurrentMonth = key.year === todayKey.year && key.month === todayKey.month;
 
@@ -236,26 +231,19 @@ export const CalendarScrollView = forwardRef<
               >
                 {title}
               </h3>
-              <div className="grid grid-cols-7 gap-px">
-                {cells.map((day, idx) => {
-                  if (day === null) {
-                    return <CalendarEmptyDayCell key={`e-${id}-${idx}`} cellMin={cellMin} />;
-                  }
-                  return (
-                    <CalendarDayCell
-                      key={`${id}-${day}`}
-                      year={key.year}
-                      month={key.month}
-                      day={day}
-                      items={items}
-                      displayMode={displayMode}
-                      fullPage={fullPage}
-                      todayStr={todayStr}
-                      selectedDate={selectedDate}
-                      onSelectDate={onSelectDate}
-                    />
-                  );
-                })}
+              <div className="flex flex-col gap-px">
+                {weekRows.map((week, weekIdx) => (
+                  <CalendarWeekRow
+                    key={`${id}-w-${weekIdx}`}
+                    weekDates={weekDateStrings(key.year, key.month, week)}
+                    items={items}
+                    displayMode={displayMode}
+                    fullPage={fullPage}
+                    todayStr={todayStr}
+                    selectedDate={selectedDate}
+                    onSelectDate={onSelectDate}
+                  />
+                ))}
               </div>
             </section>
           );
