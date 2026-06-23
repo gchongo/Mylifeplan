@@ -1649,11 +1649,11 @@ export const GanttChart = forwardRef<
           <div className="relative flex min-h-0 w-max">
             <div
               className={cn(
-                "sticky left-0 z-20 flex shrink-0 overflow-hidden",
+                "sticky left-0 z-20 shrink-0 overflow-hidden",
                 !isResizingPanels && "transition-[width] duration-300 ease-in-out",
               )}
               style={{
-                width: effectiveLeftWidth,
+                width: effectiveTitleWidth,
                 transitionDuration: isResizingPanels ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
               }}
             >
@@ -1665,6 +1665,19 @@ export const GanttChart = forwardRef<
                   renderTitleCell={(_row, idx) => renderPlanTitleCell(rows[idx]!, idx, { compact: true })}
                 />
               )}
+            </div>
+
+            <div
+              className={cn(
+                "sticky z-20 shrink-0 overflow-hidden",
+                !isResizingPanels && "transition-[width] duration-300 ease-in-out",
+              )}
+              style={{
+                left: effectiveTitleWidth,
+                width: effectiveScheduleWidth,
+                transitionDuration: isResizingPanels ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
+              }}
+            >
               {schedulePanelVisible && (
                 <GanttScheduleColumnPanel
                   width={scheduleWidth}
