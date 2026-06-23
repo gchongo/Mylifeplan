@@ -34,33 +34,46 @@ export function GanttScheduleColumnHeader({
   width,
   visibleColumns,
   scrollLeft,
+  leading,
 }: {
   width: number;
   visibleColumns: GanttScheduleColumnId[];
   scrollLeft: number;
+  leading?: ReactNode;
 }) {
   const columnDefs = visibleScheduleColumnDefs(visibleColumns);
   const columnsWidth = scheduleColumnsTotalWidth(visibleColumns);
+  const leadingWidth = leading ? 52 : 0;
 
   return (
     <div
       className="flex shrink-0 overflow-hidden border-b border-blue-200/80 bg-blue-100/50 dark:border-blue-900/50 dark:bg-blue-900/30"
       style={{ width, height: GANTT_SCHEDULE_TABLE_HEADER_HEIGHT, minHeight: GANTT_SCHEDULE_TABLE_HEADER_HEIGHT }}
     >
-      <div
-        className="flex"
-        style={{ minWidth: columnsWidth, transform: `translateX(-${scrollLeft}px)` }}
-      >
-        {columnDefs.map((col) => (
-          <div
-            key={col.id}
-            className="flex shrink-0 items-center justify-center border-l border-blue-200/60 px-1 text-center text-[10px] font-medium text-gray-500 dark:border-blue-900/40 dark:text-gray-400"
-            style={{ width: col.width, height: GANTT_SCHEDULE_TABLE_HEADER_HEIGHT }}
-            title={col.label}
-          >
-            {col.shortLabel}
-          </div>
-        ))}
+      {leading && (
+        <div
+          className="flex shrink-0 items-center border-r border-blue-200/60 dark:border-blue-900/40"
+          style={{ width: leadingWidth, height: GANTT_SCHEDULE_TABLE_HEADER_HEIGHT }}
+        >
+          {leading}
+        </div>
+      )}
+      <div className="min-w-0 flex-1 overflow-hidden">
+        <div
+          className="flex"
+          style={{ minWidth: columnsWidth, transform: `translateX(-${scrollLeft}px)` }}
+        >
+          {columnDefs.map((col) => (
+            <div
+              key={col.id}
+              className="flex shrink-0 items-center justify-center border-l border-blue-200/60 px-1 text-center text-[10px] font-medium text-gray-500 dark:border-blue-900/40 dark:text-gray-400"
+              style={{ width: col.width, height: GANTT_SCHEDULE_TABLE_HEADER_HEIGHT }}
+              title={col.label}
+            >
+              {col.shortLabel}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -73,6 +86,7 @@ export function GanttScheduleColumnNav({
   onScrollNext,
   onHidePanel,
   trailing,
+  variant = "toolbar",
 }: {
   canScrollPrev: boolean;
   canScrollNext: boolean;
@@ -80,31 +94,38 @@ export function GanttScheduleColumnNav({
   onScrollNext: () => void;
   onHidePanel?: () => void;
   trailing?: ReactNode;
+  variant?: "toolbar" | "inline";
 }) {
+  const compact = variant === "inline";
+
   return (
-    <div className="flex h-full w-full items-center gap-0.5 px-1">
+    <div className={cn("flex items-center gap-0.5", compact ? "px-0.5" : "h-full w-full px-1")}>
       {onHidePanel && (
         <button
           type="button"
           data-no-pan
           onClick={onHidePanel}
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+          className={cn(
+            "flex shrink-0 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800",
+            compact ? "h-5 w-5" : "h-6 w-6",
+          )}
           title="收起时间列"
           aria-label="收起时间列"
         >
           <GanttPanelCollapseChevron className="text-blue-600 dark:text-blue-300" />
         </button>
       )}
-      <div className="flex min-w-0 flex-1 items-center justify-center gap-1">
+      <div className={cn("flex items-center justify-center gap-0.5", compact ? "" : "min-w-0 flex-1")}>
         <button
           type="button"
           data-no-pan
           disabled={!canScrollPrev}
           onClick={onScrollPrev}
           className={cn(
-            "flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-base font-semibold leading-none",
+            "flex shrink-0 items-center justify-center rounded-md text-base font-semibold leading-none",
             "text-blue-700 hover:bg-blue-100/80 dark:text-blue-200 dark:hover:bg-blue-900/40",
             "disabled:cursor-not-allowed disabled:text-gray-400 disabled:opacity-60 dark:disabled:text-gray-500",
+            compact ? "h-5 w-5 text-sm" : "h-6 w-6",
           )}
           title="上一列"
           aria-label="上一列"
@@ -117,9 +138,10 @@ export function GanttScheduleColumnNav({
           disabled={!canScrollNext}
           onClick={onScrollNext}
           className={cn(
-            "flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-base font-semibold leading-none",
+            "flex shrink-0 items-center justify-center rounded-md text-base font-semibold leading-none",
             "text-blue-700 hover:bg-blue-100/80 dark:text-blue-200 dark:hover:bg-blue-900/40",
             "disabled:cursor-not-allowed disabled:text-gray-400 disabled:opacity-60 dark:disabled:text-gray-500",
+            compact ? "h-5 w-5 text-sm" : "h-6 w-6",
           )}
           title="下一列"
           aria-label="下一列"

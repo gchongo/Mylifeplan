@@ -867,62 +867,50 @@ export const GanttChart = forwardRef<
     return todayColumnBg;
   }
 
-  function renderTimelineHeaderOnly() {
+  function renderTimelineDateCells() {
     return (
       <div
-        className={cn(GANTT_STICKY_HEADER_CLASS, "flex flex-col")}
-        style={{ width: timelineWidth, height: timelineHeaderHeight, minHeight: timelineHeaderHeight }}
+        className="flex bg-white text-xs dark:bg-gray-950"
+        style={{ width: timelineWidth, height: TIMELINE_DATE_HEADER_HEIGHT, minHeight: TIMELINE_DATE_HEADER_HEIGHT }}
       >
-        <div
-          className="flex w-full flex-1 bg-white text-xs dark:bg-gray-950"
-          style={{ height: TIMELINE_DATE_HEADER_HEIGHT, minHeight: TIMELINE_DATE_HEADER_HEIGHT }}
-        >
-          {layout.columns.map((col) => {
-            const isToday = isTodayInColumn(today, col);
-            const todayStyle = todayColumnCellStyle(isToday);
-            return (
-              <div
-                key={col.key}
-                className={cn(
-                  "py-1 text-center",
-                  GRID_BORDER,
-                  !todayStyle && cn(
-                    "bg-white dark:bg-gray-950",
-                    col.isWeekend && "bg-gray-50 dark:bg-gray-900/70",
-                  ),
-                )}
-                style={{ width: col.width, ...todayStyle }}
-              >
-                {isToday && (scale === "week" || scale === "month") ? (
-                  <span
-                    className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-gray-200 px-1 text-[10px] font-semibold text-gray-800 dark:bg-gray-700 dark:text-gray-100"
-                    style={todayColumnLabel}
-                  >
-                    {col.headerBottom.replace(/^\S+\s/, "")}
-                  </span>
-                ) : (
-                  <span
-                    className={cn(
-                      "text-gray-600 dark:text-gray-300",
-                      isToday && !todayColumnLabel && "font-semibold text-red-600 dark:text-red-400",
-                      isToday && todayColumnLabel && "font-semibold",
-                    )}
-                    style={isToday ? todayColumnLabel : undefined}
-                  >
-                    {scale === "day" ? formatHourLabel(parseInt(col.headerBottom, 10)) : col.headerBottom}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        {leftSubheaderVisible && (
-          <div
-            className="shrink-0 border-b border-gray-100 bg-blue-50/40 dark:border-gray-800 dark:bg-blue-950/20"
-            style={{ height: TIMELINE_SUBHEADER_HEIGHT, minHeight: TIMELINE_SUBHEADER_HEIGHT }}
-            aria-hidden
-          />
-        )}
+        {layout.columns.map((col) => {
+          const isToday = isTodayInColumn(today, col);
+          const todayStyle = todayColumnCellStyle(isToday);
+          return (
+            <div
+              key={col.key}
+              className={cn(
+                "py-1 text-center",
+                GRID_BORDER,
+                !todayStyle && cn(
+                  "bg-white dark:bg-gray-950",
+                  col.isWeekend && "bg-gray-50 dark:bg-gray-900/70",
+                ),
+              )}
+              style={{ width: col.width, ...todayStyle }}
+            >
+              {isToday && (scale === "week" || scale === "month") ? (
+                <span
+                  className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-gray-200 px-1 text-[10px] font-semibold text-gray-800 dark:bg-gray-700 dark:text-gray-100"
+                  style={todayColumnLabel}
+                >
+                  {col.headerBottom.replace(/^\S+\s/, "")}
+                </span>
+              ) : (
+                <span
+                  className={cn(
+                    "text-gray-600 dark:text-gray-300",
+                    isToday && !todayColumnLabel && "font-semibold text-red-600 dark:text-red-400",
+                    isToday && todayColumnLabel && "font-semibold",
+                  )}
+                  style={isToday ? todayColumnLabel : undefined}
+                >
+                  {scale === "day" ? formatHourLabel(parseInt(col.headerBottom, 10)) : col.headerBottom}
+                </span>
+              )}
+            </div>
+          );
+        })}
       </div>
     );
   }
@@ -1491,6 +1479,7 @@ export const GanttChart = forwardRef<
   function renderScheduleHeaderNav() {
     return (
       <GanttScheduleColumnNav
+        variant="inline"
         canScrollPrev={canScheduleScrollPrev}
         canScrollNext={canScheduleScrollNext}
         onScrollPrev={() => scrollScheduleColumns(-1)}
@@ -1535,7 +1524,12 @@ export const GanttChart = forwardRef<
 
   function renderFixedHeaderRow() {
     return (
-      <div className="relative z-30 flex shrink-0 overflow-visible">
+      <div
+        className={cn(
+          GANTT_STICKY_HEADER_CLASS,
+          "relative flex shrink-0 flex-col overflow-visible",
+        )}
+      >
         <GanttDrawerOpenTab
           headerHeight={timelineHeaderHeight}
           visible={!titlePanelVisible}
@@ -1551,72 +1545,104 @@ export const GanttChart = forwardRef<
         />
 
         <div
-          className={cn(
-            "shrink-0 overflow-visible",
-            !isResizingPanels && "transition-[width] duration-300 ease-in-out",
-          )}
-          style={{
-            width: effectiveTitleWidth,
-            transitionDuration: isResizingPanels ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
-          }}
+          className="relative flex shrink-0 overflow-visible"
+          style={{ height: TIMELINE_DATE_HEADER_HEIGHT, minHeight: TIMELINE_DATE_HEADER_HEIGHT }}
         >
-          {titlePanelVisible && (
-            <div
-              className={cn(
-                GANTT_STICKY_HEADER_CLASS,
-                "flex flex-col overflow-visible border-r border-blue-200/80 dark:border-blue-900/50",
-              )}
-              style={{ width: titleWidth, height: timelineHeaderHeight, minHeight: timelineHeaderHeight }}
-            >
+          <div
+            className={cn(
+              "shrink-0 overflow-visible border-r border-blue-200/80 dark:border-blue-900/50",
+              !isResizingPanels && "transition-[width] duration-300 ease-in-out",
+            )}
+            style={{
+              width: effectiveTitleWidth,
+              transitionDuration: isResizingPanels ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
+            }}
+          >
+            {titlePanelVisible && (
               <div
-                className="flex shrink-0 items-center overflow-visible"
-                style={{ height: TIMELINE_DATE_HEADER_HEIGHT, minHeight: TIMELINE_DATE_HEADER_HEIGHT }}
+                className="flex items-center overflow-visible bg-blue-50/80 dark:bg-blue-950/40"
+                style={{ width: titleWidth, height: TIMELINE_DATE_HEADER_HEIGHT }}
               >
                 {renderLabelHeaderControls()}
               </div>
-              <GanttTitleTableHeader width={titleWidth} />
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        <div
-          className={cn(
-            "shrink-0 overflow-visible",
-            !isResizingPanels && "transition-[width] duration-300 ease-in-out",
-          )}
-          style={{
-            width: effectiveScheduleWidth,
-            transitionDuration: isResizingPanels ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
-          }}
-        >
-          {schedulePanelVisible && (
-            <div
-              className={cn(
-                GANTT_STICKY_HEADER_CLASS,
-                "flex flex-col overflow-visible border-r border-blue-200/80 dark:border-blue-900/50",
-              )}
-              style={{ width: scheduleWidth, height: timelineHeaderHeight, minHeight: timelineHeaderHeight }}
-            >
+          <div className="relative min-w-0 flex-1 overflow-hidden bg-white dark:bg-gray-950">
+            {schedulePanelVisible && (
               <div
-                className="flex shrink-0 items-center overflow-hidden"
-                style={{ height: TIMELINE_DATE_HEADER_HEIGHT, minHeight: TIMELINE_DATE_HEADER_HEIGHT }}
-              >
-                {renderScheduleHeaderNav()}
-              </div>
-              <GanttScheduleColumnHeader
-                width={scheduleWidth}
-                visibleColumns={scheduleColumns}
-                scrollLeft={scheduleScrollLeft}
+                className={cn(
+                  "pointer-events-none absolute top-0 bottom-0 left-0 border-r border-blue-200/60 bg-white dark:border-blue-900/40 dark:bg-gray-950",
+                  !isResizingPanels && "transition-[width] duration-300 ease-in-out",
+                )}
+                style={{
+                  width: scheduleWidth,
+                  transitionDuration: isResizingPanels ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
+                }}
+                aria-hidden
               />
+            )}
+            <div
+              ref={headerTimelineRef}
+              className={cn(
+                "relative will-change-transform",
+                !isResizingPanels && "transition-[margin] duration-300 ease-in-out",
+              )}
+              style={{
+                marginLeft: schedulePanelVisible ? scheduleWidth : 0,
+                width: timelineWidth,
+                transitionDuration: isResizingPanels ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
+              }}
+            >
+              {renderTimelineDateCells()}
             </div>
-          )}
-        </div>
-
-        <div className="relative min-w-0 flex-1 overflow-hidden">
-          <div ref={headerTimelineRef} className="will-change-transform">
-            {renderTimelineHeaderOnly()}
           </div>
         </div>
+
+        {leftSubheaderVisible && (
+          <div
+            className="flex shrink-0 overflow-visible"
+            style={{ height: TIMELINE_SUBHEADER_HEIGHT, minHeight: TIMELINE_SUBHEADER_HEIGHT }}
+          >
+            <div
+              className={cn(
+                "shrink-0 overflow-visible border-r border-blue-200/80 dark:border-blue-900/50",
+                !isResizingPanels && "transition-[width] duration-300 ease-in-out",
+              )}
+              style={{
+                width: effectiveTitleWidth,
+                transitionDuration: isResizingPanels ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
+              }}
+            >
+              {titlePanelVisible && <GanttTitleTableHeader width={titleWidth} />}
+            </div>
+
+            <div
+              className={cn(
+                "shrink-0 overflow-visible border-r border-blue-200/80 dark:border-blue-900/50",
+                !isResizingPanels && "transition-[width] duration-300 ease-in-out",
+              )}
+              style={{
+                width: effectiveScheduleWidth,
+                transitionDuration: isResizingPanels ? "0ms" : `${DRAWER_TRANSITION_MS}ms`,
+              }}
+            >
+              {schedulePanelVisible && (
+                <GanttScheduleColumnHeader
+                  width={scheduleWidth}
+                  visibleColumns={scheduleColumns}
+                  scrollLeft={scheduleScrollLeft}
+                  leading={renderScheduleHeaderNav()}
+                />
+              )}
+            </div>
+
+            <div
+              className="min-w-0 flex-1 border-b border-gray-100 bg-blue-50/40 dark:border-gray-800 dark:bg-blue-950/20"
+              aria-hidden
+            />
+          </div>
+        )}
       </div>
     );
   }

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { apiJson } from "@/lib/client-api";
 import { CalendarDayCreateActions } from "@/components/calendar/calendar-day-create-actions";
-import { CalendarWeekRow } from "@/components/calendar/calendar-week-row";
 import { CalendarDayDrawer } from "@/components/calendar/calendar-day-drawer";
 import { CalendarScrollView,
   type CalendarScrollViewHandle,
@@ -158,6 +157,7 @@ export function CalendarPanelLive({
   const dayStr = toDateStr(viewYear, viewMonth, viewDay);
   const weekDays = weekRange(weekAnchor).days;
   const dayItems = itemsOnDate(items, dayStr);
+  const weekCellMin = fullPage ? "min-h-[8rem]" : "min-h-[5rem]";
 
   function goToday() {
     const now = new Date();
@@ -336,16 +336,50 @@ export function CalendarPanelLive({
               </div>
             )}
             {!loading && viewMode === "week" && (
-              <div className="min-h-0 flex-1 overflow-y-auto bg-gray-100">
-                <CalendarWeekRow
-                  weekDates={weekDays}
-                  items={items}
-                  displayMode={displayMode}
-                  fullPage={fullPage}
-                  todayStr={todayStr}
-                  selectedDate={selectedDate}
-                  onSelectDate={openDayDrawer}
-                />
+              <div className="grid min-h-0 flex-1 grid-cols-7 gap-px overflow-y-auto bg-gray-100 text-xs">
+                {weekDays.map((ds) => {
+                  const list = itemsOnDate(items, ds);
+                  const d = parseInt(ds.slice(8, 10), 10);
+                  const isToday = ds === todayStr;
+                  const isSelected = ds === selectedDate;
+                  return (
+                    <div key={ds} className={cn("flex flex-col bg-white p-1", weekCellMin)}>
+                      <div className="mb-1 flex justify-center">
+                        <button
+                          type="button"
+                          onClick={() => openDayDrawer(ds)}
+                          className={cn(
+                            "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold hover:ring-2 hover:ring-brand-200",
+                            isToday && "bg-red-500 text-white",
+                            !isToday && isSelected && "bg-gray-900 text-white",
+                            !isToday && !isSelected && "text-gray-800",
+                          )}
+                        >
+                          {d}
+                        </button>
+                      </div>
+                      <ul className="space-y-1">
+                        {list.map((item) => {
+                          const accent = itemAccent(item);
+                          return (
+                            <li key={item.id}>
+                              <button
+                                type="button"
+                                onClick={() => openDayDrawer(ds)}
+                                className={cn(
+                                  "block w-full rounded-md px-1 py-0.5 text-left text-[10px] text-white",
+                                  accent.bar,
+                                )}
+                              >
+                                <span className="line-clamp-2">{item.title}</span>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  );
+                })}
               </div>
             )}
             {!loading && viewMode === "day" && (
