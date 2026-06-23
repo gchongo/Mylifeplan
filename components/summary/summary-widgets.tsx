@@ -244,12 +244,16 @@ export function HorizontalBars({
   segments,
   dense = false,
   className,
+  /** 条形最大宽度占比（0–1），用于右侧留白 */
+  barWidthScale = 1,
 }: {
   segments: SummarySegment[];
   dense?: boolean;
   className?: string;
+  barWidthScale?: number;
 }) {
   const max = Math.max(1, ...segments.map((s) => s.value));
+  const widthScale = Math.min(1, Math.max(0.5, barWidthScale));
 
   if (segments.length === 0) {
     return <p className="text-xs text-gray-400">暂无数据</p>;
@@ -275,10 +279,14 @@ export function HorizontalBars({
               "overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800",
               dense ? "h-1.5" : "h-2",
             )}
+            style={{ width: `${widthScale * 100}%` }}
           >
             <div
               className="h-full rounded-full transition-all"
-              style={{ width: `${(seg.value / max) * 100}%`, backgroundColor: seg.color }}
+              style={{
+                width: `${(seg.value / max) * 100}%`,
+                backgroundColor: seg.color,
+              }}
             />
           </div>
         </li>

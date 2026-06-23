@@ -317,7 +317,7 @@ export function CalendarPanelLive({
       <CardContent
         className={cn(
           "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
-          fullPage ? "p-0" : "p-3 pt-0",
+          fullPage ? "p-0" : "px-3 pb-3 pt-0",
         )}
       >
         <div ref={layoutRef} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">

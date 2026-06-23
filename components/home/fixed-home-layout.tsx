@@ -11,8 +11,6 @@ const STORAGE_FEED_WIDTH = "mylifeplan-home-feed-width";
 const RESIZE_HANDLE_SIZE = 12;
 
 const DEFAULT_FEED_WIDTH = 320;
-/** 右侧总结区固定占比（与产品默认视觉一致，不可上下拖拽） */
-const HOME_SUMMARY_HEIGHT_RATIO = 0.48;
 
 const MIN_FEED_WIDTH = 240;
 const MAX_FEED_WIDTH = 480;
@@ -106,10 +104,7 @@ export function FixedHomeLayout() {
       <PanelResizeHandle orientation="vertical" onMouseDown={startFeedWidthDrag} />
 
       <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <div
-          className="min-h-0 min-w-0 shrink-0 overflow-hidden"
-          style={{ height: `${HOME_SUMMARY_HEIGHT_RATIO * 100}%` }}
-        >
+        <div className="min-h-0 min-w-0 shrink-0 overflow-hidden">
           <SummaryPanelLive />
         </div>
 

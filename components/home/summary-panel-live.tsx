@@ -47,9 +47,14 @@ function SummaryChartsRow({ summary }: { summary: PlanSummaryStats }) {
         />
       </div>
 
-      <div ref={barsRef} className="flex min-h-[72px] min-w-0 flex-1 items-center self-stretch border-l border-gray-100 pl-3 dark:border-gray-800">
+      <div ref={barsRef} className="flex min-h-[72px] min-w-0 flex-1 items-center self-stretch border-l border-gray-100 py-0.5 pl-3 pr-3 dark:border-gray-800">
         {summary.executionSegments.length > 0 ? (
-          <HorizontalBars segments={summary.executionSegments} dense className="w-full" />
+          <HorizontalBars
+            segments={summary.executionSegments}
+            dense
+            barWidthScale={0.88}
+            className="w-full"
+          />
         ) : (
           <p className="text-[10px] text-gray-400">暂无执行数据</p>
         )}
@@ -64,7 +69,7 @@ export function SummaryPanelLive({ className }: { className?: string }) {
   return (
     <Card
       className={cn(
-        "flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden border-0 bg-transparent shadow-none",
+        "flex h-auto min-h-0 min-w-0 max-w-full flex-col overflow-hidden border-0 bg-transparent shadow-none",
         className,
       )}
     >
@@ -75,7 +80,7 @@ export function SummaryPanelLive({ className }: { className?: string }) {
         <PanelExpandButton href="/summary" label="总结" />
       </div>
 
-      <CardContent className="min-h-0 flex-1 overflow-hidden p-0 pr-0.5">
+      <CardContent className="shrink-0 overflow-hidden p-0">
         {loading && <Loading label="加载…" className="py-6" />}
         {!loading && error && (
           <EmptyState
