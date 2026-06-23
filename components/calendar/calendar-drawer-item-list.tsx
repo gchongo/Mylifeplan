@@ -16,6 +16,30 @@ type PlanDetail = {
   endDate?: string | null;
 };
 
+function DrawerItemTitleBlock({
+  item,
+  scheduleClassName,
+}: {
+  item: CalendarItem;
+  scheduleClassName?: string;
+}) {
+  return (
+    <div className="min-w-0 flex-1">
+      <p className="line-clamp-2 text-sm font-medium leading-snug text-gray-900 dark:text-gray-100">
+        {item.title}
+      </p>
+      <p
+        className={cn(
+          "mt-0.5 text-[11px] tabular-nums leading-tight text-gray-400 dark:text-gray-500",
+          scheduleClassName,
+        )}
+      >
+        {formatEventSchedule(item)}
+      </p>
+    </div>
+  );
+}
+
 function PlanInlineDetail({ plan }: { plan: PlanDetail }) {
   return (
     <div className="space-y-2 text-xs text-gray-600">
@@ -77,10 +101,12 @@ function CalendarDrawerItemRow({
 
   if (!expandable) {
     return (
-      <Link href={`/plans/${item.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50">
-        <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", accent.dot)} />
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">{item.title}</span>
-        <span className="shrink-0 text-xs text-gray-400">{formatEventSchedule(item)}</span>
+      <Link
+        href={`/plans/${item.id}`}
+        className="flex items-start gap-2.5 px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-900/40"
+      >
+        <span className={cn("mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full", accent.dot)} />
+        <DrawerItemTitleBlock item={item} />
       </Link>
     );
   }
@@ -89,22 +115,30 @@ function CalendarDrawerItemRow({
     <div className="px-3 py-2">
       <div
         className={cn(
-          "flex items-center gap-1 rounded-lg border border-gray-100 border-l-2 px-2 py-2",
+          "flex items-start gap-1 rounded-lg border border-gray-100 border-l-2 px-2 py-2 dark:border-gray-800",
           statusStyle.rowBg,
           statusStyle.stripe,
         )}
       >
         <button
           type="button"
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-100"
+          className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
           onClick={toggleExpand}
           aria-label={expanded ? "折叠详情" : "展开详情"}
         >
           <span className={cn("text-[10px] transition-transform", expanded && "rotate-90")}>▶</span>
         </button>
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">{item.title}</span>
-        <TaskStatusIndicator status={item.status} dueDate={item.endDate ?? undefined} overdue={item.overdue} />
-        <span className="shrink-0 text-xs text-gray-400">{formatEventSchedule(item)}</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start gap-2">
+            <DrawerItemTitleBlock item={item} />
+            <TaskStatusIndicator
+              status={item.status}
+              dueDate={item.endDate ?? undefined}
+              overdue={item.overdue}
+              className="mt-0.5 shrink-0"
+            />
+          </div>
+        </div>
       </div>
 
       {expanded && (

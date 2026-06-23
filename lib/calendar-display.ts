@@ -26,6 +26,37 @@ export const CALENDAR_DISPLAY_MODES: {
 const STORAGE_KEY = "mylifeplan-calendar-display";
 export const CALENDAR_MOBILE_BREAKPOINT = 768;
 
+export const CALENDAR_DRAWER_WIDTH_KEY = "mylifeplan-calendar-drawer-width";
+export const CALENDAR_DRAWER_MIN_WIDTH_PX = 184;
+export const CALENDAR_DRAWER_DEFAULT_WIDTH_PX = 240;
+
+export function loadCalendarDrawerWidthPx(): number {
+  if (typeof window === "undefined") return CALENDAR_DRAWER_DEFAULT_WIDTH_PX;
+  const raw = localStorage.getItem(CALENDAR_DRAWER_WIDTH_KEY);
+  const parsed = raw ? Number.parseInt(raw, 10) : NaN;
+  if (!Number.isFinite(parsed)) return CALENDAR_DRAWER_DEFAULT_WIDTH_PX;
+  return Math.max(CALENDAR_DRAWER_MIN_WIDTH_PX, parsed);
+}
+
+export function saveCalendarDrawerWidthPx(width: number) {
+  localStorage.setItem(CALENDAR_DRAWER_WIDTH_KEY, String(Math.round(width)));
+}
+
+/** 侧栏最大宽度：保证左侧日历区域宽度 ≥ 其高度 */
+export function maxCalendarDrawerWidthPx(layoutWidth: number, layoutHeight: number): number {
+  if (layoutWidth <= 0 || layoutHeight <= 0) return Number.POSITIVE_INFINITY;
+  return Math.max(CALENDAR_DRAWER_MIN_WIDTH_PX, layoutWidth - layoutHeight);
+}
+
+export function clampCalendarDrawerWidthPx(
+  width: number,
+  layoutWidth: number,
+  layoutHeight: number,
+): number {
+  const max = maxCalendarDrawerWidthPx(layoutWidth, layoutHeight);
+  return Math.min(max, Math.max(CALENDAR_DRAWER_MIN_WIDTH_PX, width));
+}
+
 export function isMobileCalendarViewport(
   width = typeof window !== "undefined" ? window.innerWidth : CALENDAR_MOBILE_BREAKPOINT,
 ): boolean {

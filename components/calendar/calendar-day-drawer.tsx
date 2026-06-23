@@ -43,7 +43,11 @@ export function CalendarDayDrawer({
   onClose,
   detailExpandable = false,
   onDataChange,
-  widthClass,
+  panelWidthPx,
+  onPanelWidthPxChange,
+  panelMinWidthPx,
+  panelMaxWidthPx,
+  resizable = false,
   children,
 }: {
   dateStr: string | null;
@@ -52,14 +56,22 @@ export function CalendarDayDrawer({
   onClose: () => void;
   detailExpandable?: boolean;
   onDataChange?: () => void;
-  widthClass?: string;
+  panelWidthPx?: number;
+  onPanelWidthPxChange?: (width: number) => void;
+  panelMinWidthPx?: number;
+  panelMaxWidthPx?: number;
+  resizable?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <DrawerLayout
       open={open}
       onClose={onClose}
-      widthClass={widthClass}
+      panelWidthPx={panelWidthPx}
+      onPanelWidthPxChange={onPanelWidthPxChange}
+      panelMinWidthPx={panelMinWidthPx}
+      panelMaxWidthPx={panelMaxWidthPx}
+      resizable={resizable}
       panel={
         <CalendarDayDrawerPanel
           dateStr={dateStr}

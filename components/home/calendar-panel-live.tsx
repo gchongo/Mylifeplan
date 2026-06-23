@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { apiJson } from "@/lib/client-api";
 import { CalendarDayCreateActions } from "@/components/calendar/calendar-day-create-actions";
@@ -19,9 +19,14 @@ import { PanelExpandButton } from "@/components/home/panel-expand-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState, Loading } from "@/components/ui/feedback";
 import {
+  clampCalendarDrawerWidthPx,
   formatEventSchedule,
   itemAccent,
   itemsOnDate,
+  loadCalendarDrawerWidthPx,
+  maxCalendarDrawerWidthPx,
+  saveCalendarDrawerWidthPx,
+  CALENDAR_DRAWER_MIN_WIDTH_PX,
   type CalendarViewMode,
 } from "@/lib/calendar-display";
 import {
@@ -106,6 +111,55 @@ export function CalendarPanelLive({
   const [items, setItems] = useState<CalendarItem[]>([]);
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<CalendarScrollViewHandle>(null);
+  const layoutRef = useRef<HTMLDivElement>(null);
+  const [layoutSize, setLayoutSize] = useState({ width: 0, height: 0 });
+  const [drawerWidthPx, setDrawerWidthPx] = useState(CALENDAR_DRAWER_MIN_WIDTH_PX);
+
+  useEffect(() => {
+    setDrawerWidthPx(loadCalendarDrawerWidthPx());
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = layoutRef.current;
+    if (!el) return;
+
+    const update = () => {
+      const rect = el.getBoundingClientRect();
+      setLayoutSize({ width: rect.width, height: rect.height });
+    };
+
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const maxDrawerWidthPx = useMemo(
+    () =>
+      layoutSize.width > 0 && layoutSize.height > 0
+        ? maxCalendarDrawerWidthPx(layoutSize.width, layoutSize.height)
+        : undefined,
+    [layoutSize.width, layoutSize.height],
+  );
+
+  useEffect(() => {
+    if (layoutSize.width <= 0 || layoutSize.height <= 0) return;
+    setDrawerWidthPx((prev) =>
+      clampCalendarDrawerWidthPx(prev, layoutSize.width, layoutSize.height),
+    );
+  }, [layoutSize.width, layoutSize.height]);
+
+  const handleDrawerWidthChange = useCallback(
+    (width: number) => {
+      const next =
+        layoutSize.width > 0 && layoutSize.height > 0
+          ? clampCalendarDrawerWidthPx(width, layoutSize.width, layoutSize.height)
+          : width;
+      setDrawerWidthPx(next);
+      saveCalendarDrawerWidthPx(next);
+    },
+    [layoutSize.width, layoutSize.height],
+  );
 
   const handleMonthsChange = useCallback((months: MonthKey[]) => {
     setLoadedMonths(months);
@@ -266,6 +320,7 @@ export function CalendarPanelLive({
           fullPage ? "p-0" : "p-3 pt-0",
         )}
       >
+        <div ref={layoutRef} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <CalendarDayDrawer
           dateStr={drawerDate}
           items={items}
@@ -273,7 +328,11 @@ export function CalendarPanelLive({
           onClose={closeDayDrawer}
           detailExpandable={fullPage}
           onDataChange={reloadCalendar}
-          widthClass={fullPage ? undefined : "w-[42%] min-w-[11.5rem] max-w-[13.5rem]"}
+          panelWidthPx={drawerWidthPx}
+          onPanelWidthPxChange={handleDrawerWidthChange}
+          panelMinWidthPx={CALENDAR_DRAWER_MIN_WIDTH_PX}
+          panelMaxWidthPx={maxDrawerWidthPx}
+          resizable={drawerDate !== null}
         >
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             {fullPage && (
@@ -418,6 +477,7 @@ export function CalendarPanelLive({
             )}
           </div>
         </CalendarDayDrawer>
+        </div>
       </CardContent>
     </Card>
   );
