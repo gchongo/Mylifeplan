@@ -60,7 +60,7 @@ function PlanKanbanCard({
       onDragEnd={onDragEnd}
       title={draggable ? undefined : ROLLUP_STATUS_HINT}
       className={cn(
-        "w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow dark:border-gray-700 dark:bg-gray-900",
+        "w-full shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow dark:border-gray-700 dark:bg-gray-900",
         zoneId === "archived" && "opacity-90",
         draggable ? "cursor-grab active:cursor-grabbing hover:shadow-md" : "cursor-default opacity-95",
         dragging && "opacity-40",
@@ -124,7 +124,7 @@ function KanbanColumn({
   return (
     <div
       className={cn(
-        "flex h-full min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-gray-100/80 p-2 transition-colors",
+        "flex h-full min-h-0 min-w-0 flex-col rounded-xl bg-gray-100/80 p-2 transition-colors",
         isTarget && "ring-2 ring-brand-400 ring-offset-1",
       )}
       onDragOver={(e) => {
@@ -141,7 +141,7 @@ function KanbanColumn({
         if (planId) onDrop(columnId, planId, fromArchived);
       }}
     >
-      <div className="mb-2 flex items-center gap-2 px-1">
+      <div className="mb-2 flex shrink-0 items-center gap-2 px-1">
         <span className={cn("h-2 w-2 shrink-0 rounded-full", accent)} aria-hidden />
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-700 dark:text-gray-200">
           {label}
@@ -149,24 +149,26 @@ function KanbanColumn({
         <span className="text-xs text-gray-400">{plans.length}</span>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain scrollbar-hide">
-        {plans.map((plan) => (
-          <PlanKanbanCard
-            key={plan.id}
-            plan={plan}
-            zoneId={columnId}
-            dragging={draggingId === plan.id}
-            onDragStart={() => onDragStart(plan.id)}
-            onDragEnd={onDragEnd}
-            onOpenPlan={onOpenPlan}
-          />
-        ))}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-hide">
+        <div className="flex flex-col gap-2">
+          {plans.map((plan) => (
+            <PlanKanbanCard
+              key={plan.id}
+              plan={plan}
+              zoneId={columnId}
+              dragging={draggingId === plan.id}
+              onDragStart={() => onDragStart(plan.id)}
+              onDragEnd={onDragEnd}
+              onOpenPlan={onOpenPlan}
+            />
+          ))}
+        </div>
       </div>
 
       <button
         type="button"
         onClick={onCreatePlan}
-        className="mt-2 block w-full rounded-lg px-2 py-2 text-center text-sm text-gray-500 hover:bg-gray-200/60 hover:text-gray-800 dark:hover:bg-gray-800/60 dark:hover:text-gray-200"
+        className="mt-2 block w-full shrink-0 rounded-lg px-2 py-2 text-center text-sm text-gray-500 hover:bg-gray-200/60 hover:text-gray-800 dark:hover:bg-gray-800/60 dark:hover:text-gray-200"
       >
         ＋ 新建计划或贡献
       </button>
@@ -495,7 +497,7 @@ export function PlanKanbanBoard({
 
         <div
           className={cn(
-            "flex min-h-0 flex-1 gap-3",
+            "grid min-h-0 flex-1 grid-cols-4 gap-3",
             moving && "pointer-events-none opacity-80",
           )}
         >
