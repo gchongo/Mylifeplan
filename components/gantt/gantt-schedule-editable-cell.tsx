@@ -6,6 +6,11 @@ import {
 } from "@/lib/gantt-schedule-columns";
 import { datetimeLocalToIso, toDatetimeLocalInput } from "@/lib/dates";
 import { PlanDateTimeField } from "@/components/forms/plan-datetime-field";
+import { useI18n } from "@/components/i18n/i18n-provider";
+import {
+  localizeScheduleColumnTitle,
+  localizeScheduleEditableLabel,
+} from "@/lib/i18n/gantt-helpers";
 import { cn } from "@/lib/utils";
 import type { ScheduleCellValue } from "@/lib/gantt-schedule-columns";
 
@@ -30,18 +35,15 @@ export function GanttScheduleEditableCell({
   width: number;
   onSaved: () => void;
 }) {
+  const { t } = useI18n();
   const edge = scheduleFieldEdge(scheduleColumnPlanField(columnId));
-  const columnTitle =
-    columnId === "planStart"
-      ? "计划开始"
-      : columnId === "planEnd"
-        ? "计划结束"
-        : columnId === "actualStart"
-          ? "实际开始"
-          : "实际结束";
-
-  const label =
-    cell.text === "—" ? "双击设置时间" : `双击修改：${cell.text}`;
+  const columnTitle = localizeScheduleColumnTitle(t, columnId);
+  const empty = cell.text === "—";
+  const { label, cellTitle } = localizeScheduleEditableLabel(t, {
+    empty,
+    cellText: cell.text,
+    virtual: Boolean(cell.virtual),
+  });
 
   const localValue = rawValue?.trim() ? toDatetimeLocalInput(rawValue) : "";
 
@@ -53,7 +55,7 @@ export function GanttScheduleEditableCell({
       size="cell"
       panelTitle={columnTitle}
       cellDisplay={cell.text}
-      cellTitle={cell.virtual ? `${cell.text}（预估截止，双击设置正式截止）` : label}
+      cellTitle={cellTitle}
       cellAriaLabel={label}
       triggerClassName={cn(
         "relative flex h-full w-full shrink-0 items-center justify-center border-l border-blue-100/80 px-0.5 text-center text-[10px] tabular-nums leading-tight transition-colors dark:border-blue-900/35",
@@ -77,10 +79,10 @@ export function GanttScheduleEditableCell({
             body: JSON.stringify({ [field]: nextIso }),
           });
           const data = (await res.json()) as { error?: string };
-          if (!res.ok) return data.error ?? "保存失败";
+          if (!res.ok) return data.error ?? t("gantt.contributionDrawer.saveFailed");
           onSaved();
         } catch {
-          return "网络错误";
+          return t("gantt.contributionDrawer.networkError");
         }
       }}
     />

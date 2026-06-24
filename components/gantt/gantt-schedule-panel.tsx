@@ -10,21 +10,26 @@ import {
   isScheduleCellEditable,
   isScheduleColumnEditable,
   scheduleColumnsTotalWidth,
-  visibleScheduleColumnDefs,
   type GanttScheduleColumnId,
 } from "@/lib/gantt-schedule-columns";
 import { GanttScheduleEditableCell } from "@/components/gantt/gantt-schedule-editable-cell";
+import { useI18n } from "@/components/i18n/i18n-provider";
+import {
+  localizedScheduleColumnDefs,
+  localizeScheduleReadOnlyTitle,
+} from "@/lib/i18n/gantt-helpers";
 import { cn } from "@/lib/utils";
 import type { GanttItem } from "@/types";
 
 export function GanttTitleTableHeader({ width }: { width: number }) {
+  const { t } = useI18n();
   return (
     <div
       className="flex shrink-0 border-b border-blue-200/80 bg-blue-100/50 dark:border-blue-900/50 dark:bg-blue-900/30"
       style={{ width, height: GANTT_SCHEDULE_TABLE_HEADER_HEIGHT, minHeight: GANTT_SCHEDULE_TABLE_HEADER_HEIGHT }}
     >
       <div className="flex w-full items-center justify-center text-center text-[10px] font-medium text-gray-500 dark:text-gray-400">
-        任务
+        {t("gantt.tasksHeader")}
       </div>
     </div>
   );
@@ -39,7 +44,8 @@ export function GanttScheduleColumnHeader({
   visibleColumns: GanttScheduleColumnId[];
   scrollLeft: number;
 }) {
-  const columnDefs = visibleScheduleColumnDefs(visibleColumns);
+  const { t } = useI18n();
+  const columnDefs = localizedScheduleColumnDefs(t, visibleColumns);
   const columnsWidth = scheduleColumnsTotalWidth(visibleColumns);
 
   return (
@@ -88,6 +94,7 @@ export function GanttScheduleDateRowBar({
   onScrollNext: () => void;
   onHidePanel: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div
       className="flex shrink-0 items-center gap-0.5 border-r border-blue-200/80 bg-blue-50/80 px-0.5 dark:border-blue-900/50 dark:bg-blue-950/40"
@@ -98,8 +105,8 @@ export function GanttScheduleDateRowBar({
         data-no-pan
         onClick={onHidePanel}
         className={cn(SCHEDULE_DATE_ROW_EDGE_BTN, "h-6 w-6")}
-        title="收起时间列"
-        aria-label="收起时间列"
+        title={t("gantt.schedule.hideColumns")}
+        aria-label={t("gantt.schedule.hideColumns")}
       >
         <GanttPanelCollapseChevron className="text-blue-600 dark:text-blue-300" />
       </button>
@@ -131,6 +138,7 @@ export function GanttScheduleColumnNav({
   trailing?: ReactNode;
   variant?: "toolbar" | "inline";
 }) {
+  const { t } = useI18n();
   const compact = variant === "inline";
 
   return (
@@ -144,8 +152,8 @@ export function GanttScheduleColumnNav({
             "flex shrink-0 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800",
             compact ? "h-5 w-5" : "h-6 w-6",
           )}
-          title="收起时间列"
-          aria-label="收起时间列"
+          title={t("gantt.schedule.hideColumns")}
+          aria-label={t("gantt.schedule.hideColumns")}
         >
           <GanttPanelCollapseChevron className="text-blue-600 dark:text-blue-300" />
         </button>
@@ -162,8 +170,8 @@ export function GanttScheduleColumnNav({
             "disabled:cursor-not-allowed disabled:text-gray-400 disabled:opacity-60 dark:disabled:text-gray-500",
             compact ? "h-5 w-5 text-sm" : "h-6 w-6",
           )}
-          title="上一列"
-          aria-label="上一列"
+          title={t("gantt.schedule.prevColumn")}
+          aria-label={t("gantt.schedule.prevColumn")}
         >
           ‹
         </button>
@@ -178,8 +186,8 @@ export function GanttScheduleColumnNav({
             "disabled:cursor-not-allowed disabled:text-gray-400 disabled:opacity-60 dark:disabled:text-gray-500",
             compact ? "h-5 w-5 text-sm" : "h-6 w-6",
           )}
-          title="下一列"
-          aria-label="下一列"
+          title={t("gantt.schedule.nextColumn")}
+          aria-label={t("gantt.schedule.nextColumn")}
         >
           ›
         </button>
@@ -275,7 +283,8 @@ export function GanttScheduleColumnPanel({
   allPlans: GanttItem[];
   onPlanFieldUpdated?: () => void;
 }) {
-  const columnDefs = visibleScheduleColumnDefs(visibleColumns);
+  const { t } = useI18n();
+  const columnDefs = localizedScheduleColumnDefs(t, visibleColumns);
   const columnsWidth = scheduleColumnsTotalWidth(visibleColumns);
 
   return (
@@ -316,14 +325,14 @@ export function GanttScheduleColumnPanel({
                     );
                   }
 
-                  const readOnlyTitle =
-                    (col.id === "actualStart" || col.id === "actualEnd") &&
-                    !editable &&
-                    !row.item.contributionOnly
-                      ? "由子计划汇总，请在子计划上修改"
-                      : cell.virtual
-                        ? `${cell.text}（预估截止）`
-                        : undefined;
+                  const readOnlyTitle = localizeScheduleReadOnlyTitle(t, {
+                    rollupActuals:
+                      (col.id === "actualStart" || col.id === "actualEnd") &&
+                      !editable &&
+                      !row.item.contributionOnly,
+                    virtual: Boolean(cell.virtual),
+                    cellText: cell.text,
+                  });
 
                   return (
                     <div

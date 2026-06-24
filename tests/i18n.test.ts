@@ -5,6 +5,10 @@ import {
   localizeFeedActionPhrase,
   localizeMemoQuadrantFeed,
 } from "@/lib/i18n/feed-helpers";
+import {
+  localizeScheduleColumnLabel,
+  localizeScheduleColumnShortLabel,
+} from "@/lib/i18n/gantt-helpers";
 
 describe("i18n", () => {
   it("translates zh-CN keys", () => {
@@ -35,8 +39,9 @@ describe("i18n", () => {
     expect(localizeFeedActionPhrase(t, "complete", "plan", "en-US")).toBe("Completed plan");
   });
 
-  it("localizes memo quadrant for feed", () => {
+  it("localizes gantt schedule columns", () => {
     const t = createTranslator("en-US");
-    expect(localizeMemoQuadrantFeed(t, "urgent_important")).toBe("Q1 Urgent & important");
+    expect(localizeScheduleColumnLabel(t, "planStart")).toBe("Planned start");
+    expect(localizeScheduleColumnShortLabel(t, "completion")).toBe("Done%");
   });
 });

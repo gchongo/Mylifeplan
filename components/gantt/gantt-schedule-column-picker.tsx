@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import {
   GANTT_SCHEDULE_COLUMNS,
   type GanttScheduleColumnId,
 } from "@/lib/gantt-schedule-columns";
+import { localizeScheduleColumnLabel } from "@/lib/i18n/gantt-helpers";
 import { cn } from "@/lib/utils";
 
 export function GanttScheduleColumnPicker({
@@ -16,6 +18,7 @@ export function GanttScheduleColumnPicker({
   onChange: (next: GanttScheduleColumnId[]) => void;
   compact?: boolean;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const partial =
@@ -62,10 +65,10 @@ export function GanttScheduleColumnPicker({
             ? "border-blue-400 bg-blue-100 text-blue-800 dark:border-blue-600 dark:bg-blue-900/50 dark:text-blue-100"
             : "border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300",
         )}
-        title="显示/隐藏排期列"
-        aria-label="显示或隐藏排期列"
+        title={t("gantt.columnPicker.title")}
+        aria-label={t("gantt.columnPicker.aria")}
       >
-        列
+        {t("gantt.columnPicker.label")}
       </button>
 
       {open && (
@@ -93,7 +96,7 @@ export function GanttScheduleColumnPicker({
                 >
                   {checked && <span className="text-[9px] leading-none">✓</span>}
                 </span>
-                <span className="text-gray-700 dark:text-gray-200">{col.label}</span>
+                <span className="text-gray-700 dark:text-gray-200">{localizeScheduleColumnLabel(t, col.id)}</span>
               </button>
             );
           })}
@@ -107,7 +110,7 @@ export function GanttScheduleColumnPicker({
               }}
               className="w-full rounded px-2 py-1 text-left text-xs text-brand-600 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
-              显示全部列
+              {t("gantt.columnPicker.showAll")}
             </button>
           </div>
         </div>

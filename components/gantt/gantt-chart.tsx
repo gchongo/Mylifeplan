@@ -33,6 +33,7 @@ import { GanttPlanDrawerPanel } from "@/components/gantt/gantt-plan-drawer";
 import { PlanContributionComposeModal } from "@/components/forms/plan-contribution-compose-modal";
 import type { PlanContributionComposeMode } from "@/components/forms/plan-contribution-compose-form";
 import { PlanStatusMenuButton } from "@/components/plans/plan-status-menu";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { Button, EmptyState, Loading as LoadingView } from "@/components/ui";
 import { DrawerLayout } from "@/components/ui/drawer";
 import {
@@ -237,7 +238,6 @@ function buildPlanTreeRows(plans: GanttItem[], expanded: Set<string>): GanttRow[
 
 interface PlanModalState {
   open: boolean;
-  title: string;
   defaultMode?: PlanContributionComposeMode;
   defaultParentPlanId?: string | null;
   defaultStartDate?: string | null;
@@ -296,6 +296,7 @@ export const GanttChart = forwardRef<
     onTitleColumnLayout?: (layout: GanttTitleColumnLayout) => void;
   }
 >(function GanttChart({ fullPage = false, scale: scaleProp, onScaleChange, onTitleColumnLayout }, ref) {
+  const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const headerTimelineRef = useRef<HTMLDivElement>(null);
@@ -308,7 +309,6 @@ export const GanttChart = forwardRef<
 
   const [planModal, setPlanModal] = useState<PlanModalState>({
     open: false,
-    title: "新建计划或贡献",
   });
 
   const [internalScale, setInternalScale] = useState<GanttScaleId>("month");
@@ -829,7 +829,6 @@ export const GanttChart = forwardRef<
   ) {
     setPlanModal({
       open: true,
-      title: parentPlanId ? "添加计划或贡献" : "新建计划或贡献",
       defaultMode,
       defaultParentPlanId: parentPlanId ?? null,
       defaultStartDate: defaultStartDate ?? null,
@@ -1025,7 +1024,7 @@ export const GanttChart = forwardRef<
             type="button"
             className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-blue-400 hover:bg-blue-200/40 dark:text-blue-300 dark:hover:bg-blue-900/40"
             onClick={() => toggleExpand(item.id)}
-            aria-label={isExpanded ? "折叠" : "展开"}
+            aria-label={isExpanded ? t("gantt.collapseRow") : t("gantt.expandRow")}
           >
             <span className={cn("text-[10px] transition-transform", isExpanded && "rotate-90")}>
               ▶
@@ -1048,7 +1047,7 @@ export const GanttChart = forwardRef<
           {item.title}
           {item.isUnscheduled && (
             <span className="ml-1 text-[9px] font-normal text-violet-600 dark:text-violet-400">
-              未排期
+              {t("gantt.unscheduled")}
             </span>
           )}
         </button>
@@ -1065,8 +1064,8 @@ export const GanttChart = forwardRef<
               "opacity-0 transition-opacity hover:bg-blue-200/60 group-hover:opacity-100",
               "dark:text-blue-300 dark:hover:bg-blue-900/50",
             )}
-            title="添加计划或贡献"
-            aria-label="添加计划或贡献"
+            title={t("gantt.addPlanOrContribution")}
+            aria-label={t("gantt.addPlanOrContribution")}
           >
             +
           </button>
@@ -1181,7 +1180,7 @@ export const GanttChart = forwardRef<
                   ...contributionIntervalFillStyle(color),
                 }}
                 title={title}
-                aria-label={`${title}（时间区间）`}
+                aria-label={t("gantt.contribution.interval", { title })}
               />
             );
           }
@@ -1202,7 +1201,7 @@ export const GanttChart = forwardRef<
                 backgroundColor: color,
               }}
               title={title}
-              aria-label={`${title}（时间点）`}
+              aria-label={t("gantt.contribution.point", { title })}
             />
           );
         })}
@@ -1376,7 +1375,7 @@ export const GanttChart = forwardRef<
                 : "border-violet-400 bg-violet-50/80 text-violet-700 hover:bg-violet-100 dark:border-violet-500/70 dark:bg-violet-950/40 dark:text-violet-300",
             )}
             style={{ left: Math.max(anchorLeft, 8), height: barStyle.barHeightPx }}
-            title="尚未设置时间，点击编辑"
+            title={t("gantt.noTimeSet")}
           >
             <span className="h-2 w-2 shrink-0 rounded-full bg-violet-400 ring-1 ring-white" aria-hidden />
             <span
@@ -1388,7 +1387,7 @@ export const GanttChart = forwardRef<
               )}
               aria-hidden={!showGroupTitles}
             >
-              未排期
+              {t("gantt.unscheduled")}
             </span>
           </button>
         </div>
@@ -1567,14 +1566,14 @@ export const GanttChart = forwardRef<
           headerHeight={timelineHeaderHeight}
           visible={!titlePanelVisible}
           onOpen={openLeftPanels}
-          title="显示计划列表"
+          title={t("gantt.showPlanList")}
         />
         <GanttDrawerOpenTab
           headerHeight={TIMELINE_DATE_HEADER_HEIGHT}
           left={effectiveTitleWidth}
           visible={titlePanelVisible && !schedulePanelVisible}
           onOpen={openSchedulePanel}
-          title="显示时间列"
+          title={t("gantt.showScheduleColumns")}
         />
 
         <div
@@ -1699,21 +1698,21 @@ export const GanttChart = forwardRef<
         {titlePanelVisible && schedulePanelVisible &&
           renderPanelResizeHandle(
             effectiveTitleWidth,
-            "调整标题列宽度",
+            t("gantt.resizeTitleColumn"),
             startTitleResize,
             isResizingTitle,
           )}
         {schedulePanelVisible &&
           renderPanelResizeHandle(
             effectiveLeftWidth,
-            "调整时间列宽度",
+            t("gantt.resizeScheduleColumn"),
             startScheduleResize,
             isResizingSchedule,
           )}
         {titlePanelVisible && !schedulePanelVisible &&
           renderPanelResizeHandle(
             effectiveTitleWidth,
-            "调整标题列宽度",
+            t("gantt.resizeTitleColumn"),
             startTitleResize,
             isResizingTitle,
           )}
@@ -1813,7 +1812,11 @@ export const GanttChart = forwardRef<
       <PlanContributionComposeModal
         open={planModal.open}
         onClose={closePlanModal}
-        title={planModal.title}
+        title={
+          planModal.defaultParentPlanId
+            ? t("gantt.addPlanOrContribution")
+            : t("gantt.newPlanOrContribution")
+        }
         defaultMode={planModal.defaultMode}
         fixedParentPlanId={planModal.defaultParentPlanId}
         fixedPlanId={planModal.defaultParentPlanId}
@@ -1832,7 +1835,7 @@ export const GanttChart = forwardRef<
       <>
         {wrapWithDrawers(
           <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-            <LoadingView label="加载甘特图…" />
+            <LoadingView label={t("gantt.loading")} />
           </div>,
         )}
         {renderPlanModal()}
@@ -1846,13 +1849,13 @@ export const GanttChart = forwardRef<
         {wrapWithDrawers(
           <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             <EmptyState
-              title="暂无时间条"
-              description="创建带开始日期的计划后，会在此展示。"
+              title={t("gantt.emptyTitle")}
+              description={t("gantt.emptyDescription")}
             />
             {fullPage && (
               <div className="px-4 pb-4">
                 <Button type="button" onClick={() => openCreatePlan()}>
-                  + 新建计划或贡献
+                  {t("gantt.newPlanOrContributionButton")}
                 </Button>
               </div>
             )}

@@ -14,6 +14,7 @@ import {
   contributionValuesFromApi,
   type ContributionEditorValues,
 } from "@/components/contributions/contribution-editor";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import {
   MenuIconDelete,
   MenuIconEdit,
@@ -51,6 +52,7 @@ export function GanttContributionDrawerPanel({
   onDeleted?: () => void;
   onUpdated?: () => void;
 }) {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [item, setItem] = useState<ContributionDetail | null>(null);
@@ -82,13 +84,13 @@ export function GanttContributionDrawerPanel({
       .then((data) => {
         if (cancelled) return;
         if (!data.contribution) {
-          setError("记录不存在");
+          setError(t("gantt.contributionDrawer.notFound"));
           return;
         }
         applyItem(data.contribution);
       })
       .catch(() => {
-        if (!cancelled) setError("加载失败");
+        if (!cancelled) setError(t("gantt.contributionDrawer.loadFailed"));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -112,7 +114,7 @@ export function GanttContributionDrawerPanel({
   }
 
   async function handleDelete() {
-    if (!item || !confirm(`确定删除贡献记录「${item.title}」？`)) return;
+    if (!item || !confirm(t("gantt.contributionDrawer.confirmDelete", { title: item.title }))) return;
     setDeleting(true);
     try {
       const res = await fetch(`/api/contributions/${item.id}`, { method: "DELETE" });
@@ -145,7 +147,7 @@ export function GanttContributionDrawerPanel({
       });
       const data = await res.json();
       if (!res.ok) {
-        setSaveError(data.error ?? "保存失败");
+        setSaveError(data.error ?? t("gantt.contributionDrawer.saveFailed"));
         return;
       }
       await reloadItem();
@@ -153,7 +155,7 @@ export function GanttContributionDrawerPanel({
       onUpdated?.();
       dispatchPlanUpdated();
     } catch {
-      setSaveError("网络错误");
+      setSaveError(t("gantt.contributionDrawer.networkError"));
     } finally {
       setSaving(false);
     }
@@ -171,7 +173,7 @@ export function GanttContributionDrawerPanel({
       });
       const data = await res.json();
       if (!res.ok) {
-        setSaveError(data.error ?? "保存失败");
+        setSaveError(data.error ?? t("gantt.contributionDrawer.saveFailed"));
         return;
       }
       await reloadItem();
@@ -179,7 +181,7 @@ export function GanttContributionDrawerPanel({
       onUpdated?.();
       dispatchPlanUpdated();
     } catch {
-      setSaveError("网络错误");
+      setSaveError(t("gantt.contributionDrawer.networkError"));
     } finally {
       setSaving(false);
     }
@@ -199,7 +201,7 @@ export function GanttContributionDrawerPanel({
     setSaveError("");
   }
 
-  const planTitle = item?.plan?.title ?? item?.planTitle ?? "计划";
+  const planTitle = item?.plan?.title ?? item?.planTitle ?? t("gantt.contributionDrawer.planFallback");
   const displayBody = item?.body ?? item?.description ?? "";
   const dateLabel =
     item?.occurredEndOn && item.occurredEndOn !== item.occurredOn
@@ -213,7 +215,7 @@ export function GanttContributionDrawerPanel({
   const menuItems = [
     {
       id: "edit",
-      label: "编辑内容",
+      label: t("gantt.contributionDrawer.editContent"),
       icon: <MenuIconEdit />,
       onClick: () => {
         if (item) applyItem(item);
@@ -222,7 +224,7 @@ export function GanttContributionDrawerPanel({
     },
     {
       id: "plan",
-      label: "修改所属计划",
+      label: t("gantt.contributionDrawer.changePlan"),
       icon: <MenuIconSubPlan />,
       onClick: () => {
         if (item) applyItem(item);
@@ -231,7 +233,7 @@ export function GanttContributionDrawerPanel({
     },
     {
       id: "delete",
-      label: "删除记录",
+      label: t("gantt.contributionDrawer.deleteRecord"),
       icon: <MenuIconDelete />,
       destructive: true,
       onClick: () => void handleDelete(),
@@ -242,7 +244,7 @@ export function GanttContributionDrawerPanel({
     <DrawerPanel onClose={onClose} className="p-0">
       {loading && (
         <div className="p-4">
-          <Loading label="加载贡献…" />
+          <Loading label={t("gantt.contributionDrawer.loading")} />
         </div>
       )}
       {!loading && error && <p className="px-4 py-3 text-sm text-red-600">{error}</p>}
@@ -253,7 +255,10 @@ export function GanttContributionDrawerPanel({
               <div className="min-w-0 flex-1">
                 <CardTitle className="truncate text-base font-semibold leading-6">{item.title}</CardTitle>
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{dateLabel}</p>
-                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">所属计划：{planTitle}</p>
+                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                  {t("gantt.contributionDrawer.planLabel")}
+                  {planTitle}
+                </p>
               </div>
               <PlanDetailActionsMenu
                 items={menuItems}
@@ -264,7 +269,7 @@ export function GanttContributionDrawerPanel({
                 variant="ghost"
                 size="sm"
                 onClick={onClose}
-                aria-label="关闭"
+                aria-label={t("common.close")}
                 className="shrink-0 px-2"
               >
                 ✕
@@ -295,7 +300,7 @@ export function GanttContributionDrawerPanel({
               )}
 
               {editMode === null && !displayBody && item.imageUrls.length === 0 && (
-                <p className="text-xs text-gray-400">暂无详细记录，可通过菜单「编辑内容」补充。</p>
+                <p className="text-xs text-gray-400">{t("gantt.contributionDrawer.emptyDetail")}</p>
               )}
 
               {editMode === null && needsExpand && (
@@ -306,7 +311,7 @@ export function GanttContributionDrawerPanel({
                   className="h-7 px-2 text-xs text-brand-600 hover:text-brand-700"
                   onClick={() => setExpanded((v) => !v)}
                 >
-                  {expanded ? "收起" : "查看更多"}
+                  {expanded ? t("gantt.contributionDrawer.showLess") : t("gantt.contributionDrawer.showMore")}
                 </Button>
               )}
 
@@ -325,10 +330,10 @@ export function GanttContributionDrawerPanel({
                       disabled={saving}
                       onClick={() => void handleSaveContent()}
                     >
-                      {saving ? "保存中…" : "保存"}
+                      {saving ? t("gantt.contributionDrawer.saving") : t("common.save")}
                     </Button>
                     <Button type="button" variant="ghost" size="sm" disabled={saving} onClick={cancelEdit}>
-                      取消
+                      {t("common.cancel")}
                     </Button>
                   </div>
                 </div>
@@ -338,7 +343,7 @@ export function GanttContributionDrawerPanel({
                 <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-800 dark:bg-gray-900">
                   {saveError && <ErrorMessage message={saveError} />}
                   <p className="mb-3 text-xs text-gray-400">
-                    要改到其它子计划，请在此选择，不要改计划的父计划。
+                    {t("gantt.contributionDrawer.planHint")}
                   </p>
                   <ContributionPlanSelect
                     currentPlanId={item.planId}
@@ -347,10 +352,10 @@ export function GanttContributionDrawerPanel({
                   />
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button type="button" size="sm" disabled={saving} onClick={() => void handleSavePlan()}>
-                      {saving ? "保存中…" : "保存"}
+                      {saving ? t("gantt.contributionDrawer.saving") : t("common.save")}
                     </Button>
                     <Button type="button" variant="ghost" size="sm" disabled={saving} onClick={cancelEdit}>
-                      取消
+                      {t("common.cancel")}
                     </Button>
                   </div>
                 </div>

@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { GanttPanelCollapseChevron } from "@/components/gantt/gantt-panel-chevron";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import {
   STATUS_LEGEND,
   STATUS_STYLES,
   type VisualStatusKey,
 } from "@/lib/task-status-style";
+import { localizeVisualStatusLabel } from "@/lib/i18n/gantt-helpers";
 import { cn } from "@/lib/utils";
 
 export function GanttTaskListControls({
@@ -28,6 +30,7 @@ export function GanttTaskListControls({
   onCreatePlan?: () => void;
   drawerTheme?: boolean;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const filterActive =
@@ -66,8 +69,8 @@ export function GanttTaskListControls({
             "flex shrink-0 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800",
             compact ? "h-6 w-6" : "h-7 w-7 text-blue-700 hover:bg-blue-200/50 dark:text-blue-200 dark:hover:bg-blue-900/50",
           )}
-          title="收起计划列表"
-          aria-label="收起计划列表"
+          title={t("gantt.taskList.collapsePlanList")}
+          aria-label={t("gantt.taskList.collapsePlanList")}
         >
           <GanttPanelCollapseChevron className="text-blue-600 dark:text-blue-300" />
         </button>
@@ -82,8 +85,8 @@ export function GanttTaskListControls({
             "flex shrink-0 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800",
             compact ? "h-6 w-6" : "h-7 w-7 text-blue-700/80 hover:bg-blue-200/40 dark:text-blue-200/80 dark:hover:bg-blue-900/40",
           )}
-          title={allExpanded ? "隐藏所有子任务" : "展开所有子任务"}
-          aria-label={allExpanded ? "隐藏所有子任务" : "展开所有子任务"}
+          title={allExpanded ? t("gantt.taskList.collapseAll") : t("gantt.taskList.expandAll")}
+          aria-label={allExpanded ? t("gantt.taskList.collapseAll") : t("gantt.taskList.expandAll")}
         >
           <span
             className={cn(
@@ -113,10 +116,10 @@ export function GanttTaskListControls({
                 ? "border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
                 : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50",
           )}
-          aria-label="按状态筛选"
+          aria-label={t("gantt.taskList.statusFilter")}
         >
           <span className="truncate">
-            状态
+            {t("gantt.taskList.status")}
             {filterActive && ` (${statusFilter.size})`}
           </span>
           <span className="shrink-0 text-[10px] text-gray-400">▼</span>
@@ -149,7 +152,7 @@ export function GanttTaskListControls({
                     {checked && <span className="text-[9px] leading-none">✓</span>}
                   </span>
                   <span className={cn("rounded-full", style.dot, "h-2 w-2 shrink-0")} />
-                  <span className="text-gray-700">{style.label}</span>
+                  <span className="text-gray-700">{localizeVisualStatusLabel(t, key)}</span>
                 </button>
               );
             })}
@@ -163,7 +166,7 @@ export function GanttTaskListControls({
                 }}
                 className="w-full rounded px-2 py-1 text-left text-xs text-brand-600 hover:bg-gray-50"
               >
-                显示全部
+                {t("gantt.taskList.showAll")}
               </button>
             </div>
           </div>
@@ -184,8 +187,8 @@ export function GanttTaskListControls({
               ? "border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900"
               : "border-blue-200 bg-white/90 dark:border-blue-800 dark:bg-blue-900/40",
           )}
-          title="新建计划或贡献"
-          aria-label="新建计划或贡献"
+          title={t("gantt.newPlanOrContribution")}
+          aria-label={t("gantt.newPlanOrContribution")}
         >
           +
         </button>
