@@ -1,11 +1,7 @@
 "use client";
 
 import type { FeedActionType, FeedItemType } from "@prisma/client";
-import {
-  feedItemMeta,
-  formatFeedCardDate,
-  splitTextWithLinks,
-} from "@/lib/feed-display";
+import { splitTextWithLinks } from "@/lib/feed-display";
 import type { PlanFeedChangeItem } from "@/lib/plan-feed-change";
 import { PlanFeedChangeLines } from "@/components/feed/plan-feed-change-lines";
 import {
@@ -13,6 +9,14 @@ import {
   type ContributionInlineData,
 } from "@/components/contributions/contribution-inline-panel";
 import { formatPlanDateTimeDisplay } from "@/lib/dates";
+import { useI18n } from "@/components/i18n/i18n-provider";
+import {
+  formatFeedCardDate,
+  localizeContributionContext,
+  localizeFeedActionPhrase,
+  localizeFeedItemMeta,
+  localizeMemoQuadrantFeed,
+} from "@/lib/i18n/feed-helpers";
 import { cn } from "@/lib/utils";
 
 export interface FeedItemCardData {
@@ -29,6 +33,7 @@ export interface FeedItemCardData {
   planUpdateChanges?: PlanFeedChangeItem[] | null;
   planUpdateSummary?: string | null;
   memoQuadrant?: string | null;
+  memoQuadrantId?: string | null;
   contributionDetail?: ContributionInlineData | null;
 }
 
@@ -117,15 +122,19 @@ export function FeedItemCard({
   onContributionChanged?: () => void;
   logStyle?: boolean;
 }) {
+  const { t, locale } = useI18n();
   const isPlan = item.itemType === "plan";
   const isMemo = item.itemType === "memo";
   const isContribution = item.itemType === "contribution";
-  const meta = feedItemMeta(item.itemType, item.actionType);
-  const dateLabel = formatFeedCardDate(item.createdAt);
+  const meta = localizeFeedItemMeta(t, item.itemType, item.actionType);
+  const actionPhrase = localizeFeedActionPhrase(t, item.actionType, item.itemType, locale);
+  const dateLabel = formatFeedCardDate(item.createdAt, locale, t);
+  const memoQuadrantLabel =
+    localizeMemoQuadrantFeed(t, item.memoQuadrantId) ?? item.memoQuadrant;
   const hasPlanUpdateDetail =
     isPlan &&
     ((item.planUpdateChanges?.length ?? 0) > 0 || Boolean(item.planUpdateSummary));
-  const hasMemoDetail = isMemo && Boolean(item.memoQuadrant);
+  const hasMemoDetail = isMemo && Boolean(memoQuadrantLabel);
   const showActionPhrase = !hasPlanUpdateDetail && !hasMemoDetail;
   const showExcerpt =
     Boolean(item.excerpt) && !hasPlanUpdateDetail && !hasMemoDetail && !isContribution;
@@ -137,12 +146,17 @@ export function FeedItemCard({
       ? `${formatPlanDateTimeDisplay(item.contributionDetail.occurredOn)} ~ ${formatPlanDateTimeDisplay(item.contributionDetail.occurredEndOn)}`
       : formatPlanDateTimeDisplay(item.contributionDetail.occurredOn));
 
+  const contextLabel =
+    isContribution && item.contributionDetail
+      ? localizeContributionContext(t, item.contributionDetail.planTitle)
+      : item.contextLabel;
+
   const body = (
     <div className="space-y-1">
       {isContribution ? (
         <>
           {!item.contributionDetail && (
-            <p className="text-xs text-gray-500 dark:text-gray-400">{item.actionPhrase}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{actionPhrase}</p>
           )}
           {item.contributionDetail ? (
             <ContributionInlinePanel
@@ -160,8 +174,8 @@ export function FeedItemCard({
                   >
                     {item.headline}
                   </h3>
-                  {item.contextLabel && (
-                    <p className="text-xs text-gray-400 dark:text-gray-500">{item.contextLabel}</p>
+                  {contextLabel && (
+                    <p className="text-xs text-gray-400 dark:text-gray-500">{contextLabel}</p>
                   )}
                   {contributionDateLabel && (
                     <p className="text-xs text-gray-400 dark:text-gray-500">{contributionDateLabel}</p>
@@ -179,8 +193,8 @@ export function FeedItemCard({
               >
                 {item.headline}
               </h3>
-              {item.contextLabel && (
-                <p className="text-xs text-gray-400 dark:text-gray-500">{item.contextLabel}</p>
+              {contextLabel && (
+                <p className="text-xs text-gray-400 dark:text-gray-500">{contextLabel}</p>
               )}
               {showExcerpt && item.excerpt && (
                 <ExcerptText text={item.excerpt} className="mt-2 line-clamp-4" />
@@ -197,7 +211,7 @@ export function FeedItemCard({
                   ✓
                 </span>
               )}
-              {item.actionPhrase}
+              {actionPhrase}
             </p>
           )}
           <h3
@@ -209,9 +223,10 @@ export function FeedItemCard({
           >
             {item.headline}
           </h3>
-          {hasMemoDetail && item.memoQuadrant && (
+          {hasMemoDetail && memoQuadrantLabel && (
             <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-              便签类型：{item.memoQuadrant}
+              {t("feed.memoTypeLabel")}
+              {memoQuadrantLabel}
             </p>
           )}
           {hasPlanUpdateDetail && item.planUpdateChanges && item.planUpdateChanges.length > 0 && (

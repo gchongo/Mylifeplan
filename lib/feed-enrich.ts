@@ -21,6 +21,7 @@ export interface EnrichedFeedItem {
   planUpdateChanges: PlanFeedChangeItem[] | null;
   planUpdateSummary: string | null;
   memoQuadrant: string | null;
+  memoQuadrantId: string | null;
   contributionDetail: FeedContributionDetail | null;
 }
 
@@ -82,6 +83,7 @@ export async function enrichFeedItems(
         planUpdateChanges: changes,
         planUpdateSummary: legacySummary,
         memoQuadrant: null,
+        memoQuadrantId: null,
         contributionDetail: null,
       };
     }
@@ -103,6 +105,7 @@ export async function enrichFeedItems(
         planUpdateChanges: null,
         planUpdateSummary: null,
         memoQuadrant: quadrantFeedLabel(memo?.quadrant),
+        memoQuadrantId: memo?.quadrant ?? null,
         contributionDetail: null,
       };
     }
@@ -124,6 +127,7 @@ export async function enrichFeedItems(
       planUpdateChanges: null,
       planUpdateSummary: null,
       memoQuadrant: null,
+      memoQuadrantId: null,
       contributionDetail,
     };
   });

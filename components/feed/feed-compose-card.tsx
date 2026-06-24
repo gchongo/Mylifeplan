@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { PlanDateTimeField } from "@/components/forms/plan-datetime-field";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 export interface FeedComposeValues {
@@ -37,6 +38,7 @@ export function FeedComposeCard({
   relatedPlan?: React.ReactNode;
   bodyRows?: number;
 }) {
+  const { t } = useI18n();
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -47,7 +49,7 @@ export function FeedComposeCard({
     form.append("file", file);
     const res = await fetch(imageUploadUrl, { method: "POST", body: form });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? "上传失败");
+    if (!res.ok) throw new Error(data.error ?? t("feed.composeCard.uploadFailed"));
     return data.url as string;
   }
 
@@ -62,7 +64,7 @@ export function FeedComposeCard({
       }
       onChange({ imageUrls: [...values.imageUrls, ...urls] });
     } catch (e) {
-      setUploadError(e instanceof Error ? e.message : "上传失败");
+      setUploadError(e instanceof Error ? e.message : t("feed.composeCard.uploadFailed"));
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -126,19 +128,19 @@ export function FeedComposeCard({
           onConfirm={(next) => onChange({ startAt: next })}
           mode={timeKind}
           edge="start"
-          placeholder={timeKind === "datetime" ? "开始时间" : "开始日期"}
+          placeholder={timeKind === "datetime" ? t("feed.composeCard.startTime") : t("feed.composeCard.startDate")}
           size="sm"
           className="w-auto min-w-[9rem]"
           triggerClassName="w-auto min-w-[9rem]"
         />
         {startRequired && <span className="text-red-500">*</span>}
-        <span className="text-xs text-gray-400">至</span>
+        <span className="text-xs text-gray-400">{t("feed.composeCard.to")}</span>
         <PlanDateTimeField
           value={values.endAt}
           onConfirm={(next) => onChange({ endAt: next })}
           mode={timeKind}
           edge="end"
-          placeholder={timeKind === "datetime" ? "结束时间" : "结束日期"}
+          placeholder={timeKind === "datetime" ? t("feed.composeCard.endTime") : t("feed.composeCard.endDate")}
           size="sm"
           className="w-auto min-w-[9rem]"
           triggerClassName="w-auto min-w-[9rem]"
@@ -147,29 +149,29 @@ export function FeedComposeCard({
 
       {/* 3. 内容 / 描述 */}
       <div className="flex flex-wrap items-center gap-0.5 border-b border-gray-100 px-2 py-1.5 dark:border-gray-800">
-        <ToolbarBtn title="粗体" onClick={() => wrapMarkdown("**", "**", "粗体")}>
+        <ToolbarBtn title={t("feed.composeCard.toolbarBold")} onClick={() => wrapMarkdown("**", "**", t("feed.composeCard.placeholderBold"))}>
           <strong className="text-xs">B</strong>
         </ToolbarBtn>
-        <ToolbarBtn title="斜体" onClick={() => wrapMarkdown("*", "*", "斜体")}>
+        <ToolbarBtn title={t("feed.composeCard.toolbarItalic")} onClick={() => wrapMarkdown("*", "*", t("feed.composeCard.placeholderItalic"))}>
           <em className="text-xs">I</em>
         </ToolbarBtn>
-        <ToolbarBtn title="链接" onClick={() => wrapMarkdown("[", "](url)", "链接文字")}>
+        <ToolbarBtn title={t("feed.composeCard.toolbarLink")} onClick={() => wrapMarkdown("[", "](url)", t("feed.composeCard.placeholderLink"))}>
           <LinkIcon />
         </ToolbarBtn>
-        <ToolbarBtn title="引用" onClick={() => insertLine("> ")}>
+        <ToolbarBtn title={t("feed.composeCard.toolbarQuote")} onClick={() => insertLine("> ")}>
           <QuoteIcon />
         </ToolbarBtn>
-        <ToolbarBtn title="列表" onClick={() => insertLine("- ")}>
+        <ToolbarBtn title={t("feed.composeCard.toolbarList")} onClick={() => insertLine("- ")}>
           <ListIcon />
         </ToolbarBtn>
-        <ToolbarBtn title="代码" onClick={() => wrapMarkdown("`", "`", "code")}>
+        <ToolbarBtn title={t("feed.composeCard.toolbarCode")} onClick={() => wrapMarkdown("`", "`", "code")}>
           <CodeIcon />
         </ToolbarBtn>
         {showImages && (
           <>
             <span className="mx-1 h-4 w-px bg-gray-200 dark:bg-gray-700" />
             <ToolbarBtn
-              title="插入图片"
+              title={t("feed.composeCard.toolbarInsertImage")}
               disabled={uploading}
               onClick={() => fileRef.current?.click()}
             >
@@ -201,7 +203,7 @@ export function FeedComposeCard({
                 onClick={() =>
                   onChange({ imageUrls: values.imageUrls.filter((u) => u !== url) })
                 }
-                aria-label="移除图片"
+                aria-label={t("feed.composeCard.removeImage")}
               >
                 ×
               </button>

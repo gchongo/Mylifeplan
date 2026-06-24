@@ -11,6 +11,7 @@ import type { FeedTypeFilter as FeedTypeFilterId } from "@/lib/feed-filters";
 import type { PlanFeedChangeItem } from "@/lib/plan-feed-change";
 import type { FeedContributionDetail } from "@/lib/feed-enrich";
 import type { FeedActionType, FeedItemType } from "@prisma/client";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 import { apiJson } from "@/lib/client-api";
 
@@ -28,6 +29,7 @@ interface FeedRow {
   planUpdateChanges: PlanFeedChangeItem[] | null;
   planUpdateSummary: string | null;
   memoQuadrant: string | null;
+  memoQuadrantId: string | null;
   contributionDetail: FeedContributionDetail | null;
 }
 
@@ -38,6 +40,7 @@ export function FeedPanelLive({
   fullPage?: boolean;
   className?: string;
 }) {
+  const { t } = useI18n();
   const pageSize = fullPage ? 50 : 20;
   const [items, setItems] = useState<FeedRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,12 +111,12 @@ export function FeedPanelLive({
 
   const emptyDescription =
     typeFilter === "all"
-      ? "在上方发表框选择便签、计划或贡献后发布。"
+      ? t("feed.emptyAll")
       : typeFilter === "plan"
-        ? "暂无计划相关动态，创建或更新计划后会显示在这里。"
+        ? t("feed.emptyPlan")
         : typeFilter === "memo"
-          ? "暂无便签相关动态，发布便签后会显示在这里。"
-          : "暂无贡献相关动态，记录贡献后会显示在这里。";
+          ? t("feed.emptyMemo")
+          : t("feed.emptyContribution");
 
   return (
     <Card
@@ -125,8 +128,8 @@ export function FeedPanelLive({
     >
       {!fullPage && (
         <CardHeader className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 space-y-0 pb-2">
-          <CardTitle className="min-w-0 truncate text-gray-900">信息流 · 看动态</CardTitle>
-          <PanelExpandButton href="/feed" label="信息流" />
+          <CardTitle className="min-w-0 truncate text-gray-900">{t("feed.homeTitle")}</CardTitle>
+          <PanelExpandButton href="/feed" label={t("feed.expand")} />
         </CardHeader>
       )}
 
@@ -134,9 +137,9 @@ export function FeedPanelLive({
         <FeedComposer onPublished={refreshFeed} />
         <FeedTypeFilter value={typeFilter} onChange={setTypeFilter} />
 
-        {loading && <Loading label="加载动态…" />}
+        {loading && <Loading label={t("feed.loading")} />}
         {!loading && items.length === 0 && (
-          <EmptyState title="暂无动态" description={emptyDescription} />
+          <EmptyState title={t("feed.emptyTitle")} description={emptyDescription} />
         )}
 
         {!loading && items.length > 0 && (

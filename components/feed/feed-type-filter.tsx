@@ -1,6 +1,8 @@
 "use client";
 
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { FEED_TYPE_FILTERS, type FeedTypeFilter } from "@/lib/feed-filters";
+import { localizeFeedTypeFilterLabel } from "@/lib/i18n/feed-helpers";
 import { cn } from "@/lib/utils";
 
 export function FeedTypeFilter({
@@ -12,6 +14,8 @@ export function FeedTypeFilter({
   onChange: (next: FeedTypeFilter) => void;
   className?: string;
 }) {
+  const { t } = useI18n();
+
   return (
     <div
       className={cn(
@@ -19,7 +23,7 @@ export function FeedTypeFilter({
         className,
       )}
       role="tablist"
-      aria-label="信息流分类"
+      aria-label={t("feed.filterAria")}
     >
       <div className="flex items-stretch justify-center gap-6 sm:gap-10">
         {FEED_TYPE_FILTERS.map((filter) => {
@@ -38,7 +42,7 @@ export function FeedTypeFilter({
                   : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200",
               )}
             >
-              {filter.label}
+              {localizeFeedTypeFilterLabel(t, filter.id)}
               {active && (
                 <span
                   className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-brand-600 dark:bg-brand-500"

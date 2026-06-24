@@ -1,15 +1,21 @@
+"use client";
+
 import type { PlanFeedChangeItem } from "@/lib/plan-feed-change";
+import { useI18n } from "@/components/i18n/i18n-provider";
+import { localizePlanChangeLabel } from "@/lib/i18n/feed-helpers";
 import { cn } from "@/lib/utils";
 
 function PlanFeedChangeLine({ change }: { change: PlanFeedChangeItem }) {
-  const { label, before, after } = change;
+  const { t } = useI18n();
+  const label = localizePlanChangeLabel(t, change.label);
+  const { before, after } = change;
   const hasBefore = before != null && before !== "";
   const hasAfter = after != null && after !== "";
 
   if (hasBefore && hasAfter) {
     return (
       <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-        更新了{label}：
+        {t("feed.planChange.updated", { label })}
         <span
           className={cn(
             "text-gray-400 line-through decoration-gray-300 dark:text-gray-500 dark:decoration-gray-600",
@@ -26,7 +32,7 @@ function PlanFeedChangeLine({ change }: { change: PlanFeedChangeItem }) {
   if (hasBefore && !hasAfter) {
     return (
       <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-        清除了{label}：
+        {t("feed.planChange.cleared", { label })}
         <span
           className={cn(
             "text-gray-400 line-through decoration-gray-300 dark:text-gray-500 dark:decoration-gray-600",
@@ -41,7 +47,7 @@ function PlanFeedChangeLine({ change }: { change: PlanFeedChangeItem }) {
   if (!hasBefore && hasAfter) {
     return (
       <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-        更新了{label}：
+        {t("feed.planChange.updated", { label })}
         <span className="text-gray-700 dark:text-gray-300">{after}</span>
       </p>
     );

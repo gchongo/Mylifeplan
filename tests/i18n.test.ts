@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { createTranslator } from "@/lib/i18n/translate";
 import { localizeSummarySegments } from "@/lib/i18n/summary-segments";
+import {
+  localizeFeedActionPhrase,
+  localizeMemoQuadrantFeed,
+} from "@/lib/i18n/feed-helpers";
 
 describe("i18n", () => {
   it("translates zh-CN keys", () => {
@@ -23,5 +27,16 @@ describe("i18n", () => {
       t,
     );
     expect(segments[0].label).toBe("In progress");
+  });
+
+  it("localizes feed action phrases", () => {
+    const t = createTranslator("en-US");
+    expect(localizeFeedActionPhrase(t, "create", "memo", "en-US")).toBe("Created memo");
+    expect(localizeFeedActionPhrase(t, "complete", "plan", "en-US")).toBe("Completed plan");
+  });
+
+  it("localizes memo quadrant for feed", () => {
+    const t = createTranslator("en-US");
+    expect(localizeMemoQuadrantFeed(t, "urgent_important")).toBe("Q1 Urgent & important");
   });
 });
