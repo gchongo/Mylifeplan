@@ -1,4 +1,10 @@
-import { GanttPanelLive } from "@/components/home/gantt-panel-live";
+import dynamic from "next/dynamic";
+import { PanelSkeleton } from "@/components/ui/panel-skeleton";
+
+const GanttPanelLive = dynamic(
+  () => import("@/components/home/gantt-panel-live").then((m) => m.GanttPanelLive),
+  { loading: () => <PanelSkeleton className="h-[70vh] min-h-[24rem]" />, ssr: false },
+);
 
 export default function GanttFullPage() {
   return (

@@ -1,13 +1,27 @@
 "use client";
 
-import { CalendarPanelLive } from "@/components/home/calendar-panel-live";
-import { FeedPanelLive } from "@/components/home/feed-panel-live";
-import { SummaryPanelLive } from "@/components/home/summary-panel-live";
-import { FixedHomeLayout } from "@/components/home/fixed-home-layout";
-import { MobileHomeTabs } from "@/components/layout/mobile-tab-bar";
 import type { HomeTab } from "@/types";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
+import dynamic from "next/dynamic";
+import { FixedHomeLayout } from "@/components/home/fixed-home-layout";
+import { MobileHomeTabs } from "@/components/layout/mobile-tab-bar";
+import { PanelSkeleton } from "@/components/ui/panel-skeleton";
+
+const FeedPanelLive = dynamic(
+  () => import("@/components/home/feed-panel-live").then((m) => m.FeedPanelLive),
+  { loading: () => <PanelSkeleton className="h-full min-h-[320px]" />, ssr: false },
+);
+
+const SummaryPanelLive = dynamic(
+  () => import("@/components/home/summary-panel-live").then((m) => m.SummaryPanelLive),
+  { loading: () => <PanelSkeleton className="h-full min-h-[240px]" />, ssr: false },
+);
+
+const CalendarPanelLive = dynamic(
+  () => import("@/components/home/calendar-panel-live").then((m) => m.CalendarPanelLive),
+  { loading: () => <PanelSkeleton className="h-full min-h-[280px]" />, ssr: false },
+);
 
 function resolveMobileTab(tabParam: string | null): HomeTab {
   if (tabParam === "calendar") return "calendar";

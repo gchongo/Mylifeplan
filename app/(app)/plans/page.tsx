@@ -1,8 +1,7 @@
 import { getSession } from "@/lib/auth/get-session";
 import { prisma } from "@/lib/db";
 import { formatPlanDateTime } from "@/lib/dates";
-import { PlanKanbanBoard } from "@/components/plans/plan-kanban-board";
-import { PlansBoardTitle } from "@/components/plans/plans-board-title";
+import { PlansBoardClient } from "@/components/plans/plans-board-client";
 import type { KanbanPlan } from "@/lib/kanban-board";
 import { redirect } from "next/navigation";
 
@@ -45,12 +44,5 @@ export default async function PlansPage() {
     contributionCount: p._count.contributions,
   }));
 
-  return (
-    <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden px-4 lg:px-6">
-      <div className="shrink-0 pt-2">
-        <PlansBoardTitle />
-      </div>
-      <PlanKanbanBoard initialPlans={initialPlans} className="min-h-0 flex-1" />
-    </div>
-  );
+  return <PlansBoardClient initialPlans={initialPlans} />;
 }

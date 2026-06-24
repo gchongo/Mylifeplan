@@ -104,6 +104,52 @@ export function StickyNoteBoard() {
     if (!res.ok) throw new Error(data.error ?? t("common.saveFailed"));
   }, [t]);
 
+  const batchPersistLayout = useCallback(
+    async (
+      updates: Array<{
+        id: string;
+        posX?: number;
+        posY?: number;
+        zIndex?: number;
+        quadrant?: string | null;
+        width?: number;
+        height?: number;
+      }>,
+    ) => {
+      if (updates.length === 0) return;
+      const res = await fetch("/api/memos/batch-layout", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updates }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? t("common.saveFailed"));
+    },
+    [t],
+  );
+
+  const zIndexPendingRef = useRef<Map<string, number>>(new Map());
+  const zIndexTimerRef = useRef<number | null>(null);
+
+  const scheduleZIndexPersist = useCallback(
+    (id: string, zIndex: number) => {
+      zIndexPendingRef.current.set(id, zIndex);
+      if (zIndexTimerRef.current != null) {
+        window.clearTimeout(zIndexTimerRef.current);
+      }
+      zIndexTimerRef.current = window.setTimeout(() => {
+        zIndexTimerRef.current = null;
+        const updates = Array.from(zIndexPendingRef.current.entries()).map(([noteId, z]) => ({
+          id: noteId,
+          zIndex: z,
+        }));
+        zIndexPendingRef.current.clear();
+        void batchPersistLayout(updates).catch(() => {});
+      }, 400);
+    },
+    [batchPersistLayout],
+  );
+
   const load = useCallback(async () => {
     const res = await fetch("/api/memos?standaloneOnly=true");
     const data = await res.json();
@@ -121,6 +167,7 @@ export function StickyNoteBoard() {
       mapped,
     );
 
+    const quadrantFixes: Array<{ id: string; quadrant: string }> = [];
     const reconciled: NoteState[] = [];
     for (const note of mapped) {
       const { width, height } = {
@@ -138,14 +185,20 @@ export function StickyNoteBoard() {
       );
       if (note.quadrant !== expected) {
         reconciled.push({ ...note, quadrant: expected });
-        void persistNote(note.id, { quadrant: expected }).catch(() => {});
+        quadrantFixes.push({ id: note.id, quadrant: expected });
       } else {
         reconciled.push(note);
       }
     }
 
+    if (quadrantFixes.length > 0) {
+      void batchPersistLayout(
+        quadrantFixes.map((item) => ({ id: item.id, quadrant: item.quadrant })),
+      ).catch(() => {});
+    }
+
     setNotes(reconciled);
-  }, [boardAxis, persistNote, viewportSize.width, viewportSize.height]);
+  }, [boardAxis, batchPersistLayout, viewportSize.width, viewportSize.height]);
 
   useEffect(() => {
     load().finally(() => setLoading(false));
@@ -222,17 +275,21 @@ export function StickyNoteBoard() {
     pendingAxisRef.current = null;
     const prevAxis = axisSnapshotRef.current;
     repositionNotesForAxis(prevAxis, nextAxis);
-    repositionNotesForAxis(prevAxis, nextAxis);
     setBoardAxis(nextAxis);
     axisSnapshotRef.current = nextAxis;
     writeMemoBoardAxisToStorage(nextAxis);
 
     setNotes((prev) => {
-      for (const note of prev) {
-        if (note.posX !== note.x || note.posY !== note.y) {
-          void persistNote(note.id, { posX: note.x, posY: note.y }).catch(() => {});
-        }
+      const layoutUpdates = prev
+        .filter((note) => note.posX !== note.x || note.posY !== note.y)
+        .map((note) => ({ id: note.id, posX: note.x, posY: note.y }));
+
+      if (layoutUpdates.length > 0) {
+        void batchPersistLayout(layoutUpdates).catch((e) =>
+          setError(e instanceof Error ? e.message : t("memos.errors.savePosition")),
+        );
       }
+
       return prev.map((note) => ({ ...note, posX: note.x, posY: note.y }));
     });
 
@@ -264,6 +321,7 @@ export function StickyNoteBoard() {
   }
 
   function reconcileQuadrantsForAxis(axis: MemoBoardAxis) {
+    const fixes: Array<{ id: string; quadrant: string }> = [];
     setNotes((prev) =>
       prev.map((note) => {
         const { width, height } = noteSize(note);
@@ -277,12 +335,17 @@ export function StickyNoteBoard() {
           axis,
         );
         if (note.quadrant !== expected) {
-          void persistNote(note.id, { quadrant: expected }).catch(() => {});
+          fixes.push({ id: note.id, quadrant: expected });
           return { ...note, quadrant: expected };
         }
         return note;
       }),
     );
+    if (fixes.length > 0) {
+      void batchPersistLayout(
+        fixes.map((item) => ({ id: item.id, quadrant: item.quadrant })),
+      ).catch(() => {});
+    }
   }
 
   function handleMoveEnd(id: string, x: number, y: number) {
@@ -311,7 +374,7 @@ export function StickyNoteBoard() {
     const z = maxZRef.current;
     patchNote(id, { zIndex: z });
     setActiveId(id);
-    void persistNote(id, { zIndex: z }).catch(() => {});
+    scheduleZIndexPersist(id, z);
   }
 
   async function handleUpdate(id: string, patch: Partial<StickyNoteData & { content: string }>) {

@@ -117,6 +117,73 @@ function memoUpdateWritesFeed(data: {
   );
 }
 
+const MEMO_LAYOUT_FIELDS = [
+  "posX",
+  "posY",
+  "zIndex",
+  "color",
+  "quadrant",
+  "width",
+  "height",
+] as const;
+
+type MemoLayoutField = (typeof MEMO_LAYOUT_FIELDS)[number];
+
+function isMemoLayoutOnlyUpdate(data: Record<string, unknown>): boolean {
+  const keys = Object.keys(data).filter((key) => data[key] !== undefined);
+  return keys.length > 0 && keys.every((key) => MEMO_LAYOUT_FIELDS.includes(key as MemoLayoutField));
+}
+
+export type MemoLayoutBatchItem = {
+  id: string;
+  posX?: number | null;
+  posY?: number | null;
+  zIndex?: number;
+  quadrant?: string | null;
+  width?: number | null;
+  height?: number | null;
+};
+
+function batchTransactionTimeout(itemCount: number): number {
+  return Math.min(60_000, 10_000 + itemCount * 300);
+}
+
+export async function batchUpdateMemoLayout(userId: string, updates: MemoLayoutBatchItem[]) {
+  if (updates.length === 0) return [];
+
+  const ids = updates.map((item) => item.id);
+  const memos = await prisma.memo.findMany({
+    where: { id: { in: ids }, userId, linkedPlanId: null },
+    select: { id: true },
+  });
+  if (memos.length !== updates.length) throw new Error("NOT_FOUND");
+
+  return prisma.$transaction(
+    async (tx) => {
+      const results = [];
+      for (const item of updates) {
+        results.push(
+          await tx.memo.update({
+            where: { id: item.id },
+            data: {
+              ...(item.posX !== undefined && { posX: item.posX }),
+              ...(item.posY !== undefined && { posY: item.posY }),
+              ...(item.zIndex !== undefined && { zIndex: item.zIndex }),
+              ...(item.quadrant !== undefined && {
+                quadrant: item.quadrant && isMemoQuadrantId(item.quadrant) ? item.quadrant : null,
+              }),
+              ...(item.width !== undefined && { width: item.width }),
+              ...(item.height !== undefined && { height: item.height }),
+            },
+          }),
+        );
+      }
+      return results;
+    },
+    { timeout: batchTransactionTimeout(updates.length) },
+  );
+}
+
 export async function updateMemoById(
   userId: string,
   memoId: string,
@@ -163,42 +230,85 @@ export async function updateMemoById(
     const plan = await prisma.plan.findFirst({ where: { id: memo.linkedPlanId, userId } });
     if (!plan) throw new Error("NOT_FOUND");
 
-    return prisma.$transaction(async (tx) => {
-      const updated = await tx.plan.update({
-        where: { id: plan.id },
-        data: {
-          ...(title !== undefined && { title: title.trim() }),
-          ...(description !== undefined && {
-            description: description?.trim() || null,
-          }),
-          ...(data.startDate !== undefined && { startDate: parseDateOnly(data.startDate || null) }),
-          ...(data.endDate !== undefined && { endDate: parseDateOnly(data.endDate || null) }),
-        },
-      });
-
-      await syncMemoForPlan(updated, tx);
-      if (body !== undefined) {
-        await tx.memo.update({
-          where: { id: memoId },
-          data: { body: body?.trim() || null },
+    return prisma.$transaction(
+      async (tx) => {
+        const updated = await tx.plan.update({
+          where: { id: plan.id },
+          data: {
+            ...(title !== undefined && { title: title.trim() }),
+            ...(description !== undefined && {
+              description: description?.trim() || null,
+            }),
+            ...(data.startDate !== undefined && { startDate: parseDateOnly(data.startDate || null) }),
+            ...(data.endDate !== undefined && { endDate: parseDateOnly(data.endDate || null) }),
+          },
         });
-      }
 
-      if (memoUpdateWritesFeed(data)) {
-        await writeFeed({
-          userId,
-          itemType: "plan",
-          itemId: updated.id,
-          actionType: "update",
-          content: updated.title,
-        });
-      }
+        await syncMemoForPlan(updated, tx);
+        if (body !== undefined) {
+          await tx.memo.update({
+            where: { id: memoId },
+            data: { body: body?.trim() || null },
+          });
+        }
 
-      return { type: "plan" as const, item: updated };
-    });
+        if (memoUpdateWritesFeed(data)) {
+          await writeFeed({
+            userId,
+            itemType: "plan",
+            itemId: updated.id,
+            actionType: "update",
+            content: updated.title,
+          });
+        }
+
+        return { type: "plan" as const, item: updated };
+      },
+      { timeout: 15_000 },
+    );
   }
 
-  return prisma.$transaction(async (tx) => {
+  const layoutOnly = isMemoLayoutOnlyUpdate(data as Record<string, unknown>);
+  if (layoutOnly) {
+    const updated = await prisma.memo.update({
+      where: { id: memo.id },
+      data: {
+        ...(data.posX !== undefined && { posX: data.posX }),
+        ...(data.posY !== undefined && { posY: data.posY }),
+        ...(data.zIndex !== undefined && { zIndex: data.zIndex }),
+        ...(data.color !== undefined && { color: data.color }),
+        ...(data.quadrant !== undefined && {
+          quadrant: data.quadrant && isMemoQuadrantId(data.quadrant) ? data.quadrant : null,
+        }),
+        ...(data.width !== undefined && { width: data.width }),
+        ...(data.height !== undefined && { height: data.height }),
+      },
+    });
+
+    const nextQuadrant =
+      data.quadrant !== undefined
+        ? data.quadrant && isMemoQuadrantId(data.quadrant)
+          ? data.quadrant
+          : null
+        : undefined;
+    const quadrantChanged =
+      nextQuadrant !== undefined && nextQuadrant !== memo.quadrant;
+
+    if (quadrantChanged) {
+      await writeFeed({
+        userId,
+        itemType: "memo",
+        itemId: updated.id,
+        actionType: wasBlank ? "create" : "update",
+        content: feedTitle(updated),
+      });
+    }
+
+    return { type: "memo" as const, item: updated };
+  }
+
+  return prisma.$transaction(
+    async (tx) => {
     const updated = await tx.memo.update({
       where: { id: memo.id },
       data: {
@@ -239,7 +349,9 @@ export async function updateMemoById(
     }
 
     return { type: "memo" as const, item: updated };
-  });
+    },
+    { timeout: 15_000 },
+  );
 }
 
 export async function addMemoImages(userId: string, memoId: string, urls: string[]) {

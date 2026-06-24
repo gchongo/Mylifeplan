@@ -1,5 +1,4 @@
 import type { LanguagePreference } from "@/lib/user-preferences";
-import enUS from "@/lib/i18n/messages/en-US";
 import zhCN from "@/lib/i18n/messages/zh-CN";
 
 type DeepStringRecord<T> = T extends string
@@ -8,23 +7,32 @@ type DeepStringRecord<T> = T extends string
 
 export type MessageTree = DeepStringRecord<typeof zhCN>;
 
-const MESSAGES: Record<LanguagePreference, MessageTree> = {
-  "zh-CN": zhCN,
-  "en-US": enUS,
-};
+let enUSCache: MessageTree | null = null;
+let enUSLoading: Promise<MessageTree> | null = null;
 
 export type TranslationKey = string;
 
 export function getMessages(locale: LanguagePreference): MessageTree {
-  return MESSAGES[locale] ?? MESSAGES["zh-CN"];
+  if (locale === "en-US" && enUSCache) return enUSCache;
+  return zhCN;
 }
 
-export function createTranslator(locale: LanguagePreference) {
-  const messages = getMessages(locale);
+export async function loadMessages(locale: LanguagePreference): Promise<MessageTree> {
+  if (locale !== "en-US") return zhCN;
+  if (enUSCache) return enUSCache;
+  enUSLoading ??= import("@/lib/i18n/messages/en-US").then((mod) => {
+    enUSCache = mod.default as MessageTree;
+    return enUSCache;
+  });
+  return enUSLoading;
+}
+
+export function createTranslator(locale: LanguagePreference, messages?: MessageTree) {
+  const tree = messages ?? getMessages(locale);
 
   return function t(key: TranslationKey, vars?: Record<string, string | number>): string {
     const parts = key.split(".");
-    let cur: unknown = messages;
+    let cur: unknown = tree;
     for (const part of parts) {
       if (cur && typeof cur === "object" && part in cur) {
         cur = (cur as Record<string, unknown>)[part];

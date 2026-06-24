@@ -1,10 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CalendarPanelLive } from "@/components/home/calendar-panel-live";
-import { FeedPanelLive } from "@/components/home/feed-panel-live";
-import { SummaryPanelLive } from "@/components/home/summary-panel-live";
+import {
+  CalendarPanelLive,
+  FeedPanelLive,
+  SummaryPanelLive,
+} from "@/components/home/home-panels-dynamic";
 import { PanelResizeHandle } from "@/components/home/panel-resize-handle";
+import { PanelSkeleton } from "@/components/ui/panel-skeleton";
 
 const STORAGE_FEED_WIDTH = "mylifeplan-home-feed-width";
 
@@ -29,6 +32,7 @@ export function FixedHomeLayout() {
   const layoutRef = useRef<HTMLDivElement>(null);
   const [feedWidth, setFeedWidth] = useState(DEFAULT_FEED_WIDTH);
   const [hydrated, setHydrated] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
 
   const maxFeedWidthFor = useCallback((totalWidth: number) => {
     const byRatio = Math.floor(totalWidth * MAX_FEED_WIDTH_RATIO);
@@ -50,6 +54,16 @@ export function FixedHomeLayout() {
     if (w !== null) setFeedWidth(w);
     setHydrated(true);
   }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (typeof window.requestIdleCallback === "function") {
+      const id = window.requestIdleCallback(() => setShowCalendar(true));
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = window.setTimeout(() => setShowCalendar(true), 120);
+    return () => window.clearTimeout(id);
+  }, [hydrated]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -109,7 +123,11 @@ export function FixedHomeLayout() {
         </div>
 
         <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
-          <CalendarPanelLive />
+          {showCalendar ? (
+            <CalendarPanelLive />
+          ) : (
+            <PanelSkeleton className="h-full min-h-[280px]" />
+          )}
         </div>
       </div>
     </div>
