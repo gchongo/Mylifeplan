@@ -2,20 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
-export const sidebarNavItems = [
-  { href: "/", label: "首页", icon: "⌂" },
-  { href: "/feed", label: "信息流", icon: "≡" },
-  { href: "/gantt", label: "甘特图", icon: "▬" },
-  { href: "/calendar", label: "日历", icon: "▦" },
-  { href: "/plans", label: "看板", icon: "◎" },
-  { href: "/summary", label: "总结", icon: "◫" },
-  { href: "/memos", label: "便签", icon: "▤" },
-];
+const sidebarNavItems = [
+  { href: "/", labelKey: "nav.home", icon: "⌂" },
+  { href: "/feed", labelKey: "nav.feed", icon: "≡" },
+  { href: "/gantt", labelKey: "nav.gantt", icon: "▬" },
+  { href: "/calendar", labelKey: "nav.calendar", icon: "▦" },
+  { href: "/plans", labelKey: "nav.plans", icon: "◎" },
+  { href: "/summary", labelKey: "nav.summary", icon: "◫" },
+  { href: "/memos", labelKey: "nav.memos", icon: "▤" },
+] as const;
 
 export function SidebarNavMenu({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const { t } = useI18n();
 
   return (
     <nav className="sidebar-nav-menu flex h-full flex-col gap-1 overflow-y-auto p-3">
@@ -38,7 +40,7 @@ export function SidebarNavMenu({ onNavigate }: { onNavigate?: () => void }) {
               )}
             >
               <span aria-hidden>{item.icon}</span>
-              {item.label}
+              {t(item.labelKey)}
             </Link>
           );
         })}
@@ -55,7 +57,7 @@ export function SidebarNavMenu({ onNavigate }: { onNavigate?: () => void }) {
         )}
       >
         <span aria-hidden>⚙</span>
-        设置
+        {t("nav.settings")}
       </Link>
     </nav>
   );

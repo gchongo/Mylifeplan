@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import type { PlanRelationNode } from "@/lib/plan-relationship";
 import { cn } from "@/lib/utils";
 
@@ -85,12 +86,13 @@ export function PlanRelationshipCard({
   childPlans: PlanRelationNode[];
   onNavigatePlan?: (planId: string) => void;
 }) {
+  const { t } = useI18n();
   if (ancestors.length === 0 && childPlans.length === 0) return null;
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">计划关系</CardTitle>
+        <CardTitle className="text-base">{t("planDetail.relationship")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-0">
         {ancestors.map((node) => (

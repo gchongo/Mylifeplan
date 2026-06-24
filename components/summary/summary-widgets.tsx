@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { PlanSummaryStats } from "@/lib/plan-summary";
 import { apiJson } from "@/lib/client-api";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 export type SummarySegment = { key?: string; label: string; value: number; color: string };
@@ -468,12 +469,14 @@ export function PrimaryPlanStats({
   summary: PlanSummaryStats;
   singleRow?: boolean;
 }) {
+  const { t } = useI18n();
+
   return (
     <div className={cn("grid gap-1", singleRow ? "grid-cols-6" : "grid-cols-3 gap-1.5")}>
       {PRIMARY_PLAN_STAT_ITEMS.map((item) => (
         <MiniStat
           key={item.key}
-          label={item.label}
+          label={t(`summary.metric.${item.key}`)}
           value={getPrimaryPlanStatValue(summary, item.key)}
           color={item.color}
           hint={"hint" in item ? item.hint : undefined}

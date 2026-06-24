@@ -7,7 +7,8 @@ import { Select } from "@/components/ui/select";
 import { GanttActualLineSettings } from "@/components/settings/gantt-actual-line-settings";
 import { GanttTodayColumnSettings } from "@/components/settings/gantt-today-column-settings";
 import { CalendarWeekNumberSettings } from "@/components/settings/calendar-week-number-settings";
-import { LANGUAGE_OPTIONS, THEME_OPTIONS, TIMEZONE_OPTIONS, resolveTimezone } from "@/lib/user-preferences";
+import { useI18n } from "@/components/i18n/i18n-provider";
+import { TIMEZONE_OPTIONS, THEME_OPTIONS, LANGUAGE_OPTIONS, resolveTimezone } from "@/lib/user-preferences";
 import { useSettings } from "@/components/settings/settings-provider";
 
 function SettingsSection({
@@ -31,58 +32,65 @@ function SettingsSection({
 }
 
 export function SettingsPageClient({ userEmail }: { userEmail?: string | null }) {
+  const { t } = useI18n();
   const { preferences, ready, setTimezone, setTheme, setLanguage, setGanttActualLine, setGanttTodayColumn, setCalendarWeekNumbers } =
     useSettings();
   const effectiveTimezone = resolveTimezone(preferences.timezone);
 
+  const timezoneOptions = TIMEZONE_OPTIONS.map((o) => ({
+    value: o.value,
+    label: t(`settings.timezoneOption.${o.value}`),
+  }));
+  const themeOptions = THEME_OPTIONS.map((o) => ({
+    value: o.value,
+    label: t(`settings.themeOption.${o.value}`),
+  }));
+  const languageOptions = LANGUAGE_OPTIONS.map((o) => ({
+    value: o.value,
+    label: t(`settings.languageOption.${o.value}`),
+  }));
+
   return (
     <div className="mx-auto w-full max-w-2xl space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">设置</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          管理时区、主题、语言等个人偏好。部分选项将在后续版本中逐步生效。
-        </p>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{t("settings.title")}</h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t("settings.intro")}</p>
       </div>
 
-      <SettingsSection title="通用" description="影响日期显示与界面语言。">
+      <SettingsSection title={t("settings.general")} description={t("settings.generalDesc")}>
         <Select
-          label="时区"
+          label={t("settings.timezone")}
           value={preferences.timezone}
           disabled={!ready}
-          options={[...TIMEZONE_OPTIONS]}
+          options={timezoneOptions}
           onChange={(e) => setTimezone(e.target.value)}
         />
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          当前生效时区：
+          {t("settings.timezoneEffective")}
           <span className="ml-1 font-medium text-gray-700 dark:text-gray-300">{effectiveTimezone}</span>
         </p>
 
         <Select
-          label="语言"
+          label={t("settings.language")}
           value={preferences.language}
           disabled={!ready}
-          options={[...LANGUAGE_OPTIONS]}
+          options={languageOptions}
           onChange={(e) => setLanguage(e.target.value as typeof preferences.language)}
         />
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          完整多语言界面正在开发中，当前仍以简体中文为主。
-        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">{t("settings.languageNote")}</p>
       </SettingsSection>
 
-      <SettingsSection title="外观" description="选择浅色、深色或跟随系统。">
+      <SettingsSection title={t("settings.appearance")} description={t("settings.appearanceDesc")}>
         <Select
-          label="主题"
+          label={t("settings.theme")}
           value={preferences.theme}
           disabled={!ready}
-          options={[...THEME_OPTIONS]}
+          options={themeOptions}
           onChange={(e) => setTheme(e.target.value as typeof preferences.theme)}
         />
       </SettingsSection>
 
-      <SettingsSection
-        title="日历 · 周数"
-        description="在月历网格左侧显示周数，便于对照全年进度。"
-      >
+      <SettingsSection title={t("settings.calendarWeek")} description={t("settings.calendarWeekDesc")}>
         <CalendarWeekNumberSettings
           value={preferences.calendarWeekNumbers}
           disabled={!ready}
@@ -90,10 +98,7 @@ export function SettingsPageClient({ userEmail }: { userEmail?: string | null })
         />
       </SettingsSection>
 
-      <SettingsSection
-        title="甘特图 · 今天列"
-        description="高亮时间轴上「今天」所在的整列，便于对照计划与实际进度。"
-      >
+      <SettingsSection title={t("settings.ganttToday")} description={t("settings.ganttTodayDesc")}>
         <GanttTodayColumnSettings
           value={preferences.ganttTodayColumn}
           disabled={!ready}
@@ -101,10 +106,7 @@ export function SettingsPageClient({ userEmail }: { userEmail?: string | null })
         />
       </SettingsSection>
 
-      <SettingsSection
-        title="甘特图 · 实际执行线"
-        description="控制计划条内实际开始与结束连线的显示与样式。"
-      >
+      <SettingsSection title={t("settings.ganttActual")} description={t("settings.ganttActualDesc")}>
         <GanttActualLineSettings
           value={preferences.ganttActualLine}
           disabled={!ready}
@@ -112,16 +114,16 @@ export function SettingsPageClient({ userEmail }: { userEmail?: string | null })
         />
       </SettingsSection>
 
-      <SettingsSection title="账户">
+      <SettingsSection title={t("settings.account")}>
         <dl className="space-y-3 text-sm">
           <div className="flex items-center justify-between gap-4">
-            <dt className="text-gray-500 dark:text-gray-400">登录邮箱</dt>
+            <dt className="text-gray-500 dark:text-gray-400">{t("settings.email")}</dt>
             <dd className="font-medium text-gray-900 dark:text-gray-100">{userEmail ?? "—"}</dd>
           </div>
         </dl>
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <Link href="/plans" className="text-sm text-brand-600 hover:underline dark:text-brand-400">
-            返回计划
+            {t("common.backToPlans")}
           </Link>
           <LogoutButton />
         </div>

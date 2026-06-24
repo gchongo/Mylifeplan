@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { SettingsProvider } from "@/components/settings/settings-provider";
+import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 import { SidebarNavDrawer } from "@/components/layout/sidebar-brand";
 import { SidebarNavMenu } from "@/components/layout/sidebar-nav";
@@ -75,6 +76,7 @@ export function AppShellClient({
 
   return (
     <SettingsProvider>
+      <I18nProvider>
       <div
         className={cn(
           "flex flex-col bg-gray-50 dark:bg-gray-950",
@@ -130,6 +132,7 @@ export function AppShellClient({
 
       <MobileTabBar />
     </div>
+      </I18nProvider>
     </SettingsProvider>
   );
 }

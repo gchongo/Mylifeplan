@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -20,6 +21,7 @@ export function Modal({
   className?: string;
   showCloseButton?: boolean;
 }) {
+  const { t } = useI18n();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -57,7 +59,7 @@ export function Modal({
               {title}
             </h2>
             {showCloseButton && (
-              <Button variant="ghost" size="sm" onClick={onClose} aria-label="关闭">
+              <Button variant="ghost" size="sm" onClick={onClose} aria-label={t("common.close")}>
                 ✕
               </Button>
             )}
@@ -66,7 +68,7 @@ export function Modal({
         <div className={cn("p-4", title == null && !showCloseButton && "pt-4", title == null && showCloseButton && "pt-3")}>
           {title == null && showCloseButton && (
             <div className="mb-2 flex justify-end">
-              <Button variant="ghost" size="sm" onClick={onClose} aria-label="关闭">
+              <Button variant="ghost" size="sm" onClick={onClose} aria-label={t("common.close")}>
                 ✕
               </Button>
             </div>

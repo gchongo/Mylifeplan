@@ -5,9 +5,11 @@ import { EmptyState, Loading } from "@/components/ui/feedback";
 import { PanelExpandButton } from "@/components/home/panel-expand-button";
 import { SummaryCompletionExecutionRow } from "@/components/summary/summary-charts";
 import { PrimaryPlanStats, usePlanSummary } from "@/components/summary/summary-widgets";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 export function SummaryPanelLive({ className }: { className?: string }) {
+  const { t } = useI18n();
   const { summary, loading, error, reload } = usePlanSummary();
 
   return (
@@ -18,22 +20,20 @@ export function SummaryPanelLive({ className }: { className?: string }) {
       )}
     >
       <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-1 pb-2">
-        <CardTitle className="min-w-0 truncate text-gray-900 dark:text-gray-100">
-          总结 · 看全局
-        </CardTitle>
-        <PanelExpandButton href="/summary" label="总结" />
+        <CardTitle className="min-w-0 truncate text-gray-900 dark:text-gray-100">{t("summary.homeTitle")}</CardTitle>
+        <PanelExpandButton href="/summary" label={t("summary.expand")} />
       </div>
 
       <CardContent className="shrink-0 overflow-hidden p-0">
-        {loading && <Loading label="加载…" className="py-6" />}
+        {loading && <Loading label={t("common.loading")} className="py-6" />}
         {!loading && error && (
           <EmptyState
-            title="加载失败"
+            title={t("summary.loadFailed")}
             description={error}
             className="border-0 bg-transparent py-6"
             action={
               <button type="button" className="text-xs text-brand-600 hover:underline" onClick={reload}>
-                重试
+                {t("common.retry")}
               </button>
             }
           />
@@ -45,7 +45,7 @@ export function SummaryPanelLive({ className }: { className?: string }) {
             <SummaryCompletionExecutionRow summary={summary} />
 
             {summary.totals.plans === 0 && (
-              <p className="text-center text-xs text-gray-400">创建计划后这里会显示统计</p>
+              <p className="text-center text-xs text-gray-400">{t("summary.emptyHint")}</p>
             )}
           </div>
         )}

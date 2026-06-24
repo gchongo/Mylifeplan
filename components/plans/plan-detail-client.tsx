@@ -19,6 +19,7 @@ import {
   PlanDetailActionsMenu,
 } from "@/components/plans/plan-detail-actions-menu";
 import { PlanStatusMenuButton } from "@/components/plans/plan-status-menu";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { formatPlanDateTimeDisplay } from "@/lib/dates";
 import { describeAggregatedActualTimes, type AggregatedChildNode } from "@/lib/gantt-actual-timeline";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
@@ -47,6 +48,7 @@ export function PlanDetailClient({
   onNavigatePlan?: (planId: string) => void;
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [showEdit, setShowEdit] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeMode, setComposeMode] = useState<PlanContributionComposeMode>("plan");
@@ -113,7 +115,7 @@ export function PlanDetailClient({
   }
 
   async function handleDelete() {
-    if (!confirm("确定删除此计划？")) return;
+    if (!confirm(t("common.confirmDeletePlan"))) return;
     setDeleting(true);
     try {
       const res = await fetch(`/api/plans/${plan.id}`, { method: "DELETE" });
@@ -131,14 +133,14 @@ export function PlanDetailClient({
     ? [
         {
           id: "restore",
-          label: "取消归档",
+          label: t("planDetail.restore"),
           icon: <MenuIconRestore />,
           onClick: () => void restorePlan(),
           disabled: deleting,
         },
         {
           id: "delete",
-          label: "删除",
+          label: t("planDetail.delete"),
           icon: <MenuIconDelete />,
           onClick: () => void handleDelete(),
           destructive: true,
@@ -146,24 +148,24 @@ export function PlanDetailClient({
         },
       ]
     : [
-        { id: "edit", label: "编辑", icon: <MenuIconEdit />, onClick: () => setShowEdit(true) },
-        { id: "sub", label: "子计划", icon: <MenuIconSubPlan />, onClick: () => openCompose("plan") },
+        { id: "edit", label: t("planDetail.edit"), icon: <MenuIconEdit />, onClick: () => setShowEdit(true) },
+        { id: "sub", label: t("planDetail.subPlan"), icon: <MenuIconSubPlan />, onClick: () => openCompose("plan") },
         {
           id: "contrib",
-          label: "贡献",
+          label: t("planDetail.contribution"),
           icon: <MenuIconContribution />,
           onClick: () => openCompose("contribution"),
         },
         {
           id: "archive",
-          label: "归档",
+          label: t("planDetail.archive"),
           icon: <MenuIconArchive />,
           onClick: () => void archivePlan(),
           disabled: deleting,
         },
         {
           id: "delete",
-          label: "删除",
+          label: t("planDetail.delete"),
           icon: <MenuIconDelete />,
           onClick: () => void handleDelete(),
           destructive: true,
@@ -197,14 +199,14 @@ export function PlanDetailClient({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>编辑计划</CardTitle>
+          <CardTitle>{t("planDetail.editPlan")}</CardTitle>
         </CardHeader>
         <CardContent>
           <PlanForm
             plan={{ ...plan, status }}
             hasSubPlans={hasSubPlans}
             redirectTo={embedded ? undefined : `/plans/${plan.id}`}
-            submitLabel="保存"
+            submitLabel={t("common.save")}
             onCancel={() => setShowEdit(false)}
             onSuccess={() => {
               setShowEdit(false);
@@ -245,7 +247,7 @@ export function PlanDetailClient({
           </div>
           <PlanDetailActionsMenu items={menuItems} disabled={deleting} />
           {embedded && onClose && (
-            <Button variant="ghost" size="sm" onClick={onClose} aria-label="关闭" className="shrink-0 px-2">
+            <Button variant="ghost" size="sm" onClick={onClose} aria-label={t("common.close")} className="shrink-0 px-2">
               ✕
             </Button>
           )}
@@ -258,11 +260,11 @@ export function PlanDetailClient({
 
           {!embedded && (
             <dl className="grid grid-cols-2 gap-2 text-sm text-gray-700 dark:text-gray-300">
-              <dt className="text-gray-500">计划开始</dt>
+              <dt className="text-gray-500">{t("planDetail.planStart")}</dt>
               <dd>{formatPlanDateTimeDisplay(plan.startDate)}</dd>
-              <dt className="text-gray-500">计划结束</dt>
+              <dt className="text-gray-500">{t("planDetail.planEnd")}</dt>
               <dd>{formatPlanDateTimeDisplay(plan.endDate)}</dd>
-              <dt className="text-gray-500">实际开始</dt>
+              <dt className="text-gray-500">{t("planDetail.actualStart")}</dt>
               <dd>
                 {hasSubPlans
                   ? aggregatedActual?.start
@@ -270,19 +272,19 @@ export function PlanDetailClient({
                     : "—"
                   : formatPlanDateTimeDisplay(plan.actualStartDate)}
                 {hasSubPlans && (
-                  <span className="ml-1 text-xs text-gray-400">（子计划汇总）</span>
+                  <span className="ml-1 text-xs text-gray-400">{t("planDetail.childRollup")}</span>
                 )}
               </dd>
-              <dt className="text-gray-500">实际结束</dt>
+              <dt className="text-gray-500">{t("planDetail.actualEnd")}</dt>
               <dd>
                 {hasSubPlans ? (
                   aggregatedActual?.end ? (
                     <>
                       {formatPlanDateTimeDisplay(aggregatedActual.end)}
                       {aggregatedActual.endOpen && (
-                        <span className="ml-1 text-xs text-gray-400">（至今）</span>
+                        <span className="ml-1 text-xs text-gray-400">{t("planDetail.untilNow")}</span>
                       )}
-                      <span className="ml-1 text-xs text-gray-400">（子计划汇总）</span>
+                      <span className="ml-1 text-xs text-gray-400">{t("planDetail.childRollup")}</span>
                     </>
                   ) : (
                     "—"
@@ -299,7 +301,7 @@ export function PlanDetailClient({
       <PlanContributionComposeModal
         open={composeOpen}
         onClose={() => setComposeOpen(false)}
-        title="添加计划或贡献"
+        title={t("planDetail.addPlanOrContribution")}
         defaultMode={composeMode}
         fixedParentPlanId={plan.id}
         fixedPlanId={plan.id}

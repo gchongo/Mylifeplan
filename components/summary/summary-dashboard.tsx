@@ -1,10 +1,9 @@
 "use client";
 
 import { EmptyState, Loading } from "@/components/ui/feedback";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import {
-  COMPLETION_RATE_LABEL,
   CompletionRateDonut,
-  EXECUTION_COUNT_HINT,
   ExecutionBreakdown,
   renderStatusIcon,
   renderTypeIcon,
@@ -29,6 +28,7 @@ import {
   IconStatus,
   IconType,
 } from "@/components/summary/summary-icons";
+import { localizeSummarySegments } from "@/lib/i18n/summary-segments";
 import { cn } from "@/lib/utils";
 
 const PRIMARY_ICONS = {
@@ -50,37 +50,44 @@ const PRIMARY_ACCENTS: Record<(typeof PRIMARY_PLAN_STAT_ITEMS)[number]["key"], s
 };
 
 export function SummaryDashboard({ className }: { className?: string }) {
+  const { t } = useI18n();
   const { summary, loading, error, reload } = usePlanSummary();
 
-  if (loading) return <Loading label="加载总结…" />;
+  if (loading) return <Loading label={t("summary.loading")} />;
   if (error) {
     return (
       <EmptyState
-        title="加载失败"
+        title={t("summary.loadFailed")}
         description={error}
         action={
           <button type="button" className="text-sm text-brand-600 hover:underline" onClick={reload}>
-            重试
+            {t("common.retry")}
           </button>
         }
       />
     );
   }
-  if (!summary) return <EmptyState title="暂无数据" description="创建计划后会在这里显示统计。" />;
+  if (!summary) {
+    return <EmptyState title={t("summary.noData")} description={t("summary.noDataHint")} />;
+  }
+
+  const statusSegments = localizeSummarySegments(summary.statusSegments, "status", t);
+  const typeSegments = localizeSummarySegments(summary.typeSegments, "type", t);
+  const executionSegments = localizeSummarySegments(summary.executionSegments, "executionLabel", t);
 
   return (
     <div className={cn("flex h-full min-h-0 flex-col gap-3", className)}>
       <section className="shrink-0 rounded-xl border border-gray-100 bg-gradient-to-r from-indigo-50/80 via-white to-cyan-50/50 p-3 shadow-sm dark:border-gray-800 dark:from-indigo-950/25 dark:via-gray-900 dark:to-cyan-950/15">
         <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-          核心指标
+          {t("summary.coreMetrics")}
         </h2>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="flex shrink-0 flex-col items-center justify-center lg:w-36">
             <p className="mb-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
-              {COMPLETION_RATE_LABEL}
+              {t("summary.completionRate")}
             </p>
             <CompletionRateDonut
-              statusSegments={summary.statusSegments}
+              statusSegments={statusSegments}
               completionRate={summary.completionRate}
               size={96}
               centerValueClassName="text-lg"
@@ -92,7 +99,7 @@ export function SummaryDashboard({ className }: { className?: string }) {
               return (
                 <IconMetricTile
                   key={item.key}
-                  title={item.label}
+                  title={t(`summary.metric.${item.key}`)}
                   value={getPrimaryPlanStatValue(summary, item.key)}
                   accent={PRIMARY_ACCENTS[item.key]}
                   icon={<Icon className="h-4 w-4 text-white" />}
@@ -105,30 +112,22 @@ export function SummaryDashboard({ className }: { className?: string }) {
       </section>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-2">
-        <SectionShell icon={<IconStatus className="h-3.5 w-3.5" />} title="状态分布">
-          <VerticalBarChart
-            segments={summary.statusSegments}
-            renderIcon={renderStatusIcon}
-            barAreaHeight={88}
-          />
+        <SectionShell icon={<IconStatus className="h-3.5 w-3.5" />} title={t("summary.statusDistribution")}>
+          <VerticalBarChart segments={statusSegments} renderIcon={renderStatusIcon} barAreaHeight={88} />
         </SectionShell>
 
-        <SectionShell icon={<IconType className="h-3.5 w-3.5" />} title="计划类型">
-          <AdaptiveDistributionChart
-            segments={summary.typeSegments}
-            renderIcon={renderTypeIcon}
-            pieMaxSegments={2}
-          />
+        <SectionShell icon={<IconType className="h-3.5 w-3.5" />} title={t("summary.planTypes")}>
+          <AdaptiveDistributionChart segments={typeSegments} renderIcon={renderTypeIcon} pieMaxSegments={2} />
         </SectionShell>
 
         <SectionShell
           icon={<IconExecution className="h-3.5 w-3.5" />}
-          title="执行情况"
+          title={t("summary.execution")}
           className="lg:col-span-2"
           contentClassName="p-2.5"
         >
-          <p className="mb-2 text-[11px] text-gray-400">{EXECUTION_COUNT_HINT}</p>
-          <ExecutionBreakdown segments={summary.executionSegments} columns={2} />
+          <p className="mb-2 text-[11px] text-gray-400">{t("summary.executionHint")}</p>
+          <ExecutionBreakdown segments={executionSegments} columns={2} />
         </SectionShell>
       </div>
     </div>

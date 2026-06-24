@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Loading } from "@/components/ui/feedback";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { PlanDetailClient } from "@/components/plans/plan-detail-client";
 import type { PlanFormValues } from "@/components/forms/plan-form";
 import type { PlanContributionItem } from "@/components/plans/plan-contribution-timeline";
@@ -26,6 +27,7 @@ export function PlanDetailModal({
   onClose: () => void;
   onChanged?: () => void;
 }) {
+  const { t } = useI18n();
   const [activePlanId, setActivePlanId] = useState<string | null>(planId);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -53,7 +55,7 @@ export function PlanDetailModal({
     ])
       .then(([planData, contribData]) => {
         if (!planData.plan) {
-          setError("计划不存在");
+          setError(t("common.planNotFound"));
           return;
         }
         const payload = planData.plan as PlanPayload;
@@ -79,7 +81,7 @@ export function PlanDetailModal({
         );
         setContributions(contribData.contributions ?? []);
       })
-      .catch(() => setError("加载失败"))
+      .catch(() => setError(t("common.loadFailed")))
       .finally(() => setLoading(false));
   }
 
@@ -101,7 +103,7 @@ export function PlanDetailModal({
       showCloseButton={false}
       className="max-h-[90vh] max-w-2xl overflow-y-auto"
     >
-      {loading && <Loading label="加载计划…" />}
+      {loading && <Loading label={t("plans.loadingPlan")} />}
       {!loading && error && <p className="text-sm text-red-600">{error}</p>}
       {!loading && plan && (
         <PlanDetailClient

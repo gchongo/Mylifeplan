@@ -23,6 +23,7 @@ import { ROLLUP_STATUS_HINT } from "@/lib/services/plan-rollup";
 import { PlanDetailModal } from "@/components/plans/plan-detail-modal";
 import { PlanContributionComposeModal } from "@/components/forms/plan-contribution-compose-modal";
 import { DrawerLayout, DrawerPanel } from "@/components/ui/drawer";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 function PlanKanbanCard({
@@ -103,6 +104,7 @@ function KanbanColumn({
   onDrop,
   onOpenPlan,
   onCreatePlan,
+  newPlanLabel,
 }: {
   columnId: KanbanColumnId;
   label: string;
@@ -116,6 +118,7 @@ function KanbanColumn({
   onDrop: (columnId: KanbanColumnId, planId: string, fromArchived: boolean) => void;
   onOpenPlan: (planId: string) => void;
   onCreatePlan: () => void;
+  newPlanLabel: string;
 }) {
   const isTarget = dropTarget === columnId && draggingId !== null;
   const visual = kanbanVisualForZone(columnId);
@@ -170,7 +173,7 @@ function KanbanColumn({
         onClick={onCreatePlan}
         className="mt-2 block w-full shrink-0 rounded-lg px-2 py-2 text-center text-sm text-gray-500 hover:bg-gray-200/60 hover:text-gray-800 dark:hover:bg-gray-800/60 dark:hover:text-gray-200"
       >
-        ＋ 新建计划或贡献
+        {newPlanLabel}
       </button>
     </div>
   );
@@ -187,6 +190,9 @@ function KanbanArchivedDrawerPanel({
   onDragLeave,
   onDrop,
   onOpenPlan,
+  title,
+  dropHint,
+  emptyText,
 }: {
   plans: KanbanPlan[];
   draggingId: string | null;
@@ -198,11 +204,14 @@ function KanbanArchivedDrawerPanel({
   onDragLeave: () => void;
   onDrop: (planId: string) => void;
   onOpenPlan: (planId: string) => void;
+  title: string;
+  dropHint: string;
+  emptyText: string;
 }) {
   const isTarget = dropTarget === "archived" && draggingId !== null;
 
   return (
-    <DrawerPanel title={`已归档 (${plans.length})`} onClose={onClose} className="p-0">
+    <DrawerPanel title={title} onClose={onClose} className="p-0">
       <div
         className={cn(
           "flex min-h-full flex-col gap-2 p-3 transition-colors",
@@ -224,13 +233,11 @@ function KanbanArchivedDrawerPanel({
       >
         {isTarget && (
           <p className="rounded-lg border border-dashed border-gray-300 px-3 py-2 text-center text-xs text-gray-500 dark:border-gray-600 dark:text-gray-400">
-            松手以归档
+            {dropHint}
           </p>
         )}
         {plans.length === 0 ? (
-          <p className="py-6 text-center text-sm text-gray-400">
-            暂无归档计划。拖入卡片或从详情页归档。
-          </p>
+          <p className="py-6 text-center text-sm text-gray-400">{emptyText}</p>
         ) : (
           plans.map((plan) => (
             <PlanKanbanCard
@@ -265,6 +272,7 @@ export function PlanKanbanBoard({
   const [moving, setMoving] = useState(false);
   const [planModalId, setPlanModalId] = useState<string | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
+  const { t } = useI18n();
 
   const grouped = useMemo(() => groupPlansByKanbanColumn(plans), [plans]);
 
@@ -323,13 +331,13 @@ export function PlanKanbanBoard({
             body: JSON.stringify(patch),
           });
           const data = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(data.error ?? "恢复失败");
+          if (!res.ok) throw new Error(data.error ?? t("common.restoreFailed"));
           await reloadPlans();
           dispatchPlanUpdated();
         } catch (e) {
           setArchivedPlans(prevArchived);
           setPlans(prevActive);
-          setError(e instanceof Error ? e.message : "恢复失败");
+          setError(e instanceof Error ? e.message : t("common.restoreFailed"));
         } finally {
           setMoving(false);
         }
@@ -376,17 +384,17 @@ export function PlanKanbanBoard({
           body: JSON.stringify(patch),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error ?? "更新失败");
+        if (!res.ok) throw new Error(data.error ?? t("common.updateFailed"));
         await reloadPlans();
         dispatchPlanUpdated();
       } catch (e) {
         setPlans(prevPlans);
-        setError(e instanceof Error ? e.message : "更新失败");
+        setError(e instanceof Error ? e.message : t("common.updateFailed"));
       } finally {
         setMoving(false);
       }
     },
-    [archivedPlans, plans, reloadPlans],
+    [archivedPlans, plans, reloadPlans, t],
   );
 
   const archivePlan = useCallback(
@@ -413,18 +421,18 @@ export function PlanKanbanBoard({
           body: JSON.stringify(patch),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error ?? "归档失败");
+        if (!res.ok) throw new Error(data.error ?? t("common.archiveFailed"));
         await reloadPlans();
         dispatchPlanUpdated();
       } catch (e) {
         setPlans(prevPlans);
         setArchivedPlans(prevArchived);
-        setError(e instanceof Error ? e.message : "归档失败");
+        setError(e instanceof Error ? e.message : t("common.archiveFailed"));
       } finally {
         setMoving(false);
       }
     },
-    [archivedPlans, plans, reloadPlans],
+    [archivedPlans, plans, reloadPlans, t],
   );
 
   const archivedAccent = getKanbanColumnAccentClass("archived");
@@ -450,14 +458,15 @@ export function PlanKanbanBoard({
           onDragLeave={() => setDropTarget(null)}
           onDrop={(planId) => void archivePlan(planId)}
           onOpenPlan={setPlanModalId}
+          title={t("kanban.archivedTitle", { count: archivedPlans.length })}
+          dropHint={t("kanban.dropToArchivePanel")}
+          emptyText={t("kanban.archivedEmpty")}
         />
       }
     >
       <div className={cn("flex min-h-0 flex-1 flex-col gap-3", className)}>
         <div className="flex shrink-0 items-start justify-between gap-3">
-          <p className="min-w-0 text-sm text-gray-500 dark:text-gray-400">
-            与甘特图共用计划数据。拖入列可改状态；拖到右侧「已归档」或打开抽屉可归档。
-          </p>
+          <p className="min-w-0 text-sm text-gray-500 dark:text-gray-400">{t("kanban.hint")}</p>
           <button
             type="button"
             onClick={() => setArchivedOpen(true)}
@@ -481,10 +490,10 @@ export function PlanKanbanBoard({
             )}
           >
             <span className={cn("h-2 w-2 shrink-0 rounded-full", archivedAccent)} aria-hidden />
-            <span>已归档</span>
+            <span>{t("kanban.archived")}</span>
             <span className="text-xs text-gray-400">{archivedPlans.length}</span>
             {archivedDropTarget && (
-              <span className="text-xs text-gray-500">松手归档</span>
+              <span className="text-xs text-gray-500">{t("kanban.dropToArchive")}</span>
             )}
           </button>
         </div>
@@ -505,7 +514,7 @@ export function PlanKanbanBoard({
             <KanbanColumn
               key={col.id}
               columnId={col.id}
-              label={col.label}
+              label={t(`kanban.column.${col.id}`)}
               plans={grouped[col.id]}
               draggingId={draggingId}
               dropTarget={dropTarget}
@@ -521,6 +530,7 @@ export function PlanKanbanBoard({
               }}
               onOpenPlan={setPlanModalId}
               onCreatePlan={() => setComposeOpen(true)}
+              newPlanLabel={t("kanban.newPlanOrContribution")}
             />
           ))}
         </div>
