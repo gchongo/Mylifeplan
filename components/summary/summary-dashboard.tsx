@@ -1,19 +1,64 @@
 "use client";
 
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState, Loading } from "@/components/ui/feedback";
-import { PanelExpandButton } from "@/components/home/panel-expand-button";
 import {
   DonutChart,
-  HorizontalBars,
-  Legend,
+  IconHorizontalBars,
+  IconLegend,
+  IconMetricTile,
   PRIMARY_PLAN_STAT_ITEMS,
-  StatCard,
+  SectionShell,
   getPrimaryPlanStatValue,
   usePlanSummary,
 } from "@/components/summary/summary-widgets";
-import { cn } from "@/lib/utils";
+import {
+  ExecutionIcon,
+  IconArchived,
+  IconContribution,
+  IconDone,
+  IconEarly,
+  IconExecution,
+  IconInProgress,
+  IconMemo,
+  IconNotStarted,
+  IconOverdue,
+  IconPlans,
+  IconRecent,
+  IconStatus,
+  IconType,
+  StatusIcon,
+  TypeIcon,
+  type ExecutionVariant,
+} from "@/components/summary/summary-icons";
+import type { PlanStatus, PlanType } from "@/types";
+
+const PRIMARY_ICONS = {
+  total: IconPlans,
+  in_progress: IconInProgress,
+  done: IconDone,
+  not_started: IconNotStarted,
+  deadlineOverdue: IconOverdue,
+  earlyCompleted: IconEarly,
+} as const;
+
+const PRIMARY_ACCENTS: Record<(typeof PRIMARY_PLAN_STAT_ITEMS)[number]["key"], string> = {
+  total: "#6366f1",
+  in_progress: "#3b82f6",
+  done: "#22c55e",
+  not_started: "#f59e0b",
+  deadlineOverdue: "#ef4444",
+  earlyCompleted: "#10b981",
+};
+
+function formatCompletionTime(iso: string) {
+  return new Date(iso).toLocaleString("zh-CN", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export function SummaryDashboard() {
   const { summary, loading, error, reload } = usePlanSummary();
@@ -37,111 +82,130 @@ export function SummaryDashboard() {
   const { totals, byStatus } = summary;
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">总结</h1>
-        <p className="mt-1 text-sm text-gray-500">计划执行情况一览</p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        {PRIMARY_PLAN_STAT_ITEMS.map((item) => (
-          <StatCard
-            key={item.key}
-            label={item.label}
-            value={getPrimaryPlanStatValue(summary, item.key)}
-            hint={"hint" in item ? item.hint : undefined}
-            accentClass={
-              item.key === "total"
-                ? "bg-indigo-500"
-                : item.key === "in_progress"
-                  ? "bg-blue-500"
-                  : item.key === "done"
-                    ? "bg-green-500"
-                    : item.key === "not_started"
-                      ? "bg-amber-500"
-                      : item.key === "deadlineOverdue"
-                        ? "bg-red-500"
-                        : "bg-emerald-500"
-            }
-          />
-        ))}
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>状态分布</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 pb-6">
+      <section className="overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-br from-indigo-50/90 via-white to-cyan-50/60 p-5 shadow-sm dark:border-gray-800 dark:from-indigo-950/30 dark:via-gray-900 dark:to-cyan-950/20 sm:p-6">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
+          <div className="flex shrink-0 justify-center lg:justify-start">
             <DonutChart
               segments={summary.statusSegments}
+              size={148}
+              strokeWidth={20}
               centerValue={`${summary.completionRate}%`}
-              centerLabel="完成率"
+              centerValueClassName="text-3xl"
             />
-            <div className="w-full sm:max-w-[200px]">
-              <Legend segments={summary.statusSegments} />
-            </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>计划类型</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <HorizontalBars segments={summary.typeSegments} />
-          </CardContent>
-        </Card>
+          <div className="grid flex-1 grid-cols-3 gap-2 sm:grid-cols-6 sm:gap-3">
+            {PRIMARY_PLAN_STAT_ITEMS.map((item) => {
+              const Icon = PRIMARY_ICONS[item.key];
+              return (
+                <IconMetricTile
+                  key={item.key}
+                  title={item.label}
+                  value={getPrimaryPlanStatValue(summary, item.key)}
+                  accent={PRIMARY_ACCENTS[item.key]}
+                  icon={<Icon className="h-5 w-5 text-white" />}
+                />
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <SectionShell icon={<IconStatus className="h-4 w-4" />} title="状态分布">
+          <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start sm:justify-between">
+            <DonutChart segments={summary.statusSegments} size={132} strokeWidth={18} />
+            <div className="w-full sm:max-w-[220px]">
+              <IconLegend
+                segments={summary.statusSegments}
+                renderIcon={(seg) => (
+                  <StatusIcon
+                    status={(seg.key ?? "not_started") as PlanStatus}
+                    className="h-4 w-4"
+                  />
+                )}
+              />
+            </div>
+          </div>
+        </SectionShell>
+
+        <SectionShell icon={<IconType className="h-4 w-4" />} title="计划类型">
+          <IconHorizontalBars
+            segments={summary.typeSegments}
+            renderIcon={(seg) => (
+              <TypeIcon type={(seg.key ?? "goal") as PlanType} className="h-4 w-4" />
+            )}
+          />
+        </SectionShell>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>执行情况</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-6 lg:grid-cols-[200px_1fr]">
-            <div className="flex justify-center lg:justify-start">
-              <DonutChart segments={summary.executionSegments} size={140} strokeWidth={18} />
-            </div>
-            <HorizontalBars segments={summary.executionSegments} />
+      <SectionShell icon={<IconExecution className="h-4 w-4" />} title="执行情况">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,200px)_1fr] lg:items-center">
+          <div className="flex justify-center lg:justify-start">
+            <DonutChart segments={summary.executionSegments} size={156} strokeWidth={18} />
           </div>
-        </CardContent>
-      </Card>
+          <IconHorizontalBars
+            segments={summary.executionSegments}
+            renderIcon={(seg) => (
+              <ExecutionIcon
+                variant={(seg.key ?? "onTrack") as ExecutionVariant}
+                className="h-4 w-4"
+              />
+            )}
+          />
+        </div>
+      </SectionShell>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="便签" value={totals.memos} />
-        <StatCard label="贡献记录" value={totals.contributions} />
-        <StatCard label="已归档" value={byStatus.archived} accentClass="bg-gray-400" />
+        <IconMetricTile
+          title="便签"
+          value={totals.memos}
+          accent="#f59e0b"
+          icon={<IconMemo className="h-5 w-5 text-white" />}
+        />
+        <IconMetricTile
+          title="贡献记录"
+          value={totals.contributions}
+          accent="#8b5cf6"
+          icon={<IconContribution className="h-5 w-5 text-white" />}
+        />
+        <IconMetricTile
+          title="已归档"
+          value={byStatus.archived}
+          accent="#9ca3af"
+          icon={<IconArchived className="h-5 w-5 text-white" />}
+        />
       </div>
 
       {summary.recentCompletions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>最近完成</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="divide-y divide-gray-100 dark:divide-gray-800">
-              {summary.recentCompletions.map((item) => (
-                <li key={item.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
-                  <Link
-                    href={`/plans/${item.id}`}
-                    className="min-w-0 truncate text-sm font-medium text-brand-700 hover:underline dark:text-brand-400"
-                  >
+        <SectionShell icon={<IconRecent className="h-4 w-4" />} title="最近完成">
+          <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+            {summary.recentCompletions.map((item) => (
+              <li key={item.id}>
+                <Link
+                  href={`/plans/${item.id}`}
+                  title={item.title}
+                  className="flex items-center gap-3 py-3 transition-colors first:pt-0 last:pb-0 hover:bg-gray-50/80 dark:hover:bg-gray-800/30"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-50 text-green-600 dark:bg-green-950/40 dark:text-green-400">
+                    <IconDone className="h-4 w-4" />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-gray-100">
                     {item.title}
-                  </Link>
-                  <time className="shrink-0 text-xs text-gray-400">
-                    {new Date(item.completedAt).toLocaleString("zh-CN", {
-                      month: "numeric",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                  </span>
+                  <time
+                    className="shrink-0 text-xs tabular-nums text-gray-400"
+                    dateTime={item.completedAt}
+                    title={formatCompletionTime(item.completedAt)}
+                  >
+                    {formatCompletionTime(item.completedAt)}
                   </time>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </SectionShell>
       )}
     </div>
   );

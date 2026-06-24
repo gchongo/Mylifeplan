@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { PlanSummaryStats } from "@/lib/plan-summary";
 import { apiJson } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
 
-export type SummarySegment = { label: string; value: number; color: string };
+export type SummarySegment = { key?: string; label: string; value: number; color: string };
 
 export function usePlanSummary() {
   const [summary, setSummary] = useState<PlanSummaryStats | null>(null);
@@ -35,6 +35,142 @@ export function usePlanSummary() {
   }, [load]);
 
   return { summary, loading, error, reload };
+}
+
+export function IconMetricTile({
+  icon,
+  value,
+  accent,
+  title,
+  className,
+}: {
+  icon: ReactNode;
+  value: number | string;
+  accent: string;
+  title: string;
+  className?: string;
+}) {
+  return (
+    <div
+      title={title}
+      aria-label={`${title} ${value}`}
+      className={cn(
+        "group relative flex flex-col items-center justify-center gap-2 rounded-2xl border border-gray-100 bg-white px-3 py-4 shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900",
+        className,
+      )}
+    >
+      <div
+        className="flex h-11 w-11 items-center justify-center rounded-xl text-white shadow-sm"
+        style={{ backgroundColor: accent }}
+      >
+        {icon}
+      </div>
+      <p className="text-2xl font-bold tabular-nums leading-none text-gray-900 dark:text-gray-100">{value}</p>
+    </div>
+  );
+}
+
+export function SectionShell({
+  icon,
+  children,
+  className,
+  title,
+}: {
+  icon: ReactNode;
+  children: ReactNode;
+  className?: string;
+  title: string;
+}) {
+  return (
+    <Card className={cn("overflow-hidden border-gray-100/80 shadow-sm dark:border-gray-800", className)}>
+      <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+          {icon}
+        </span>
+        <span className="sr-only">{title}</span>
+      </div>
+      <CardContent className="p-4">{children}</CardContent>
+    </Card>
+  );
+}
+
+export function IconHorizontalBars({
+  segments,
+  renderIcon,
+  className,
+}: {
+  segments: SummarySegment[];
+  renderIcon: (seg: SummarySegment) => ReactNode;
+  className?: string;
+}) {
+  const max = Math.max(1, ...segments.map((s) => s.value));
+
+  if (segments.length === 0) {
+    return (
+      <div className="flex h-24 items-center justify-center rounded-xl border border-dashed border-gray-200 text-gray-300 dark:border-gray-700">
+        <span className="text-2xl">—</span>
+      </div>
+    );
+  }
+
+  return (
+    <ul className={cn("space-y-3", className)}>
+      {segments.map((seg) => (
+        <li key={seg.key ?? seg.label} title={seg.label}>
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-50 text-gray-600 dark:bg-gray-800/80 dark:text-gray-300">
+              {renderIcon(seg)}
+            </span>
+            <span className="text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100">{seg.value}</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+            <div
+              className="h-full rounded-full transition-all"
+              style={{
+                width: `${(seg.value / max) * 100}%`,
+                backgroundColor: seg.color,
+              }}
+            />
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function IconLegend({
+  segments,
+  renderIcon,
+}: {
+  segments: SummarySegment[];
+  renderIcon: (seg: SummarySegment) => ReactNode;
+}) {
+  return (
+    <ul className="grid grid-cols-2 gap-2 sm:grid-cols-1">
+      {segments.map((seg) => (
+        <li
+          key={seg.key ?? seg.label}
+          title={seg.label}
+          className="flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-2.5 py-2 dark:bg-gray-800/50"
+        >
+          <span className="flex items-center gap-2">
+            <span
+              className="flex h-7 w-7 items-center justify-center rounded-md text-gray-600 dark:text-gray-300"
+              style={{ color: seg.color }}
+            >
+              {renderIcon(seg)}
+            </span>
+            <span
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ backgroundColor: seg.color }}
+              aria-hidden
+            />
+          </span>
+          <span className="text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100">{seg.value}</span>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 export function StatCard({
