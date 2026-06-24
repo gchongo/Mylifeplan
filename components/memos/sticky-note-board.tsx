@@ -20,6 +20,55 @@ import { effectiveStickyPosition, nextStickyColor } from "@/lib/memo-sticky";
 
 type NoteState = StickyNoteData & { x: number; y: number };
 
+function MemoBoardSearch({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const expanded = open || value.trim().length > 0;
+
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
+
+  return (
+    <div className="flex items-center gap-1">
+      {expanded && (
+        <input
+          ref={inputRef}
+          type="search"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="搜索…"
+          className="w-32 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm sm:w-40 dark:border-gray-700 dark:bg-gray-900"
+        />
+      )}
+      <button
+        type="button"
+        onClick={() => {
+          setOpen((prev) => {
+            const next = !prev;
+            if (!next && !value.trim()) onChange("");
+            return next;
+          });
+        }}
+        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+        aria-label="搜索便签"
+        title="搜索便签"
+      >
+        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <circle cx="11" cy="11" r="7" />
+          <path strokeLinecap="round" d="M20 20l-3.5-3.5" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 export function StickyNoteBoard() {
   const [notes, setNotes] = useState<NoteState[]>([]);
   const [loading, setLoading] = useState(true);
@@ -280,22 +329,18 @@ export function StickyNoteBoard() {
   if (loading) return <Loading label="加载便签…" />;
 
   return (
-    <div className="flex h-[calc(100vh-7rem)] flex-col">
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <Button type="button" size="sm" onClick={() => void handleAdd()}>
-          + 新建便签
-        </Button>
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="搜索便签…"
-          className="min-w-[160px] flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900"
-        />
-        <span className="text-xs text-gray-400">{notes.length} 张便签</span>
-      </div>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <header className="mb-2 flex shrink-0 items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">便签</h1>
+        <div className="flex items-center gap-1.5">
+          <Button type="button" size="sm" onClick={() => void handleAdd()}>
+            新建便签
+          </Button>
+          <MemoBoardSearch value={search} onChange={setSearch} />
+        </div>
+      </header>
 
-      {error && <ErrorMessage message={error} />}
+      {error && <ErrorMessage message={error} className="mb-2 shrink-0" />}
 
       <div className="relative min-h-0 flex-1">
         <span className="pointer-events-none absolute left-3 top-1/2 z-20 -translate-y-1/2 text-xs font-medium text-gray-500 dark:text-gray-400">
@@ -354,27 +399,9 @@ export function StickyNoteBoard() {
               <div className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/25 dark:bg-white/25" />
             </div>
 
-            {filteredNotes.length === 0 && !search.trim() && (
-              <div
-                className="pointer-events-none absolute inset-0 z-[1] flex flex-col items-center justify-center text-center text-sm text-gray-500"
-                onPointerDown={(e) => e.stopPropagation()}
-              >
-                <p className="mb-3">板上还没有便签</p>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  className="pointer-events-auto"
-                  onClick={() => void handleAdd()}
-                >
-                  贴第一张便签
-                </Button>
-              </div>
-            )}
-
             {filteredNotes.length === 0 && search.trim() && (
               <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center text-sm text-gray-500">
-                没有匹配的便签
+                无匹配结果
               </div>
             )}
 
