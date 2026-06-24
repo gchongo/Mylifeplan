@@ -86,12 +86,14 @@ export function MemoBoardQuadrantGrid({
   boardWidth,
   boardHeight,
   axis,
+  onAxisDragStart,
   onAxisChange,
   onAxisCommit,
 }: {
   boardWidth: number;
   boardHeight: number;
   axis: MemoBoardAxis;
+  onAxisDragStart: () => void;
   onAxisChange: (axis: MemoBoardAxis) => void;
   onAxisCommit: (axis: MemoBoardAxis) => void;
 }) {
@@ -108,6 +110,7 @@ export function MemoBoardQuadrantGrid({
   function onHandlePointerDown(e: React.PointerEvent) {
     e.stopPropagation();
     e.preventDefault();
+    onAxisDragStart();
     dragRef.current = {
       startX: e.clientX,
       startY: e.clientY,
@@ -132,7 +135,6 @@ export function MemoBoardQuadrantGrid({
     const nextX = clampMemoAxisRatio(drag.origXRatio + (e.clientX - drag.startX) / boardWidth);
     const nextY = clampMemoAxisRatio(drag.origYRatio + (e.clientY - drag.startY) / boardHeight);
     const next = { axisXRatio: nextX, axisYRatio: nextY };
-    onAxisChange(next);
     onAxisCommit(next);
   }
 

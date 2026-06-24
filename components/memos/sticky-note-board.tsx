@@ -16,6 +16,7 @@ import {
   defaultPositionForQuadrant,
   detectMemoQuadrant,
   isMemoQuadrantId,
+  mapStickyPositionForAxisChange,
   readMemoBoardAxisFromStorage,
   writeMemoBoardAxisToStorage,
   type MemoBoardAxis,
@@ -88,6 +89,10 @@ export function StickyNoteBoard() {
   const [viewportSize, setViewportSize] = useState({ width: 800, height: 600 });
   const maxZRef = useRef(1);
   const boardRef = useRef<HTMLDivElement>(null);
+  const axisSnapshotRef = useRef<MemoBoardAxis>(readMemoBoardAxisFromStorage());
+  const boardSizeRef = useRef({ width: 800, height: 600 });
+  const pendingAxisRef = useRef<MemoBoardAxis | null>(null);
+  const axisFrameRef = useRef<number | null>(null);
 
   const persistNote = useCallback(async (id: string, body: Record<string, unknown>) => {
     const res = await fetch(`/api/memos/${id}`, {
@@ -165,6 +170,75 @@ export function StickyNoteBoard() {
     [viewportSize.width, viewportSize.height, notes],
   );
 
+  boardSizeRef.current = boardSize;
+
+  function repositionNotesForAxis(prevAxis: MemoBoardAxis, nextAxis: MemoBoardAxis) {
+    const { width: boardWidth, height: boardHeight } = boardSizeRef.current;
+    setNotes((prev) =>
+      prev.map((note) => {
+        const quadrant = note.quadrant;
+        if (!quadrant || !isMemoQuadrantId(quadrant)) return note;
+        const { width, height } = noteSize(note);
+        const nextPos = mapStickyPositionForAxisChange(
+          note.x,
+          note.y,
+          width,
+          height,
+          quadrant,
+          boardWidth,
+          boardHeight,
+          prevAxis,
+          nextAxis,
+        );
+        if (nextPos.x === note.x && nextPos.y === note.y) return note;
+        return { ...note, x: nextPos.x, y: nextPos.y };
+      }),
+    );
+  }
+
+  function handleAxisDragStart() {
+    axisSnapshotRef.current = boardAxis;
+  }
+
+  function handleAxisChange(nextAxis: MemoBoardAxis) {
+    pendingAxisRef.current = nextAxis;
+    if (axisFrameRef.current != null) return;
+    axisFrameRef.current = requestAnimationFrame(() => {
+      axisFrameRef.current = null;
+      const axis = pendingAxisRef.current;
+      if (!axis) return;
+      const prevAxis = axisSnapshotRef.current;
+      repositionNotesForAxis(prevAxis, axis);
+      setBoardAxis(axis);
+      axisSnapshotRef.current = axis;
+    });
+  }
+
+  function handleAxisCommit(nextAxis: MemoBoardAxis) {
+    if (axisFrameRef.current != null) {
+      cancelAnimationFrame(axisFrameRef.current);
+      axisFrameRef.current = null;
+    }
+    pendingAxisRef.current = null;
+    const prevAxis = axisSnapshotRef.current;
+    repositionNotesForAxis(prevAxis, nextAxis);
+    repositionNotesForAxis(prevAxis, nextAxis);
+    setBoardAxis(nextAxis);
+    axisSnapshotRef.current = nextAxis;
+    writeMemoBoardAxisToStorage(nextAxis);
+
+    setNotes((prev) => {
+      for (const note of prev) {
+        if (note.posX !== note.x || note.posY !== note.y) {
+          void persistNote(note.id, { posX: note.x, posY: note.y }).catch(() => {});
+        }
+      }
+      return prev.map((note) => ({ ...note, posX: note.x, posY: note.y }));
+    });
+
+    reconcileQuadrantsForAxis(nextAxis);
+  }
+
   const filteredNotes = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return notes;
@@ -211,16 +285,6 @@ export function StickyNoteBoard() {
     );
   }
 
-  function handleAxisCommit(axis: MemoBoardAxis) {
-    setBoardAxis(axis);
-    writeMemoBoardAxisToStorage(axis);
-    reconcileQuadrantsForAxis(axis);
-  }
-
-  function handleMove(id: string, x: number, y: number) {
-    patchNote(id, { x, y });
-  }
-
   function handleMoveEnd(id: string, x: number, y: number) {
     const note = notes.find((n) => n.id === id);
     const { width, height } = note ? noteSize(note) : { width: DEFAULT_STICKY_WIDTH, height: DEFAULT_STICKY_HEIGHT };
@@ -229,10 +293,6 @@ export function StickyNoteBoard() {
     void persistNote(id, { posX: x, posY: y, quadrant }).catch((e) =>
       setError(e instanceof Error ? e.message : t("memos.errors.savePosition")),
     );
-  }
-
-  function handleResize(id: string, width: number, height: number) {
-    patchNote(id, { width, height });
   }
 
   function handleResizeEnd(id: string, width: number, height: number) {
@@ -417,7 +477,8 @@ export function StickyNoteBoard() {
               boardWidth={boardSize.width}
               boardHeight={boardSize.height}
               axis={boardAxis}
-              onAxisChange={setBoardAxis}
+              onAxisDragStart={handleAxisDragStart}
+              onAxisChange={handleAxisChange}
               onAxisCommit={handleAxisCommit}
             />
 
@@ -437,9 +498,7 @@ export function StickyNoteBoard() {
                   isActive={activeId === note.id}
                   startInEditMode={editingId === note.id}
                   onActivate={() => handleActivate(note.id)}
-                  onMove={handleMove}
                   onMoveEnd={handleMoveEnd}
-                  onResize={handleResize}
                   onResizeEnd={handleResizeEnd}
                   onUpdate={handleUpdate}
                   onDelete={handleDelete}

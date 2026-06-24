@@ -43,9 +43,7 @@ interface StickyNoteProps {
   isActive: boolean;
   startInEditMode?: boolean;
   onActivate: () => void;
-  onMove: (id: string, x: number, y: number) => void;
   onMoveEnd: (id: string, x: number, y: number) => void;
-  onResize: (id: string, width: number, height: number) => void;
   onResizeEnd: (id: string, width: number, height: number) => void;
   onUpdate: (id: string, patch: Partial<StickyNoteData & { content: string }>) => void;
   onDelete: (id: string) => void;
@@ -59,9 +57,7 @@ export function StickyNote({
   isActive,
   startInEditMode = false,
   onActivate,
-  onMove,
   onMoveEnd,
-  onResize,
   onResizeEnd,
   onUpdate,
   onDelete,
@@ -74,6 +70,8 @@ export function StickyNote({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [showColors, setShowColors] = useState(false);
+  const [dragDelta, setDragDelta] = useState<{ dx: number; dy: number } | null>(null);
+  const [resizeSize, setResizeSize] = useState<{ width: number; height: number } | null>(null);
   const noteRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(
@@ -86,11 +84,19 @@ export function StickyNote({
     origH: number;
   } | null>(null);
   const autoEditStarted = useRef(false);
+  const dragFrameRef = useRef<number | null>(null);
+  const pendingDragDeltaRef = useRef<{ dx: number; dy: number } | null>(null);
+  const resizeFrameRef = useRef<number | null>(null);
+  const pendingResizeRef = useRef<{ width: number; height: number } | null>(null);
 
   const displayBody = memoDisplayBody(note);
   const quadrantMeta = note.quadrant
     ? localizeMemoQuadrantOption(t, note.quadrant as MemoQuadrantId)
     : null;
+  const displayWidth = resizeSize?.width ?? width;
+  const displayHeight = resizeSize?.height ?? height;
+  const isDragging = dragDelta !== null;
+  const isResizing = resizeSize !== null;
 
   useEffect(() => {
     if (editing) textareaRef.current?.focus();
@@ -126,6 +132,7 @@ export function StickyNote({
     if ((e.target as HTMLElement).closest("[data-no-drag]")) return;
     onActivate();
     dragRef.current = { startX: e.clientX, startY: e.clientY, origX: x, origY: y };
+    setDragDelta({ dx: 0, dy: 0 });
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     e.preventDefault();
   }
@@ -133,18 +140,32 @@ export function StickyNote({
   function onPointerMove(e: React.PointerEvent) {
     const drag = dragRef.current;
     if (!drag) return;
-    const nx = drag.origX + (e.clientX - drag.startX);
-    const ny = drag.origY + (e.clientY - drag.startY);
-    onMove(note.id, Math.max(0, nx), Math.max(0, ny));
+    pendingDragDeltaRef.current = {
+      dx: e.clientX - drag.startX,
+      dy: e.clientY - drag.startY,
+    };
+    if (dragFrameRef.current != null) return;
+    dragFrameRef.current = requestAnimationFrame(() => {
+      dragFrameRef.current = null;
+      if (pendingDragDeltaRef.current) {
+        setDragDelta(pendingDragDeltaRef.current);
+      }
+    });
   }
 
   function onPointerUp(e: React.PointerEvent) {
     const drag = dragRef.current;
     if (!drag) return;
     dragRef.current = null;
-    const nx = drag.origX + (e.clientX - drag.startX);
-    const ny = drag.origY + (e.clientY - drag.startY);
-    onMoveEnd(note.id, Math.max(0, nx), Math.max(0, ny));
+    if (dragFrameRef.current != null) {
+      cancelAnimationFrame(dragFrameRef.current);
+      dragFrameRef.current = null;
+    }
+    pendingDragDeltaRef.current = null;
+    setDragDelta(null);
+    const nx = Math.max(0, drag.origX + (e.clientX - drag.startX));
+    const ny = Math.max(0, drag.origY + (e.clientY - drag.startY));
+    onMoveEnd(note.id, nx, ny);
   }
 
   function onResizePointerDown(e: React.PointerEvent) {
@@ -156,6 +177,7 @@ export function StickyNote({
       origW: width,
       origH: height,
     };
+    setResizeSize({ width, height });
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     e.preventDefault();
   }
@@ -163,17 +185,31 @@ export function StickyNote({
   function onResizePointerMove(e: React.PointerEvent) {
     const resize = resizeRef.current;
     if (!resize) return;
-    const nextW = Math.max(MIN_STICKY_WIDTH, resize.origW + (e.clientX - resize.startX));
-    const nextH = Math.max(MIN_STICKY_HEIGHT, resize.origH + (e.clientY - resize.startY));
-    onResize(note.id, nextW, nextH);
+    pendingResizeRef.current = {
+      width: Math.max(MIN_STICKY_WIDTH, resize.origW + (e.clientX - resize.startX)),
+      height: Math.max(MIN_STICKY_HEIGHT, resize.origH + (e.clientY - resize.startY)),
+    };
+    if (resizeFrameRef.current != null) return;
+    resizeFrameRef.current = requestAnimationFrame(() => {
+      resizeFrameRef.current = null;
+      if (pendingResizeRef.current) {
+        setResizeSize(pendingResizeRef.current);
+      }
+    });
   }
 
   function onResizePointerUp(e: React.PointerEvent) {
     const resize = resizeRef.current;
     if (!resize) return;
     resizeRef.current = null;
+    if (resizeFrameRef.current != null) {
+      cancelAnimationFrame(resizeFrameRef.current);
+      resizeFrameRef.current = null;
+    }
+    pendingResizeRef.current = null;
     const nextW = Math.max(MIN_STICKY_WIDTH, resize.origW + (e.clientX - resize.startX));
     const nextH = Math.max(MIN_STICKY_HEIGHT, resize.origH + (e.clientY - resize.startY));
+    setResizeSize(null);
     onResizeEnd(note.id, nextW, nextH);
   }
 
@@ -181,18 +217,20 @@ export function StickyNote({
     <div
       ref={noteRef}
       className={cn(
-        "absolute flex flex-col rounded-sm shadow-md transition-shadow",
+        "absolute flex flex-col rounded-sm shadow-md",
         isActive && "shadow-lg ring-2 ring-black/10",
       )}
       style={{
         left: x,
         top: y,
-        width,
-        height,
+        width: displayWidth,
+        height: displayHeight,
         zIndex: note.zIndex,
         backgroundColor: palette.bg,
         borderTop: `3px solid ${palette.border}`,
         color: palette.text,
+        transform: dragDelta ? `translate3d(${dragDelta.dx}px, ${dragDelta.dy}px, 0)` : undefined,
+        willChange: dragDelta ? "transform" : undefined,
       }}
       onPointerDown={(e) => {
         e.stopPropagation();
@@ -233,10 +271,10 @@ export function StickyNote({
             {MEMO_QUADRANTS.map((q) => {
               const option = localizeMemoQuadrantOption(t, q.id);
               return (
-              <option key={q.id} value={q.id} title={`${option.shortLabel} ${option.label}`}>
-                {option.shortLabel}
-              </option>
-            );
+                <option key={q.id} value={q.id} title={`${option.shortLabel} ${option.label}`}>
+                  {option.shortLabel}
+                </option>
+              );
             })}
           </select>
           {onAssign && (

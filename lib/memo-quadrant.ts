@@ -186,6 +186,36 @@ export function detectMemoQuadrant(
   return "not_urgent_not_important";
 }
 
+export function mapStickyPositionForAxisChange(
+  x: number,
+  y: number,
+  stickyWidth: number,
+  stickyHeight: number,
+  quadrant: MemoQuadrantId,
+  boardWidth: number,
+  boardHeight: number,
+  fromAxis: MemoBoardAxis,
+  toAxis: MemoBoardAxis,
+): { x: number; y: number } {
+  const oldBounds = getQuadrantBounds(quadrant, boardWidth, boardHeight, fromAxis);
+  const newBounds = getQuadrantBounds(quadrant, boardWidth, boardHeight, toAxis);
+
+  if (oldBounds.width <= 0 || oldBounds.height <= 0) {
+    return { x, y };
+  }
+
+  const relX = (x - oldBounds.left) / oldBounds.width;
+  const relY = (y - oldBounds.top) / oldBounds.height;
+
+  let nextX = newBounds.left + relX * newBounds.width;
+  let nextY = newBounds.top + relY * newBounds.height;
+
+  nextX = Math.max(0, Math.min(boardWidth - stickyWidth, nextX));
+  nextY = Math.max(0, Math.min(boardHeight - stickyHeight, nextY));
+
+  return { x: nextX, y: nextY };
+}
+
 /** 远程创建便签时，按象限落在板上的默认位置 */
 export function defaultPositionForQuadrant(
   quadrant: MemoQuadrantId,
