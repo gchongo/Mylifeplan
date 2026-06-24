@@ -8,7 +8,7 @@ export function CalendarPageClient() {
   const { t } = useI18n();
 
   return (
-    <FullPanelPage title={t("calendar.homeTitle")} centered>
+    <FullPanelPage title={t("calendar.homeTitle")}>
       <CalendarPanelLive fullPage />
     </FullPanelPage>
   );
