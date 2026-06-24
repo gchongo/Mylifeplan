@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { PanelResizeHandle } from "@/components/home/panel-resize-handle";
 import { cn } from "@/lib/utils";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const DEFAULT_DRAWER_WIDTH = "w-80 sm:w-96";
 
@@ -76,6 +76,8 @@ export function DrawerLayout({
   panelMaxWidthPx?: number;
   resizable?: boolean;
 }) {
+  const [isResizing, setIsResizing] = useState(false);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -84,10 +86,12 @@ export function DrawerLayout({
   }, [open, onClose]);
 
   const usePixelWidth = panelWidthPx != null;
-  const openWidthPx = open && usePixelWidth ? panelWidthPx : 0;
+  const openWidthPx = usePixelWidth ? (open ? panelWidthPx : 0) : 0;
+  const widthTransition = isResizing ? "none" : "width 300ms ease-in-out";
 
   function startResize(clientX: number) {
     if (!onPanelWidthPxChange || panelWidthPx == null) return;
+    setIsResizing(true);
     const applyWidth = onPanelWidthPxChange;
     const startX = clientX;
     const startWidth = panelWidthPx;
@@ -106,6 +110,7 @@ export function DrawerLayout({
       const delta = startX - e.clientX;
       const next = Math.min(maxWidth, Math.max(panelMinWidthPx, startWidth + delta));
       applyWidth(next);
+      setIsResizing(false);
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
       window.removeEventListener("mousemove", onMove);
@@ -132,10 +137,14 @@ export function DrawerLayout({
       <div
         className={cn(
           "relative z-10 shrink-0 overflow-hidden",
-          !usePixelWidth && "transition-[width] duration-300 ease-in-out",
+          !usePixelWidth && !isResizing && "transition-[width] duration-300 ease-in-out",
           !usePixelWidth && (open ? widthClass : "w-0"),
         )}
-        style={usePixelWidth ? { width: openWidthPx } : undefined}
+        style={
+          usePixelWidth
+            ? { width: openWidthPx, transition: widthTransition }
+            : undefined
+        }
         aria-hidden={!open}
       >
         <aside
@@ -145,12 +154,12 @@ export function DrawerLayout({
             ...(panelTopOffset > 0
               ? { marginTop: panelTopOffset, height: `calc(100% - ${panelTopOffset}px)` }
               : {}),
-            ...(usePixelWidth && open ? { width: panelWidthPx } : {}),
+            ...(usePixelWidth ? { width: panelWidthPx } : {}),
           }}
           className={cn(
             "flex h-full flex-col border-l border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950",
             !usePixelWidth && widthClass,
-            !open && "pointer-events-none opacity-0",
+            !open && "pointer-events-none",
           )}
         >
           {panel}
