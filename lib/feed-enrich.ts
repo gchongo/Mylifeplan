@@ -2,7 +2,10 @@ import type { Feed, FeedActionType, FeedItemType } from "@prisma/client";
 import { feedActionPhrase, feedExcerpt } from "@/lib/feed-display";
 import { parsePlanFeedContent, type PlanFeedChangeItem } from "@/lib/plan-feed-change";
 import { quadrantFeedLabel } from "@/lib/memo-quadrant";
+import { serializeContribution } from "@/lib/services/contribution";
 import { prisma } from "@/lib/db";
+
+export type FeedContributionDetail = ReturnType<typeof serializeContribution>;
 
 export interface EnrichedFeedItem {
   id: string;
@@ -18,6 +21,7 @@ export interface EnrichedFeedItem {
   planUpdateChanges: PlanFeedChangeItem[] | null;
   planUpdateSummary: string | null;
   memoQuadrant: string | null;
+  contributionDetail: FeedContributionDetail | null;
 }
 
 export async function enrichFeedItems(
@@ -48,12 +52,9 @@ export async function enrichFeedItems(
     contributionIds.length
       ? prisma.planContribution.findMany({
           where: { userId, id: { in: contributionIds } },
-          select: {
-            id: true,
-            title: true,
-            body: true,
-            description: true,
+          include: {
             plan: { select: { title: true } },
+            images: { orderBy: { createdAt: "asc" } },
           },
         })
       : [],
@@ -81,6 +82,7 @@ export async function enrichFeedItems(
         planUpdateChanges: changes,
         planUpdateSummary: legacySummary,
         memoQuadrant: null,
+        contributionDetail: null,
       };
     }
 
@@ -101,22 +103,28 @@ export async function enrichFeedItems(
         planUpdateChanges: null,
         planUpdateSummary: null,
         memoQuadrant: quadrantFeedLabel(memo?.quadrant),
+        contributionDetail: null,
       };
     }
 
     const contribution = contributionMap.get(item.itemId);
-    const headline = contribution?.title ?? item.content?.split(" · ")[0]?.trim() ?? "贡献";
-    const body = contribution?.body ?? contribution?.description ?? null;
-    const planTitle = contribution?.plan?.title ?? item.content?.split(" · ")[1]?.trim() ?? null;
+    const contributionDetail = contribution ? serializeContribution(contribution) : null;
+    const headline =
+      contributionDetail?.title ?? item.content?.split(" · ")[0]?.trim() ?? "贡献";
+    const planTitle =
+      contributionDetail?.planTitle ??
+      item.content?.split(" · ")[1]?.trim() ??
+      null;
     return {
       ...item,
       headline,
-      excerpt: feedExcerpt(body),
+      excerpt: null,
       contextLabel: planTitle ? `贡献 · ${planTitle}` : "贡献",
       actionPhrase,
       planUpdateChanges: null,
       planUpdateSummary: null,
       memoQuadrant: null,
+      contributionDetail,
     };
   });
 }

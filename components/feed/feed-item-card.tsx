@@ -8,6 +8,11 @@ import {
 } from "@/lib/feed-display";
 import type { PlanFeedChangeItem } from "@/lib/plan-feed-change";
 import { PlanFeedChangeLines } from "@/components/feed/plan-feed-change-lines";
+import {
+  ContributionInlinePanel,
+  type ContributionInlineData,
+} from "@/components/contributions/contribution-inline-panel";
+import { formatPlanDateTimeDisplay } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 export interface FeedItemCardData {
@@ -24,6 +29,7 @@ export interface FeedItemCardData {
   planUpdateChanges?: PlanFeedChangeItem[] | null;
   planUpdateSummary?: string | null;
   memoQuadrant?: string | null;
+  contributionDetail?: ContributionInlineData | null;
 }
 
 function FeedTypeBadge({ label }: { label: string }) {
@@ -104,11 +110,11 @@ function ExcerptText({
 
 export function FeedItemCard({
   item,
-  onContributionClick,
+  onContributionChanged,
   logStyle = false,
 }: {
   item: FeedItemCardData;
-  onContributionClick?: (contributionId: string) => void;
+  onContributionChanged?: () => void;
   logStyle?: boolean;
 }) {
   const isPlan = item.itemType === "plan";
@@ -122,38 +128,64 @@ export function FeedItemCard({
   const hasMemoDetail = isMemo && Boolean(item.memoQuadrant);
   const showActionPhrase = !hasPlanUpdateDetail && !hasMemoDetail;
   const showExcerpt =
-    Boolean(item.excerpt) && !hasPlanUpdateDetail && !hasMemoDetail;
+    Boolean(item.excerpt) && !hasPlanUpdateDetail && !hasMemoDetail && !isContribution;
+
+  const contributionDateLabel =
+    item.contributionDetail &&
+    (item.contributionDetail.occurredEndOn &&
+    item.contributionDetail.occurredEndOn !== item.contributionDetail.occurredOn
+      ? `${formatPlanDateTimeDisplay(item.contributionDetail.occurredOn)} ~ ${formatPlanDateTimeDisplay(item.contributionDetail.occurredEndOn)}`
+      : formatPlanDateTimeDisplay(item.contributionDetail.occurredOn));
 
   const body = (
     <div className="space-y-1">
       {isContribution ? (
         <>
-          {onContributionClick ? (
-            <button
-              type="button"
-              className={cn(
-                "text-left text-base font-bold leading-snug text-brand-700 underline decoration-brand-200 underline-offset-2 hover:text-brand-800 dark:text-brand-400",
-                meta.archived && "text-gray-400 no-underline",
-              )}
-              onClick={() => onContributionClick(item.itemId)}
-            >
-              {item.headline}
-            </button>
+          {!item.contributionDetail && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">{item.actionPhrase}</p>
+          )}
+          {item.contributionDetail ? (
+            <ContributionInlinePanel
+              entry={item.contributionDetail}
+              showTitle={false}
+              showOccurredDate={false}
+              onChanged={onContributionChanged}
+              headerPrefix={
+                <>
+                  <h3
+                    className={cn(
+                      "text-base font-bold leading-snug text-gray-900 dark:text-gray-100",
+                      meta.archived && "text-gray-400",
+                    )}
+                  >
+                    {item.headline}
+                  </h3>
+                  {item.contextLabel && (
+                    <p className="text-xs text-gray-400 dark:text-gray-500">{item.contextLabel}</p>
+                  )}
+                  {contributionDateLabel && (
+                    <p className="text-xs text-gray-400 dark:text-gray-500">{contributionDateLabel}</p>
+                  )}
+                </>
+              }
+            />
           ) : (
-            <h3
-              className={cn(
-                "text-base font-bold leading-snug text-gray-900 dark:text-gray-100",
-                meta.archived && "text-gray-400",
+            <>
+              <h3
+                className={cn(
+                  "text-base font-bold leading-snug text-gray-900 dark:text-gray-100",
+                  meta.archived && "text-gray-400",
+                )}
+              >
+                {item.headline}
+              </h3>
+              {item.contextLabel && (
+                <p className="text-xs text-gray-400 dark:text-gray-500">{item.contextLabel}</p>
               )}
-            >
-              {item.headline}
-            </h3>
-          )}
-          {item.contextLabel && (
-            <p className="text-xs text-gray-400 dark:text-gray-500">{item.contextLabel}</p>
-          )}
-          {showExcerpt && item.excerpt && (
-            <ExcerptText text={item.excerpt} className="mt-2 line-clamp-4" />
+              {showExcerpt && item.excerpt && (
+                <ExcerptText text={item.excerpt} className="mt-2 line-clamp-4" />
+              )}
+            </>
           )}
         </>
       ) : (
