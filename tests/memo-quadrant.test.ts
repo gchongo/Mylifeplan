@@ -52,6 +52,14 @@ describe("defaultPositionForQuadrant", () => {
       expect(detectMemoQuadrant(pos.x, pos.y, w, h, boardW, boardH)).toBe(id);
     }
   });
+
+  it("respects custom axis ratios", () => {
+    const axis = { axisXRatio: 0.7, axisYRatio: 0.35 };
+    const pos = defaultPositionForQuadrant("not_urgent_important", boardW, boardH, 0, axis);
+    expect(detectMemoQuadrant(pos.x, pos.y, w, h, boardW, boardH, axis)).toBe(
+      "not_urgent_important",
+    );
+  });
 });
 
 describe("quadrantFeedLabel", () => {

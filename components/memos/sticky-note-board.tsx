@@ -1,10 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { ErrorMessage, Loading } from "@/components/ui/feedback";
 import { StickyNote, type StickyNoteData } from "@/components/memos/sticky-note";
 import { StickyNoteAssignModal } from "@/components/memos/sticky-note-assign-modal";
+import {
+  MemoBoardAxisEdgeIcons,
+  MemoBoardQuadrantGrid,
+} from "@/components/memos/memo-board-quadrant-grid";
 import {
   computeMemoBoardSize,
   DEFAULT_STICKY_HEIGHT,
@@ -12,8 +15,9 @@ import {
   defaultPositionForQuadrant,
   detectMemoQuadrant,
   isMemoQuadrantId,
-  MEMO_AXIS_LABELS,
-  MEMO_QUADRANTS,
+  readMemoBoardAxisFromStorage,
+  writeMemoBoardAxisToStorage,
+  type MemoBoardAxis,
   type MemoQuadrantId,
 } from "@/lib/memo-quadrant";
 import { effectiveStickyPosition, nextStickyColor } from "@/lib/memo-sticky";
@@ -77,6 +81,7 @@ export function StickyNoteBoard() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [assignNoteId, setAssignNoteId] = useState<string | null>(null);
+  const [boardAxis, setBoardAxis] = useState<MemoBoardAxis>(() => readMemoBoardAxisFromStorage());
   const [viewportSize, setViewportSize] = useState({ width: 800, height: 600 });
   const maxZRef = useRef(1);
   const boardRef = useRef<HTMLDivElement>(null);
@@ -121,6 +126,7 @@ export function StickyNoteBoard() {
         height,
         board.width,
         board.height,
+        boardAxis,
       );
       if (note.quadrant !== expected) {
         reconciled.push({ ...note, quadrant: expected });
@@ -131,7 +137,7 @@ export function StickyNoteBoard() {
     }
 
     setNotes(reconciled);
-  }, [persistNote, viewportSize.width, viewportSize.height]);
+  }, [boardAxis, persistNote, viewportSize.width, viewportSize.height]);
 
   useEffect(() => {
     load().finally(() => setLoading(false));
@@ -177,7 +183,35 @@ export function StickyNoteBoard() {
   }
 
   function detectQuadrant(x: number, y: number, width: number, height: number) {
-    return detectMemoQuadrant(x, y, width, height, boardSize.width, boardSize.height);
+    return detectMemoQuadrant(x, y, width, height, boardSize.width, boardSize.height, boardAxis);
+  }
+
+  function reconcileQuadrantsForAxis(axis: MemoBoardAxis) {
+    setNotes((prev) =>
+      prev.map((note) => {
+        const { width, height } = noteSize(note);
+        const expected = detectMemoQuadrant(
+          note.x,
+          note.y,
+          width,
+          height,
+          boardSize.width,
+          boardSize.height,
+          axis,
+        );
+        if (note.quadrant !== expected) {
+          void persistNote(note.id, { quadrant: expected }).catch(() => {});
+          return { ...note, quadrant: expected };
+        }
+        return note;
+      }),
+    );
+  }
+
+  function handleAxisCommit(axis: MemoBoardAxis) {
+    setBoardAxis(axis);
+    writeMemoBoardAxisToStorage(axis);
+    reconcileQuadrantsForAxis(axis);
   }
 
   function handleMove(id: string, x: number, y: number) {
@@ -230,6 +264,7 @@ export function StickyNoteBoard() {
           boardSize.width,
           boardSize.height,
           peerCount,
+          boardAxis,
         );
         persistBody = { ...persistBody, posX: pos.x, posY: pos.y };
         patchNote(id, {
@@ -333,9 +368,17 @@ export function StickyNoteBoard() {
       <header className="mb-2 flex shrink-0 items-center justify-between gap-3">
         <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">便签</h1>
         <div className="flex items-center gap-1.5">
-          <Button type="button" size="sm" onClick={() => void handleAdd()}>
-            新建便签
-          </Button>
+          <button
+            type="button"
+            onClick={() => void handleAdd()}
+            className="inline-flex h-8 items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+            title="新建便签"
+            aria-label="新建便签"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
           <MemoBoardSearch value={search} onChange={setSearch} />
         </div>
       </header>
@@ -343,18 +386,7 @@ export function StickyNoteBoard() {
       {error && <ErrorMessage message={error} className="mb-2 shrink-0" />}
 
       <div className="relative min-h-0 flex-1">
-        <span className="pointer-events-none absolute left-3 top-1/2 z-20 -translate-y-1/2 text-xs font-medium text-gray-500 dark:text-gray-400">
-          {MEMO_AXIS_LABELS.left}
-        </span>
-        <span className="pointer-events-none absolute right-3 top-1/2 z-20 -translate-y-1/2 text-xs font-medium text-gray-500 dark:text-gray-400">
-          {MEMO_AXIS_LABELS.right}
-        </span>
-        <span className="pointer-events-none absolute left-1/2 top-2 z-20 -translate-x-1/2 text-xs font-medium text-gray-500 dark:text-gray-400">
-          {MEMO_AXIS_LABELS.top}
-        </span>
-        <span className="pointer-events-none absolute bottom-2 left-1/2 z-20 -translate-x-1/2 text-xs font-medium text-gray-500 dark:text-gray-400">
-          {MEMO_AXIS_LABELS.bottom}
-        </span>
+        <MemoBoardAxisEdgeIcons />
 
         <div
           ref={boardRef}
@@ -378,26 +410,13 @@ export function StickyNoteBoard() {
               minHeight: "100%",
             }}
           >
-            <div className="pointer-events-none absolute inset-0 z-0" aria-hidden>
-              <div className="grid h-full w-full grid-cols-2 grid-rows-2">
-                {MEMO_QUADRANTS.map((q) => (
-                  <div
-                    key={q.id}
-                    className="border border-dashed border-black/10 dark:border-white/10"
-                  >
-                    <div className="p-2">
-                      <span className="text-[11px] font-semibold text-gray-500/90 dark:text-gray-400/90">
-                        {q.shortLabel}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-black/20 dark:bg-white/20" />
-              <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-black/20 dark:bg-white/20" />
-              <div className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/25 dark:bg-white/25" />
-            </div>
+            <MemoBoardQuadrantGrid
+              boardWidth={boardSize.width}
+              boardHeight={boardSize.height}
+              axis={boardAxis}
+              onAxisChange={setBoardAxis}
+              onAxisCommit={handleAxisCommit}
+            />
 
             {filteredNotes.length === 0 && search.trim() && (
               <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center text-sm text-gray-500">
