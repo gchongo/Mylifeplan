@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/input";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 export function RegisterForm() {
+  const { t } = useI18n();
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,13 +37,13 @@ export function RegisterForm() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "注册失败");
+        setError(data.error ?? t("auth.registerFailed"));
         return;
       }
       router.push("/");
       router.refresh();
     } catch {
-      setError("网络错误，请重试");
+      setError(t("auth.networkRetry"));
     } finally {
       setLoading(false);
     }
@@ -52,7 +54,7 @@ export function RegisterForm() {
       {error && <ErrorMessage message={error} />}
       <Input
         name="email"
-        label="邮箱"
+        label={t("common.email")}
         type="email"
         placeholder="you@example.com"
         required
@@ -60,29 +62,29 @@ export function RegisterForm() {
       />
       <Input
         name="name"
-        label="昵称（可选）"
-        placeholder="你的名字"
+        label={t("common.nameOptional")}
+        placeholder={t("auth.namePlaceholder")}
         autoComplete="name"
       />
       <Input
         name="password"
-        label="密码"
+        label={t("common.password")}
         type="password"
-        placeholder="至少 8 位"
+        placeholder={t("auth.passwordPlaceholder")}
         required
         minLength={8}
         autoComplete="new-password"
       />
       <Input
         name="confirmPassword"
-        label="确认密码"
+        label={t("common.confirmPassword")}
         type="password"
-        placeholder="再次输入密码"
+        placeholder={t("auth.confirmPasswordPlaceholder")}
         required
         autoComplete="new-password"
       />
       <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? "注册中…" : "注册"}
+        {loading ? t("auth.registering") : t("auth.register")}
       </Button>
     </form>
   );

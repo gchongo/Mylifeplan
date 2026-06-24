@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { buildContributionArticle } from "@/lib/contribution-article";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ export function PlanArticleExport({
   planTitle: string;
   contributions: PlanContributionItem[];
 }) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -60,20 +62,20 @@ export function PlanArticleExport({
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-2">
         <div>
-          <CardTitle className="text-base">教程预览</CardTitle>
+          <CardTitle className="text-base">{t("plansExt.tutorialPreview")}</CardTitle>
           <p className="mt-1 text-xs text-gray-500">
-            将 {contributions.length} 条执行记录串联为一篇 Markdown 文章
+            {t("plansExt.tutorialDesc", { count: contributions.length })}
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
           <Button type="button" size="sm" variant="secondary" onClick={() => setExpanded((v) => !v)}>
-            {expanded ? "收起" : "预览"}
+            {expanded ? t("common.showLess") : t("plansExt.preview")}
           </Button>
           <Button type="button" size="sm" variant="ghost" onClick={() => void handleCopy()}>
-            {copied ? "已复制" : "复制"}
+            {copied ? t("plansExt.copied") : t("plansExt.copy")}
           </Button>
           <Button type="button" size="sm" variant="ghost" onClick={handleDownload}>
-            下载 .md
+            {t("plansExt.downloadMd")}
           </Button>
         </div>
       </CardHeader>

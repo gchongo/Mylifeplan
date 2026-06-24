@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
+import { useI18n } from "@/components/i18n/i18n-provider";
+import { localizeVisualStatusLabel } from "@/lib/i18n/gantt-helpers";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import {
   STATUS_STYLES,
@@ -11,11 +13,11 @@ import {
 import type { PlanStatus } from "@/types";
 import { cn } from "@/lib/utils";
 
-const PLAN_STATUS_OPTIONS: { api: PlanStatus; visual: VisualStatusKey; label: string }[] = [
-  { api: "not_started", visual: "todo", label: STATUS_STYLES.todo.label },
-  { api: "in_progress", visual: "in_progress", label: STATUS_STYLES.in_progress.label },
-  { api: "done", visual: "done", label: STATUS_STYLES.done.label },
-  { api: "archived", visual: "archived", label: STATUS_STYLES.archived.label },
+const PLAN_STATUS_OPTIONS: { api: PlanStatus; visual: VisualStatusKey }[] = [
+  { api: "not_started", visual: "todo" },
+  { api: "in_progress", visual: "in_progress" },
+  { api: "done", visual: "done" },
+  { api: "archived", visual: "archived" },
 ];
 
 export function PlanStatusMenuButton({
@@ -37,6 +39,7 @@ export function PlanStatusMenuButton({
   disabled?: boolean;
   onStatusChanged?: (apiStatus: PlanStatus) => void;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
@@ -123,7 +126,7 @@ export function PlanStatusMenuButton({
                   )}
                 >
                   <span className={cn("rounded-full ring-1 ring-inset ring-black/5", style.dot, "h-2 w-2 shrink-0")} />
-                  <span className="text-gray-700 dark:text-gray-200">{opt.label}</span>
+                  <span className="text-gray-700 dark:text-gray-200">{localizeVisualStatusLabel(t, opt.visual)}</span>
                   {active && <span className="ml-auto text-[10px] text-brand-600">✓</span>}
                 </button>
               );
@@ -148,8 +151,8 @@ export function PlanStatusMenuButton({
           "shrink-0 rounded-full p-0.5 hover:bg-black/5 dark:hover:bg-white/10",
           (disabled || saving) && "opacity-50",
         )}
-        title="切换计划状态"
-        aria-label="切换计划状态"
+        title={t("plansExt.switchStatus")}
+        aria-label={t("plansExt.switchStatus")}
         aria-expanded={open}
         aria-haspopup="menu"
       >

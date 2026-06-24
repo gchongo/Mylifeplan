@@ -1,8 +1,11 @@
+"use client";
+
+import { useI18n } from "@/components/i18n/i18n-provider";
+import { localizeVisualStatusLabel } from "@/lib/i18n/gantt-helpers";
 import {
   getStatusStyle,
   resolveVisualStatus,
   STATUS_LEGEND,
-  STATUS_STYLES,
   statusLabel,
   type VisualStatusKey,
 } from "@/lib/task-status-style";
@@ -85,22 +88,23 @@ function pillClass(visual: VisualStatusKey): string {
 }
 
 export function StatusLegend({ compact = false }: { compact?: boolean }) {
+  const { t } = useI18n();
   return (
     <div
       className={cn(
         "flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600",
         compact && "gap-x-2",
       )}
-      aria-label="状态图例"
+      aria-label={t("gantt.statusLegend")}
     >
       {STATUS_LEGEND.map((key) => {
-        const style = STATUS_STYLES[key];
+        const style = getStatusStyle(key === "todo" ? "not_started" : key, null);
         return (
           <span key={key} className="inline-flex items-center gap-1">
             <span
               className={cn("rounded-full ring-1 ring-inset ring-black/5", style.dot, "h-2 w-2")}
             />
-            {!compact && <span>{style.label}</span>}
+            {!compact && <span>{localizeVisualStatusLabel(t, key)}</span>}
           </span>
         );
       })}

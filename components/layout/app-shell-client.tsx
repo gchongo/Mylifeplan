@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { SettingsProvider } from "@/components/settings/settings-provider";
-import { I18nProvider } from "@/components/i18n/i18n-provider";
+import { I18nProvider, useI18n } from "@/components/i18n/i18n-provider";
 import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 import { SidebarNavDrawer } from "@/components/layout/sidebar-brand";
 import { SidebarNavMenu } from "@/components/layout/sidebar-nav";
@@ -31,6 +31,27 @@ export function AppShellClient({
   title?: string;
   userEmail?: string | null;
 }) {
+  return (
+    <SettingsProvider>
+      <I18nProvider>
+        <AppShellInner title={title} userEmail={userEmail}>
+          {children}
+        </AppShellInner>
+      </I18nProvider>
+    </SettingsProvider>
+  );
+}
+
+function AppShellInner({
+  children,
+  title,
+  userEmail,
+}: {
+  children: React.ReactNode;
+  title?: string;
+  userEmail?: string | null;
+}) {
+  const { t } = useI18n();
   const [isDesktop, setIsDesktop] = useState(true);
   const [navOpen, setNavOpen] = useState(true);
 
@@ -75,27 +96,20 @@ export function AppShellClient({
   }, [fullBleed]);
 
   return (
-    <SettingsProvider>
-      <I18nProvider>
-      <div
-        className={cn(
-          "flex flex-col bg-gray-50 dark:bg-gray-950",
-          fullBleed ? "h-screen max-h-[100dvh] overflow-hidden" : "min-h-screen",
-        )}
-      >
-      <TopBar
-        title={title}
-        userEmail={userEmail}
-        navOpen={navOpen}
-        onNavToggle={toggleNav}
-      />
+    <div
+      className={cn(
+        "flex flex-col bg-gray-50 dark:bg-gray-950",
+        fullBleed ? "h-screen max-h-[100dvh] overflow-hidden" : "min-h-screen",
+      )}
+    >
+      <TopBar title={title} userEmail={userEmail} navOpen={navOpen} onNavToggle={toggleNav} />
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {!isDesktop && navOpen && (
           <button
             type="button"
             className="fixed inset-0 top-14 z-40 bg-black/30 lg:hidden"
-            aria-label="关闭导航"
+            aria-label={t("layout.closeNav")}
             onClick={closeNav}
           />
         )}
@@ -132,7 +146,5 @@ export function AppShellClient({
 
       <MobileTabBar />
     </div>
-      </I18nProvider>
-    </SettingsProvider>
   );
 }

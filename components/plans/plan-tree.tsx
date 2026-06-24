@@ -1,7 +1,11 @@
+"use client";
+
 import Link from "next/link";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import type { PlanTreeNode } from "@/lib/plan-tree";
 
 function PlanTreeBranch({ node, depth = 0 }: { node: PlanTreeNode; depth?: number }) {
+  const { t } = useI18n();
   const isRoot = depth === 0;
 
   return (
@@ -40,25 +44,27 @@ function PlanTreeBranch({ node, depth = 0 }: { node: PlanTreeNode; depth?: numbe
       )}
 
       {!isRoot && node.children.length === 0 && (
-        <p className="mt-1 pl-2 text-xs text-gray-400">暂无子计划</p>
+        <p className="mt-1 pl-2 text-xs text-gray-400">{t("plansExt.noSubPlans")}</p>
       )}
 
       {isRoot && node.children.length === 0 && (
-        <p className="mt-2 text-sm text-gray-400">暂无子计划</p>
+        <p className="mt-2 text-sm text-gray-400">{t("plansExt.noSubPlans")}</p>
       )}
     </li>
   );
 }
 
 export function PlanTree({ roots }: { roots: PlanTreeNode[] }) {
+  const { t } = useI18n();
+
   if (roots.length === 0) {
     return (
       <p className="text-sm text-gray-500">
-        暂无计划，请回到{" "}
+        {t("plansExt.emptyTree")}{" "}
         <Link href="/" className="text-brand-600 hover:underline">
-          首页
+          {t("common.home")}
         </Link>
-        在信息流发表框选择「计划」发布。
+        {t("plansExt.emptyTreeHint")}
       </p>
     );
   }

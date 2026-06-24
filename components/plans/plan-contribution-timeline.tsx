@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import {
   ContributionInlinePanel,
   type ContributionInlineData,
@@ -39,12 +40,14 @@ export function PlanContributionTimeline({
   currentPlanId: string;
   onChanged?: () => void;
 }) {
+  const { t } = useI18n();
+
   if (contributions.length === 0) return null;
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">执行时间线</CardTitle>
+        <CardTitle className="text-base">{t("plansExt.executionTimeline")}</CardTitle>
       </CardHeader>
       <CardContent>
         <ol className="relative space-y-0 border-l border-gray-200 pl-4 dark:border-gray-700">

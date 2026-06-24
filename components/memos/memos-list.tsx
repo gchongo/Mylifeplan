@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { MemoCard, type MemoCardData } from "@/components/memos/memo-card";
 import { MemoComposer } from "@/components/memos/memo-composer";
 import { EmptyState, ErrorMessage, Loading } from "@/components/ui/feedback";
 
 export function MemosList() {
+  const { t } = useI18n();
   const [memos, setMemos] = useState<MemoCardData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -28,8 +30,8 @@ export function MemosList() {
       {error && <ErrorMessage message={error} />}
       {memos.length === 0 ? (
         <EmptyState
-          title="还没有备忘录"
-          description="在上方输入框记录此刻的想法，支持 Markdown 与图片。"
+          title={t("memos.list.emptyTitle")}
+          description={t("memos.list.emptyDescription")}
         />
       ) : (
         <ul className="space-y-4">

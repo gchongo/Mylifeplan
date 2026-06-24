@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 function MenuIcon({ className }: { className?: string }) {
@@ -24,20 +25,21 @@ export function SidebarBrand({
   navOpen: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="sidebar-brand flex min-w-0 items-center gap-2">
       <button
         type="button"
         onClick={onToggle}
         className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-700 hover:bg-gray-100"
-        aria-label={navOpen ? "收起导航" : "展开导航"}
+        aria-label={navOpen ? t("layout.collapseNav") : t("layout.expandNav")}
         aria-expanded={navOpen}
       >
         <MenuIcon className="h-5 w-5" />
       </button>
       <div className="min-w-0">
         <p className="truncate text-base font-bold text-brand-700 lg:text-lg">MyLifePlan</p>
-        <p className="truncate text-xs text-gray-500">个人规划系统</p>
+        <p className="truncate text-xs text-gray-500">{t("layout.brandTagline")}</p>
       </div>
     </div>
   );

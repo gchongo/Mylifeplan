@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import {
   CALENDAR_MOBILE_BREAKPOINT,
   displayModesForViewport,
@@ -8,6 +9,9 @@ import {
   saveCalendarDisplayMode,
   type CalendarDisplayMode,
 } from "@/lib/calendar-display";
+import {
+  localizeCalendarDisplayLabel,
+} from "@/lib/i18n/calendar-helpers";
 import { cn } from "@/lib/utils";
 
 function ModeIcon({ mode }: { mode: CalendarDisplayMode }) {
@@ -61,6 +65,7 @@ export function CalendarDisplayPicker({
   onChange: (mode: CalendarDisplayMode) => void;
   variant?: "default" | "toolbar";
 }) {
+  const { t } = useI18n();
   const isMobile = useMobileCalendarViewport();
   const modes = displayModesForViewport(isMobile);
   const [open, setOpen] = useState(false);
@@ -87,10 +92,10 @@ export function CalendarDisplayPicker({
           "inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50",
           isToolbar ? "px-3 py-1.5 text-sm text-gray-800" : "px-2.5 py-1.5 text-xs text-gray-700",
         )}
-        aria-label="日历显示方式"
+        aria-label={t("calendar.displayPickerAria")}
       >
         {!isToolbar && <ModeIcon mode={value} />}
-        <span>{current.label}</span>
+        <span>{localizeCalendarDisplayLabel(t, value)}</span>
         <span className="text-[10px] text-gray-400">▼</span>
       </button>
       {open && (
@@ -120,7 +125,7 @@ export function CalendarDisplayPicker({
                   <ModeIcon mode={mode.id} />
                 </span>
               )}
-              <span className="flex-1 text-gray-800">{mode.label}</span>
+              <span className="flex-1 text-gray-800">{localizeCalendarDisplayLabel(t, mode.id)}</span>
               {!isToolbar && value === mode.id && <span className="text-brand-600">✓</span>}
             </button>
           ))}

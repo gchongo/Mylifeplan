@@ -47,7 +47,7 @@ export function Modal({
       <div
         role="dialog"
         aria-modal
-        {...(title != null ? { "aria-labelledby": "modal-title" } : { "aria-label": "对话框" })}
+        {...(title != null ? { "aria-labelledby": "modal-title" } : { "aria-label": t("common.dialog") })}
         className={cn(
           "relative z-10 w-full max-w-lg rounded-xl bg-white shadow-xl dark:bg-gray-900",
           className,

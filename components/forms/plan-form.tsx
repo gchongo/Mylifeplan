@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/ui/feedback";
 import { Input, Select, Textarea } from "@/components/ui";
@@ -9,12 +10,9 @@ import { ParentPlanSelect } from "@/components/forms/parent-plan-select";
 import { PlanColorPicker } from "@/components/forms/plan-color-picker";
 import { PlanDateTimeField } from "@/components/forms/plan-datetime-field";
 import { toDatetimeLocalInput, datetimeLocalToIso, normalizePlanDateInput } from "@/lib/dates";
+import type { TranslationKey } from "@/lib/i18n/translate";
 
-const statusOptions = [
-  { value: "not_started", label: "未开始" },
-  { value: "in_progress", label: "进行中" },
-  { value: "done", label: "已完成" },
-];
+const STATUS_VALUES = ["not_started", "in_progress", "done"] as const;
 
 export interface PlanFormValues {
   id?: string;
@@ -52,7 +50,16 @@ export function PlanForm({
   /** 有子计划时实际起止由子计划汇总，不可手填 */
   hasSubPlans?: boolean;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
+  const statusOptions = useMemo(
+    () =>
+      STATUS_VALUES.map((value) => ({
+        value,
+        label: t(`kanban.column.${value}` as TranslationKey),
+      })),
+    [t],
+  );
   const isEdit = Boolean(plan?.id);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -121,7 +128,7 @@ export function PlanForm({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "保存失败");
+        setError(data.error ?? t("common.saveFailed"));
         return;
       }
 
@@ -132,7 +139,7 @@ export function PlanForm({
       }
       router.refresh();
     } catch {
-      setError("网络错误");
+      setError(t("common.networkError"));
     } finally {
       setLoading(false);
     }
@@ -143,15 +150,15 @@ export function PlanForm({
       {error && <ErrorMessage message={error} />}
       <Input
         name="title"
-        label="标题"
-        placeholder="计划标题（必填）"
+        label={t("common.title")}
+        placeholder={t("forms.planTitleRequired")}
         required
         defaultValue={plan?.title ?? ""}
       />
       <Textarea
         name="description"
-        label="描述"
-        placeholder="可选"
+        label={t("common.description")}
+        placeholder={t("forms.optional")}
         rows={3}
         defaultValue={plan?.description ?? ""}
       />
@@ -163,47 +170,47 @@ export function PlanForm({
       <PlanColorPicker defaultValue={plan?.color} />
       <div className="grid gap-4 sm:grid-cols-2">
         <PlanDateTimeField
-          label="计划开始"
+          label={t("forms.planStart")}
           value={startDate}
           onConfirm={setStartDate}
           edge="start"
-          placeholder="选择开始时间"
+          placeholder={t("forms.selectStart")}
         />
         <PlanDateTimeField
-          label="计划结束"
+          label={t("forms.planEnd")}
           value={endDate}
           onConfirm={setEndDate}
           edge="end"
-          placeholder="选择结束时间"
+          placeholder={t("forms.selectEnd")}
         />
       </div>
       {isEdit && hasSubPlans && (
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          该计划含有子计划，实际开始与结束由子计划自动汇总，无法在父计划上手动填写。
+          {t("forms.rollupHint")}
         </p>
       )}
       {isEdit && !hasSubPlans && (
         <div className="grid gap-4 sm:grid-cols-2">
           <PlanDateTimeField
-            label="实际开始"
+            label={t("forms.actualStart")}
             value={actualStartDate}
             onConfirm={setActualStartDate}
             edge="start"
-            placeholder="选择实际开始"
+            placeholder={t("forms.selectActualStart")}
           />
           <PlanDateTimeField
-            label="实际结束"
+            label={t("forms.actualEnd")}
             value={actualEndDate}
             onConfirm={setActualEndDate}
             edge="end"
-            placeholder="选择实际结束"
+            placeholder={t("forms.selectActualEnd")}
           />
         </div>
       )}
       {isEdit && (
         <Select
           name="status"
-          label="状态"
+          label={t("common.status")}
           options={statusOptions}
           defaultValue={plan?.status ?? "not_started"}
         />
@@ -211,15 +218,15 @@ export function PlanForm({
       {onCancel ? (
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onCancel} disabled={loading}>
-            取消
+            {t("common.cancel")}
           </Button>
           <Button type="submit" disabled={loading}>
-            {loading ? "保存中…" : (submitLabel ?? (isEdit ? "保存修改" : "保存计划"))}
+            {loading ? t("common.saving") : (submitLabel ?? (isEdit ? t("forms.saveChanges") : t("forms.savePlan")))}
           </Button>
         </div>
       ) : (
         <Button type="submit" disabled={loading}>
-          {loading ? "保存中…" : (submitLabel ?? (isEdit ? "保存修改" : "保存计划"))}
+          {loading ? t("common.saving") : (submitLabel ?? (isEdit ? t("forms.saveChanges") : t("forms.savePlan")))}
         </Button>
       )}
     </form>

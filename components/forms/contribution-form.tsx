@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/ui/feedback";
 import {
@@ -24,6 +25,7 @@ export function ContributionForm({
   onCancel?: () => void;
   showHeader?: boolean;
 }) {
+  const { t } = useI18n();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [values, setValues] = useState<ContributionEditorValues>(() =>
@@ -39,11 +41,11 @@ export function ContributionForm({
     setError("");
     const title = values.title.trim();
     if (!title) {
-      setError("请填写标题");
+      setError(t("forms.errorTitle"));
       return;
     }
     if (!values.occurredOn) {
-      setError("请选择时间");
+      setError(t("forms.errorTime"));
       return;
     }
     setLoading(true);
@@ -67,12 +69,12 @@ export function ContributionForm({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "保存失败");
+        setError(data.error ?? t("common.saveFailed"));
         return;
       }
       onSuccess?.();
     } catch {
-      setError("网络错误");
+      setError(t("common.networkError"));
     } finally {
       setLoading(false);
     }
@@ -85,7 +87,7 @@ export function ContributionForm({
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-100 text-sm text-brand-700 dark:bg-brand-950 dark:text-brand-300">
             +
           </span>
-          创建贡献
+          {t("forms.createContribution")}
         </div>
       )}
 
@@ -96,11 +98,11 @@ export function ContributionForm({
       <div className="flex flex-wrap justify-end gap-2">
         {onCancel && (
           <Button type="button" variant="ghost" size="sm" disabled={loading} onClick={onCancel}>
-            取消
+            {t("common.cancel")}
           </Button>
         )}
         <Button type="submit" size="sm" disabled={loading || !values.title.trim() || !values.occurredOn}>
-          {loading ? "保存中…" : "保存贡献"}
+          {loading ? t("common.saving") : t("forms.saveContribution")}
         </Button>
       </div>
     </form>

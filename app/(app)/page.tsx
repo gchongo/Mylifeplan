@@ -1,11 +1,5 @@
-import { HomeDashboard } from "@/components/home/home-dashboard";
-import { Suspense } from "react";
-import { Loading } from "@/components/ui/feedback";
+import { HomePageClient } from "@/components/home/home-page-client";
 
 export default function HomePage() {
-  return (
-    <Suspense fallback={<Loading label="加载首页…" />}>
-      <HomeDashboard />
-    </Suspense>
-  );
+  return <HomePageClient />;
 }

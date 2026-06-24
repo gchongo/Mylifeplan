@@ -34,6 +34,7 @@ export function ChartIconSlot({
 }
 
 function ChartEmpty({ className }: { className?: string }) {
+  const { t } = useI18n();
   return (
     <div
       className={cn(
@@ -41,7 +42,7 @@ function ChartEmpty({ className }: { className?: string }) {
         className,
       )}
     >
-      暂无数据
+      {t("summary.noData")}
     </div>
   );
 }
@@ -114,6 +115,7 @@ export function PieChartPanel({
   strokeWidth?: number;
   className?: string;
 }) {
+  const { t } = useI18n();
   if (segments.length === 0) return <ChartEmpty className={className} />;
 
   const total = segments.reduce((sum, s) => sum + s.value, 0);
@@ -122,7 +124,7 @@ export function PieChartPanel({
     <div className={cn("flex h-full items-center gap-4", className)}>
       <div className="flex shrink-0 flex-col items-center justify-center">
         <DonutChart segments={segments} size={size} strokeWidth={strokeWidth} />
-        <span className="mt-1 text-[10px] tabular-nums text-gray-400">共 {total}</span>
+        <span className="mt-1 text-[10px] tabular-nums text-gray-400">{t("summary.totalCount", { total })}</span>
       </div>
       <ul className="flex min-w-0 flex-1 flex-col justify-center gap-2">
         {segments.map((seg) => (
@@ -165,6 +167,7 @@ export function AdaptiveDistributionChart({
 }
 
 export function usePlanSummary() {
+  const { t } = useI18n();
   const [summary, setSummary] = useState<PlanSummaryStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -177,7 +180,7 @@ export function usePlanSummary() {
 
   useEffect(() => {
     load()
-      .catch((e) => setError(e instanceof Error ? e.message : "加载失败"))
+      .catch((e) => setError(e instanceof Error ? e.message : t("summary.loadFailed")))
       .finally(() => setLoading(false));
   }, [load]);
 
@@ -281,6 +284,7 @@ export function IconHorizontalBars({
   dense?: boolean;
   barWidthScale?: number;
 }) {
+  const { t } = useI18n();
   const max = Math.max(1, ...segments.map((s) => s.value));
   const widthScale = Math.min(1, Math.max(0.5, barWidthScale));
 
@@ -292,7 +296,7 @@ export function IconHorizontalBars({
           dense ? "h-12 text-[10px]" : "h-16 text-xs",
         )}
       >
-        暂无数据
+        {t("summary.noData")}
       </div>
     );
   }
@@ -434,12 +438,12 @@ export function MiniStat({
 }
 
 export const PRIMARY_PLAN_STAT_ITEMS = [
-  { key: "total", label: "计划总数", color: "#6366f1", hint: "含已归档" },
-  { key: "in_progress", label: "进行中", color: "#3b82f6" },
-  { key: "done", label: "已完成", color: "#22c55e" },
-  { key: "not_started", label: "未开始", color: "#f59e0b" },
-  { key: "deadlineOverdue", label: "已超截止", color: "#ef4444", hint: "未完成且已过截止" },
-  { key: "earlyCompleted", label: "提前完成", color: "#10b981", hint: "实际早于计划截止" },
+  { key: "total", label: "total", color: "#6366f1", hintKey: "totalHint" as const },
+  { key: "in_progress", label: "in_progress", color: "#3b82f6" },
+  { key: "done", label: "done", color: "#22c55e" },
+  { key: "not_started", label: "not_started", color: "#f59e0b" },
+  { key: "deadlineOverdue", label: "deadlineOverdue", color: "#ef4444", hintKey: "deadlineOverdueHint" as const },
+  { key: "earlyCompleted", label: "earlyCompleted", color: "#10b981", hintKey: "earlyCompletedHint" as const },
 ] as const;
 
 export function getPrimaryPlanStatValue(
@@ -479,7 +483,7 @@ export function PrimaryPlanStats({
           label={t(`summary.metric.${item.key}`)}
           value={getPrimaryPlanStatValue(summary, item.key)}
           color={item.color}
-          hint={"hint" in item ? item.hint : undefined}
+          hint={"hintKey" in item ? t(`summary.metric.${item.hintKey}`) : undefined}
           compact={singleRow}
         />
       ))}
@@ -502,6 +506,7 @@ export function DonutChart({
   centerValue?: string | number;
   centerValueClassName?: string;
 }) {
+  const { t } = useI18n();
   const total = segments.reduce((sum, s) => sum + s.value, 0);
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -512,7 +517,7 @@ export function DonutChart({
         className="flex items-center justify-center rounded-full border border-dashed border-gray-200 text-[10px] text-gray-400 dark:border-gray-700"
         style={{ width: size, height: size }}
       >
-        暂无
+        {t("summary.emptyShort")}
       </div>
     );
   }
@@ -583,11 +588,12 @@ export function HorizontalBars({
   className?: string;
   barWidthScale?: number;
 }) {
+  const { t } = useI18n();
   const max = Math.max(1, ...segments.map((s) => s.value));
   const widthScale = Math.min(1, Math.max(0.5, barWidthScale));
 
   if (segments.length === 0) {
-    return <p className="text-xs text-gray-400">暂无数据</p>;
+    return <p className="text-xs text-gray-400">{t("summary.noData")}</p>;
   }
 
   return (

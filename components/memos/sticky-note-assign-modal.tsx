@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { ParentPlanSelect } from "@/components/forms/parent-plan-select";
 import { PlanDateTimeField } from "@/components/forms/plan-datetime-field";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ export function StickyNoteAssignModal({
     endDate: string | null;
   }) => Promise<void>;
 }) {
+  const { t } = useI18n();
   const [mode, setMode] = useState<AssignMode>("unscheduled");
   const [parentPlanId, setParentPlanId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(() => toDatetimeLocalInput(new Date()));
@@ -39,7 +41,7 @@ export function StickyNoteAssignModal({
       await onSubmit({ parentPlanId, startDate: null, endDate: null });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "转换失败");
+      setError(err instanceof Error ? err.message : t("memos.assignModal.convertFailed"));
     } finally {
       setLoading(false);
     }
@@ -48,7 +50,7 @@ export function StickyNoteAssignModal({
   async function handleScheduled(e: React.FormEvent) {
     e.preventDefault();
     if (!startDate.trim()) {
-      setError("请设置开始时间");
+      setError(t("memos.assignModal.errorStart"));
       return;
     }
     setError("");
@@ -61,17 +63,17 @@ export function StickyNoteAssignModal({
       });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "分配失败");
+      setError(err instanceof Error ? err.message : t("memos.assignModal.assignFailed"));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="转为计划">
+    <Modal open={open} onClose={onClose} title={t("memos.assignModal.title")}>
       <div className="space-y-4">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          将便签「<span className="font-medium text-gray-900 dark:text-gray-100">{noteTitle}</span>」转为计划。便签内容会写入计划描述，原便签删除。
+          {t("memos.assignModal.intro", { title: noteTitle })}
         </p>
         {error && <ErrorMessage message={error} />}
         <ParentPlanSelect value={parentPlanId} onChange={setParentPlanId} />
@@ -86,7 +88,7 @@ export function StickyNoteAssignModal({
                 : "border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-400"
             }`}
           >
-            未排期
+            {t("memos.assignModal.unscheduled")}
           </button>
           <button
             type="button"
@@ -97,21 +99,21 @@ export function StickyNoteAssignModal({
                 : "border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-400"
             }`}
           >
-            立即排期
+            {t("memos.assignModal.scheduleNow")}
           </button>
         </div>
 
         {mode === "unscheduled" ? (
           <>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              进入计划看板「未排期」列，稍后再设时间；不会出现在甘特时间轴上。
+              {t("memos.assignModal.unscheduledHint")}
             </p>
             <div className="flex justify-end gap-2 pt-1">
               <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>
-                取消
+                {t("common.cancel")}
               </Button>
               <Button type="button" disabled={loading} onClick={() => void handleUnscheduled()}>
-                {loading ? "转换中…" : "转为未排期计划"}
+                {loading ? t("memos.assignModal.converting") : t("memos.assignModal.convertUnscheduled")}
               </Button>
             </div>
           </>
@@ -119,27 +121,27 @@ export function StickyNoteAssignModal({
           <form onSubmit={(e) => void handleScheduled(e)} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <PlanDateTimeField
-                label="开始时间"
+                label={t("memos.assignModal.startTime")}
                 value={startDate}
                 onConfirm={setStartDate}
                 edge="start"
                 required
-                placeholder="选择开始时间"
+                placeholder={t("memos.assignModal.selectStart")}
               />
               <PlanDateTimeField
-                label="结束时间（可选）"
+                label={t("memos.assignModal.endTime")}
                 value={endDate}
                 onConfirm={setEndDate}
                 edge="end"
-                placeholder="选择结束时间"
+                placeholder={t("memos.assignModal.selectEnd")}
               />
             </div>
             <div className="flex justify-end gap-2 pt-1">
               <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>
-                取消
+                {t("common.cancel")}
               </Button>
               <Button type="submit" disabled={loading}>
-                {loading ? "创建中…" : "创建并排期"}
+                {loading ? t("memos.assignModal.creating") : t("memos.assignModal.createScheduled")}
               </Button>
             </div>
           </form>

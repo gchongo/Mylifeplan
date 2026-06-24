@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { CalendarDisplayPicker } from "@/components/calendar/calendar-display-picker";
 import { CalendarToolbarControls } from "@/components/calendar/calendar-toolbar-controls";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import type { CalendarDisplayMode, CalendarViewMode } from "@/lib/calendar-display";
 
 export function CalendarToolbar({
@@ -24,6 +25,7 @@ export function CalendarToolbar({
   onNext: () => void;
   onToday: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex shrink-0 items-center justify-between gap-3 border-b border-gray-200 bg-white px-3 py-2">
       <span className="text-sm font-medium text-gray-800">{periodLabel}</span>
@@ -49,7 +51,7 @@ export function CalendarToolbar({
           href="/gantt"
           className="hidden rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 sm:inline-block"
         >
-          在甘特中管理
+          {t("calendar.manageInGantt")}
         </Link>
       </div>
     </div>

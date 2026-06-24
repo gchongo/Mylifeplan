@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { formatPlanDateTimeDisplay } from "@/lib/dates";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,7 @@ export function ContributionInlinePanel({
   currentPlanId?: string;
   menuClassName?: string;
 }) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [editMode, setEditMode] = useState<EditMode>(null);
   const [saving, setSaving] = useState(false);
@@ -117,14 +119,14 @@ export function ContributionInlinePanel({
       });
       const data = await res.json();
       if (!res.ok) {
-        setSaveError(data.error ?? "保存失败");
+        setSaveError(data.error ?? t("gantt.contributionDrawer.saveFailed"));
         return;
       }
       setEditMode(null);
       onChanged?.();
       dispatchPlanUpdated();
     } catch {
-      setSaveError("网络错误");
+      setSaveError(t("gantt.contributionDrawer.networkError"));
     } finally {
       setSaving(false);
     }
@@ -141,21 +143,21 @@ export function ContributionInlinePanel({
       });
       const data = await res.json();
       if (!res.ok) {
-        setSaveError(data.error ?? "保存失败");
+        setSaveError(data.error ?? t("gantt.contributionDrawer.saveFailed"));
         return;
       }
       setEditMode(null);
       onChanged?.();
       dispatchPlanUpdated();
     } catch {
-      setSaveError("网络错误");
+      setSaveError(t("gantt.contributionDrawer.networkError"));
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete() {
-    if (!confirm(`确定删除贡献记录「${entry.title}」？`)) return;
+    if (!confirm(t("gantt.contributionDrawer.confirmDelete", { title: entry.title }))) return;
     setDeleting(true);
     try {
       const res = await fetch(`/api/contributions/${entry.id}`, { method: "DELETE" });
@@ -171,7 +173,7 @@ export function ContributionInlinePanel({
   const menuItems = [
     {
       id: "edit",
-      label: "编辑内容",
+      label: t("gantt.contributionDrawer.editContent"),
       icon: <MenuIconEdit />,
       onClick: () => {
         resetEditor();
@@ -180,7 +182,7 @@ export function ContributionInlinePanel({
     },
     {
       id: "plan",
-      label: "修改所属计划",
+      label: t("gantt.contributionDrawer.changePlan"),
       icon: <MenuIconSubPlan />,
       onClick: () => {
         resetEditor();
@@ -189,7 +191,7 @@ export function ContributionInlinePanel({
     },
     {
       id: "delete",
-      label: "删除记录",
+      label: t("gantt.contributionDrawer.deleteRecord"),
       icon: <MenuIconDelete />,
       destructive: true,
       onClick: () => void handleDelete(),
@@ -207,7 +209,10 @@ export function ContributionInlinePanel({
             )}
             {showOccurredDate && <span className="block text-xs text-gray-400">{dateLabel}</span>}
             {isOtherPlan && entry.planTitle && (
-              <p className="text-xs text-gray-500">子计划：{entry.planTitle}</p>
+              <p className="text-xs text-gray-500">
+                {t("common.subPlanLabel")}
+                {entry.planTitle}
+              </p>
             )}
           </div>
           {showMenu && (
@@ -256,7 +261,7 @@ export function ContributionInlinePanel({
           className="h-7 px-2 text-xs text-brand-600 hover:text-brand-700"
           onClick={() => setExpanded((v) => !v)}
         >
-          {expanded ? "收起" : "查看更多"}
+          {expanded ? t("gantt.contributionDrawer.showLess") : t("gantt.contributionDrawer.showMore")}
         </Button>
       )}
 
@@ -270,10 +275,10 @@ export function ContributionInlinePanel({
           />
           <div className="mt-3 flex flex-wrap gap-2">
             <Button type="button" size="sm" disabled={saving} onClick={() => void handleSaveContent()}>
-              {saving ? "保存中…" : "保存"}
+              {saving ? t("gantt.contributionDrawer.saving") : t("common.save")}
             </Button>
             <Button type="button" variant="ghost" size="sm" disabled={saving} onClick={cancelEdit}>
-              取消
+              {t("common.cancel")}
             </Button>
           </div>
         </div>
@@ -282,9 +287,7 @@ export function ContributionInlinePanel({
       {editMode === "plan" && (
         <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           {saveError && <ErrorMessage message={saveError} />}
-          <p className="mb-3 text-xs text-gray-400">
-            要改到其它子计划，请在此选择，不要改计划的父计划。
-          </p>
+          <p className="mb-3 text-xs text-gray-400">{t("gantt.contributionDrawer.planHint")}</p>
           <ContributionPlanSelect
             currentPlanId={entry.planId}
             value={planId}
@@ -292,10 +295,10 @@ export function ContributionInlinePanel({
           />
           <div className="mt-3 flex flex-wrap gap-2">
             <Button type="button" size="sm" disabled={saving} onClick={() => void handleSavePlan()}>
-              {saving ? "保存中…" : "保存"}
+              {saving ? t("gantt.contributionDrawer.saving") : t("common.save")}
             </Button>
             <Button type="button" variant="ghost" size="sm" disabled={saving} onClick={cancelEdit}>
-              取消
+              {t("common.cancel")}
             </Button>
           </div>
         </div>

@@ -19,8 +19,8 @@ export function FeedComposeCard({
   timeKind = "date",
   startRequired = false,
   titleRequired = true,
-  titlePlaceholder = "输入标题",
-  bodyPlaceholder = "支持 Markdown",
+  titlePlaceholder,
+  bodyPlaceholder,
   showImages = false,
   imageUploadUrl = "/api/contributions/upload",
   relatedPlan,
@@ -39,6 +39,8 @@ export function FeedComposeCard({
   bodyRows?: number;
 }) {
   const { t } = useI18n();
+  const resolvedTitlePlaceholder = titlePlaceholder ?? t("feed.composeCard.titlePlaceholder");
+  const resolvedBodyPlaceholder = bodyPlaceholder ?? t("feed.composeCard.bodyPlaceholder");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -110,7 +112,7 @@ export function FeedComposeCard({
           type="text"
           value={values.title}
           onChange={(e) => onChange({ title: e.target.value })}
-          placeholder={titlePlaceholder}
+          placeholder={resolvedTitlePlaceholder}
           required
           className="w-full bg-transparent px-4 py-3 pr-8 text-base font-medium text-gray-900 placeholder:font-normal placeholder:text-gray-400 focus:outline-none dark:text-gray-100"
         />
@@ -186,7 +188,7 @@ export function FeedComposeCard({
         ref={bodyRef}
         value={values.body}
         onChange={(e) => onChange({ body: e.target.value })}
-        placeholder={bodyPlaceholder}
+        placeholder={resolvedBodyPlaceholder}
         rows={bodyRows}
         className="min-h-[140px] w-full resize-y bg-transparent px-4 py-3 text-sm leading-relaxed text-gray-900 placeholder:text-gray-400 focus:outline-none dark:text-gray-100"
       />

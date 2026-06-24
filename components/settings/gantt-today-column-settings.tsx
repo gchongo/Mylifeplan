@@ -1,11 +1,16 @@
 "use client";
 
+import { useI18n } from "@/components/i18n/i18n-provider";
 import {
   GANTT_TODAY_COLUMN_COLORS,
   GANTT_TODAY_COLUMN_FILL_OPTIONS,
   type GanttTodayColumnPreferences,
 } from "@/lib/user-preferences";
 import { ganttTodayColumnBackground } from "@/lib/gantt-today-column-style";
+import {
+  localizeGanttTodayFillLabel,
+  localizeGanttTodayWeekday,
+} from "@/lib/i18n/settings-helpers";
 import { cn } from "@/lib/utils";
 
 export function GanttTodayColumnSettings({
@@ -17,12 +22,16 @@ export function GanttTodayColumnSettings({
   onChange: (patch: Partial<GanttTodayColumnPreferences>) => void;
   disabled?: boolean;
 }) {
+  const { t } = useI18n();
   const previewStyle = ganttTodayColumnBackground(value);
+  const weekdayLabels = Array.from({ length: 5 }, (_, i) => localizeGanttTodayWeekday(t, i));
 
   return (
     <div className="space-y-4">
       <label className="flex items-center justify-between gap-3 text-sm">
-        <span className="text-gray-700 dark:text-gray-300">高亮今天所在列</span>
+        <span className="text-gray-700 dark:text-gray-300">
+          {t("settings.ganttTodaySettings.highlightLabel")}
+        </span>
         <input
           type="checkbox"
           checked={value.enabled}
@@ -33,14 +42,16 @@ export function GanttTodayColumnSettings({
       </label>
 
       <div className="space-y-1.5">
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">填充颜色</p>
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {t("settings.ganttTodaySettings.fillColor")}
+        </p>
         <div className="flex flex-wrap gap-2">
           {GANTT_TODAY_COLUMN_COLORS.map((color) => (
             <button
               key={color}
               type="button"
               disabled={disabled}
-              aria-label={`填充颜色 ${color}`}
+              aria-label={t("settings.ganttTodaySettings.fillColorAria", { color })}
               aria-pressed={value.color === color}
               onClick={() => onChange({ color })}
               className={cn(
@@ -55,7 +66,9 @@ export function GanttTodayColumnSettings({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-gray-700 dark:text-gray-300">填充形式</span>
+          <span className="mb-1 block font-medium text-gray-700 dark:text-gray-300">
+            {t("settings.ganttTodaySettings.fillStyle")}
+          </span>
           <select
             value={value.fillStyle}
             disabled={disabled}
@@ -66,7 +79,7 @@ export function GanttTodayColumnSettings({
           >
             {GANTT_TODAY_COLUMN_FILL_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
-                {opt.label}
+                {localizeGanttTodayFillLabel(t, opt.value)}
               </option>
             ))}
           </select>
@@ -74,7 +87,7 @@ export function GanttTodayColumnSettings({
 
         <label className="block text-sm">
           <span className="mb-1 flex items-center justify-between font-medium text-gray-700 dark:text-gray-300">
-            <span>透明度</span>
+            <span>{t("settings.ganttTodaySettings.opacity")}</span>
             <span className="text-xs font-normal text-gray-500">{value.opacity}%</span>
           </span>
           <input
@@ -91,9 +104,11 @@ export function GanttTodayColumnSettings({
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900/50">
-        <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">预览</p>
+        <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
+          {t("settings.ganttTodaySettings.preview")}
+        </p>
         <div className="flex h-10 overflow-hidden rounded-md border border-gray-200 dark:border-gray-700">
-          {["一", "二", "三", "四", "五"].map((label, i) => (
+          {weekdayLabels.map((label, i) => (
             <div
               key={label}
               className={cn(

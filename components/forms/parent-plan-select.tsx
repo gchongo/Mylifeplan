@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { Select } from "@/components/ui";
 
 interface PlanOption {
@@ -19,8 +20,8 @@ export function ParentPlanSelect({
   onChange,
   excludePlanId,
   name = "parentPlanId",
-  label = "父计划",
-  emptyLabel = "无父计划",
+  label,
+  emptyLabel,
 }: {
   value?: string | null;
   onChange?: (id: string | null) => void;
@@ -29,6 +30,9 @@ export function ParentPlanSelect({
   label?: string;
   emptyLabel?: string;
 }) {
+  const { t } = useI18n();
+  const resolvedLabel = label ?? t("forms.parentPlan");
+  const resolvedEmptyLabel = emptyLabel ?? t("forms.noParentPlan");
   const [options, setOptions] = useState<{ value: string; label: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -41,7 +45,7 @@ export function ParentPlanSelect({
           (p: PlanOption & { id: string }) => p.id !== excludePlanId,
         );
         setOptions([
-          { value: "", label: emptyLabel },
+          { value: "", label: resolvedEmptyLabel },
           ...plans.map((p) => ({
             value: p.id,
             label: formatPlanLabel(p),
@@ -49,16 +53,16 @@ export function ParentPlanSelect({
         ]);
       })
       .finally(() => setLoading(false));
-  }, [excludePlanId, emptyLabel]);
+  }, [excludePlanId, resolvedEmptyLabel]);
 
   return (
     <Select
       name={name}
-      label={label}
+      label={resolvedLabel}
       options={options}
       value={value ?? ""}
       onChange={(e) => onChange?.(e.target.value || null)}
-      placeholder={loading ? "加载中…" : emptyLabel}
+      placeholder={loading ? t("common.loading") : resolvedEmptyLabel}
       disabled={loading}
     />
   );

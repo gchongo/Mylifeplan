@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { Select } from "@/components/ui";
 import {
   collectPlanSubtreeIds,
@@ -14,9 +15,13 @@ interface PlanOption {
   parentTitle?: string | null;
 }
 
-function formatPlanLabel(p: PlanOption, planTitleById: Map<string, string>): string {
+function formatPlanLabel(
+  p: PlanOption,
+  planTitleById: Map<string, string>,
+  parentFallback: string,
+): string {
   if (!p.parentPlanId) return p.title;
-  const parentTitle = p.parentTitle ?? planTitleById.get(p.parentPlanId) ?? "父计划";
+  const parentTitle = p.parentTitle ?? planTitleById.get(p.parentPlanId) ?? parentFallback;
   return `${parentTitle} › ${p.title}`;
 }
 
@@ -30,6 +35,7 @@ export function ContributionPlanSelect({
   value: string;
   onChange: (planId: string) => void;
 }) {
+  const { t } = useI18n();
   const [plans, setPlans] = useState<PlanOption[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -55,17 +61,17 @@ export function ContributionPlanSelect({
       .filter((p) => allowed.has(p.id))
       .map((p) => ({
         value: p.id,
-        label: formatPlanLabel(p, titleById),
+        label: formatPlanLabel(p, titleById, t("common.parentPlanFallback")),
       }));
-  }, [plans, currentPlanId]);
+  }, [plans, currentPlanId, t]);
 
   return (
     <Select
-      label="所属计划"
+      label={t("forms.belongsToPlan")}
       options={options}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      placeholder={loading ? "加载中…" : "选择子计划"}
+      placeholder={loading ? t("common.loading") : t("forms.selectSubPlan")}
       disabled={loading || options.length === 0}
     />
   );

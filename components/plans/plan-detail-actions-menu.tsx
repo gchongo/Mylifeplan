@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 export interface PlanDetailMenuItem {
@@ -22,6 +23,7 @@ export function PlanDetailActionsMenu({
   disabled?: boolean;
   menuClassName?: string;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -123,8 +125,8 @@ export function PlanDetailActionsMenu({
           "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800",
           disabled && "opacity-50",
         )}
-        title="更多操作"
-        aria-label="更多操作"
+        title={t("common.moreActions")}
+        aria-label={t("common.moreActions")}
         aria-expanded={open}
         aria-haspopup="menu"
       >

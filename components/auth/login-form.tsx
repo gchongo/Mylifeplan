@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/input";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 export function LoginForm({
   redirectTo = "/",
@@ -12,6 +13,7 @@ export function LoginForm({
   redirectTo?: string;
   requireAdmin?: boolean;
 }) {
+  const { t } = useI18n();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -25,7 +27,7 @@ export function LoginForm({
     const password = String(formData.get("password") ?? "");
 
     if (!email || !password) {
-      setError("请输入邮箱和密码");
+      setError(t("auth.enterEmailPassword"));
       setLoading(false);
       return;
     }
@@ -39,18 +41,17 @@ export function LoginForm({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "登录失败");
+        setError(data.error ?? t("auth.loginFailed"));
         return;
       }
       if (requireAdmin && data.user?.role !== "admin") {
         await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-        setError("该账号不是管理员");
+        setError(t("auth.notAdmin"));
         return;
       }
-      // Full navigation ensures Set-Cookie is applied before protected requests.
       window.location.assign(redirectTo);
     } catch {
-      setError("网络错误，请重试");
+      setError(t("auth.networkRetry"));
     } finally {
       setLoading(false);
     }
@@ -61,7 +62,7 @@ export function LoginForm({
       {error && <ErrorMessage message={error} />}
       <Input
         name="email"
-        label="邮箱"
+        label={t("common.email")}
         type="email"
         defaultValue=""
         placeholder="you@example.com"
@@ -70,7 +71,7 @@ export function LoginForm({
       />
       <Input
         name="password"
-        label="密码"
+        label={t("common.password")}
         type="password"
         defaultValue=""
         placeholder="••••••••"
@@ -78,7 +79,7 @@ export function LoginForm({
         autoComplete="current-password"
       />
       <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? "登录中…" : "登录"}
+        {loading ? t("auth.loggingIn") : t("auth.login")}
       </Button>
     </form>
   );

@@ -14,22 +14,23 @@ import {
   CalendarEmptyDayCell,
   useCalendarCellMin,
 } from "@/components/calendar/calendar-day-cell";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { useSettings } from "@/components/settings/settings-provider";
 import type { CalendarDisplayMode } from "@/lib/calendar-display";
 import {
   addMonths,
   extendMonths,
-  formatMonthTitle,
   initialMonthWindow,
   monthKeyFromDate,
   monthKeyId,
   type MonthKey,
-  WEEKDAY_LABELS,
 } from "@/lib/calendar-month-grid";
 import {
   buildMonthWeekRows,
   formatCalendarWeekNumber,
 } from "@/lib/calendar-week-number";
+import { localizeCalendarMonthLabel } from "@/lib/i18n/calendar-helpers";
+import { localizeSettingsWeekdayMonStart } from "@/lib/i18n/settings-helpers";
 import type { CalendarItem } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -67,6 +68,7 @@ export const CalendarScrollView = forwardRef<
   },
   ref,
 ) {
+  const { t, locale } = useI18n();
   const todayKey = monthKeyFromDate(new Date(`${todayStr}T12:00:00Z`));
   const [months, setMonths] = useState<MonthKey[]>(() => initialMonthWindow(todayKey));
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -79,6 +81,16 @@ export const CalendarScrollView = forwardRef<
   const weekPrefs = preferences.calendarWeekNumbers;
   const showWeekNumbers = weekPrefs.enabled;
   const weekColClass = weekPrefs.format === "week-label" ? "w-11 shrink-0" : "w-7 shrink-0";
+  const weekdayLabels = Array.from({ length: 7 }, (_, i) => localizeSettingsWeekdayMonStart(t, i));
+
+  function formatMonthSectionTitle(key: MonthKey, showYear: boolean): string {
+    if (showYear) {
+      return locale === "en-US"
+        ? t("timeline.yearMonthEn", { year: key.year, month: key.month + 1 })
+        : t("timeline.yearMonth", { year: key.year, month: key.month + 1 });
+    }
+    return localizeCalendarMonthLabel(t, locale, key.month);
+  }
 
   useEffect(() => {
     onMonthsChange(months);
@@ -216,9 +228,9 @@ export const CalendarScrollView = forwardRef<
     <div ref={outerRef} className="flex h-0 min-h-0 w-full flex-1 flex-col overflow-hidden">
       {showWeekNumbers ? (
         <div className="flex shrink-0 border-b border-gray-200 bg-white text-center text-[11px] text-gray-500">
-          <div className={cn(weekColClass, "py-1.5 font-medium")}>周</div>
+          <div className={cn(weekColClass, "py-1.5 font-medium")}>{t("settings.weekNumber.weekHeader")}</div>
           <div className="grid min-w-0 flex-1 grid-cols-7">
-            {WEEKDAY_LABELS.map((w) => (
+            {weekdayLabels.map((w) => (
               <div key={w} className="py-1.5 font-medium">
                 {w}
               </div>
@@ -227,7 +239,7 @@ export const CalendarScrollView = forwardRef<
         </div>
       ) : (
         <div className="grid shrink-0 grid-cols-7 border-b border-gray-200 bg-white text-center text-[11px] text-gray-500">
-          {WEEKDAY_LABELS.map((w) => (
+          {weekdayLabels.map((w) => (
             <div key={w} className="py-1.5 font-medium">
               {w}
             </div>
@@ -244,7 +256,7 @@ export const CalendarScrollView = forwardRef<
           const id = monthKeyId(key);
           const showYear = index === 0 || months[index - 1]!.year !== key.year;
           const weekRows = buildMonthWeekRows(key.year, key.month);
-          const title = formatMonthTitle(key, showYear);
+          const title = formatMonthSectionTitle(key, showYear);
           const isCurrentMonth = key.year === todayKey.year && key.month === todayKey.month;
 
           return (

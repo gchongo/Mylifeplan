@@ -29,6 +29,7 @@ import { GanttActualExecutionLine } from "@/components/gantt/gantt-actual-execut
 import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
 import { useSettings } from "@/components/settings/settings-provider";
 import { buildTimelineSubheaderSpans } from "@/lib/gantt-timeline-subheader";
+import { localizeTimelineSubheaderSpans } from "@/lib/i18n/timeline-helpers";
 import { GanttPlanDrawerPanel } from "@/components/gantt/gantt-plan-drawer";
 import { PlanContributionComposeModal } from "@/components/forms/plan-contribution-compose-modal";
 import type { PlanContributionComposeMode } from "@/components/forms/plan-contribution-compose-form";
@@ -296,7 +297,7 @@ export const GanttChart = forwardRef<
     onTitleColumnLayout?: (layout: GanttTitleColumnLayout) => void;
   }
 >(function GanttChart({ fullPage = false, scale: scaleProp, onScaleChange, onTitleColumnLayout }, ref) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const headerTimelineRef = useRef<HTMLDivElement>(null);
@@ -404,8 +405,13 @@ export const GanttChart = forwardRef<
   }, [scale, anchor, dataBounds, timelineViewportWidth]);
 
   const timelineSubheaderSpans = useMemo(
-    () => buildTimelineSubheaderSpans(layout, preferences.calendarWeekNumbers.format),
-    [layout, preferences.calendarWeekNumbers.format],
+    () =>
+      localizeTimelineSubheaderSpans(
+        buildTimelineSubheaderSpans(layout, preferences.calendarWeekNumbers.format),
+        locale,
+        t,
+      ),
+    [layout, preferences.calendarWeekNumbers.format, locale, t],
   );
 
   const { from, to } = layout;

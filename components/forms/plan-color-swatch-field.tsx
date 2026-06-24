@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { ColorSwatchField } from "@/components/forms/color-swatch-field";
 import { DEFAULT_PLAN_COLOR } from "@/lib/plan-color";
 
@@ -12,9 +13,10 @@ export function PlanColorSwatchField({
   onChange: (color: string) => void;
   disabled?: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <ColorSwatchField
-      label="计划颜色"
+      label={t("forms.planColor")}
       value={value}
       allowClear={false}
       onChange={(color) => onChange(color ?? DEFAULT_PLAN_COLOR)}

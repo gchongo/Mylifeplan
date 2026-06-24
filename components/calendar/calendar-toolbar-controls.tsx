@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CALENDAR_VIEW_MODES, type CalendarViewMode } from "@/lib/calendar-display";
+import { useI18n } from "@/components/i18n/i18n-provider";
+import { localizeCalendarViewLabel } from "@/lib/i18n/calendar-helpers";
 import { cn } from "@/lib/utils";
 
 export function CalendarToolbarControls({
@@ -19,9 +21,9 @@ export function CalendarToolbarControls({
   onToday: () => void;
   className?: string;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const current = CALENDAR_VIEW_MODES.find((m) => m.id === viewMode)!;
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -38,7 +40,7 @@ export function CalendarToolbarControls({
           type="button"
           onClick={onPrev}
           className="px-2 py-1 text-sm text-gray-600 hover:bg-gray-50"
-          aria-label="上一段"
+          aria-label={t("calendar.toolbar.prev")}
         >
           ‹
         </button>
@@ -47,13 +49,13 @@ export function CalendarToolbarControls({
           onClick={onToday}
           className="border-x border-gray-200 px-2.5 py-1 text-sm text-gray-800 hover:bg-gray-50"
         >
-          今天
+          {t("calendar.toolbar.today")}
         </button>
         <button
           type="button"
           onClick={onNext}
           className="px-2 py-1 text-sm text-gray-600 hover:bg-gray-50"
-          aria-label="下一段"
+          aria-label={t("calendar.toolbar.next")}
         >
           ›
         </button>
@@ -65,7 +67,7 @@ export function CalendarToolbarControls({
           onClick={() => setOpen((v) => !v)}
           className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-sm text-gray-800 hover:bg-gray-50"
         >
-          {current.label}
+          {localizeCalendarViewLabel(t, viewMode)}
           <span className="text-[10px] text-gray-400">▼</span>
         </button>
         {open && (
@@ -83,7 +85,7 @@ export function CalendarToolbarControls({
                   mode.id === viewMode && "bg-gray-100 font-medium",
                 )}
               >
-                {mode.label}
+                {localizeCalendarViewLabel(t, mode.id)}
               </button>
             ))}
           </div>

@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 export function PanelExpandButton({
@@ -10,6 +13,9 @@ export function PanelExpandButton({
   label: string;
   className?: string;
 }) {
+  const { t } = useI18n();
+  const expandLabel = t("panel.expandView", { label });
+
   return (
     <Link
       href={href}
@@ -18,8 +24,8 @@ export function PanelExpandButton({
         "text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900",
         className,
       )}
-      title={`放大查看${label}`}
-      aria-label={`放大查看${label}`}
+      title={expandLabel}
+      aria-label={expandLabel}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"

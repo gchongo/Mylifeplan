@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { Modal } from "@/components/ui/modal";
 import {
   PlanContributionComposeForm,
@@ -29,9 +30,10 @@ export function PlanContributionComposeModal({
   defaultEndAt?: string | null;
   allowModeSwitch?: boolean;
 }) {
+  const { t } = useI18n();
   const modalTitle =
     title ??
-    (fixedParentPlanId ? "添加计划或贡献" : "新建计划或贡献");
+    (fixedParentPlanId ? t("gantt.addPlanOrContribution") : t("gantt.newPlanOrContribution"));
 
   const formKey = [
     open ? "open" : "closed",

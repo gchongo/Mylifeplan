@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { SidebarBrand } from "@/components/layout/sidebar-brand";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 export function TopBar({
@@ -17,6 +18,7 @@ export function TopBar({
   navOpen: boolean;
   onNavToggle: () => void;
 }) {
+  const { t } = useI18n();
   const pathname = usePathname();
 
   return (
@@ -35,7 +37,7 @@ export function TopBar({
         )}
         <Link
           href="/settings"
-          aria-label="设置"
+          aria-label={t("layout.settings")}
           className={cn(
             "rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100",
             (pathname === "/settings" || pathname.startsWith("/settings/")) &&

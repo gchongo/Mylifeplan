@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/components/i18n/i18n-provider";
 import {
   FeedComposeCard,
   type FeedComposeValues,
@@ -54,6 +55,7 @@ export function ContributionEditor({
   mode?: "compose" | "compact";
   bodyRows?: number;
 }) {
+  const { t } = useI18n();
   const shared = {
     values: toComposeValues(values),
     onChange: (patch: Partial<FeedComposeValues>) => onChange(fromComposePatch(patch)),
@@ -68,8 +70,8 @@ export function ContributionEditor({
       <div className="space-y-4">
         <FeedComposeCard
           {...shared}
-          titlePlaceholder="标题"
-          bodyPlaceholder="详细记录"
+          titlePlaceholder={t("forms.titlePlaceholder")}
+          bodyPlaceholder={t("forms.details")}
         />
         <ContributionMarkerColorField
           value={values.markerColor}
@@ -83,8 +85,8 @@ export function ContributionEditor({
     <div className="space-y-4">
       <FeedComposeCard
         {...shared}
-        titlePlaceholder="贡献标题"
-        bodyPlaceholder="详细记录"
+        titlePlaceholder={t("forms.contributionTitle")}
+        bodyPlaceholder={t("forms.details")}
       />
       <ContributionMarkerColorField
         value={values.markerColor}

@@ -1,8 +1,8 @@
 "use client";
 
+import { useI18n } from "@/components/i18n/i18n-provider";
+import { formatCalendarYearLabel, localizeCalendarMonthLabel } from "@/lib/i18n/calendar-helpers";
 import { cn } from "@/lib/utils";
-
-const MONTH_LABELS = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
 
 export function CalendarYearPicker({
   year,
@@ -21,6 +21,7 @@ export function CalendarYearPicker({
   onYearChange: (year: number) => void;
   onSelectMonth: (month: number, year: number) => void;
 }) {
+  const { t, locale } = useI18n();
   const currentYearMonths = Array.from({ length: 12 }, (_, month) => ({ month, year }));
   const nextYearMonths = Array.from({ length: 4 }, (_, month) => ({ month, year: year + 1 }));
   const cells = [...currentYearMonths, ...nextYearMonths];
@@ -28,13 +29,13 @@ export function CalendarYearPicker({
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-auto bg-gray-50/80 p-6">
       <div className="mx-auto flex w-full max-w-md items-center justify-between">
-        <h2 className="text-2xl font-semibold text-gray-900">{year}年</h2>
+        <h2 className="text-2xl font-semibold text-gray-900">{formatCalendarYearLabel(year, locale, t)}</h2>
         <div className="flex flex-col gap-0.5">
           <button
             type="button"
             onClick={() => onYearChange(year - 1)}
             className="rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-200"
-            aria-label="上一年"
+            aria-label={t("calendar.yearNav.prev")}
           >
             ▲
           </button>
@@ -42,7 +43,7 @@ export function CalendarYearPicker({
             type="button"
             onClick={() => onYearChange(year + 1)}
             className="rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-200"
-            aria-label="下一年"
+            aria-label={t("calendar.yearNav.next")}
           >
             ▼
           </button>
@@ -68,7 +69,7 @@ export function CalendarYearPicker({
                 isToday && !isSelected && "font-semibold text-brand-600",
               )}
             >
-              {MONTH_LABELS[month]}
+              {localizeCalendarMonthLabel(t, locale, month)}
             </button>
           );
         })}

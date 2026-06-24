@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { Select } from "@/components/ui";
 import { ApiError, apiJson } from "@/lib/client-api";
 
@@ -16,8 +17,8 @@ function formatPlanLabel(p: PlanOption): string {
   return p.title;
 }
 
-function sortPlans(plans: PlanOption[]): PlanOption[] {
-  return [...plans].sort((a, b) => a.title.localeCompare(b.title, "zh-CN"));
+function sortPlans(plans: PlanOption[], locale: string): PlanOption[] {
+  return [...plans].sort((a, b) => a.title.localeCompare(b.title, locale));
 }
 
 export function PlanContributionSelect({
@@ -26,7 +27,7 @@ export function PlanContributionSelect({
   refreshKey = 0,
   inline = false,
   required = false,
-  label = "关联计划",
+  label,
 }: {
   value?: string | null;
   onChange?: (id: string | null) => void;
@@ -36,6 +37,8 @@ export function PlanContributionSelect({
   required?: boolean;
   label?: string;
 }) {
+  const { t, locale } = useI18n();
+  const resolvedLabel = label ?? t("forms.relatedPlan");
   const [options, setOptions] = useState<{ value: string; label: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -48,7 +51,7 @@ export function PlanContributionSelect({
       .then((data) => {
         const plans: PlanOption[] = data.plans ?? [];
         setOptions(
-          sortPlans(plans).map((p) => ({
+          sortPlans(plans, locale).map((p) => ({
             value: p.id,
             label: formatPlanLabel(p),
           })),
@@ -56,13 +59,13 @@ export function PlanContributionSelect({
       })
       .catch((err) => {
         if (err instanceof ApiError && err.status === 401) {
-          setLoadError("登录已失效，请重新登录");
+          setLoadError(t("forms.sessionExpired"));
           return;
         }
-        setLoadError("无法加载计划列表");
+        setLoadError(t("forms.loadPlansFailed"));
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [locale, t]);
 
   useEffect(() => {
     loadPlans();
@@ -71,24 +74,24 @@ export function PlanContributionSelect({
   return (
     <div className="w-full min-w-0">
       <Select
-        label={inline ? undefined : label}
+        label={inline ? undefined : resolvedLabel}
         requiredMark={required && !inline}
-        aria-label={inline ? label : undefined}
+        aria-label={inline ? resolvedLabel : undefined}
         options={[
-          ...(required ? [] : [{ value: "", label: "不关联计划" }]),
+          ...(required ? [] : [{ value: "", label: t("forms.noRelatedPlan") }]),
           ...options,
         ]}
         value={value ?? ""}
         onChange={(e) => onChange?.(e.target.value || null)}
         onFocus={loadPlans}
         disabled={loading && options.length === 0}
-        placeholder={loading && options.length === 0 ? "加载计划…" : undefined}
+        placeholder={loading && options.length === 0 ? t("forms.loadingPlans") : undefined}
       />
       {!loading && !loadError && options.length === 0 && (
         <p className="mt-1.5 text-xs text-gray-500">
-          暂无计划。
+          {t("forms.noPlans")}
           <Link href="/plans" className="ml-1 text-brand-600 hover:underline">
-            去创建计划 →
+            {t("forms.createPlanLink")}
           </Link>
         </p>
       )}

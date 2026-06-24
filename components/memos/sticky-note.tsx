@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { MemoMarkdown } from "@/components/memos/memo-markdown";
+import { localizeMemoQuadrantOption } from "@/lib/i18n/feed-helpers";
+import { localizeStickyColorLabel } from "@/lib/i18n/memo-helpers";
 import { memoDisplayBody } from "@/lib/memo-content";
 import {
   DEFAULT_STICKY_HEIGHT,
@@ -64,6 +67,7 @@ export function StickyNote({
   onDelete,
   onAssign,
 }: StickyNoteProps) {
+  const { t, locale } = useI18n();
   const palette = stickyNoteColor(note.color);
   const width = note.width ?? DEFAULT_STICKY_WIDTH;
   const height = note.height ?? DEFAULT_STICKY_HEIGHT;
@@ -84,7 +88,9 @@ export function StickyNote({
   const autoEditStarted = useRef(false);
 
   const displayBody = memoDisplayBody(note);
-  const quadrantMeta = MEMO_QUADRANTS.find((q) => q.id === note.quadrant);
+  const quadrantMeta = note.quadrant
+    ? localizeMemoQuadrantOption(t, note.quadrant as MemoQuadrantId)
+    : null;
 
   useEffect(() => {
     if (editing) textareaRef.current?.focus();
@@ -202,7 +208,7 @@ export function StickyNote({
       >
         <div className="min-w-0">
           <span className="text-[10px] opacity-60">
-            {new Date(note.updatedAt).toLocaleDateString("zh-CN", {
+            {new Date(note.updatedAt).toLocaleDateString(locale === "en-US" ? "en-US" : "zh-CN", {
               month: "numeric",
               day: "numeric",
             })}
@@ -220,22 +226,25 @@ export function StickyNote({
               })
             }
             className="w-9 shrink-0 rounded border border-black/10 bg-white/60 px-0.5 py-0.5 text-center text-[10px] outline-none"
-            title="四象限分类"
-            aria-label="四象限分类"
+            title={t("memos.note.quadrant")}
+            aria-label={t("memos.note.quadrant")}
           >
             <option value="">—</option>
-            {MEMO_QUADRANTS.map((q) => (
-              <option key={q.id} value={q.id} title={`${q.shortLabel} ${q.label}`}>
-                {q.shortLabel}
+            {MEMO_QUADRANTS.map((q) => {
+              const option = localizeMemoQuadrantOption(t, q.id);
+              return (
+              <option key={q.id} value={q.id} title={`${option.shortLabel} ${option.label}`}>
+                {option.shortLabel}
               </option>
-            ))}
+            );
+            })}
           </select>
           {onAssign && (
             <button
               type="button"
               className="rounded p-1 opacity-60 hover:bg-black/5 hover:opacity-100"
-              title="分配到计划"
-              aria-label="分配到计划"
+              title={t("memos.note.assignPlan")}
+              aria-label={t("memos.note.assignPlan")}
               onClick={() => onAssign(note.id)}
             >
               <AssignIcon />
@@ -244,8 +253,8 @@ export function StickyNote({
           <button
             type="button"
             className="rounded p-1 opacity-60 hover:bg-black/5 hover:opacity-100"
-            title="换颜色"
-            aria-label="换颜色"
+            title={t("memos.note.changeColor")}
+            aria-label={t("memos.note.changeColor")}
             onClick={() => setShowColors((v) => !v)}
           >
             <ColorDotIcon />
@@ -253,8 +262,8 @@ export function StickyNote({
           <button
             type="button"
             className="rounded p-1 opacity-60 hover:bg-black/5 hover:opacity-100"
-            title="删除"
-            aria-label="删除"
+            title={t("memos.note.delete")}
+            aria-label={t("memos.note.delete")}
             onClick={() => onDelete(note.id)}
           >
             <CloseIcon />
@@ -264,23 +273,26 @@ export function StickyNote({
 
       {showColors && (
         <div className="flex flex-wrap gap-1.5 px-2 pb-2" data-no-drag>
-          {STICKY_NOTE_COLORS.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              title={c.label}
-              aria-label={c.label}
-              className={cn(
-                "h-5 w-5 rounded-full border-2",
-                note.color === c.id ? "border-gray-800" : "border-transparent",
-              )}
-              style={{ backgroundColor: c.bg }}
-              onClick={() => {
-                onUpdate(note.id, { color: c.id as StickyNoteColorId });
-                setShowColors(false);
-              }}
-            />
-          ))}
+          {STICKY_NOTE_COLORS.map((c) => {
+            const colorLabel = localizeStickyColorLabel(t, c.id);
+            return (
+              <button
+                key={c.id}
+                type="button"
+                title={colorLabel}
+                aria-label={colorLabel}
+                className={cn(
+                  "h-5 w-5 rounded-full border-2",
+                  note.color === c.id ? "border-gray-800" : "border-transparent",
+                )}
+                style={{ backgroundColor: c.bg }}
+                onClick={() => {
+                  onUpdate(note.id, { color: c.id as StickyNoteColorId });
+                  setShowColors(false);
+                }}
+              />
+            );
+          })}
         </div>
       )}
 
@@ -300,7 +312,7 @@ export function StickyNote({
                 saveEdit();
               }
             }}
-            placeholder="写点什么…（支持 Markdown）"
+            placeholder={t("memos.note.placeholder")}
             className="h-full w-full resize-none bg-transparent text-sm leading-relaxed outline-none placeholder:opacity-50"
             style={{ color: palette.text }}
           />
@@ -314,7 +326,7 @@ export function StickyNote({
             {displayBody.trim() ? (
               <MemoMarkdown content={displayBody} className="[&_*]:!text-inherit" />
             ) : (
-              <span className="opacity-50">点击输入…</span>
+              <span className="opacity-50">{t("memos.note.clickToEdit")}</span>
             )}
           </button>
         )}

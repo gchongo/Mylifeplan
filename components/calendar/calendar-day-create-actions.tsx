@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { PlanContributionComposeModal } from "@/components/forms/plan-contribution-compose-modal";
 import type { PlanContributionComposeMode } from "@/components/forms/plan-contribution-compose-form";
@@ -15,6 +16,7 @@ export function CalendarDayCreateActions({
   dayItems: CalendarItem[];
   onSuccess: () => void;
 }) {
+  const { t } = useI18n();
   const [planId, setPlanId] = useState("");
   const [planOptions, setPlanOptions] = useState<{ id: string; title: string }[]>([]);
   const [composeOpen, setComposeOpen] = useState(false);
@@ -51,7 +53,7 @@ export function CalendarDayCreateActions({
   if (planOptions.length === 0) {
     return (
       <p className="border-t border-gray-100 px-4 py-3 text-xs text-gray-400">
-        暂无关联计划，请先在信息流创建计划。
+        {t("calendar.create.noPlans")}
       </p>
     );
   }
@@ -64,7 +66,7 @@ export function CalendarDayCreateActions({
   return (
     <>
       <div className="space-y-2 border-t border-gray-100 px-4 py-3">
-        <label className="block text-xs font-medium text-gray-500">关联计划</label>
+        <label className="block text-xs font-medium text-gray-500">{t("calendar.create.relatedPlan")}</label>
         <select
           value={planId}
           onChange={(e) => setPlanId(e.target.value)}
@@ -84,7 +86,7 @@ export function CalendarDayCreateActions({
             disabled={!planId}
             onClick={() => openCompose("contribution")}
           >
-            添加贡献
+            {t("calendar.create.addContribution")}
           </Button>
           <Button
             type="button"
@@ -93,7 +95,7 @@ export function CalendarDayCreateActions({
             disabled={!planId}
             onClick={() => openCompose("plan")}
           >
-            添加子计划
+            {t("calendar.create.addSubPlan")}
           </Button>
         </div>
       </div>
@@ -102,7 +104,7 @@ export function CalendarDayCreateActions({
         <PlanContributionComposeModal
           open={composeOpen}
           onClose={() => setComposeOpen(false)}
-          title="添加计划或贡献"
+          title={t("calendar.create.addPlanOrContribution")}
           defaultMode={composeMode}
           fixedParentPlanId={planId}
           fixedPlanId={planId}

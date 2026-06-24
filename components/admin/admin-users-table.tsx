@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState, ErrorMessage, Loading } from "@/components/ui/feedback";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 interface UserRow {
   id: string;
@@ -18,6 +19,7 @@ interface UserRow {
 }
 
 export function AdminUsersTable() {
+  const { t } = useI18n();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -27,7 +29,7 @@ export function AdminUsersTable() {
     const res = await fetch("/api/admin/users");
     const data = await res.json();
     if (!res.ok) {
-      setError(data.error ?? "加载失败");
+      setError(data.error ?? t("common.loadFailed"));
       return;
     }
     setUsers(data.users ?? []);
@@ -48,7 +50,7 @@ export function AdminUsersTable() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "操作失败");
+        setError(data.error ?? t("common.operationFailed"));
         return;
       }
       await load();
@@ -59,7 +61,7 @@ export function AdminUsersTable() {
 
   if (loading) return <Loading />;
   if (users.length === 0) {
-    return <EmptyState title="暂无用户" description="注册后将出现在此列表。" />;
+    return <EmptyState title={t("admin.noUsers")} description={t("admin.noUsersHint")} />;
   }
 
   return (
@@ -69,12 +71,12 @@ export function AdminUsersTable() {
         <table className="min-w-full text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-left text-gray-600">
             <tr>
-              <th className="px-4 py-3 font-medium">邮箱</th>
-              <th className="px-4 py-3 font-medium">名称</th>
-              <th className="px-4 py-3 font-medium">角色</th>
-              <th className="px-4 py-3 font-medium">状态</th>
-              <th className="px-4 py-3 font-medium">数据</th>
-              <th className="px-4 py-3 font-medium">操作</th>
+              <th className="px-4 py-3 font-medium">{t("admin.table.email")}</th>
+              <th className="px-4 py-3 font-medium">{t("admin.table.name")}</th>
+              <th className="px-4 py-3 font-medium">{t("admin.table.role")}</th>
+              <th className="px-4 py-3 font-medium">{t("admin.table.status")}</th>
+              <th className="px-4 py-3 font-medium">{t("admin.table.data")}</th>
+              <th className="px-4 py-3 font-medium">{t("admin.table.actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -87,15 +89,20 @@ export function AdminUsersTable() {
                 </td>
                 <td className="px-4 py-3">{user.name ?? "—"}</td>
                 <td className="px-4 py-3">
-                  <Badge variant={user.role === "admin" ? "warning" : "info"}>{user.role}</Badge>
+                  <Badge variant={user.role === "admin" ? "warning" : "info"}>
+                    {user.role === "admin" ? t("admin.roleAdmin") : t("admin.roleUser")}
+                  </Badge>
                 </td>
                 <td className="px-4 py-3">
                   <Badge variant={user.isActive ? "success" : "danger"}>
-                    {user.isActive ? "正常" : "已禁用"}
+                    {user.isActive ? t("common.active") : t("common.inactive")}
                   </Badge>
                 </td>
                 <td className="px-4 py-3 text-gray-500">
-                  {user.planCount} 计划 · {user.subscriptionCount} 订阅
+                  {t("admin.dataSummary", {
+                    plans: user.planCount,
+                    subs: user.subscriptionCount,
+                  })}
                 </td>
                 <td className="px-4 py-3">
                   <Button
@@ -104,7 +111,7 @@ export function AdminUsersTable() {
                     disabled={busyId === user.id}
                     onClick={() => toggleActive(user)}
                   >
-                    {user.isActive ? "禁用" : "启用"}
+                    {user.isActive ? t("common.disable") : t("common.enable")}
                   </Button>
                 </td>
               </tr>

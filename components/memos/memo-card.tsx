@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui";
 import { PlanDateTimeField } from "@/components/forms/plan-datetime-field";
@@ -27,6 +28,7 @@ interface MemoCardProps {
 }
 
 export function MemoCard({ memo, onChanged, onError }: MemoCardProps) {
+  const { t } = useI18n();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -64,11 +66,11 @@ export function MemoCard({ memo, onChanged, onError }: MemoCardProps) {
         body: JSON.stringify({ content: editContent }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "保存失败");
+      if (!res.ok) throw new Error(data.error ?? t("common.saveFailed"));
       setEditing(false);
       onChanged();
     } catch (e) {
-      onError(e instanceof Error ? e.message : "保存失败");
+      onError(e instanceof Error ? e.message : t("common.saveFailed"));
     } finally {
       setBusy(false);
     }
@@ -76,7 +78,7 @@ export function MemoCard({ memo, onChanged, onError }: MemoCardProps) {
 
   async function addStartDate() {
     if (!startDate) {
-      onError("请选择开始日期");
+      onError(t("memos.card.errorStartDate"));
       return;
     }
     setBusy(true);
@@ -87,11 +89,11 @@ export function MemoCard({ memo, onChanged, onError }: MemoCardProps) {
         body: JSON.stringify({ startDate }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "更新失败");
+      if (!res.ok) throw new Error(data.error ?? t("common.updateFailed"));
       setDateEditing(false);
       onChanged();
     } catch (e) {
-      onError(e instanceof Error ? e.message : "更新失败");
+      onError(e instanceof Error ? e.message : t("common.updateFailed"));
     } finally {
       setBusy(false);
     }
@@ -99,7 +101,7 @@ export function MemoCard({ memo, onChanged, onError }: MemoCardProps) {
 
   async function archiveMemo() {
     setMenuOpen(false);
-    if (!confirm(`确定归档「${memo.title}」？`)) return;
+    if (!confirm(t("common.confirmArchive", { title: memo.title }))) return;
     setBusy(true);
     try {
       const res = await fetch(`/api/memos/${memo.id}`, {
@@ -109,11 +111,11 @@ export function MemoCard({ memo, onChanged, onError }: MemoCardProps) {
       });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error ?? "归档失败");
+        throw new Error(data.error ?? t("common.archiveFailed"));
       }
       onChanged();
     } catch (e) {
-      onError(e instanceof Error ? e.message : "归档失败");
+      onError(e instanceof Error ? e.message : t("common.archiveFailed"));
     } finally {
       setBusy(false);
     }
@@ -121,17 +123,17 @@ export function MemoCard({ memo, onChanged, onError }: MemoCardProps) {
 
   async function deleteMemo() {
     setMenuOpen(false);
-    if (!confirm(`确定删除「${memo.title}」？`)) return;
+    if (!confirm(t("common.confirmDeleteItem", { title: memo.title }))) return;
     setBusy(true);
     try {
       const res = await fetch(`/api/memos/${memo.id}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error ?? "删除失败");
+        throw new Error(data.error ?? t("common.deleteFailed"));
       }
       onChanged();
     } catch (e) {
-      onError(e instanceof Error ? e.message : "删除失败");
+      onError(e instanceof Error ? e.message : t("common.deleteFailed"));
     } finally {
       setBusy(false);
     }
@@ -148,12 +150,12 @@ export function MemoCard({ memo, onChanged, onError }: MemoCardProps) {
         body: JSON.stringify({ body: text }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "评论失败");
+      if (!res.ok) throw new Error(data.error ?? t("common.commentFailed"));
       setCommentText("");
       setShowComments(true);
       onChanged();
     } catch (e) {
-      onError(e instanceof Error ? e.message : "评论失败");
+      onError(e instanceof Error ? e.message : t("common.commentFailed"));
     } finally {
       setBusy(false);
     }
@@ -165,10 +167,10 @@ export function MemoCard({ memo, onChanged, onError }: MemoCardProps) {
       const res = await fetch(`/api/memos/${memo.id}/comments?commentId=${commentId}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error("删除失败");
+      if (!res.ok) throw new Error(t("common.deleteFailed"));
       onChanged();
     } catch (e) {
-      onError(e instanceof Error ? e.message : "删除失败");
+      onError(e instanceof Error ? e.message : t("common.deleteFailed"));
     } finally {
       setBusy(false);
     }
@@ -186,8 +188,8 @@ export function MemoCard({ memo, onChanged, onError }: MemoCardProps) {
               "rounded-md p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800",
               showComments && "bg-gray-100 dark:bg-gray-800",
             )}
-            title="评论"
-            aria-label="评论"
+            title={t("memos.card.comment")}
+            aria-label={t("memos.card.comment")}
           >
             <CommentIcon count={memo.comments.length} />
           </button>
@@ -195,24 +197,24 @@ export function MemoCard({ memo, onChanged, onError }: MemoCardProps) {
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
             className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
-            aria-label="更多操作"
+            aria-label={t("memos.card.more")}
           >
             <DotsIcon />
           </button>
           {menuOpen && (
             <div className="absolute right-0 top-full z-20 mt-1 min-w-[8rem] rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900">
-              <MenuItem onClick={startEdit}>编辑</MenuItem>
+              <MenuItem onClick={startEdit}>{t("common.edit")}</MenuItem>
               <MenuItem
                 onClick={() => {
                   setMenuOpen(false);
                   setDateEditing(true);
                 }}
               >
-                补充日期
+                {t("memos.card.addDate")}
               </MenuItem>
-              <MenuItem onClick={archiveMemo}>归档</MenuItem>
+              <MenuItem onClick={archiveMemo}>{t("memos.card.archive")}</MenuItem>
               <MenuItem onClick={deleteMemo} danger>
-                删除
+                {t("memos.card.delete")}
               </MenuItem>
             </div>
           )}
@@ -226,14 +228,14 @@ export function MemoCard({ memo, onChanged, onError }: MemoCardProps) {
               rows={6}
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
-              placeholder="支持 Markdown…"
+              placeholder={t("memos.card.markdownPlaceholder")}
             />
             <div className="flex gap-2">
               <Button size="sm" disabled={busy} onClick={() => void saveEdit()}>
-                保存
+                {t("common.save")}
               </Button>
               <Button size="sm" variant="ghost" disabled={busy} onClick={() => setEditing(false)}>
-                取消
+                {t("common.cancel")}
               </Button>
             </div>
           </div>
@@ -264,19 +266,19 @@ export function MemoCard({ memo, onChanged, onError }: MemoCardProps) {
         {dateEditing && (
           <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-gray-100 pt-3 dark:border-gray-800">
             <PlanDateTimeField
-              label="开始日期"
+              label={t("memos.card.startDate")}
               value={startDate}
               onConfirm={setStartDate}
               mode="date"
               edge="start"
-              placeholder="选择日期"
+              placeholder={t("memos.card.selectDate")}
               className="min-w-[10rem]"
             />
             <Button size="sm" disabled={busy} onClick={() => void addStartDate()}>
-              回流到日历
+              {t("memos.card.backToCalendar")}
             </Button>
             <Button size="sm" variant="ghost" disabled={busy} onClick={() => setDateEditing(false)}>
-              取消
+              {t("common.cancel")}
             </Button>
           </div>
         )}
@@ -296,7 +298,7 @@ export function MemoCard({ memo, onChanged, onError }: MemoCardProps) {
                   className="shrink-0 text-xs text-gray-400 opacity-0 hover:text-red-500 group-hover:opacity-100"
                   onClick={() => void deleteComment(c.id)}
                 >
-                  删除
+                  {t("common.delete")}
                 </button>
               </li>
             ))}
@@ -307,11 +309,11 @@ export function MemoCard({ memo, onChanged, onError }: MemoCardProps) {
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && void submitComment()}
-              placeholder="写一条评论…"
+              placeholder={t("memos.card.commentPlaceholder")}
               className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
             />
             <Button size="sm" disabled={busy || !commentText.trim()} onClick={() => void submitComment()}>
-              发送
+              {t("common.send")}
             </Button>
           </div>
         </footer>

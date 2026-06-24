@@ -21,6 +21,7 @@ import {
   type PlanDateTimeEdge,
 } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 export function splitDatetimeLocal(value: string): { date: string; time: string } {
   if (!value.trim()) return { date: "", time: "" };
@@ -100,7 +101,7 @@ export function PlanDateTimeField({
   trigger = "click",
   label,
   panelTitle,
-  placeholder = "点击选择",
+  placeholder: placeholderProp,
   disabled = false,
   required = false,
   name,
@@ -112,6 +113,8 @@ export function PlanDateTimeField({
   cellAriaLabel,
   style,
 }: PlanDateTimeFieldProps) {
+  const { t } = useI18n();
+  const placeholder = placeholderProp ?? t("common.clickToSelect");
   const popoverId = useId();
   const anchorRef = useRef<HTMLButtonElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
@@ -121,7 +124,7 @@ export function PlanDateTimeField({
   const [error, setError] = useState("");
   const [panelPos, setPanelPos] = useState<{ top: number; left: number } | null>(null);
 
-  const title = panelTitle ?? label ?? "选择时间";
+  const title = panelTitle ?? label ?? t("datetime.selectTime");
   const { date: draftDate, time: draftTime } =
     mode === "datetime" ? splitDatetimeLocal(draft) : { date: draft, time: "" };
 
@@ -240,7 +243,7 @@ export function PlanDateTimeField({
       }
       setOpen(false);
     } catch {
-      setError("操作失败");
+      setError(t("datetime.operationFailed"));
     } finally {
       setBusy(false);
     }
@@ -296,15 +299,15 @@ export function PlanDateTimeField({
               <p className="text-xs font-medium text-gray-800 dark:text-gray-100">{title}</p>
               <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
                 {mode === "date"
-                  ? "选好日期后，点击下方「确认」"
-                  : "选好日期和时间后，点击下方「确认」"}
+                  ? t("datetime.pickDateConfirm")
+                  : t("datetime.pickDateTimeConfirm")}
               </p>
             </div>
 
             <div className="space-y-2 px-3 py-2">
               <div className={cn("grid gap-2", mode === "datetime" ? "grid-cols-2" : "grid-cols-1")}>
                 <label className="block">
-                  <span className="mb-1 block text-[10px] text-gray-500 dark:text-gray-400">日期</span>
+                  <span className="mb-1 block text-[10px] text-gray-500 dark:text-gray-400">{t("datetime.date")}</span>
                   <input
                     type="date"
                     data-no-pan
@@ -317,7 +320,7 @@ export function PlanDateTimeField({
                 </label>
                 {mode === "datetime" && (
                   <label className="block">
-                    <span className="mb-1 block text-[10px] text-gray-500 dark:text-gray-400">时间</span>
+                    <span className="mb-1 block text-[10px] text-gray-500 dark:text-gray-400">{t("datetime.time")}</span>
                     <input
                       type="time"
                       data-no-pan
@@ -332,7 +335,7 @@ export function PlanDateTimeField({
               </div>
 
               <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                将保存为：
+                {t("datetime.willSaveAs")}
                 <span className="ml-1 font-medium text-gray-800 dark:text-gray-100">{preview}</span>
               </p>
               {error && <p className="text-[11px] text-red-600">{error}</p>}
@@ -346,7 +349,7 @@ export function PlanDateTimeField({
                 onClick={clearDraft}
                 className="rounded border border-gray-200 px-1 py-2 text-[11px] text-blue-600 hover:bg-blue-50 dark:border-gray-700 dark:text-blue-400 dark:hover:bg-blue-950/50"
               >
-                清除
+                {t("common.clear")}
               </button>
               <button
                 type="button"
@@ -355,7 +358,7 @@ export function PlanDateTimeField({
                 onClick={setToday}
                 className="rounded border border-gray-200 px-1 py-2 text-[11px] text-blue-600 hover:bg-blue-50 dark:border-gray-700 dark:text-blue-400 dark:hover:bg-blue-950/50"
               >
-                今天
+                {t("common.today")}
               </button>
               <button
                 ref={confirmRef}
@@ -365,7 +368,7 @@ export function PlanDateTimeField({
                 onClick={() => void commit()}
                 className="rounded bg-blue-600 px-1 py-2 text-[11px] font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
               >
-                {busy ? "…" : "确认"}
+                {busy ? "…" : t("common.confirm")}
               </button>
               <button
                 type="button"
@@ -374,7 +377,7 @@ export function PlanDateTimeField({
                 onClick={cancel}
                 className="rounded border border-gray-200 px-1 py-2 text-[11px] text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
               >
-                取消
+                {t("common.cancel")}
               </button>
             </div>
           </div>,

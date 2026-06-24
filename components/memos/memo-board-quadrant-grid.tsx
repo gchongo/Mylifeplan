@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef } from "react";
+import { useI18n } from "@/components/i18n/i18n-provider";
+import { localizeMemoQuadrantOption } from "@/lib/i18n/feed-helpers";
 import {
   clampMemoAxisRatio,
   MEMO_QUADRANTS,
@@ -44,34 +46,35 @@ function AxisIconNotUrgent({ className }: { className?: string }) {
 }
 
 export function MemoBoardAxisEdgeIcons() {
+  const { t } = useI18n();
   const iconClass = "h-4 w-4 text-gray-500/80 dark:text-gray-400/80";
   return (
     <>
       <span
         className="pointer-events-none absolute left-1/2 top-1.5 z-20 -translate-x-1/2"
-        title="重要"
-        aria-label="重要"
+        title={t("memos.axis.important")}
+        aria-label={t("memos.axis.important")}
       >
         <AxisIconImportant className={iconClass} />
       </span>
       <span
         className="pointer-events-none absolute bottom-1.5 left-1/2 z-20 -translate-x-1/2"
-        title="不重要"
-        aria-label="不重要"
+        title={t("memos.axis.notImportant")}
+        aria-label={t("memos.axis.notImportant")}
       >
         <AxisIconNotImportant className={iconClass} />
       </span>
       <span
         className="pointer-events-none absolute left-2 top-1/2 z-20 -translate-y-1/2"
-        title="不紧急"
-        aria-label="不紧急"
+        title={t("memos.axis.notUrgent")}
+        aria-label={t("memos.axis.notUrgent")}
       >
         <AxisIconNotUrgent className={iconClass} />
       </span>
       <span
         className="pointer-events-none absolute right-2 top-1/2 z-20 -translate-y-1/2"
-        title="紧急"
-        aria-label="紧急"
+        title={t("memos.axis.urgent")}
+        aria-label={t("memos.axis.urgent")}
       >
         <AxisIconUrgent className={iconClass} />
       </span>
@@ -92,6 +95,7 @@ export function MemoBoardQuadrantGrid({
   onAxisChange: (axis: MemoBoardAxis) => void;
   onAxisCommit: (axis: MemoBoardAxis) => void;
 }) {
+  const { t } = useI18n();
   const dragRef = useRef<{
     startX: number;
     startY: number;
@@ -159,7 +163,7 @@ export function MemoBoardQuadrantGrid({
             }}
           >
             <span className="inline-flex p-1.5 text-[10px] font-bold text-gray-500/70 dark:text-gray-400/70">
-              {q.shortLabel}
+              {localizeMemoQuadrantOption(t, q.id).shortLabel}
             </span>
           </div>
         );
@@ -182,8 +186,8 @@ export function MemoBoardQuadrantGrid({
           "text-gray-600 hover:bg-white hover:shadow dark:border-white/20 dark:bg-gray-900/90 dark:text-gray-300",
         )}
         style={{ left: axisX, top: axisY }}
-        title="拖动调整象限大小"
-        aria-label="拖动调整象限大小"
+        title={t("memos.axis.resize")}
+        aria-label={t("memos.axis.resize")}
         onPointerDown={onHandlePointerDown}
         onPointerMove={onHandlePointerMove}
         onPointerUp={onHandlePointerUp}

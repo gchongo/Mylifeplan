@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { PanelResizeHandle } from "@/components/home/panel-resize-handle";
 import { cn } from "@/lib/utils";
 import { useEffect } from "react";
@@ -20,6 +21,7 @@ export function DrawerPanel({
   className?: string;
   onBack?: () => void;
 }) {
+  const { t } = useI18n();
   const showHeader = Boolean(title || onBack);
 
   return (
@@ -28,7 +30,7 @@ export function DrawerPanel({
         <div className="flex shrink-0 items-center gap-2 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
           {onBack ? (
             <Button variant="ghost" size="sm" onClick={onBack} className="shrink-0 px-2">
-              ← 返回
+              {t("common.back")}
             </Button>
           ) : null}
           {title ? (
@@ -38,7 +40,7 @@ export function DrawerPanel({
           ) : (
             <div className="min-w-0 flex-1" />
           )}
-          <Button variant="ghost" size="sm" onClick={onClose} aria-label="关闭" className="shrink-0">
+          <Button variant="ghost" size="sm" onClick={onClose} aria-label={t("common.close")} className="shrink-0">
             ✕
           </Button>
         </div>

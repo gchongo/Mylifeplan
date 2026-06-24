@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorMessage, Loading } from "@/components/ui/feedback";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 interface UserDetail {
   id: string;
@@ -26,6 +27,7 @@ interface UserDetail {
 }
 
 export function AdminUserDetail({ userId }: { userId: string }) {
+  const { t } = useI18n();
   const [user, setUser] = useState<UserDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -35,11 +37,11 @@ export function AdminUserDetail({ userId }: { userId: string }) {
     const res = await fetch(`/api/admin/users/${userId}`);
     const data = await res.json();
     if (!res.ok) {
-      setError(data.error ?? "加载失败");
+      setError(data.error ?? t("common.loadFailed"));
       return;
     }
     setUser(data.user);
-  }, [userId]);
+  }, [userId, t]);
 
   useEffect(() => {
     load().finally(() => setLoading(false));
@@ -57,7 +59,7 @@ export function AdminUserDetail({ userId }: { userId: string }) {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "操作失败");
+        setError(data.error ?? t("common.operationFailed"));
         return;
       }
       await load();
@@ -67,7 +69,7 @@ export function AdminUserDetail({ userId }: { userId: string }) {
   }
 
   if (loading) return <Loading />;
-  if (!user) return <ErrorMessage message={error || "用户不存在"} />;
+  if (!user) return <ErrorMessage message={error || t("common.noData")} />;
 
   return (
     <div className="space-y-4">
@@ -76,19 +78,22 @@ export function AdminUserDetail({ userId }: { userId: string }) {
         <CardHeader className="flex flex-row items-start justify-between">
           <div>
             <CardTitle>{user.email}</CardTitle>
-            <p className="mt-1 text-sm text-gray-500">{user.name ?? "未设置名称"}</p>
+            <p className="mt-1 text-sm text-gray-500">{user.name ?? t("common.noName")}</p>
           </div>
           <div className="flex gap-2">
-            <Badge variant={user.role === "admin" ? "warning" : "info"}>{user.role}</Badge>
+            <Badge variant={user.role === "admin" ? "warning" : "info"}>
+              {user.role === "admin" ? t("admin.roleAdmin") : t("admin.roleUser")}
+            </Badge>
             <Badge variant={user.isActive ? "success" : "danger"}>
-              {user.isActive ? "正常" : "已禁用"}
+              {user.isActive ? t("common.active") : t("common.inactive")}
             </Badge>
           </div>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <p className="text-gray-500">
-            注册于 {new Date(user.createdAt).toLocaleString()} · {user.stats.plans} 计划 ·{" "}
-            {user.stats.memos} 备忘录
+            {t("admin.registeredAt")} {new Date(user.createdAt).toLocaleString()} ·{" "}
+            {t("admin.plansCount", { count: user.stats.plans })} ·{" "}
+            {t("admin.memosCount", { count: user.stats.memos })}
           </p>
           <Button
             size="sm"
@@ -96,18 +101,18 @@ export function AdminUserDetail({ userId }: { userId: string }) {
             onClick={toggleActive}
             disabled={busy}
           >
-            {user.isActive ? "禁用账号" : "启用账号"}
+            {user.isActive ? t("admin.disableAccount") : t("admin.enableAccount")}
           </Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">订阅记录</CardTitle>
+          <CardTitle className="text-base">{t("admin.subscriptionRecords")}</CardTitle>
         </CardHeader>
         <CardContent>
           {user.subscriptions.length === 0 ? (
-            <p className="text-sm text-gray-500">暂无订阅。</p>
+            <p className="text-sm text-gray-500">{t("admin.noSubscriptionRecords")}</p>
           ) : (
             <ul className="space-y-2">
               {user.subscriptions.map((sub) => (
@@ -136,7 +141,7 @@ export function AdminUserDetail({ userId }: { userId: string }) {
             href="/admin/subscriptions"
             className="mt-3 inline-block text-sm text-brand-600 hover:underline"
           >
-            前往订阅管理 →
+            {t("admin.goSubscriptions")}
           </Link>
         </CardContent>
       </Card>

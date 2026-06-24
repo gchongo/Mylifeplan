@@ -1,10 +1,11 @@
 "use client";
 
-import Link from "next/link";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { DrawerLayout, DrawerPanel } from "@/components/ui/drawer";
 import { CalendarDrawerItemList } from "@/components/calendar/calendar-drawer-item-list";
 import { CalendarDayCreateActions } from "@/components/calendar/calendar-day-create-actions";
-import { formatDayDrawerTitle, itemsOnDate } from "@/lib/calendar-display";
+import { itemsOnDate } from "@/lib/calendar-display";
+import { formatCalendarDayDrawerTitle } from "@/lib/i18n/calendar-helpers";
 import type { CalendarItem } from "@/types";
 
 function CalendarDayDrawerPanel({
@@ -20,11 +21,16 @@ function CalendarDayDrawerPanel({
   detailExpandable: boolean;
   onDataChange?: () => void;
 }) {
+  const { t, locale } = useI18n();
   const dayItems = dateStr ? itemsOnDate(items, dateStr) : [];
 
   return (
     <DrawerPanel
-      title={dateStr ? formatDayDrawerTitle(dateStr, dayItems.length) : "当日安排"}
+      title={
+        dateStr
+          ? formatCalendarDayDrawerTitle(dateStr, dayItems.length, locale, t)
+          : t("calendar.dayDrawerFallback")
+      }
       onClose={onClose}
       className="p-0"
     >

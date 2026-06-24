@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
 import { formatEventSchedule, itemAccent } from "@/lib/calendar-display";
 import { formatPlanDateTimeDisplay } from "@/lib/dates";
@@ -41,6 +42,8 @@ function DrawerItemTitleBlock({
 }
 
 function PlanInlineDetail({ plan }: { plan: PlanDetail }) {
+  const { t } = useI18n();
+
   return (
     <div className="space-y-2 text-xs text-gray-600">
       {plan.description ? (
@@ -48,16 +51,16 @@ function PlanInlineDetail({ plan }: { plan: PlanDetail }) {
           {plan.description}
         </p>
       ) : (
-        <p className="text-gray-400">暂无描述</p>
+        <p className="text-gray-400">{t("common.noDescription")}</p>
       )}
       <dl className="grid grid-cols-2 gap-x-2 gap-y-1">
-        <dt className="text-gray-400">开始</dt>
+        <dt className="text-gray-400">{t("common.start")}</dt>
         <dd>{formatPlanDateTimeDisplay(plan.startDate)}</dd>
-        <dt className="text-gray-400">结束</dt>
+        <dt className="text-gray-400">{t("common.end")}</dt>
         <dd>{formatPlanDateTimeDisplay(plan.endDate)}</dd>
       </dl>
       <Link href={`/plans/${plan.id}`} className="text-sm text-brand-600 hover:underline">
-        查看完整计划 →
+        {t("common.viewFullPlan")}
       </Link>
     </div>
   );
@@ -70,6 +73,7 @@ function CalendarDrawerItemRow({
   item: CalendarItem;
   expandable: boolean;
 }) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [planDetail, setPlanDetail] = useState<PlanDetail | null>(null);
@@ -124,7 +128,7 @@ function CalendarDrawerItemRow({
           type="button"
           className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
           onClick={toggleExpand}
-          aria-label={expanded ? "折叠详情" : "展开详情"}
+          aria-label={expanded ? t("calendar.drawer.collapseDetails") : t("calendar.drawer.expandDetails")}
         >
           <span className={cn("text-[10px] transition-transform", expanded && "rotate-90")}>▶</span>
         </button>
@@ -143,7 +147,7 @@ function CalendarDrawerItemRow({
 
       {expanded && (
         <div className="ml-6 mt-2 space-y-2 border-l border-dashed border-gray-200 pl-3">
-          {loading && <p className="text-xs text-gray-400">加载详情…</p>}
+          {loading && <p className="text-xs text-gray-400">{t("calendar.drawer.loadingDetails")}</p>}
           {!loading && planDetail && <PlanInlineDetail plan={planDetail} />}
         </div>
       )}
@@ -158,8 +162,10 @@ export function CalendarDrawerItemList({
   items: CalendarItem[];
   expandable: boolean;
 }) {
+  const { t } = useI18n();
+
   if (items.length === 0) {
-    return <p className="px-4 py-8 text-center text-sm text-gray-400">当天暂无安排</p>;
+    return <p className="px-4 py-8 text-center text-sm text-gray-400">{t("calendar.emptyDay")}</p>;
   }
 
   return (

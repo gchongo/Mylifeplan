@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { ErrorMessage, Loading } from "@/components/ui/feedback";
 import { StickyNote, type StickyNoteData } from "@/components/memos/sticky-note";
 import { StickyNoteAssignModal } from "@/components/memos/sticky-note-assign-modal";
@@ -31,6 +32,7 @@ function MemoBoardSearch({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const expanded = open || value.trim().length > 0;
@@ -47,7 +49,7 @@ function MemoBoardSearch({
           type="search"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="搜索…"
+          placeholder={t("memos.searchPlaceholder")}
           className="w-32 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm sm:w-40 dark:border-gray-700 dark:bg-gray-900"
         />
       )}
@@ -61,8 +63,8 @@ function MemoBoardSearch({
           });
         }}
         className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
-        aria-label="搜索便签"
-        title="搜索便签"
+        aria-label={t("memos.searchAria")}
+        title={t("memos.searchAria")}
       >
         <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
           <circle cx="11" cy="11" r="7" />
@@ -74,6 +76,7 @@ function MemoBoardSearch({
 }
 
 export function StickyNoteBoard() {
+  const { t } = useI18n();
   const [notes, setNotes] = useState<NoteState[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -93,8 +96,8 @@ export function StickyNoteBoard() {
       body: JSON.stringify(body),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? "保存失败");
-  }, []);
+    if (!res.ok) throw new Error(data.error ?? t("common.saveFailed"));
+  }, [t]);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/memos?standaloneOnly=true");
@@ -224,7 +227,7 @@ export function StickyNoteBoard() {
     const quadrant = detectQuadrant(x, y, width, height);
     patchNote(id, { x, y, posX: x, posY: y, quadrant });
     void persistNote(id, { posX: x, posY: y, quadrant }).catch((e) =>
-      setError(e instanceof Error ? e.message : "保存位置失败"),
+      setError(e instanceof Error ? e.message : t("memos.errors.savePosition")),
     );
   }
 
@@ -239,7 +242,7 @@ export function StickyNoteBoard() {
     const quadrant = detectQuadrant(x, y, width, height);
     patchNote(id, { width, height, quadrant });
     void persistNote(id, { width, height, quadrant }).catch((e) =>
-      setError(e instanceof Error ? e.message : "保存大小失败"),
+      setError(e instanceof Error ? e.message : t("memos.errors.saveSize")),
     );
   }
 
@@ -287,22 +290,22 @@ export function StickyNoteBoard() {
         await load();
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "保存失败");
+      setError(e instanceof Error ? e.message : t("common.saveFailed"));
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("确定删除这张便签？")) return;
+    if (!confirm(t("common.confirmDeleteNote"))) return;
     try {
       const res = await fetch(`/api/memos/${id}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error ?? "删除失败");
+        throw new Error(data.error ?? t("common.deleteFailed"));
       }
       setNotes((prev) => prev.filter((n) => n.id !== id));
       if (editingId === id) setEditingId(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "删除失败");
+      setError(e instanceof Error ? e.message : t("common.deleteFailed"));
     }
   }
 
@@ -330,14 +333,14 @@ export function StickyNoteBoard() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "创建失败");
+      if (!res.ok) throw new Error(data.error ?? t("common.createFailed"));
       await load();
       if (data.memo?.id) {
         setActiveId(data.memo.id);
         setEditingId(data.memo.id);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "创建失败");
+      setError(e instanceof Error ? e.message : t("common.createFailed"));
     }
   }
 
@@ -353,7 +356,7 @@ export function StickyNoteBoard() {
       body: JSON.stringify(data),
     });
     const body = await res.json();
-    if (!res.ok) throw new Error(body.error ?? "分配失败");
+    if (!res.ok) throw new Error(body.error ?? t("memos.assignModal.assignFailed"));
     setNotes((prev) => prev.filter((n) => n.id !== assignNoteId));
     setAssignNoteId(null);
     if (activeId === assignNoteId) setActiveId(null);
@@ -361,19 +364,19 @@ export function StickyNoteBoard() {
 
   const assignNote = assignNoteId ? notes.find((n) => n.id === assignNoteId) : null;
 
-  if (loading) return <Loading label="加载便签…" />;
+  if (loading) return <Loading label={t("memos.loading")} />;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <header className="mb-2 flex shrink-0 items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">便签</h1>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{t("memos.title")}</h1>
         <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => void handleAdd()}
             className="inline-flex h-8 items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
-            title="新建便签"
-            aria-label="新建便签"
+            title={t("memos.newNote")}
+            aria-label={t("memos.newNote")}
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" d="M12 5v14M5 12h14" />
@@ -420,7 +423,7 @@ export function StickyNoteBoard() {
 
             {filteredNotes.length === 0 && search.trim() && (
               <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center text-sm text-gray-500">
-                无匹配结果
+                {t("memos.noResults")}
               </div>
             )}
 
@@ -451,7 +454,7 @@ export function StickyNoteBoard() {
       <StickyNoteAssignModal
         key={assignNoteId ?? "closed"}
         open={Boolean(assignNote)}
-        noteTitle={assignNote?.title ?? "便签"}
+        noteTitle={assignNote?.title ?? t("memos.note.defaultTitle")}
         onClose={() => setAssignNoteId(null)}
         onSubmit={handleAssignSubmit}
       />

@@ -1,11 +1,17 @@
 "use client";
 
+import { useI18n } from "@/components/i18n/i18n-provider";
 import {
   CALENDAR_WEEK_NUMBER_FORMAT_OPTIONS,
   CALENDAR_WEEK_NUMBER_MODE_OPTIONS,
   type CalendarWeekNumberPreferences,
 } from "@/lib/user-preferences";
 import { formatCalendarWeekNumber } from "@/lib/calendar-week-number";
+import {
+  localizeSettingsWeekdayMonStart,
+  localizeWeekNumberFormatLabel,
+  localizeWeekNumberModeLabel,
+} from "@/lib/i18n/settings-helpers";
 import { cn } from "@/lib/utils";
 
 const PREVIEW_YEAR = 2025;
@@ -20,16 +26,18 @@ export function CalendarWeekNumberSettings({
   onChange: (patch: Partial<CalendarWeekNumberPreferences>) => void;
   disabled?: boolean;
 }) {
+  const { t } = useI18n();
   const previewWeeks = [
     formatCalendarWeekNumber(value, PREVIEW_YEAR, PREVIEW_MONTH, [null, null, 1, 2, 3, 4, 5], 0, 5),
     formatCalendarWeekNumber(value, PREVIEW_YEAR, PREVIEW_MONTH, [6, 7, 8, 9, 10, 11, 12], 1, 5),
     formatCalendarWeekNumber(value, PREVIEW_YEAR, PREVIEW_MONTH, [13, 14, 15, 16, 17, 18, 19], 2, 5),
   ];
+  const weekdayLabels = Array.from({ length: 7 }, (_, i) => localizeSettingsWeekdayMonStart(t, i));
 
   return (
     <div className="space-y-4">
       <label className="flex items-center justify-between gap-3 text-sm">
-        <span className="text-gray-700 dark:text-gray-300">在日历左侧显示周数</span>
+        <span className="text-gray-700 dark:text-gray-300">{t("settings.weekNumber.showLabel")}</span>
         <input
           type="checkbox"
           checked={value.enabled}
@@ -46,7 +54,9 @@ export function CalendarWeekNumberSettings({
         )}
       >
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-gray-700 dark:text-gray-300">周数计算方式</span>
+          <span className="mb-1 block font-medium text-gray-700 dark:text-gray-300">
+            {t("settings.weekNumber.modeLabel")}
+          </span>
           <select
             value={value.mode}
             disabled={disabled || !value.enabled}
@@ -57,14 +67,16 @@ export function CalendarWeekNumberSettings({
           >
             {CALENDAR_WEEK_NUMBER_MODE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
-                {opt.label}
+                {localizeWeekNumberModeLabel(t, opt.value)}
               </option>
             ))}
           </select>
         </label>
 
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-gray-700 dark:text-gray-300">显示格式</span>
+          <span className="mb-1 block font-medium text-gray-700 dark:text-gray-300">
+            {t("settings.weekNumber.formatLabel")}
+          </span>
           <select
             value={value.format}
             disabled={disabled || !value.enabled}
@@ -75,7 +87,7 @@ export function CalendarWeekNumberSettings({
           >
             {CALENDAR_WEEK_NUMBER_FORMAT_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
-                {opt.label}
+                {localizeWeekNumberFormatLabel(t, opt.value)}
               </option>
             ))}
           </select>
@@ -83,7 +95,7 @@ export function CalendarWeekNumberSettings({
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900/50">
-        <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">预览（2025 年 6 月）</p>
+        <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">{t("settings.weekNumber.preview")}</p>
         <div
           className={cn(
             "overflow-hidden rounded-md border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-950",
@@ -92,10 +104,10 @@ export function CalendarWeekNumberSettings({
           )}
         >
           <div className="border-b border-r border-gray-200 py-1 text-center text-[10px] text-gray-500 dark:border-gray-700">
-            周
+            {t("settings.weekNumber.weekHeader")}
           </div>
           <div className="grid grid-cols-7 border-b border-gray-200 text-center text-[10px] text-gray-500 dark:border-gray-700">
-            {["一", "二", "三", "四", "五", "六", "日"].map((w) => (
+            {weekdayLabels.map((w) => (
               <div key={w} className="py-1">
                 {w}
               </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { ParentPlanSelect } from "@/components/forms/parent-plan-select";
 import { PlanContributionSelect } from "@/components/forms/long-term-plan-select";
 import {
@@ -18,11 +19,6 @@ import { DEFAULT_PLAN_COLOR } from "@/lib/plan-color";
 import { cn } from "@/lib/utils";
 
 export type PlanContributionComposeMode = "plan" | "contribution";
-
-const MODES: { id: PlanContributionComposeMode; label: string }[] = [
-  { id: "plan", label: "计划" },
-  { id: "contribution", label: "贡献" },
-];
 
 function emptyCompose(startAt = ""): FeedComposeValues {
   return { title: "", body: "", startAt, endAt: startAt, imageUrls: [] };
@@ -43,7 +39,7 @@ export function PlanContributionComposeForm({
   allowModeSwitch = true,
   onSuccess,
   onCancel,
-  submitLabel = "保存",
+  submitLabel,
 }: {
   formKey: string;
   defaultMode?: PlanContributionComposeMode;
@@ -56,6 +52,11 @@ export function PlanContributionComposeForm({
   onCancel?: () => void;
   submitLabel?: string;
 }) {
+  const { t } = useI18n();
+  const modes: { id: PlanContributionComposeMode; label: string }[] = [
+    { id: "plan", label: t("feed.typeFilter.plan") },
+    { id: "contribution", label: t("feed.typeFilter.contribution") },
+  ];
   const [mode, setMode] = useState<PlanContributionComposeMode>(defaultMode);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -68,6 +69,7 @@ export function PlanContributionComposeForm({
   const [contributionMarkerColor, setContributionMarkerColor] = useState<string | null>(null);
   const [planColor, setPlanColor] = useState(DEFAULT_PLAN_COLOR);
   const [planListRefreshKey, setPlanListRefreshKey] = useState(0);
+  const resolvedSubmitLabel = submitLabel ?? t("common.save");
 
   useEffect(() => {
     setMode(defaultMode);
@@ -111,15 +113,15 @@ export function PlanContributionComposeForm({
       if (mode === "contribution") {
         const title = contributionValues.title.trim();
         if (!title) {
-          setError("请填写标题");
+          setError(t("forms.errorTitle"));
           return;
         }
         if (!contributionValues.startAt) {
-          setError("请选择时间");
+          setError(t("forms.errorTime"));
           return;
         }
         if (!contributionRelatedId) {
-          setError("请选择关联计划");
+          setError(t("forms.errorRelatedPlan"));
           return;
         }
         await apiJson("/api/contributions", {
@@ -144,7 +146,7 @@ export function PlanContributionComposeForm({
       } else {
         const title = planValues.title.trim();
         if (!title) {
-          setError("请填写标题");
+          setError(t("forms.errorTitle"));
           return;
         }
         await apiJson("/api/plans", {
@@ -166,7 +168,7 @@ export function PlanContributionComposeForm({
       dispatchPlanUpdated();
       onSuccess?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "保存失败");
+      setError(err instanceof Error ? err.message : t("common.saveFailed"));
     } finally {
       setBusy(false);
     }
@@ -177,8 +179,8 @@ export function PlanContributionComposeForm({
       <ParentPlanSelect
         value={planRelatedId}
         onChange={setPlanRelatedId}
-        label="父计划"
-        emptyLabel="无父计划"
+        label={t("forms.parentPlan")}
+        emptyLabel={t("forms.noParentPlan")}
       />
     ) : (
       <PlanContributionSelect
@@ -186,7 +188,7 @@ export function PlanContributionComposeForm({
         onChange={setContributionRelatedId}
         refreshKey={planListRefreshKey}
         required
-        label="关联计划"
+        label={t("forms.relatedPlan")}
       />
     );
 
@@ -194,7 +196,7 @@ export function PlanContributionComposeForm({
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-3">
       {allowModeSwitch && (
         <div className="flex flex-wrap items-center gap-1">
-          {MODES.map((m) => (
+          {modes.map((m) => (
             <button
               key={m.id}
               type="button"
@@ -223,8 +225,8 @@ export function PlanContributionComposeForm({
             values={planValues}
             onChange={(patch) => setPlanValues((prev) => ({ ...prev, ...patch }))}
             timeKind="datetime"
-            titlePlaceholder="计划标题"
-            bodyPlaceholder="描述与细节"
+            titlePlaceholder={t("forms.planTitle")}
+            bodyPlaceholder={t("forms.descriptionDetails")}
             relatedPlan={relatedPlanSelect("plan")}
           />
           <PlanColorSwatchField value={planColor} onChange={setPlanColor} disabled={busy} />
@@ -236,8 +238,8 @@ export function PlanContributionComposeForm({
             onChange={(patch) => setContributionValues((prev) => ({ ...prev, ...patch }))}
             timeKind="datetime"
             startRequired
-            titlePlaceholder="贡献标题"
-            bodyPlaceholder="详细记录"
+            titlePlaceholder={t("forms.contributionTitle")}
+            bodyPlaceholder={t("forms.details")}
             showImages
             relatedPlan={relatedPlanSelect("contribution")}
           />
@@ -252,11 +254,11 @@ export function PlanContributionComposeForm({
       <div className="flex justify-end gap-2 pt-1">
         {onCancel && (
           <Button type="button" variant="secondary" onClick={onCancel} disabled={busy}>
-            取消
+            {t("common.cancel")}
           </Button>
         )}
         <Button type="submit" disabled={!canSubmit}>
-          {busy ? "保存中…" : submitLabel}
+          {busy ? t("common.saving") : resolvedSubmitLabel}
         </Button>
       </div>
     </form>

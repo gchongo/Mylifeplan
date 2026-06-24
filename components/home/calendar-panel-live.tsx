@@ -16,6 +16,8 @@ import {
 import { CalendarToolbar } from "@/components/calendar/calendar-toolbar";
 import { CalendarToolbarControls } from "@/components/calendar/calendar-toolbar-controls";
 import { PanelExpandButton } from "@/components/home/panel-expand-button";
+import { useI18n } from "@/components/i18n/i18n-provider";
+import { formatCalendarYearLabel } from "@/lib/i18n/calendar-helpers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState, Loading } from "@/components/ui/feedback";
 import {
@@ -93,6 +95,7 @@ export function CalendarPanelLive({
   fullPage?: boolean;
   className?: string;
 }) {
+  const { t, locale } = useI18n();
   const today = new Date();
   const todayStr = localDateStr(today);
   const todayMonth = monthKeyFromDate(today);
@@ -176,7 +179,7 @@ export function CalendarPanelLive({
       return {
         from: `${viewYear}-01-01`,
         to: `${viewYear}-12-31`,
-        label: `${viewYear}年`,
+        label: formatCalendarYearLabel(viewYear, locale, t),
       };
     }
     if (viewMode === "month") {
@@ -189,7 +192,7 @@ export function CalendarPanelLive({
     }
     const ds = toDateStr(viewYear, viewMonth, viewDay);
     return { from: ds, to: ds, label: ds };
-  }, [viewMode, loadedMonths, visibleMonth, viewYear, viewMonth, viewDay, weekAnchor]);
+  }, [viewMode, loadedMonths, visibleMonth, viewYear, viewMonth, viewDay, weekAnchor, locale, t]);
 
   const reloadCalendar = useCallback(() => {
     setLoading(true);
@@ -297,7 +300,7 @@ export function CalendarPanelLive({
     <Card className={cn("flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden", className)}>
       {!fullPage && (
         <CardHeader className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 space-y-0 pb-2">
-          <CardTitle className="min-w-0 truncate">日历 · 看执行</CardTitle>
+          <CardTitle className="min-w-0 truncate">{t("calendar.homeTitle")}</CardTitle>
           <div className="flex items-center gap-2">
             <CalendarToolbarControls
               viewMode={viewMode}
@@ -310,7 +313,7 @@ export function CalendarPanelLive({
               <CalendarDisplayPicker value={displayMode} onChange={setDisplayMode} />
             )}
           </div>
-          <PanelExpandButton href="/calendar" label="日历" />
+          <PanelExpandButton href="/calendar" label={t("calendar.panelExpand")} />
         </CardHeader>
       )}
 
@@ -348,13 +351,13 @@ export function CalendarPanelLive({
               />
             )}
             {loading && viewMode !== "month" && viewMode !== "year" && (
-              <Loading label="加载日历…" />
+              <Loading label={t("calendar.loading")} />
             )}
             {loading && viewMode === "month" && items.length === 0 && (
-              <Loading label="加载日历…" />
+              <Loading label={t("calendar.loading")} />
             )}
             {!loading && items.length === 0 && viewMode !== "month" && viewMode !== "year" && (
-              <EmptyState title="暂无安排" description="创建带开始日期的任务或计划后会显示在这里。" />
+              <EmptyState title={t("calendar.emptyTitle")} description={t("calendar.emptyDescription")} />
             )}
             {viewMode === "year" && (
               <CalendarYearPicker
@@ -388,7 +391,7 @@ export function CalendarPanelLive({
                 {loading && items.length > 0 && (
                   <div className="pointer-events-none absolute inset-x-0 top-10 z-20 flex justify-center">
                     <span className="rounded-full bg-white/90 px-3 py-1 text-xs text-gray-500 shadow-sm">
-                      更新中…
+                      {t("calendar.updating")}
                     </span>
                   </div>
                 )}
@@ -445,7 +448,7 @@ export function CalendarPanelLive({
               <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white">
                 <ul className="scrollbar-hide min-h-0 flex-1 space-y-0 overflow-y-auto overscroll-contain">
                   {dayItems.length === 0 ? (
-                    <li className="px-4 py-6 text-sm text-gray-400">当天暂无安排</li>
+                    <li className="px-4 py-6 text-sm text-gray-400">{t("calendar.emptyDay")}</li>
                   ) : (
                     dayItems.map((item) => {
                       const accent = itemAccent(item);

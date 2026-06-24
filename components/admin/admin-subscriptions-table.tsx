@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui";
 import { PlanDateTimeField } from "@/components/forms/plan-datetime-field";
 import { EmptyState, ErrorMessage, Loading } from "@/components/ui/feedback";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { toDatetimeLocalInput, datetimeLocalToIso } from "@/lib/dates";
 
 interface SubscriptionRow {
@@ -19,19 +21,8 @@ interface SubscriptionRow {
   endAt: string;
 }
 
-const statusOptions = [
-  { value: "active", label: "active" },
-  { value: "expired", label: "expired" },
-  { value: "cancelled", label: "cancelled" },
-];
-
-const paymentOptions = [
-  { value: "pending", label: "pending" },
-  { value: "paid", label: "paid" },
-  { value: "failed", label: "failed" },
-];
-
 export function AdminSubscriptionsTable() {
+  const { t } = useI18n();
   const [subs, setSubs] = useState<SubscriptionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -45,11 +36,23 @@ export function AdminSubscriptionsTable() {
   });
   const [saving, setSaving] = useState(false);
 
+  const statusOptions = [
+    { value: "active", label: "active" },
+    { value: "expired", label: "expired" },
+    { value: "cancelled", label: "cancelled" },
+  ];
+
+  const paymentOptions = [
+    { value: "pending", label: "pending" },
+    { value: "paid", label: "paid" },
+    { value: "failed", label: "failed" },
+  ];
+
   async function load() {
     const res = await fetch("/api/admin/subscriptions");
     const data = await res.json();
     if (!res.ok) {
-      setError(data.error ?? "加载失败");
+      setError(data.error ?? t("common.loadFailed"));
       return;
     }
     setSubs(data.subscriptions ?? []);
@@ -88,7 +91,7 @@ export function AdminSubscriptionsTable() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "保存失败");
+        setError(data.error ?? t("common.saveFailed"));
         return;
       }
       setEditingId(null);
@@ -100,7 +103,9 @@ export function AdminSubscriptionsTable() {
 
   if (loading) return <Loading />;
   if (subs.length === 0) {
-    return <EmptyState title="暂无订阅" description="用户订阅记录将显示在此。" />;
+    return (
+      <EmptyState title={t("admin.noSubscriptions")} description={t("admin.noSubscriptionsHint")} />
+    );
   }
 
   return (
@@ -110,12 +115,12 @@ export function AdminSubscriptionsTable() {
         <table className="min-w-full text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-left text-gray-600">
             <tr>
-              <th className="px-4 py-3 font-medium">用户</th>
-              <th className="px-4 py-3 font-medium">套餐</th>
-              <th className="px-4 py-3 font-medium">状态</th>
-              <th className="px-4 py-3 font-medium">支付</th>
-              <th className="px-4 py-3 font-medium">有效期</th>
-              <th className="px-4 py-3 font-medium">操作</th>
+              <th className="px-4 py-3 font-medium">{t("admin.table.user")}</th>
+              <th className="px-4 py-3 font-medium">{t("admin.table.plan")}</th>
+              <th className="px-4 py-3 font-medium">{t("admin.table.status")}</th>
+              <th className="px-4 py-3 font-medium">{t("admin.table.payment")}</th>
+              <th className="px-4 py-3 font-medium">{t("admin.table.validity")}</th>
+              <th className="px-4 py-3 font-medium">{t("admin.table.actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -136,7 +141,7 @@ export function AdminSubscriptionsTable() {
                 </td>
                 <td className="px-4 py-3">
                   <Button size="sm" variant="secondary" onClick={() => startEdit(sub)}>
-                    编辑
+                    {t("admin.table.edit")}
                   </Button>
                 </td>
               </tr>
@@ -147,33 +152,33 @@ export function AdminSubscriptionsTable() {
 
       {editingId && (
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <h3 className="mb-3 font-medium">编辑订阅</h3>
+          <h3 className="mb-3 font-medium">{t("admin.editSubscription")}</h3>
           <div className="grid gap-3 sm:grid-cols-2">
             <Input
-              label="套餐名称"
+              label={t("admin.planName")}
               value={form.planName}
               onChange={(e) => setForm({ ...form, planName: e.target.value })}
             />
             <Select
-              label="订阅状态"
+              label={t("admin.subStatus")}
               options={statusOptions}
               value={form.status}
               onChange={(e) => setForm({ ...form, status: e.target.value })}
             />
             <Select
-              label="支付状态"
+              label={t("admin.payStatus")}
               options={paymentOptions}
               value={form.paymentStatus}
               onChange={(e) => setForm({ ...form, paymentStatus: e.target.value })}
             />
             <PlanDateTimeField
-              label="开始时间"
+              label={t("admin.validFrom")}
               value={form.startAt}
               onConfirm={(startAt) => setForm({ ...form, startAt })}
               edge="start"
             />
             <PlanDateTimeField
-              label="结束时间"
+              label={t("admin.validTo")}
               value={form.endAt}
               onConfirm={(endAt) => setForm({ ...form, endAt })}
               edge="end"
@@ -181,10 +186,10 @@ export function AdminSubscriptionsTable() {
           </div>
           <div className="mt-4 flex gap-2">
             <Button size="sm" onClick={save} disabled={saving}>
-              {saving ? "保存中…" : "保存"}
+              {saving ? t("common.saving") : t("common.save")}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
-              取消
+              {t("common.cancel")}
             </Button>
           </div>
         </div>

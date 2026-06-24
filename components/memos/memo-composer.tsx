@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export function MemoComposer({ onCreated }: { onCreated: () => void }) {
+  const { t } = useI18n();
   const [content, setContent] = useState("");
   const [pendingImages, setPendingImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -22,7 +24,7 @@ export function MemoComposer({ onCreated }: { onCreated: () => void }) {
     form.append("file", file);
     const res = await fetch("/api/memos/upload", { method: "POST", body: form });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? "上传失败");
+    if (!res.ok) throw new Error(data.error ?? t("common.uploadFailed"));
     return data.url as string;
   }
 
@@ -37,7 +39,7 @@ export function MemoComposer({ onCreated }: { onCreated: () => void }) {
       }
       setPendingImages((prev) => [...prev, ...urls]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "上传失败");
+      setError(e instanceof Error ? e.message : t("common.uploadFailed"));
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -54,17 +56,17 @@ export function MemoComposer({ onCreated }: { onCreated: () => void }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          content: text || "（图片）",
+          content: text || t("common.imageOnly"),
           imageUrls: pendingImages.length ? pendingImages : undefined,
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "保存失败");
+      if (!res.ok) throw new Error(data.error ?? t("common.saveFailed"));
       setContent("");
       setPendingImages([]);
       onCreated();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "保存失败");
+      setError(e instanceof Error ? e.message : t("common.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -84,7 +86,7 @@ export function MemoComposer({ onCreated }: { onCreated: () => void }) {
         value={content}
         onChange={(e) => setContent(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="此刻的想法…（支持 **Markdown**、#标签、[链接](url)）"
+        placeholder={t("memos.composer.placeholder")}
         rows={4}
         className="w-full resize-none rounded-t-xl border-0 bg-transparent px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0 dark:text-gray-100"
       />
@@ -98,7 +100,7 @@ export function MemoComposer({ onCreated }: { onCreated: () => void }) {
                 type="button"
                 className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-gray-900 text-[10px] text-white"
                 onClick={() => setPendingImages((p) => p.filter((u) => u !== url))}
-                aria-label="移除图片"
+                aria-label={t("memos.composer.removeImage")}
               >
                 ×
               </button>
@@ -121,19 +123,19 @@ export function MemoComposer({ onCreated }: { onCreated: () => void }) {
             disabled={uploading}
             onClick={() => fileRef.current?.click()}
             className="rounded-md p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
-            title="插入图片"
-            aria-label="插入图片"
+            title={t("memos.composer.insertImage")}
+            aria-label={t("memos.composer.insertImage")}
           >
             <ImageIcon />
           </button>
-          <span className="text-xs text-gray-400">Ctrl+Enter 保存</span>
+          <span className="text-xs text-gray-400">{t("memos.composer.saveHint")}</span>
         </div>
         <Button
           size="sm"
           disabled={saving || uploading || (!content.trim() && pendingImages.length === 0)}
           onClick={() => void handleSave()}
         >
-          {saving ? "保存中…" : "保存"}
+          {saving ? t("common.saving") : t("common.save")}
         </Button>
       </div>
       {error && <p className="px-4 pb-2 text-xs text-red-600">{error}</p>}
