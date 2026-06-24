@@ -10,6 +10,7 @@ import { ContributionDetailModal } from "@/components/contributions/contribution
 import { PlanDetailModal } from "@/components/plans/plan-detail-modal";
 import { PanelExpandButton } from "@/components/home/panel-expand-button";
 import type { FeedTypeFilter as FeedTypeFilterId } from "@/lib/feed-filters";
+import type { FeedPlanDetail } from "@/lib/feed-enrich";
 import type { FeedActionType, FeedItemType } from "@prisma/client";
 import { cn } from "@/lib/utils";
 import { apiJson } from "@/lib/client-api";
@@ -25,6 +26,7 @@ interface FeedRow {
   excerpt: string | null;
   contextLabel: string | null;
   actionPhrase: string;
+  planDetail?: FeedPlanDetail;
 }
 
 export function FeedPanelLive({
@@ -152,7 +154,8 @@ export function FeedPanelLive({
                   <FeedItemCard
                     item={item}
                     logStyle={item.itemType === "contribution"}
-                    onPlanClick={(id) => setPlanModalId(id)}
+                    inlinePlan={typeFilter === "plan"}
+                    onPlanClick={typeFilter === "plan" ? undefined : (id) => setPlanModalId(id)}
                     onContributionClick={(id) => setContributionModalId(id)}
                   />
                 </li>

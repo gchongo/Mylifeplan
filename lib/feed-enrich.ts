@@ -1,6 +1,16 @@
 import type { Feed, FeedActionType, FeedItemType } from "@prisma/client";
 import { feedActionPhrase, feedExcerpt } from "@/lib/feed-display";
+import { formatPlanDateTime } from "@/lib/dates";
 import { prisma } from "@/lib/db";
+
+export interface FeedPlanDetail {
+  description: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  actualStartDate: string | null;
+  actualEndDate: string | null;
+  status: string;
+}
 
 export interface EnrichedFeedItem {
   id: string;
@@ -13,6 +23,7 @@ export interface EnrichedFeedItem {
   excerpt: string | null;
   contextLabel: string | null;
   actionPhrase: string;
+  planDetail?: FeedPlanDetail;
 }
 
 export async function enrichFeedItems(
@@ -31,7 +42,16 @@ export async function enrichFeedItems(
     planIds.length
       ? prisma.plan.findMany({
           where: { userId, id: { in: planIds } },
-          select: { id: true, title: true, description: true },
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            startDate: true,
+            endDate: true,
+            actualStartDate: true,
+            actualEndDate: true,
+            status: true,
+          },
         })
       : [],
     memoIds.length
@@ -70,6 +90,16 @@ export async function enrichFeedItems(
         excerpt: feedExcerpt(plan?.description),
         contextLabel: null,
         actionPhrase,
+        planDetail: plan
+          ? {
+              description: plan.description,
+              startDate: formatPlanDateTime(plan.startDate),
+              endDate: formatPlanDateTime(plan.endDate),
+              actualStartDate: formatPlanDateTime(plan.actualStartDate),
+              actualEndDate: formatPlanDateTime(plan.actualEndDate),
+              status: plan.status,
+            }
+          : undefined,
       };
     }
 

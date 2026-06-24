@@ -8,6 +8,8 @@ import {
   formatFeedCardDate,
   splitTextWithLinks,
 } from "@/lib/feed-display";
+import { formatPlanDateTimeDisplay } from "@/lib/dates";
+import type { FeedPlanDetail } from "@/lib/feed-enrich";
 import { cn } from "@/lib/utils";
 
 export interface FeedItemCardData {
@@ -21,6 +23,7 @@ export interface FeedItemCardData {
   excerpt: string | null;
   contextLabel: string | null;
   actionPhrase: string;
+  planDetail?: FeedPlanDetail;
 }
 
 function ExcerptText({
@@ -53,20 +56,71 @@ function ExcerptText({
   );
 }
 
+const PLAN_STATUS_LABELS: Record<string, string> = {
+  not_started: "未开始",
+  in_progress: "进行中",
+  done: "已完成",
+  archived: "已归档",
+};
+
+function FeedPlanInlineBody({ detail, planId }: { detail: FeedPlanDetail; planId: string }) {
+  const schedule = [formatPlanDateTimeDisplay(detail.startDate), formatPlanDateTimeDisplay(detail.endDate)]
+    .filter((v) => v !== "—")
+    .join(" — ");
+
+  return (
+    <div className="mt-2 space-y-2 rounded-lg border border-gray-100 bg-gray-50/80 p-2.5 dark:border-gray-800 dark:bg-gray-900/40">
+      {detail.description?.trim() && <ExcerptText text={detail.description.trim()} />}
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs text-gray-600 dark:text-gray-400">
+        <dt className="text-gray-400">状态</dt>
+        <dd>{PLAN_STATUS_LABELS[detail.status] ?? detail.status}</dd>
+        {schedule && (
+          <>
+            <dt className="text-gray-400">计划</dt>
+            <dd className="tabular-nums">{schedule}</dd>
+          </>
+        )}
+        {detail.actualStartDate && (
+          <>
+            <dt className="text-gray-400">实开</dt>
+            <dd className="tabular-nums">{formatPlanDateTimeDisplay(detail.actualStartDate)}</dd>
+          </>
+        )}
+        {detail.actualEndDate && (
+          <>
+            <dt className="text-gray-400">实止</dt>
+            <dd className="tabular-nums">{formatPlanDateTimeDisplay(detail.actualEndDate)}</dd>
+          </>
+        )}
+      </dl>
+      <Link
+        href={`/plans/${planId}`}
+        className="inline-block text-xs text-brand-600 hover:underline dark:text-brand-400"
+      >
+        打开计划详情页 →
+      </Link>
+    </div>
+  );
+}
+
 export function FeedItemCard({
   item,
   onPlanClick,
   onContributionClick,
   logStyle = false,
+  inlinePlan = false,
 }: {
   item: FeedItemCardData;
   onPlanClick?: (planId: string) => void;
   onContributionClick?: (contributionId: string) => void;
   logStyle?: boolean;
+  /** 计划分类：内联展示计划详情，不弹窗 */
+  inlinePlan?: boolean;
 }) {
   const href = feedItemHref(item.itemType, item.itemId);
   const isPlan = item.itemType === "plan";
   const isContribution = item.itemType === "contribution";
+  const showInlinePlan = inlinePlan && isPlan && item.planDetail;
   const meta = feedItemMeta(item.itemType, item.actionType);
   const dateLabel = formatFeedCardDate(item.createdAt);
 
@@ -117,10 +171,19 @@ export function FeedItemCard({
               meta.archived && "text-gray-400",
             )}
           >
-            {item.headline}
+            {showInlinePlan ? (
+              <Link href={`/plans/${item.itemId}`} className="hover:text-brand-700 dark:hover:text-brand-300">
+                {item.headline}
+              </Link>
+            ) : (
+              item.headline
+            )}
           </h3>
           {item.excerpt && !isPlan && (
             <ExcerptText text={item.excerpt} className="line-clamp-2" />
+          )}
+          {showInlinePlan && item.planDetail && (
+            <FeedPlanInlineBody detail={item.planDetail} planId={item.itemId} />
           )}
         </>
       )}
@@ -128,7 +191,7 @@ export function FeedItemCard({
   );
 
   const interactiveBody =
-    isPlan && onPlanClick ? (
+    isPlan && onPlanClick && !showInlinePlan ? (
       <button
         type="button"
         className="block w-full text-left hover:opacity-90"
@@ -136,6 +199,8 @@ export function FeedItemCard({
       >
         {body}
       </button>
+    ) : showInlinePlan ? (
+      body
     ) : href ? (
       <Link href={href} className="block hover:opacity-90">
         {body}
