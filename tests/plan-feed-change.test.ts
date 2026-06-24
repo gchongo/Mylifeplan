@@ -52,6 +52,19 @@ describe("describePlanChanges", () => {
       after: "进行中",
     });
   });
+
+  it("omits changes when formatted before and after are identical", () => {
+    const before = planToFeedSnapshot({
+      ...base,
+      actualEndDate: new Date("2026-06-22T05:09:00.000Z"),
+    });
+    const after = planToFeedSnapshot({
+      ...base,
+      actualEndDate: new Date("2026-06-22T05:09:01.000Z"),
+    });
+    const changes = describePlanChanges(before, after);
+    expect(changes).toHaveLength(0);
+  });
 });
 
 describe("parsePlanFeedContent", () => {

@@ -121,6 +121,8 @@ export function FeedItemCard({
     ((item.planUpdateChanges?.length ?? 0) > 0 || Boolean(item.planUpdateSummary));
   const hasMemoDetail = isMemo && Boolean(item.memoQuadrant);
   const showActionPhrase = !hasPlanUpdateDetail && !hasMemoDetail;
+  const showExcerpt =
+    Boolean(item.excerpt) && !hasPlanUpdateDetail && !hasMemoDetail;
 
   const body = (
     <div className="space-y-1">
@@ -150,7 +152,9 @@ export function FeedItemCard({
           {item.contextLabel && (
             <p className="text-xs text-gray-400 dark:text-gray-500">{item.contextLabel}</p>
           )}
-          {item.excerpt && <ExcerptText text={item.excerpt} className="mt-2 line-clamp-4" />}
+          {showExcerpt && item.excerpt && (
+            <ExcerptText text={item.excerpt} className="mt-2 line-clamp-4" />
+          )}
         </>
       ) : (
         <>
@@ -175,7 +179,7 @@ export function FeedItemCard({
           </h3>
           {hasMemoDetail && item.memoQuadrant && (
             <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-              象限：{item.memoQuadrant}
+              便签类型：{item.memoQuadrant}
             </p>
           )}
           {hasPlanUpdateDetail && item.planUpdateChanges && item.planUpdateChanges.length > 0 && (
@@ -186,7 +190,7 @@ export function FeedItemCard({
               {item.planUpdateSummary}
             </p>
           )}
-          {item.excerpt && (
+          {showExcerpt && item.excerpt && (
             <ExcerptText text={item.excerpt} className="line-clamp-2" />
           )}
         </>

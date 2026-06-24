@@ -70,10 +70,12 @@ export async function enrichFeedItems(
       const plan = planMap.get(item.itemId);
       const headline = plan?.title ?? item.content?.trim() ?? "计划";
       const { changes, legacySummary } = parsePlanFeedContent(item.content, headline);
+      const hasPlanUpdateDetail =
+        (changes?.length ?? 0) > 0 || Boolean(legacySummary);
       return {
         ...item,
         headline,
-        excerpt: feedExcerpt(plan?.description),
+        excerpt: hasPlanUpdateDetail ? null : feedExcerpt(plan?.description),
         contextLabel: null,
         actionPhrase,
         planUpdateChanges: changes,

@@ -88,13 +88,31 @@ function formatDescriptionValue(value: string | null | undefined): string | null
   return `「${text.slice(0, 40)}…」`;
 }
 
+function normalizeChangeValue(value: string | null | undefined): string | null {
+  const text = value?.trim();
+  return text ? text : null;
+}
+
 function pushChange(
   changes: PlanFeedChangeItem[],
   label: string,
   before: string | null,
   after: string | null,
 ) {
-  changes.push({ label, before, after });
+  const b = normalizeChangeValue(before);
+  const a = normalizeChangeValue(after);
+  if (b === a) return;
+  changes.push({ label, before: b, after: a });
+}
+
+export function filterVisiblePlanChanges(
+  changes: PlanFeedChangeItem[],
+): PlanFeedChangeItem[] {
+  return changes.filter((change) => {
+    const b = normalizeChangeValue(change.before);
+    const a = normalizeChangeValue(change.after);
+    return b !== a;
+  });
 }
 
 export function describePlanChanges(
@@ -199,8 +217,11 @@ export function parsePlanFeedContent(
   }
   try {
     const parsed = JSON.parse(raw) as { v?: number; changes?: PlanFeedChangeItem[] };
-    if (parsed?.v === 1 && Array.isArray(parsed.changes) && parsed.changes.length > 0) {
-      return { changes: parsed.changes, legacySummary: null };
+    if (parsed?.v === 1 && Array.isArray(parsed.changes)) {
+      const changes = filterVisiblePlanChanges(parsed.changes);
+      if (changes.length > 0) {
+        return { changes, legacySummary: null };
+      }
     }
   } catch {
     // 旧版纯文本摘要

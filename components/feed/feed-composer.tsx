@@ -233,12 +233,12 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
         {mode === "memo" && (
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <span className="shrink-0">象限</span>
+              <span className="shrink-0">便签类型</span>
               <select
                 value={memoQuadrant}
                 onChange={(e) => setMemoQuadrant(e.target.value as MemoQuadrantId)}
                 className="rounded border border-gray-200 bg-white px-2 py-1 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-                aria-label="便签四象限"
+                aria-label="便签类型"
               >
                 {MEMO_QUADRANTS.map((q) => (
                   <option key={q.id} value={q.id} title={q.hint}>

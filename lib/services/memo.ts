@@ -219,7 +219,16 @@ export async function updateMemoById(
       },
     });
 
-    if (memoUpdateWritesFeed(data)) {
+    const nextQuadrant =
+      data.quadrant !== undefined
+        ? data.quadrant && isMemoQuadrantId(data.quadrant)
+          ? data.quadrant
+          : null
+        : undefined;
+    const quadrantChanged =
+      nextQuadrant !== undefined && nextQuadrant !== memo.quadrant;
+
+    if (memoUpdateWritesFeed(data) || quadrantChanged) {
       await writeFeed({
         userId,
         itemType: "memo",
