@@ -1,6 +1,6 @@
 import type { Plan, PlanStatus } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
-import { isPlanUnscheduled, shouldShowInMemo, validateDateFields, getEffectiveEndDate } from "@/lib/content-router";
+import { isPlanUnscheduled, validateDateFields, getEffectiveEndDate } from "@/lib/content-router";
 import { UNSCHEDULED_BLOCKED_HINT } from "@/lib/kanban-board";
 import { parsePlanDateTime, formatPlanDateTime, formatDateOnly, toDatetimeLocalInput, parsePlanStartDateTime, parsePlanEndDateTime } from "@/lib/dates";
 import { prisma } from "@/lib/db";

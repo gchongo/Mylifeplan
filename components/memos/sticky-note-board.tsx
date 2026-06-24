@@ -343,7 +343,7 @@ export function StickyNoteBoard() {
 
   async function handleAssignSubmit(data: {
     parentPlanId: string | null;
-    startDate: string;
+    startDate: string | null;
     endDate: string | null;
   }) {
     if (!assignNoteId) return;

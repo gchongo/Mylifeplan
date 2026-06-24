@@ -295,7 +295,7 @@ export async function assignMemoToPlan(
   memoId: string,
   input: {
     parentPlanId?: string | null;
-    startDate: string;
+    startDate?: string | null;
     endDate?: string | null;
   },
 ) {
@@ -305,8 +305,8 @@ export async function assignMemoToPlan(
   });
   if (!memo) throw new Error("NOT_FOUND");
 
-  const startDate = input.startDate.trim();
-  if (!startDate) throw new Error("请设置开始时间");
+  const startDate = input.startDate?.trim() || null;
+  const endDate = input.endDate?.trim() || null;
 
   let description = memo.body?.trim() || memo.description?.trim() || null;
   if (memo.images.length > 0) {
@@ -320,7 +320,7 @@ export async function assignMemoToPlan(
     type: "goal",
     parentPlanId: input.parentPlanId || null,
     startDate,
-    endDate: input.endDate?.trim() || null,
+    endDate,
   });
 
   await prisma.memo.delete({ where: { id: memoId } });

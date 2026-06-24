@@ -284,6 +284,56 @@ export function statusLabel(
   return hasRollup ? `${style.label}（汇总）` : style.label;
 }
 
+export function getKanbanColumnVisual(columnId: string): VisualStatusKey {
+  switch (columnId) {
+    case "unscheduled":
+      return "unscheduled";
+    case "archived":
+      return "archived";
+    case "in_progress":
+      return "in_progress";
+    case "done":
+      return "done";
+  }
+  return "todo";
+}
+
+/** 看板卡片标题栏：与甘特条同色系的浅底 + 顶边强调 */
+export function getKanbanTitleBarStyle(visual: VisualStatusKey): { shell: string; text: string } {
+  switch (visual) {
+    case "in_progress":
+      return {
+        shell: "border-t-[3px] border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/50",
+        text: "text-blue-900 dark:text-blue-100",
+      };
+    case "done":
+      return {
+        shell: "border-t-[3px] border-emerald-500 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-950/40",
+        text: "text-emerald-900 dark:text-emerald-100",
+      };
+    case "archived":
+      return {
+        shell: "border-t-[3px] border-gray-300 bg-gray-50/90 dark:border-gray-600 dark:bg-gray-900/50",
+        text: "text-gray-700 dark:text-gray-300",
+      };
+    case "unscheduled":
+      return {
+        shell:
+          "border-t-[3px] border-dashed border-violet-400 bg-violet-50/60 dark:border-violet-500/60 dark:bg-violet-950/30",
+        text: "text-violet-800 dark:text-violet-200",
+      };
+    default:
+      return {
+        shell: "border-t-[3px] border-amber-500 bg-amber-50 dark:border-amber-400 dark:bg-amber-950/45",
+        text: "text-amber-900 dark:text-amber-100",
+      };
+  }
+}
+
+export function getKanbanColumnAccentClass(visual: VisualStatusKey): string {
+  return STATUS_STYLES[visual].dot.split(" ")[0] ?? "bg-gray-400";
+}
+
 export function asTaskStatusForRollup(status: string | undefined | null): TaskStatus {
   const key = normalizeStatusKey(status);
   if (key === "overdue") return "todo";

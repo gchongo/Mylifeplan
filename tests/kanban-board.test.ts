@@ -3,7 +3,11 @@ import {
   groupPlansByKanbanColumn,
   kanbanCanMoveToUnscheduled,
   kanbanColumnForPlan,
+  kanbanArchivePatch,
   kanbanPatchForColumn,
+  kanbanRestorePatch,
+  kanbanVisualForColumn,
+  kanbanVisualForZone,
   type KanbanPlan,
 } from "@/lib/kanban-board";
 
@@ -61,6 +65,20 @@ describe("kanban-board", () => {
     ]);
     expect(groups.unscheduled).toHaveLength(1);
     expect(groups.not_started).toHaveLength(1);
+  });
+
+  it("maps unscheduled column to unscheduled visual", () => {
+    expect(kanbanVisualForColumn("unscheduled")).toBe("unscheduled");
+    expect(kanbanVisualForColumn("not_started")).toBe("todo");
+    expect(kanbanVisualForColumn("in_progress")).toBe("in_progress");
+    expect(kanbanVisualForColumn("done")).toBe("done");
+    expect(kanbanVisualForZone("archived")).toBe("archived");
+  });
+
+  it("archives and restores via patch helpers", () => {
+    const p = plan({ id: "1", title: "A", startDate: "2026-06-20T08:00:00.000Z" });
+    expect(kanbanArchivePatch()).toEqual({ status: "archived" });
+    expect(kanbanRestorePatch("not_started", p).status).toBe("not_started");
   });
 
   it("blocks move to unscheduled when plan has contributions", () => {

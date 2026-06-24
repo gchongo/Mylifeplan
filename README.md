@@ -8,6 +8,7 @@
 |------|------|
 | [docs/requirements.md](docs/requirements.md) | 需求书 |
 | [docs/data-model.md](docs/data-model.md) | 数据模型 |
+| [docs/content-flows.md](docs/content-flows.md) | **便签 / 计划 / 贡献流转线路** |
 | [docs/routes.md](docs/routes.md) | 路由与 API |
 | [docs/plan.md](docs/plan.md) | Cursor 执行清单 |
 | [docs/development-plan.md](docs/development-plan.md) | 开发计划 |
@@ -67,8 +68,8 @@ pm2 start npm --name mylifeplan -- start
 
 ### M2 ✅
 - [x] Task / Plan CRUD API
-- [x] 分流 + Memo 自动创建/删除/同步
-- [x] Feed 写入与首页信息流
+- [x] 分流 + Feed 写入与首页信息流
+- [x] 便签与计划分离（B 模型，见 [docs/content-flows.md](docs/content-flows.md)）
 - [x] 新建任务 / 计划表单
 - [x] 备忘录列表与补日期回流
 
@@ -104,6 +105,20 @@ M0～M5 全部交付，并补齐需求缺口：
 - 任务列表：树形展开 + 父任务汇总
 - 信息流：可点击跳转 + 加载更多
 - Playwright 冒烟测试（`npm run test:e2e`）
+
+## 记录流转（摘要）
+
+完整线路见 **[docs/content-flows.md](docs/content-flows.md)**。三类主记录：**独立便签**、**计划**、**贡献**。
+
+| 记录 | 典型落点 | 变成计划 |
+|------|----------|----------|
+| 独立便签 | 便签板、信息流 | 「转为计划」→ 未排期或排期，原便签删除 |
+| 计划·未排期 | 看板紫列 | 已是计划，补日期后进甘特 |
+| 计划·已排期 | 看板 + 甘特 + 日历 | 拖列改 `status` |
+| 计划·已归档 | 看板底部折叠区 | 拖回四列恢复 |
+| 贡献 | 绑定计划、信息流 | 不单独变便签 |
+
+**不做的事**：未排期计划不会自动生成便签；便签板不显示计划。
 
 ## 脚本
 

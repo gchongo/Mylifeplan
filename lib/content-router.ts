@@ -74,7 +74,7 @@ export function isPlanUnscheduled(item: RoutableEntity): boolean {
   return !hasStart && !hasEnd;
 }
 
-/** 无日期的顶层计划 → 便签；有父计划的未排期子计划留在计划树/甘特图 */
+/** @deprecated B 模型下不再自动同步；仅保留排期判定复用 */
 export function shouldShowInMemo(
   item: RoutableEntity & { parentPlanId?: string | null },
 ): boolean {

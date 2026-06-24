@@ -14,13 +14,16 @@ type Params = { params: Promise<{ id: string }> };
 const assignPlanSchema = z
   .object({
     parentPlanId: z.string().optional().nullable(),
-    startDate: z.string().min(1, "请设置开始时间"),
+    startDate: z.string().optional().nullable(),
     endDate: z.string().optional().nullable(),
   })
   .superRefine((data, ctx) => {
+    const start = data.startDate?.trim() || null;
+    const end = data.endDate?.trim() || null;
+    if (!start && !end) return;
     const error = validateDateFields({
-      startDate: data.startDate,
-      dueDate: data.endDate || undefined,
+      startDate: start || undefined,
+      dueDate: end || undefined,
     });
     if (error) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: error });

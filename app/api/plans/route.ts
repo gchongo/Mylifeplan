@@ -13,11 +13,14 @@ export async function GET(request: NextRequest) {
     const session = await requireSession(request);
     const { searchParams } = request.nextUrl;
     const parentPlanId = searchParams.get("parentPlanId");
+    const statusFilter = searchParams.get("status");
 
     const plans = await prisma.plan.findMany({
       where: {
         userId: session.userId,
-        status: { not: "archived" },
+        ...(statusFilter === "archived"
+          ? { status: "archived" }
+          : { status: { not: "archived" } }),
         ...(parentPlanId && { parentPlanId }),
       },
       orderBy: [{ updatedAt: "desc" }],
