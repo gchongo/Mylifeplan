@@ -43,29 +43,43 @@ export function IconMetricTile({
   accent,
   title,
   className,
+  compact = false,
 }: {
   icon: ReactNode;
   value: number | string;
   accent: string;
   title: string;
   className?: string;
+  compact?: boolean;
 }) {
   return (
     <div
-      title={title}
-      aria-label={`${title} ${value}`}
       className={cn(
-        "group relative flex flex-col items-center justify-center gap-2 rounded-2xl border border-gray-100 bg-white px-3 py-4 shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900",
+        "flex items-center gap-2.5 rounded-xl border border-gray-100 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900",
+        compact ? "px-2.5 py-2" : "px-3 py-3",
         className,
       )}
     >
       <div
-        className="flex h-11 w-11 items-center justify-center rounded-xl text-white shadow-sm"
+        className={cn(
+          "flex shrink-0 items-center justify-center rounded-lg text-white",
+          compact ? "h-8 w-8" : "h-9 w-9",
+        )}
         style={{ backgroundColor: accent }}
       >
         {icon}
       </div>
-      <p className="text-2xl font-bold tabular-nums leading-none text-gray-900 dark:text-gray-100">{value}</p>
+      <div className="min-w-0">
+        <p
+          className={cn(
+            "font-bold tabular-nums leading-none text-gray-900 dark:text-gray-100",
+            compact ? "text-lg" : "text-xl",
+          )}
+        >
+          {value}
+        </p>
+        <p className="mt-0.5 truncate text-[11px] text-gray-500 dark:text-gray-400">{title}</p>
+      </div>
     </div>
   );
 }
@@ -75,21 +89,23 @@ export function SectionShell({
   children,
   className,
   title,
+  contentClassName,
 }: {
   icon: ReactNode;
   children: ReactNode;
   className?: string;
   title: string;
+  contentClassName?: string;
 }) {
   return (
-    <Card className={cn("overflow-hidden border-gray-100/80 shadow-sm dark:border-gray-800", className)}>
-      <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+    <Card className={cn("flex min-h-0 flex-col overflow-hidden border-gray-100/80 shadow-sm dark:border-gray-800", className)}>
+      <div className="flex shrink-0 items-center gap-2 border-b border-gray-100 px-3 py-2 dark:border-gray-800">
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
           {icon}
         </span>
-        <span className="sr-only">{title}</span>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
       </div>
-      <CardContent className="p-4">{children}</CardContent>
+      <CardContent className={cn("min-h-0 flex-1 overflow-hidden p-3", contentClassName)}>{children}</CardContent>
     </Card>
   );
 }
@@ -98,32 +114,42 @@ export function IconHorizontalBars({
   segments,
   renderIcon,
   className,
+  columns = 1,
 }: {
   segments: SummarySegment[];
   renderIcon: (seg: SummarySegment) => ReactNode;
   className?: string;
+  columns?: 1 | 2;
 }) {
   const max = Math.max(1, ...segments.map((s) => s.value));
 
   if (segments.length === 0) {
     return (
-      <div className="flex h-24 items-center justify-center rounded-xl border border-dashed border-gray-200 text-gray-300 dark:border-gray-700">
-        <span className="text-2xl">—</span>
+      <div className="flex h-16 items-center justify-center rounded-lg border border-dashed border-gray-200 text-xs text-gray-400 dark:border-gray-700">
+        暂无数据
       </div>
     );
   }
 
   return (
-    <ul className={cn("space-y-3", className)}>
+    <ul
+      className={cn(
+        columns === 2 ? "grid grid-cols-2 gap-x-3 gap-y-2" : "space-y-2",
+        className,
+      )}
+    >
       {segments.map((seg) => (
-        <li key={seg.key ?? seg.label} title={seg.label}>
-          <div className="mb-1.5 flex items-center justify-between gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-50 text-gray-600 dark:bg-gray-800/80 dark:text-gray-300">
-              {renderIcon(seg)}
+        <li key={seg.key ?? seg.label}>
+          <div className="mb-1 flex items-center justify-between gap-2 text-xs">
+            <span className="flex min-w-0 items-center gap-1.5 text-gray-600 dark:text-gray-300">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gray-50 dark:bg-gray-800/80">
+                {renderIcon(seg)}
+              </span>
+              <span className="truncate">{seg.label}</span>
             </span>
-            <span className="text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100">{seg.value}</span>
+            <span className="shrink-0 font-semibold tabular-nums text-gray-900 dark:text-gray-100">{seg.value}</span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+          <div className="h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
             <div
               className="h-full rounded-full transition-all"
               style={{
@@ -141,32 +167,26 @@ export function IconHorizontalBars({
 export function IconLegend({
   segments,
   renderIcon,
+  dense = false,
 }: {
   segments: SummarySegment[];
   renderIcon: (seg: SummarySegment) => ReactNode;
+  dense?: boolean;
 }) {
   return (
-    <ul className="grid grid-cols-2 gap-2 sm:grid-cols-1">
+    <ul className={cn("space-y-1", dense ? "text-[11px]" : "text-xs")}>
       {segments.map((seg) => (
         <li
           key={seg.key ?? seg.label}
-          title={seg.label}
-          className="flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-2.5 py-2 dark:bg-gray-800/50"
+          className="flex items-center justify-between gap-2 rounded-md bg-gray-50 px-2 py-1.5 dark:bg-gray-800/50"
         >
-          <span className="flex items-center gap-2">
-            <span
-              className="flex h-7 w-7 items-center justify-center rounded-md text-gray-600 dark:text-gray-300"
-              style={{ color: seg.color }}
-            >
+          <span className="flex min-w-0 items-center gap-1.5 text-gray-600 dark:text-gray-300">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center" style={{ color: seg.color }}>
               {renderIcon(seg)}
             </span>
-            <span
-              className="h-2 w-2 shrink-0 rounded-full"
-              style={{ backgroundColor: seg.color }}
-              aria-hidden
-            />
+            <span className="truncate">{seg.label}</span>
           </span>
-          <span className="text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100">{seg.value}</span>
+          <span className="shrink-0 font-semibold tabular-nums text-gray-900 dark:text-gray-100">{seg.value}</span>
         </li>
       ))}
     </ul>
