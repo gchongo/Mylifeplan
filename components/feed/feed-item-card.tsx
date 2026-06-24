@@ -6,6 +6,8 @@ import {
   formatFeedCardDate,
   splitTextWithLinks,
 } from "@/lib/feed-display";
+import type { PlanFeedChangeItem } from "@/lib/plan-feed-change";
+import { PlanFeedChangeLines } from "@/components/feed/plan-feed-change-lines";
 import { cn } from "@/lib/utils";
 
 export interface FeedItemCardData {
@@ -19,6 +21,7 @@ export interface FeedItemCardData {
   excerpt: string | null;
   contextLabel: string | null;
   actionPhrase: string;
+  planUpdateChanges?: PlanFeedChangeItem[] | null;
   planUpdateSummary?: string | null;
 }
 
@@ -65,6 +68,10 @@ export function FeedItemCard({
   const isContribution = item.itemType === "contribution";
   const meta = feedItemMeta(item.itemType, item.actionType);
   const dateLabel = formatFeedCardDate(item.createdAt);
+  const hasPlanUpdateDetail =
+    isPlan &&
+    ((item.planUpdateChanges?.length ?? 0) > 0 || Boolean(item.planUpdateSummary));
+  const showActionPhrase = !hasPlanUpdateDetail;
 
   const body = (
     <div className="space-y-1">
@@ -98,14 +105,16 @@ export function FeedItemCard({
         </>
       ) : (
         <>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {meta.completed && (
-              <span className="mr-1.5 inline-flex h-4 w-4 items-center justify-center rounded border border-gray-300 bg-gray-100 text-[10px] text-gray-600">
-                ✓
-              </span>
-            )}
-            {item.actionPhrase}
-          </p>
+          {showActionPhrase && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {meta.completed && (
+                <span className="mr-1.5 inline-flex h-4 w-4 items-center justify-center rounded border border-gray-300 bg-gray-100 text-[10px] text-gray-600">
+                  ✓
+                </span>
+              )}
+              {item.actionPhrase}
+            </p>
+          )}
           <h3
             className={cn(
               "text-base font-semibold leading-snug text-gray-900 dark:text-gray-100",
@@ -115,7 +124,10 @@ export function FeedItemCard({
           >
             {item.headline}
           </h3>
-          {isPlan && item.planUpdateSummary && (
+          {hasPlanUpdateDetail && item.planUpdateChanges && item.planUpdateChanges.length > 0 && (
+            <PlanFeedChangeLines changes={item.planUpdateChanges} />
+          )}
+          {hasPlanUpdateDetail && item.planUpdateSummary && (
             <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-400">
               {item.planUpdateSummary}
             </p>

@@ -9,6 +9,7 @@ import { FeedItemCard } from "@/components/feed/feed-item-card";
 import { ContributionDetailModal } from "@/components/contributions/contribution-detail-modal";
 import { PanelExpandButton } from "@/components/home/panel-expand-button";
 import type { FeedTypeFilter as FeedTypeFilterId } from "@/lib/feed-filters";
+import type { PlanFeedChangeItem } from "@/lib/plan-feed-change";
 import type { FeedActionType, FeedItemType } from "@prisma/client";
 import { cn } from "@/lib/utils";
 import { apiJson } from "@/lib/client-api";
@@ -24,6 +25,7 @@ interface FeedRow {
   excerpt: string | null;
   contextLabel: string | null;
   actionPhrase: string;
+  planUpdateChanges: PlanFeedChangeItem[] | null;
   planUpdateSummary: string | null;
 }
 

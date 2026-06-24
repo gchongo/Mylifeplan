@@ -17,7 +17,7 @@ import {
 } from "@/lib/plan-status-actual-dates";
 import {
   describePlanChanges,
-  joinPlanFeedChanges,
+  serializePlanFeedChanges,
   planToFeedSnapshot,
 } from "@/lib/plan-feed-change";
 import { aggregateParentActualDates } from "@/lib/plan-actual-rollup";
@@ -248,7 +248,7 @@ async function rollupParentPlan(userId: string, parentPlanId: string | null, tx:
       actionType: statusChanged
         ? feedActionForPlan(parent.status, nextStatus)
         : "update",
-      content: joinPlanFeedChanges(feedChanges),
+      content: serializePlanFeedChanges(feedChanges),
     });
   }
 
@@ -480,7 +480,7 @@ export async function updatePlan(
         actionType: statusChanged
           ? feedActionForPlan(existing.status, plan.status)
           : "update",
-        content: joinPlanFeedChanges(feedChanges),
+        content: serializePlanFeedChanges(feedChanges),
       });
     }
 

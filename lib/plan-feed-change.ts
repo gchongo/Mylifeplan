@@ -36,6 +36,12 @@ export type PlanFeedSnapshot = Pick<
   | "parentPlanId"
 >;
 
+export interface PlanFeedChangeItem {
+  label: string;
+  before: string | null;
+  after: string | null;
+}
+
 export function planToFeedSnapshot(plan: PlanFeedSnapshot): PlanFeedSnapshot {
   return {
     title: plan.title,
@@ -75,84 +81,129 @@ function sameInstant(a: Date | null | undefined, b: Date | null | undefined): bo
   return (a?.getTime() ?? null) === (b?.getTime() ?? null);
 }
 
-function formatDescriptionChange(next: string | null): string {
-  const text = next?.trim();
-  if (!text) return "清除了描述";
-  if (text.length <= 40) return `更新了描述为「${text}」`;
-  return "更新了描述";
+function formatDescriptionValue(value: string | null | undefined): string | null {
+  const text = value?.trim();
+  if (!text) return null;
+  if (text.length <= 40) return `「${text}」`;
+  return `「${text.slice(0, 40)}…」`;
 }
 
-export function describePlanChanges(before: PlanFeedSnapshot, after: PlanFeedSnapshot): string[] {
-  const changes: string[] = [];
+function pushChange(
+  changes: PlanFeedChangeItem[],
+  label: string,
+  before: string | null,
+  after: string | null,
+) {
+  changes.push({ label, before, after });
+}
+
+export function describePlanChanges(
+  before: PlanFeedSnapshot,
+  after: PlanFeedSnapshot,
+): PlanFeedChangeItem[] {
+  const changes: PlanFeedChangeItem[] = [];
 
   if (before.title !== after.title) {
-    changes.push(`更新了标题为「${after.title}」`);
+    pushChange(changes, "标题", before.title, after.title);
   }
   if (before.description !== after.description) {
-    changes.push(formatDescriptionChange(after.description));
+    pushChange(
+      changes,
+      "描述",
+      formatDescriptionValue(before.description),
+      formatDescriptionValue(after.description),
+    );
   }
   if (!sameInstant(before.startDate, after.startDate)) {
-    if (after.startDate) {
-      changes.push(`更新了开始时间为${formatFeedPlanDateChinese(after.startDate)}`);
-    } else {
-      changes.push("清除了开始时间");
-    }
+    pushChange(
+      changes,
+      "开始时间",
+      before.startDate ? formatFeedPlanDateChinese(before.startDate) : null,
+      after.startDate ? formatFeedPlanDateChinese(after.startDate) : null,
+    );
   }
   if (!sameInstant(before.endDate, after.endDate)) {
-    if (after.endDate) {
-      changes.push(`更新了截至时间为${formatFeedPlanDateChinese(after.endDate)}`);
-    } else {
-      changes.push("清除了截至时间");
-    }
+    pushChange(
+      changes,
+      "截至时间",
+      before.endDate ? formatFeedPlanDateChinese(before.endDate) : null,
+      after.endDate ? formatFeedPlanDateChinese(after.endDate) : null,
+    );
   }
   if (!sameInstant(before.actualStartDate, after.actualStartDate)) {
-    if (after.actualStartDate) {
-      changes.push(`更新了实际开始时间为${formatFeedPlanDateChinese(after.actualStartDate)}`);
-    } else {
-      changes.push("清除了实际开始时间");
-    }
+    pushChange(
+      changes,
+      "实际开始时间",
+      before.actualStartDate ? formatFeedPlanDateChinese(before.actualStartDate) : null,
+      after.actualStartDate ? formatFeedPlanDateChinese(after.actualStartDate) : null,
+    );
   }
   if (!sameInstant(before.actualEndDate, after.actualEndDate)) {
-    if (after.actualEndDate) {
-      changes.push(`更新了实际结束时间为${formatFeedPlanDateChinese(after.actualEndDate)}`);
-    } else {
-      changes.push("清除了实际结束时间");
-    }
+    pushChange(
+      changes,
+      "实际结束时间",
+      before.actualEndDate ? formatFeedPlanDateChinese(before.actualEndDate) : null,
+      after.actualEndDate ? formatFeedPlanDateChinese(after.actualEndDate) : null,
+    );
   }
   if (before.status !== after.status) {
-    changes.push(`更新了状态为${STATUS_LABELS[after.status]}`);
+    pushChange(
+      changes,
+      "状态",
+      STATUS_LABELS[before.status],
+      STATUS_LABELS[after.status],
+    );
   }
   if (before.type !== after.type) {
-    changes.push(`更新了类型为${TYPE_LABELS[after.type]}`);
+    pushChange(changes, "类型", TYPE_LABELS[before.type], TYPE_LABELS[after.type]);
   }
   if (before.priority !== after.priority) {
-    if (after.priority) {
-      changes.push(`更新了优先级为${PRIORITY_LABELS[after.priority]}`);
-    } else {
-      changes.push("清除了优先级");
-    }
+    pushChange(
+      changes,
+      "优先级",
+      before.priority ? PRIORITY_LABELS[before.priority] : null,
+      after.priority ? PRIORITY_LABELS[after.priority] : null,
+    );
   }
   if (before.color !== after.color) {
-    changes.push(after.color ? "更新了颜色" : "清除了颜色");
+    pushChange(
+      changes,
+      "颜色",
+      before.color ? "已设置" : null,
+      after.color ? "已设置" : null,
+    );
   }
   if (before.parentPlanId !== after.parentPlanId) {
-    changes.push(after.parentPlanId ? "更新了父计划" : "清除了父计划");
+    pushChange(
+      changes,
+      "父计划",
+      before.parentPlanId ? "已关联" : null,
+      after.parentPlanId ? "已关联" : null,
+    );
   }
 
   return changes;
 }
 
-export function joinPlanFeedChanges(changes: string[]): string {
-  return changes.join("，");
+export function serializePlanFeedChanges(changes: PlanFeedChangeItem[]): string {
+  return JSON.stringify({ v: 1, changes });
 }
 
-/** 旧数据 content 存的是计划标题，与更新摘要区分 */
-export function resolvePlanFeedUpdateSummary(
+export function parsePlanFeedContent(
   content: string | null | undefined,
   headline: string,
-): string | null {
+): { changes: PlanFeedChangeItem[] | null; legacySummary: string | null } {
   const raw = content?.trim();
-  if (!raw) return null;
-  if (raw === headline.trim()) return null;
-  return raw;
+  if (!raw || raw === headline.trim()) {
+    return { changes: null, legacySummary: null };
+  }
+  try {
+    const parsed = JSON.parse(raw) as { v?: number; changes?: PlanFeedChangeItem[] };
+    if (parsed?.v === 1 && Array.isArray(parsed.changes) && parsed.changes.length > 0) {
+      return { changes: parsed.changes, legacySummary: null };
+    }
+  } catch {
+    // 旧版纯文本摘要
+  }
+  return { changes: null, legacySummary: raw };
 }

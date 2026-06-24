@@ -1,6 +1,6 @@
 import type { Feed, FeedActionType, FeedItemType } from "@prisma/client";
 import { feedActionPhrase, feedExcerpt } from "@/lib/feed-display";
-import { resolvePlanFeedUpdateSummary } from "@/lib/plan-feed-change";
+import { parsePlanFeedContent, type PlanFeedChangeItem } from "@/lib/plan-feed-change";
 import { prisma } from "@/lib/db";
 
 export interface EnrichedFeedItem {
@@ -14,6 +14,7 @@ export interface EnrichedFeedItem {
   excerpt: string | null;
   contextLabel: string | null;
   actionPhrase: string;
+  planUpdateChanges: PlanFeedChangeItem[] | null;
   planUpdateSummary: string | null;
 }
 
@@ -66,13 +67,15 @@ export async function enrichFeedItems(
     if (item.itemType === "plan") {
       const plan = planMap.get(item.itemId);
       const headline = plan?.title ?? item.content?.trim() ?? "计划";
+      const { changes, legacySummary } = parsePlanFeedContent(item.content, headline);
       return {
         ...item,
         headline,
         excerpt: feedExcerpt(plan?.description),
         contextLabel: null,
         actionPhrase,
-        planUpdateSummary: resolvePlanFeedUpdateSummary(item.content, headline),
+        planUpdateChanges: changes,
+        planUpdateSummary: legacySummary,
       };
     }
 
@@ -86,6 +89,7 @@ export async function enrichFeedItems(
         excerpt: feedExcerpt(body),
         contextLabel: null,
         actionPhrase,
+        planUpdateChanges: null,
         planUpdateSummary: null,
       };
     }
@@ -100,6 +104,7 @@ export async function enrichFeedItems(
       excerpt: feedExcerpt(body),
       contextLabel: planTitle ? `贡献 · ${planTitle}` : "贡献",
       actionPhrase,
+      planUpdateChanges: null,
       planUpdateSummary: null,
     };
   });
