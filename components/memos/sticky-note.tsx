@@ -219,14 +219,14 @@ export function StickyNote({
                 quadrant: (e.target.value || null) as MemoQuadrantId | null,
               })
             }
-            className="max-w-[5.5rem] rounded border border-black/10 bg-white/60 px-1 py-0.5 text-[10px] outline-none"
+            className="w-9 shrink-0 rounded border border-black/10 bg-white/60 px-0.5 py-0.5 text-center text-[10px] outline-none"
             title="四象限分类"
             aria-label="四象限分类"
           >
-            <option value="">未分类</option>
+            <option value="">—</option>
             {MEMO_QUADRANTS.map((q) => (
-              <option key={q.id} value={q.id}>
-                {q.shortLabel} {q.label}
+              <option key={q.id} value={q.id} title={`${q.label} · ${q.hint}`}>
+                {q.shortLabel}
               </option>
             ))}
           </select>

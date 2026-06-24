@@ -29,18 +29,57 @@ export function StickyNoteBoard() {
   const maxZRef = useRef(1);
   const boardRef = useRef<HTMLDivElement>(null);
 
+  const persistNote = useCallback(async (id: string, body: Record<string, unknown>) => {
+    const res = await fetch(`/api/memos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? "保存失败");
+  }, []);
+
   const load = useCallback(async () => {
     const res = await fetch("/api/memos?standaloneOnly=true");
     const data = await res.json();
     const memos: StickyNoteData[] = data.memos ?? [];
     maxZRef.current = Math.max(1, ...memos.map((m) => m.zIndex ?? 1));
-    setNotes(
-      memos.map((memo, index) => {
-        const pos = effectiveStickyPosition(memo.posX, memo.posY, index);
-        return { ...memo, x: pos.x, y: pos.y };
-      }),
+
+    const mapped = memos.map((memo, index) => {
+      const pos = effectiveStickyPosition(memo.posX, memo.posY, index);
+      return { ...memo, x: pos.x, y: pos.y };
+    });
+
+    const board = computeMemoBoardSize(
+      boardRef.current?.clientWidth ?? viewportSize.width,
+      boardRef.current?.clientHeight ?? viewportSize.height,
+      mapped,
     );
-  }, []);
+
+    const reconciled: NoteState[] = [];
+    for (const note of mapped) {
+      const { width, height } = {
+        width: note.width ?? DEFAULT_STICKY_WIDTH,
+        height: note.height ?? DEFAULT_STICKY_HEIGHT,
+      };
+      const expected = detectMemoQuadrant(
+        note.x,
+        note.y,
+        width,
+        height,
+        board.width,
+        board.height,
+      );
+      if (note.quadrant !== expected) {
+        reconciled.push({ ...note, quadrant: expected });
+        void persistNote(note.id, { quadrant: expected }).catch(() => {});
+      } else {
+        reconciled.push(note);
+      }
+    }
+
+    setNotes(reconciled);
+  }, [persistNote, viewportSize.width, viewportSize.height]);
 
   useEffect(() => {
     load().finally(() => setLoading(false));
@@ -76,16 +115,6 @@ export function StickyNoteBoard() {
 
   function patchNote(id: string, patch: Partial<NoteState>) {
     setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, ...patch } : n)));
-  }
-
-  async function persistNote(id: string, body: Record<string, unknown>) {
-    const res = await fetch(`/api/memos/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? "保存失败");
   }
 
   function noteSize(note: NoteState) {
@@ -285,9 +314,8 @@ export function StickyNoteBoard() {
                   >
                     <div className="p-2">
                       <span className="text-[11px] font-semibold text-gray-500/90 dark:text-gray-400/90">
-                        {q.shortLabel} · {q.label}
+                        {q.shortLabel}
                       </span>
-                      <span className="mt-0.5 block text-[10px] text-gray-400/80">{q.hint}</span>
                     </div>
                   </div>
                 ))}

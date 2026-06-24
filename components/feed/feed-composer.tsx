@@ -15,6 +15,7 @@ import { dispatchPlanUpdated } from "@/lib/plan-events";
 import { cn } from "@/lib/utils";
 import { nowDatetimeLocal } from "@/lib/dates";
 import { DEFAULT_PLAN_COLOR } from "@/lib/plan-color";
+import { MEMO_QUADRANTS, type MemoQuadrantId } from "@/lib/memo-quadrant";
 
 type ComposerMode = "memo" | "plan" | "contribution";
 
@@ -31,6 +32,7 @@ function emptyCompose(startAt = ""): FeedComposeValues {
 export function FeedComposer({ onPublished }: { onPublished: () => void }) {
   const [mode, setMode] = useState<ComposerMode>("memo");
   const [memoText, setMemoText] = useState("");
+  const [memoQuadrant, setMemoQuadrant] = useState<MemoQuadrantId>("not_urgent_important");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -57,6 +59,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
 
   function resetForm() {
     setMemoText("");
+    setMemoQuadrant("not_urgent_important");
     setPlanValues(emptyCompose(nowDatetimeLocal()));
     setPlanRelatedId(null);
     setContributionValues(emptyCompose(nowDatetimeLocal()));
@@ -129,7 +132,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
         await apiJson("/api/memos", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content }),
+          body: JSON.stringify({ content, quadrant: memoQuadrant }),
         });
       }
 
@@ -228,13 +231,30 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
         )}
 
         {mode === "memo" && (
-          <textarea
-            value={memoText}
-            onChange={(e) => setMemoText(e.target.value)}
-            placeholder="此刻的想法…"
-            rows={4}
-            className="w-full resize-none rounded-lg border border-gray-200 bg-transparent px-3 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:text-gray-100"
-          />
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <span className="shrink-0">象限</span>
+              <select
+                value={memoQuadrant}
+                onChange={(e) => setMemoQuadrant(e.target.value as MemoQuadrantId)}
+                className="rounded border border-gray-200 bg-white px-2 py-1 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                aria-label="便签四象限"
+              >
+                {MEMO_QUADRANTS.map((q) => (
+                  <option key={q.id} value={q.id} title={`${q.label} · ${q.hint}`}>
+                    {q.shortLabel}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <textarea
+              value={memoText}
+              onChange={(e) => setMemoText(e.target.value)}
+              placeholder="此刻的想法…"
+              rows={4}
+              className="w-full resize-none rounded-lg border border-gray-200 bg-transparent px-3 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:text-gray-100"
+            />
+          </div>
         )}
       </div>
     </div>

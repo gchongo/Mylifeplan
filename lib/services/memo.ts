@@ -1,5 +1,14 @@
 import { splitMemoContent } from "@/lib/memo-content";
-import { isBlankStickyMemo, isMemoQuadrantId } from "@/lib/memo-quadrant";
+import {
+  isBlankStickyMemo,
+  isMemoQuadrantId,
+  detectMemoQuadrant,
+  defaultPositionForQuadrant,
+  DEFAULT_STICKY_WIDTH,
+  DEFAULT_STICKY_HEIGHT,
+  MEMO_QUADRANT_BOARD_WIDTH,
+  MEMO_QUADRANT_BOARD_HEIGHT,
+} from "@/lib/memo-quadrant";
 import { nextStickyColor, defaultStickyPosition } from "@/lib/memo-sticky";
 import { parseDateOnly } from "@/lib/dates";
 import { prisma } from "@/lib/db";
@@ -29,12 +38,29 @@ export async function createStandaloneMemo(
     throw new Error("内容不能为空");
   }
 
-  const pos = data.posX != null && data.posY != null
-    ? { x: data.posX, y: data.posY }
-    : defaultStickyPosition(noteIndex);
+  const pos =
+    data.posX != null && data.posY != null
+      ? { x: data.posX, y: data.posY }
+      : data.quadrant && isMemoQuadrantId(data.quadrant)
+        ? defaultPositionForQuadrant(
+            data.quadrant,
+            MEMO_QUADRANT_BOARD_WIDTH,
+            MEMO_QUADRANT_BOARD_HEIGHT,
+            noteIndex,
+          )
+        : defaultStickyPosition(noteIndex);
 
   const quadrant =
-    data.quadrant && isMemoQuadrantId(data.quadrant) ? data.quadrant : null;
+    data.quadrant && isMemoQuadrantId(data.quadrant)
+      ? data.quadrant
+      : detectMemoQuadrant(
+          pos.x,
+          pos.y,
+          data.width ?? DEFAULT_STICKY_WIDTH,
+          data.height ?? DEFAULT_STICKY_HEIGHT,
+          MEMO_QUADRANT_BOARD_WIDTH,
+          MEMO_QUADRANT_BOARD_HEIGHT,
+        );
 
   return prisma.$transaction(async (tx) => {
     const memo = await tx.memo.create({

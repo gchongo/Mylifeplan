@@ -10,6 +10,7 @@ export const MEMO_QUADRANT_IDS = [
 
 export type MemoQuadrantId = (typeof MEMO_QUADRANT_IDS)[number];
 
+/** 经典矩阵：右上 Q1，左上 Q2，右下 Q3，左下 Q4 */
 export const MEMO_QUADRANTS: {
   id: MemoQuadrantId;
   label: string;
@@ -22,28 +23,28 @@ export const MEMO_QUADRANTS: {
     label: "重要且紧急",
     shortLabel: "Q1",
     hint: "立即处理",
-    gridClass: "col-start-1 row-start-1",
+    gridClass: "col-start-2 row-start-1",
   },
   {
     id: "not_urgent_important",
     label: "重要不紧急",
     shortLabel: "Q2",
     hint: "计划安排",
-    gridClass: "col-start-2 row-start-1",
+    gridClass: "col-start-1 row-start-1",
   },
   {
     id: "urgent_not_important",
     label: "紧急不重要",
     shortLabel: "Q3",
     hint: "委托他人",
-    gridClass: "col-start-1 row-start-2",
+    gridClass: "col-start-2 row-start-2",
   },
   {
     id: "not_urgent_not_important",
     label: "不重要不紧急",
     shortLabel: "Q4",
     hint: "尽量精简",
-    gridClass: "col-start-2 row-start-2",
+    gridClass: "col-start-1 row-start-2",
   },
 ];
 
@@ -56,11 +57,12 @@ export const MIN_STICKY_HEIGHT = 120;
 export const MEMO_BOARD_MIN_WIDTH = 640;
 export const MEMO_BOARD_MIN_HEIGHT = 480;
 
+/** 左=不紧急，右=紧急；上=重要，下=不重要 */
 export const MEMO_AXIS_LABELS = {
   top: "重要",
   bottom: "不重要",
-  left: "紧急",
-  right: "不紧急",
+  left: "不紧急",
+  right: "紧急",
 } as const;
 
 export function computeMemoBoardSize(
@@ -86,7 +88,7 @@ export function isMemoQuadrantId(value: string | null | undefined): value is Mem
   return MEMO_QUADRANT_IDS.includes(value as MemoQuadrantId);
 }
 
-/** 根据便签中心点判断所在象限（左=紧急，右=不紧急；上=重要，下=不重要） */
+/** 根据便签中心点判断所在象限（右=紧急，左=不紧急；上=重要，下=不重要） */
 export function detectMemoQuadrant(
   x: number,
   y: number,
@@ -97,7 +99,7 @@ export function detectMemoQuadrant(
 ): MemoQuadrantId {
   const cx = x + width / 2;
   const cy = y + height / 2;
-  const urgent = cx < boardWidth / 2;
+  const urgent = cx >= boardWidth / 2;
   const important = cy < boardHeight / 2;
   if (important && urgent) return "urgent_important";
   if (important && !urgent) return "not_urgent_important";
@@ -105,9 +107,40 @@ export function detectMemoQuadrant(
   return "not_urgent_not_important";
 }
 
+/** 远程创建便签时，按象限落在板上的默认位置 */
+export function defaultPositionForQuadrant(
+  quadrant: MemoQuadrantId,
+  boardWidth = MEMO_QUADRANT_BOARD_WIDTH,
+  boardHeight = MEMO_QUADRANT_BOARD_HEIGHT,
+  index = 0,
+): { x: number; y: number } {
+  const halfW = boardWidth / 2;
+  const halfH = boardHeight / 2;
+  const pad = 28;
+  const stagger = index % 6;
+  const offsetX = (stagger % 3) * 32;
+  const offsetY = Math.floor(stagger / 3) * 28;
+
+  switch (quadrant) {
+    case "urgent_important":
+      return { x: halfW + pad + offsetX, y: pad + offsetY };
+    case "not_urgent_important":
+      return { x: pad + offsetX, y: pad + offsetY };
+    case "urgent_not_important":
+      return { x: halfW + pad + offsetX, y: halfH + pad + offsetY };
+    default:
+      return { x: pad + offsetX, y: halfH + pad + offsetY };
+  }
+}
+
 export function quadrantLabel(id: string | null | undefined): string | null {
   if (!isMemoQuadrantId(id)) return null;
   return MEMO_QUADRANTS.find((q) => q.id === id)?.label ?? null;
+}
+
+export function quadrantShortLabel(id: string | null | undefined): string | null {
+  if (!isMemoQuadrantId(id)) return null;
+  return MEMO_QUADRANTS.find((q) => q.id === id)?.shortLabel ?? null;
 }
 
 export function isBlankStickyMemo(memo: {
