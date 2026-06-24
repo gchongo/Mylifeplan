@@ -2,9 +2,15 @@
 
 import { EmptyState, Loading } from "@/components/ui/feedback";
 import {
+  COMPLETION_RATE_LABEL,
+  CompletionRateDonut,
+  EXECUTION_COUNT_HINT,
+  ExecutionBreakdown,
+  renderStatusIcon,
+  renderTypeIcon,
+} from "@/components/summary/summary-charts";
+import {
   AdaptiveDistributionChart,
-  DonutChart,
-  IconHorizontalBars,
   IconMetricTile,
   PRIMARY_PLAN_STAT_ITEMS,
   SectionShell,
@@ -13,7 +19,6 @@ import {
   usePlanSummary,
 } from "@/components/summary/summary-widgets";
 import {
-  ExecutionIcon,
   IconDone,
   IconEarly,
   IconExecution,
@@ -23,11 +28,7 @@ import {
   IconPlans,
   IconStatus,
   IconType,
-  StatusIcon,
-  TypeIcon,
-  type ExecutionVariant,
 } from "@/components/summary/summary-icons";
-import type { PlanStatus, PlanType } from "@/types";
 import { cn } from "@/lib/utils";
 
 const PRIMARY_ICONS = {
@@ -67,16 +68,6 @@ export function SummaryDashboard({ className }: { className?: string }) {
   }
   if (!summary) return <EmptyState title="暂无数据" description="创建计划后会在这里显示统计。" />;
 
-  const renderStatusIcon = (seg: { key?: string }) => (
-    <StatusIcon status={(seg.key ?? "not_started") as PlanStatus} className="h-3.5 w-3.5" />
-  );
-  const renderTypeIcon = (seg: { key?: string }) => (
-    <TypeIcon type={(seg.key ?? "goal") as PlanType} className="h-3.5 w-3.5" />
-  );
-  const renderExecutionIcon = (seg: { key?: string }) => (
-    <ExecutionIcon variant={(seg.key ?? "onTrack") as ExecutionVariant} className="h-3.5 w-3.5" />
-  );
-
   return (
     <div className={cn("flex h-full min-h-0 flex-col gap-3", className)}>
       <section className="shrink-0 rounded-xl border border-gray-100 bg-gradient-to-r from-indigo-50/80 via-white to-cyan-50/50 p-3 shadow-sm dark:border-gray-800 dark:from-indigo-950/25 dark:via-gray-900 dark:to-cyan-950/15">
@@ -84,13 +75,14 @@ export function SummaryDashboard({ className }: { className?: string }) {
           核心指标
         </h2>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="flex shrink-0 items-center justify-center lg:w-36">
-            <DonutChart
-              segments={summary.statusSegments}
+          <div className="flex shrink-0 flex-col items-center justify-center lg:w-36">
+            <p className="mb-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
+              {COMPLETION_RATE_LABEL}
+            </p>
+            <CompletionRateDonut
+              statusSegments={summary.statusSegments}
+              completionRate={summary.completionRate}
               size={96}
-              strokeWidth={14}
-              centerValue={`${summary.completionRate}%`}
-              centerLabel="完成率"
               centerValueClassName="text-lg"
             />
           </div>
@@ -135,29 +127,8 @@ export function SummaryDashboard({ className }: { className?: string }) {
           className="lg:col-span-2"
           contentClassName="p-2.5"
         >
-          <div className="flex h-full items-stretch gap-4">
-            {summary.executionSegments.length <= 2 ? (
-              <AdaptiveDistributionChart
-                className="w-full"
-                segments={summary.executionSegments}
-                renderIcon={renderExecutionIcon}
-                pieMaxSegments={2}
-              />
-            ) : (
-              <>
-                <div className="flex shrink-0 items-center justify-center self-center lg:w-28">
-                  <DonutChart segments={summary.executionSegments} size={88} strokeWidth={12} />
-                </div>
-                <div className="min-h-0 min-w-0 flex-1 self-center">
-                  <IconHorizontalBars
-                    columns={2}
-                    segments={summary.executionSegments}
-                    renderIcon={renderExecutionIcon}
-                  />
-                </div>
-              </>
-            )}
-          </div>
+          <p className="mb-2 text-[11px] text-gray-400">{EXECUTION_COUNT_HINT}</p>
+          <ExecutionBreakdown segments={summary.executionSegments} columns={2} />
         </SectionShell>
       </div>
     </div>

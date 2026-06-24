@@ -270,17 +270,27 @@ export function IconHorizontalBars({
   renderIcon,
   className,
   columns = 1,
+  dense = false,
+  barWidthScale = 1,
 }: {
   segments: SummarySegment[];
   renderIcon: (seg: SummarySegment) => ReactNode;
   className?: string;
   columns?: 1 | 2;
+  dense?: boolean;
+  barWidthScale?: number;
 }) {
   const max = Math.max(1, ...segments.map((s) => s.value));
+  const widthScale = Math.min(1, Math.max(0.5, barWidthScale));
 
   if (segments.length === 0) {
     return (
-      <div className="flex h-16 items-center justify-center rounded-lg border border-dashed border-gray-200 text-xs text-gray-400 dark:border-gray-700">
+      <div
+        className={cn(
+          "flex items-center justify-center rounded-lg border border-dashed border-gray-200 text-gray-400 dark:border-gray-700",
+          dense ? "h-12 text-[10px]" : "h-16 text-xs",
+        )}
+      >
         暂无数据
       </div>
     );
@@ -289,20 +299,31 @@ export function IconHorizontalBars({
   return (
     <ul
       className={cn(
-        columns === 2 ? "grid grid-cols-2 gap-x-3 gap-y-2" : "space-y-2",
+        columns === 2 ? "grid grid-cols-2 gap-x-3 gap-y-2" : dense ? "space-y-1.5" : "space-y-2",
         className,
       )}
     >
       {segments.map((seg) => (
         <li key={seg.key ?? seg.label}>
-          <div className="mb-1 flex items-center justify-between gap-2 text-xs">
+          <div
+            className={cn(
+              "mb-1 flex items-center justify-between gap-2",
+              dense ? "text-[10px]" : "text-xs",
+            )}
+          >
             <span className="flex min-w-0 items-center gap-1.5 text-gray-600 dark:text-gray-300">
               <ChartIconSlot tinted={seg.color}>{renderIcon(seg)}</ChartIconSlot>
               <span className="truncate">{seg.label}</span>
             </span>
             <span className="shrink-0 font-semibold tabular-nums text-gray-900 dark:text-gray-100">{seg.value}</span>
           </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+          <div
+            className={cn(
+              "overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800",
+              dense ? "h-1" : "h-1.5",
+            )}
+            style={{ width: `${widthScale * 100}%` }}
+          >
             <div
               className="h-full rounded-full transition-all"
               style={{
