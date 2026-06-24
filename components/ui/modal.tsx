@@ -11,12 +11,14 @@ export function Modal({
   title,
   children,
   className,
+  showCloseButton = true,
 }: {
   open: boolean;
   onClose: () => void;
   title?: string | null;
   children: React.ReactNode;
   className?: string;
+  showCloseButton?: boolean;
 }) {
   const [mounted, setMounted] = useState(false);
 
@@ -54,13 +56,15 @@ export function Modal({
             <h2 id="modal-title" className="text-base font-semibold text-gray-900 dark:text-gray-100">
               {title}
             </h2>
-            <Button variant="ghost" size="sm" onClick={onClose} aria-label="关闭">
-              ✕
-            </Button>
+            {showCloseButton && (
+              <Button variant="ghost" size="sm" onClick={onClose} aria-label="关闭">
+                ✕
+              </Button>
+            )}
           </div>
         )}
-        <div className={cn("p-4", title == null && "pt-3")}>
-          {title == null && (
+        <div className={cn("p-4", title == null && !showCloseButton && "pt-4", title == null && showCloseButton && "pt-3")}>
+          {title == null && showCloseButton && (
             <div className="mb-2 flex justify-end">
               <Button variant="ghost" size="sm" onClick={onClose} aria-label="关闭">
                 ✕

@@ -98,6 +98,7 @@ export function PlanDetailModal({
       open={open}
       onClose={onClose}
       title={null}
+      showCloseButton={false}
       className="max-h-[90vh] max-w-2xl overflow-y-auto"
     >
       {loading && <Loading label="加载计划…" />}

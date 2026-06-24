@@ -251,11 +251,13 @@ export function PlanDetailClient({
           )}
         </CardHeader>
 
-        <CardContent className="space-y-3 pt-2 text-sm text-gray-700 dark:text-gray-300">
-          {plan.description && <p className="leading-relaxed">{plan.description}</p>}
+        <CardContent className="space-y-3 pt-2">
+          {plan.description && (
+            <p className="text-base leading-relaxed text-gray-800 dark:text-gray-200">{plan.description}</p>
+          )}
 
           {!embedded && (
-            <dl className="grid grid-cols-2 gap-2 text-sm">
+            <dl className="grid grid-cols-2 gap-2 text-sm text-gray-700 dark:text-gray-300">
               <dt className="text-gray-500">计划开始</dt>
               <dd>{formatPlanDateTimeDisplay(plan.startDate)}</dd>
               <dt className="text-gray-500">计划结束</dt>
