@@ -7,6 +7,7 @@ import { ErrorMessage } from "@/components/ui/feedback";
 import { Input, Select, Textarea } from "@/components/ui";
 import { ParentPlanSelect } from "@/components/forms/parent-plan-select";
 import { PlanColorPicker } from "@/components/forms/plan-color-picker";
+import { PlanDateTimeField } from "@/components/forms/plan-datetime-field";
 import { toDatetimeLocalInput, datetimeLocalToIso, normalizePlanDateInput } from "@/lib/dates";
 
 const statusOptions = [
@@ -58,6 +59,18 @@ export function PlanForm({
   const [parentPlanId, setParentPlanId] = useState<string | null>(
     plan?.parentPlanId ?? defaultParentPlanId ?? null,
   );
+  const [startDate, setStartDate] = useState(
+    () => toDatetimeLocalInput(plan?.startDate ?? defaultStartDate) || "",
+  );
+  const [endDate, setEndDate] = useState(
+    () => toDatetimeLocalInput(plan?.endDate ?? defaultEndDate) || "",
+  );
+  const [actualStartDate, setActualStartDate] = useState(
+    () => toDatetimeLocalInput(plan?.actualStartDate) || "",
+  );
+  const [actualEndDate, setActualEndDate] = useState(
+    () => toDatetimeLocalInput(plan?.actualEndDate) || "",
+  );
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -67,10 +80,6 @@ export function PlanForm({
     const fd = new FormData(e.currentTarget);
     const title = String(fd.get("title") ?? "").trim();
     const description = String(fd.get("description") ?? "").trim();
-    const startDate = String(fd.get("startDate") ?? "") || null;
-    const endDate = String(fd.get("endDate") ?? "") || null;
-    const actualStartDate = String(fd.get("actualStartDate") ?? "") || null;
-    const actualEndDate = String(fd.get("actualEndDate") ?? "") || null;
     const status = String(fd.get("status") ?? "not_started");
     const color = String(fd.get("color") ?? "").trim() || null;
 
@@ -153,17 +162,19 @@ export function PlanForm({
       />
       <PlanColorPicker defaultValue={plan?.color} />
       <div className="grid gap-4 sm:grid-cols-2">
-        <Input
-          name="startDate"
+        <PlanDateTimeField
           label="计划开始"
-          type="datetime-local"
-          defaultValue={toDatetimeLocalInput(plan?.startDate ?? defaultStartDate)}
+          value={startDate}
+          onConfirm={setStartDate}
+          edge="start"
+          placeholder="选择开始时间"
         />
-        <Input
-          name="endDate"
+        <PlanDateTimeField
           label="计划结束"
-          type="datetime-local"
-          defaultValue={toDatetimeLocalInput(plan?.endDate ?? defaultEndDate)}
+          value={endDate}
+          onConfirm={setEndDate}
+          edge="end"
+          placeholder="选择结束时间"
         />
       </div>
       {isEdit && hasSubPlans && (
@@ -173,17 +184,19 @@ export function PlanForm({
       )}
       {isEdit && !hasSubPlans && (
         <div className="grid gap-4 sm:grid-cols-2">
-          <Input
-            name="actualStartDate"
+          <PlanDateTimeField
             label="实际开始"
-            type="datetime-local"
-            defaultValue={toDatetimeLocalInput(plan?.actualStartDate)}
+            value={actualStartDate}
+            onConfirm={setActualStartDate}
+            edge="start"
+            placeholder="选择实际开始"
           />
-          <Input
-            name="actualEndDate"
+          <PlanDateTimeField
             label="实际结束"
-            type="datetime-local"
-            defaultValue={toDatetimeLocalInput(plan?.actualEndDate)}
+            value={actualEndDate}
+            onConfirm={setActualEndDate}
+            edge="end"
+            placeholder="选择实际结束"
           />
         </div>
       )}

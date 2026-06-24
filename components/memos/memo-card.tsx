@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input, Textarea } from "@/components/ui";
+import { Textarea } from "@/components/ui";
+import { PlanDateTimeField } from "@/components/forms/plan-datetime-field";
 import { MemoMarkdown } from "@/components/memos/memo-markdown";
 import { formatMemoCardDate, memoDisplayBody } from "@/lib/memo-content";
 import { cn } from "@/lib/utils";
@@ -262,11 +263,14 @@ export function MemoCard({ memo, onChanged, onError }: MemoCardProps) {
 
         {dateEditing && (
           <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-gray-100 pt-3 dark:border-gray-800">
-            <Input
+            <PlanDateTimeField
               label="开始日期"
-              type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onConfirm={setStartDate}
+              mode="date"
+              edge="start"
+              placeholder="选择日期"
+              className="min-w-[10rem]"
             />
             <Button size="sm" disabled={busy} onClick={() => void addStartDate()}>
               回流到日历

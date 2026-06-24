@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { PlanDateTimeField } from "@/components/forms/plan-datetime-field";
 import { cn } from "@/lib/utils";
 
 export interface FeedComposeValues {
@@ -99,8 +100,6 @@ export function FeedComposeCard({
     applyBodyEdit(next, lineStart + prefix.length);
   }
 
-  const inputType = timeKind === "datetime" ? "datetime-local" : "date";
-
   return (
     <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
       {/* 1. 标题 */}
@@ -122,26 +121,28 @@ export function FeedComposeCard({
 
       {/* 2. 时间 */}
       <div className="flex flex-wrap items-center gap-3 border-b border-gray-100 px-4 py-2 dark:border-gray-800">
-        <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-          <span className="sr-only">开始{timeKind === "datetime" ? "时间" : "日期"}</span>
-          <input
-            type={inputType}
-            value={values.startAt}
-            onChange={(e) => onChange({ startAt: e.target.value })}
-            required={startRequired}
-            className="rounded border border-gray-200 bg-white px-2 py-1 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-          />
-          {startRequired && <span className="text-red-500">*</span>}
-        </label>
+        <PlanDateTimeField
+          value={values.startAt}
+          onConfirm={(next) => onChange({ startAt: next })}
+          mode={timeKind}
+          edge="start"
+          placeholder={timeKind === "datetime" ? "开始时间" : "开始日期"}
+          size="sm"
+          className="w-auto min-w-[9rem]"
+          triggerClassName="w-auto min-w-[9rem]"
+        />
+        {startRequired && <span className="text-red-500">*</span>}
         <span className="text-xs text-gray-400">至</span>
-        <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-          <input
-            type={inputType}
-            value={values.endAt}
-            onChange={(e) => onChange({ endAt: e.target.value })}
-            className="rounded border border-gray-200 bg-white px-2 py-1 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-          />
-        </label>
+        <PlanDateTimeField
+          value={values.endAt}
+          onConfirm={(next) => onChange({ endAt: next })}
+          mode={timeKind}
+          edge="end"
+          placeholder={timeKind === "datetime" ? "结束时间" : "结束日期"}
+          size="sm"
+          className="w-auto min-w-[9rem]"
+          triggerClassName="w-auto min-w-[9rem]"
+        />
       </div>
 
       {/* 3. 内容 / 描述 */}

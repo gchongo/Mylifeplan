@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { ParentPlanSelect } from "@/components/forms/parent-plan-select";
+import { PlanDateTimeField } from "@/components/forms/plan-datetime-field";
 import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/ui/feedback";
-import { Input } from "@/components/ui";
 import { Modal } from "@/components/ui/modal";
 import { toDatetimeLocalInput } from "@/lib/dates";
 
@@ -60,19 +60,20 @@ export function StickyNoteAssignModal({
         {error && <ErrorMessage message={error} />}
         <ParentPlanSelect value={parentPlanId} onChange={setParentPlanId} />
         <div className="grid gap-4 sm:grid-cols-2">
-          <Input
+          <PlanDateTimeField
             label="开始时间"
-            type="datetime-local"
             value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
+            onConfirm={setStartDate}
+            edge="start"
             required
+            placeholder="选择开始时间"
           />
-          <Input
+          <PlanDateTimeField
             label="结束时间（可选）"
-            type="datetime-local"
             value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            min={startDate || undefined}
+            onConfirm={setEndDate}
+            edge="end"
+            placeholder="选择结束时间"
           />
         </div>
         <div className="flex justify-end gap-2 pt-1">

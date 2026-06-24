@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui";
+import { PlanDateTimeField } from "@/components/forms/plan-datetime-field";
 import { EmptyState, ErrorMessage, Loading } from "@/components/ui/feedback";
+import { toDatetimeLocalInput, datetimeLocalToIso } from "@/lib/dates";
 
 interface SubscriptionRow {
   id: string;
@@ -28,12 +30,6 @@ const paymentOptions = [
   { value: "paid", label: "paid" },
   { value: "failed", label: "failed" },
 ];
-
-function toLocalInput(iso: string) {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 export function AdminSubscriptionsTable() {
   const [subs, setSubs] = useState<SubscriptionRow[]>([]);
@@ -69,8 +65,8 @@ export function AdminSubscriptionsTable() {
       planName: sub.planName,
       status: sub.status,
       paymentStatus: sub.paymentStatus,
-      startAt: toLocalInput(sub.startAt),
-      endAt: toLocalInput(sub.endAt),
+      startAt: toDatetimeLocalInput(sub.startAt),
+      endAt: toDatetimeLocalInput(sub.endAt),
     });
   }
 
@@ -86,8 +82,8 @@ export function AdminSubscriptionsTable() {
           planName: form.planName,
           status: form.status,
           paymentStatus: form.paymentStatus,
-          startAt: new Date(form.startAt).toISOString(),
-          endAt: new Date(form.endAt).toISOString(),
+          startAt: datetimeLocalToIso(form.startAt) ?? new Date(form.startAt).toISOString(),
+          endAt: datetimeLocalToIso(form.endAt) ?? new Date(form.endAt).toISOString(),
         }),
       });
       const data = await res.json();
@@ -170,17 +166,17 @@ export function AdminSubscriptionsTable() {
               value={form.paymentStatus}
               onChange={(e) => setForm({ ...form, paymentStatus: e.target.value })}
             />
-            <Input
+            <PlanDateTimeField
               label="开始时间"
-              type="datetime-local"
               value={form.startAt}
-              onChange={(e) => setForm({ ...form, startAt: e.target.value })}
+              onConfirm={(startAt) => setForm({ ...form, startAt })}
+              edge="start"
             />
-            <Input
+            <PlanDateTimeField
               label="结束时间"
-              type="datetime-local"
               value={form.endAt}
-              onChange={(e) => setForm({ ...form, endAt: e.target.value })}
+              onConfirm={(endAt) => setForm({ ...form, endAt })}
+              edge="end"
             />
           </div>
           <div className="mt-4 flex gap-2">
