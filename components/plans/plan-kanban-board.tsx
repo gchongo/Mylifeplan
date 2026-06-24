@@ -10,9 +10,7 @@ import {
   kanbanPatchForColumn,
   kanbanRestorePatch,
   kanbanVisualForZone,
-  KANBAN_ARCHIVED_STORAGE_KEY,
   KANBAN_COLUMNS,
-  PLAN_TYPE_LABELS,
   UNSCHEDULED_BLOCKED_HINT,
   type KanbanColumnId,
   type KanbanDropZoneId,
@@ -24,12 +22,8 @@ import { apiJson } from "@/lib/client-api";
 import { ROLLUP_STATUS_HINT } from "@/lib/services/plan-rollup";
 import { PlanDetailModal } from "@/components/plans/plan-detail-modal";
 import { PlanContributionComposeModal } from "@/components/forms/plan-contribution-compose-modal";
+import { DrawerLayout, DrawerPanel } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
-
-function readArchivedOpen(): boolean {
-  if (typeof window === "undefined") return false;
-  return localStorage.getItem(KANBAN_ARCHIVED_STORAGE_KEY) === "true";
-}
 
 function PlanKanbanCard({
   plan,
@@ -66,7 +60,7 @@ function PlanKanbanCard({
       onDragEnd={onDragEnd}
       title={draggable ? undefined : ROLLUP_STATUS_HINT}
       className={cn(
-        "w-[220px] shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow dark:border-gray-700 dark:bg-gray-900",
+        "w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow dark:border-gray-700 dark:bg-gray-900",
         zoneId === "archived" && "opacity-90",
         draggable ? "cursor-grab active:cursor-grabbing hover:shadow-md" : "cursor-default opacity-95",
         dragging && "opacity-40",
@@ -87,16 +81,11 @@ function PlanKanbanCard({
           {plan.title}
         </button>
       </div>
-      <div className="p-3 pt-2">
-        {plan.description && (
+      {plan.description && (
+        <div className="px-3 pb-3 pt-0">
           <p className="line-clamp-2 text-sm text-gray-500 dark:text-gray-400">{plan.description}</p>
-        )}
-        <div className={plan.description ? "mt-2" : undefined}>
-          <span className="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-            {PLAN_TYPE_LABELS[plan.type] ?? plan.type}
-          </span>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -135,7 +124,7 @@ function KanbanColumn({
   return (
     <div
       className={cn(
-        "flex h-full min-h-0 min-w-[240px] flex-1 flex-col rounded-xl bg-gray-100/80 p-2 transition-colors",
+        "flex h-full min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-gray-100/80 p-2 transition-colors",
         isTarget && "ring-2 ring-brand-400 ring-offset-1",
       )}
       onDragOver={(e) => {
@@ -185,12 +174,11 @@ function KanbanColumn({
   );
 }
 
-function KanbanArchivedTray({
+function KanbanArchivedDrawerPanel({
   plans,
-  expanded,
   draggingId,
   dropTarget,
-  onToggle,
+  onClose,
   onDragStart,
   onDragEnd,
   onDragOver,
@@ -199,10 +187,9 @@ function KanbanArchivedTray({
   onOpenPlan,
 }: {
   plans: KanbanPlan[];
-  expanded: boolean;
   draggingId: string | null;
   dropTarget: KanbanDropZoneId | null;
-  onToggle: () => void;
+  onClose: () => void;
   onDragStart: (id: string) => void;
   onDragEnd: () => void;
   onDragOver: () => void;
@@ -211,72 +198,52 @@ function KanbanArchivedTray({
   onOpenPlan: (planId: string) => void;
 }) {
   const isTarget = dropTarget === "archived" && draggingId !== null;
-  const accent = getKanbanColumnAccentClass("archived");
 
   return (
-    <div
-      className={cn(
-        "shrink-0 rounded-xl border border-gray-200 bg-gray-50/80 dark:border-gray-700 dark:bg-gray-900/40",
-        isTarget && "ring-2 ring-gray-400 ring-offset-1",
-      )}
-      onDragOver={(e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "move";
-        onDragOver();
-      }}
-      onDragLeave={onDragLeave}
-      onDrop={(e) => {
-        e.preventDefault();
-        const planId = e.dataTransfer.getData("text/plan-id");
-        const fromArchived = e.dataTransfer.getData("text/from-archived") === "1";
-        onDragEnd();
-        if (planId && !fromArchived) onDrop(planId);
-      }}
-    >
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-gray-600 hover:bg-gray-100/80 dark:text-gray-300 dark:hover:bg-gray-800/50"
-        aria-expanded={expanded}
-      >
-        <svg
-          className={cn("h-4 w-4 shrink-0 transition-transform", expanded && "rotate-90")}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          aria-hidden
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 6l6 6-6 6" />
-        </svg>
-        <span className={cn("h-2 w-2 shrink-0 rounded-full", accent)} aria-hidden />
-        <span className="font-medium">已归档</span>
-        <span className="text-xs text-gray-400">{plans.length}</span>
-        {!expanded && isTarget && (
-          <span className="ml-auto text-xs text-gray-500">松手归档</span>
+    <DrawerPanel title={`已归档 (${plans.length})`} onClose={onClose} className="p-0">
+      <div
+        className={cn(
+          "flex min-h-full flex-col gap-2 p-3 transition-colors",
+          isTarget && "bg-gray-100/80 dark:bg-gray-800/40",
         )}
-      </button>
-
-      {expanded && (
-        <div className="scrollbar-hide flex gap-2 overflow-x-auto border-t border-gray-200 px-3 py-2 dark:border-gray-700">
-          {plans.length === 0 ? (
-            <p className="py-2 text-xs text-gray-400">拖入计划以归档，或从详情页归档</p>
-          ) : (
-            plans.map((plan) => (
-              <PlanKanbanCard
-                key={plan.id}
-                plan={plan}
-                zoneId="archived"
-                dragging={draggingId === plan.id}
-                onDragStart={() => onDragStart(plan.id)}
-                onDragEnd={onDragEnd}
-                onOpenPlan={onOpenPlan}
-              />
-            ))
-          )}
-        </div>
-      )}
-    </div>
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          onDragOver();
+        }}
+        onDragLeave={onDragLeave}
+        onDrop={(e) => {
+          e.preventDefault();
+          const planId = e.dataTransfer.getData("text/plan-id");
+          const fromArchived = e.dataTransfer.getData("text/from-archived") === "1";
+          onDragEnd();
+          if (planId && !fromArchived) onDrop(planId);
+        }}
+      >
+        {isTarget && (
+          <p className="rounded-lg border border-dashed border-gray-300 px-3 py-2 text-center text-xs text-gray-500 dark:border-gray-600 dark:text-gray-400">
+            松手以归档
+          </p>
+        )}
+        {plans.length === 0 ? (
+          <p className="py-6 text-center text-sm text-gray-400">
+            暂无归档计划。拖入卡片或从详情页归档。
+          </p>
+        ) : (
+          plans.map((plan) => (
+            <PlanKanbanCard
+              key={plan.id}
+              plan={plan}
+              zoneId="archived"
+              dragging={draggingId === plan.id}
+              onDragStart={() => onDragStart(plan.id)}
+              onDragEnd={onDragEnd}
+              onOpenPlan={onOpenPlan}
+            />
+          ))
+        )}
+      </div>
+    </DrawerPanel>
   );
 }
 
@@ -299,10 +266,6 @@ export function PlanKanbanBoard({
 
   const grouped = useMemo(() => groupPlansByKanbanColumn(plans), [plans]);
 
-  useEffect(() => {
-    setArchivedOpen(readArchivedOpen());
-  }, []);
-
   const reloadPlans = useCallback(async () => {
     const [active, archived] = await Promise.all([
       apiJson<{ plans?: KanbanPlan[] }>("/api/plans"),
@@ -323,14 +286,6 @@ export function PlanKanbanBoard({
     window.addEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
     return () => window.removeEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
   }, [reloadPlans]);
-
-  function toggleArchivedOpen() {
-    setArchivedOpen((prev) => {
-      const next = !prev;
-      localStorage.setItem(KANBAN_ARCHIVED_STORAGE_KEY, String(next));
-      return next;
-    });
-  }
 
   const movePlan = useCallback(
     async (planId: string, targetColumn: KanbanColumnId, fromArchived: boolean) => {
@@ -470,79 +425,117 @@ export function PlanKanbanBoard({
     [archivedPlans, plans, reloadPlans],
   );
 
+  const archivedAccent = getKanbanColumnAccentClass("archived");
+  const archivedDropTarget = dropTarget === "archived" && draggingId !== null;
+
   return (
-    <div className={cn("flex min-h-0 flex-col gap-3", className)}>
-      <div className="shrink-0">
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          与甘特图共用计划数据。未排期（紫）与已归档（灰）分开；拖入列可改状态，拖入底部可归档。
-        </p>
-      </div>
-
-      {error && (
-        <p className="shrink-0 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
-          {error}
-        </p>
-      )}
-
-      <div
-        className={cn(
-          "scrollbar-hide flex min-h-0 flex-1 gap-3 overflow-x-auto overflow-y-hidden overscroll-contain pb-2",
-          moving && "pointer-events-none opacity-80",
-        )}
-      >
-        {KANBAN_COLUMNS.map((col) => (
-          <KanbanColumn
-            key={col.id}
-            columnId={col.id}
-            label={col.label}
-            plans={grouped[col.id]}
-            draggingId={draggingId}
-            dropTarget={dropTarget}
-            onDragStart={setDraggingId}
-            onDragEnd={() => {
+    <DrawerLayout
+      open={archivedOpen}
+      onClose={() => setArchivedOpen(false)}
+      widthClass="w-80 sm:w-96"
+      panel={
+        <KanbanArchivedDrawerPanel
+          plans={archivedPlans}
+          draggingId={draggingId}
+          dropTarget={dropTarget}
+          onClose={() => setArchivedOpen(false)}
+          onDragStart={setDraggingId}
+          onDragEnd={() => {
+            setDraggingId(null);
+            setDropTarget(null);
+          }}
+          onDragOver={() => setDropTarget("archived")}
+          onDragLeave={() => setDropTarget(null)}
+          onDrop={(planId) => void archivePlan(planId)}
+          onOpenPlan={setPlanModalId}
+        />
+      }
+    >
+      <div className={cn("flex min-h-0 flex-1 flex-col gap-3", className)}>
+        <div className="flex shrink-0 items-start justify-between gap-3">
+          <p className="min-w-0 text-sm text-gray-500 dark:text-gray-400">
+            与甘特图共用计划数据。拖入列可改状态；拖到右侧「已归档」或打开抽屉可归档。
+          </p>
+          <button
+            type="button"
+            onClick={() => setArchivedOpen(true)}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              setDropTarget("archived");
+            }}
+            onDragLeave={() => setDropTarget(null)}
+            onDrop={(e) => {
+              e.preventDefault();
+              const planId = e.dataTransfer.getData("text/plan-id");
+              const fromArchived = e.dataTransfer.getData("text/from-archived") === "1";
               setDraggingId(null);
               setDropTarget(null);
+              if (planId && !fromArchived) void archivePlan(planId);
             }}
-            onDragOver={setDropTarget}
-            onDragLeave={() => setDropTarget(null)}
-            onDrop={(columnId, planId, fromArchived) => {
-              void movePlan(planId, columnId, fromArchived);
-            }}
-            onOpenPlan={setPlanModalId}
-            onCreatePlan={() => setComposeOpen(true)}
-          />
-        ))}
+            className={cn(
+              "inline-flex shrink-0 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800",
+              archivedDropTarget && "ring-2 ring-gray-400 ring-offset-1",
+            )}
+          >
+            <span className={cn("h-2 w-2 shrink-0 rounded-full", archivedAccent)} aria-hidden />
+            <span>已归档</span>
+            <span className="text-xs text-gray-400">{archivedPlans.length}</span>
+            {archivedDropTarget && (
+              <span className="text-xs text-gray-500">松手归档</span>
+            )}
+          </button>
+        </div>
+
+        {error && (
+          <p className="shrink-0 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+            {error}
+          </p>
+        )}
+
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 gap-3",
+            moving && "pointer-events-none opacity-80",
+          )}
+        >
+          {KANBAN_COLUMNS.map((col) => (
+            <KanbanColumn
+              key={col.id}
+              columnId={col.id}
+              label={col.label}
+              plans={grouped[col.id]}
+              draggingId={draggingId}
+              dropTarget={dropTarget}
+              onDragStart={setDraggingId}
+              onDragEnd={() => {
+                setDraggingId(null);
+                setDropTarget(null);
+              }}
+              onDragOver={setDropTarget}
+              onDragLeave={() => setDropTarget(null)}
+              onDrop={(columnId, planId, fromArchived) => {
+                void movePlan(planId, columnId, fromArchived);
+              }}
+              onOpenPlan={setPlanModalId}
+              onCreatePlan={() => setComposeOpen(true)}
+            />
+          ))}
+        </div>
+
+        <PlanContributionComposeModal
+          open={composeOpen}
+          onClose={() => setComposeOpen(false)}
+          onSuccess={() => void reloadPlans()}
+        />
+
+        <PlanDetailModal
+          planId={planModalId}
+          open={planModalId !== null}
+          onClose={() => setPlanModalId(null)}
+          onChanged={reloadPlans}
+        />
       </div>
-
-      <KanbanArchivedTray
-        plans={archivedPlans}
-        expanded={archivedOpen}
-        draggingId={draggingId}
-        dropTarget={dropTarget}
-        onToggle={toggleArchivedOpen}
-        onDragStart={setDraggingId}
-        onDragEnd={() => {
-          setDraggingId(null);
-          setDropTarget(null);
-        }}
-        onDragOver={() => setDropTarget("archived")}
-        onDragLeave={() => setDropTarget(null)}
-        onDrop={(planId) => void archivePlan(planId)}
-        onOpenPlan={setPlanModalId}
-      />
-
-      <PlanContributionComposeModal
-        open={composeOpen}
-        onClose={() => setComposeOpen(false)}
-        onSuccess={() => void reloadPlans()}
-      />
-
-      <PlanDetailModal
-        planId={planModalId}
-        open={planModalId !== null}
-        onClose={() => setPlanModalId(null)}
-        onChanged={reloadPlans}
-      />
-    </div>
+    </DrawerLayout>
   );
 }
