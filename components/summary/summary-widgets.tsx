@@ -8,6 +8,161 @@ import { cn } from "@/lib/utils";
 
 export type SummarySegment = { key?: string; label: string; value: number; color: string };
 
+/** 图表内图标统一占位，保证上下左右对齐 */
+export function ChartIconSlot({
+  children,
+  className,
+  tinted,
+}: {
+  children: ReactNode;
+  className?: string;
+  /** 使用 segment 色作淡底 */
+  tinted?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gray-50 dark:bg-gray-800/80",
+        className,
+      )}
+      style={tinted ? { color: tinted, backgroundColor: `${tinted}18` } : undefined}
+    >
+      {children}
+    </span>
+  );
+}
+
+function ChartEmpty({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "flex h-full min-h-[7rem] items-center justify-center rounded-lg border border-dashed border-gray-200 text-xs text-gray-400 dark:border-gray-700",
+        className,
+      )}
+    >
+      暂无数据
+    </div>
+  );
+}
+
+/** 纵向柱形图：数值在上、柱体居中、图标与标签底对齐 */
+export function VerticalBarChart({
+  segments,
+  renderIcon,
+  barAreaHeight = 96,
+  className,
+}: {
+  segments: SummarySegment[];
+  renderIcon: (seg: SummarySegment) => ReactNode;
+  barAreaHeight?: number;
+  className?: string;
+}) {
+  const max = Math.max(1, ...segments.map((s) => s.value));
+
+  if (segments.length === 0) return <ChartEmpty className={className} />;
+
+  return (
+    <div
+      className={cn("grid h-full gap-x-2", className)}
+      style={{ gridTemplateColumns: `repeat(${segments.length}, minmax(0, 1fr))` }}
+    >
+      {segments.map((seg) => {
+        const pct = (seg.value / max) * 100;
+        return (
+          <div key={seg.key ?? seg.label} className="flex min-w-0 flex-col items-center">
+            <span className="mb-1 text-xs font-semibold tabular-nums text-gray-900 dark:text-gray-100">
+              {seg.value}
+            </span>
+            <div
+              className="flex w-full items-end justify-center px-0.5"
+              style={{ height: barAreaHeight }}
+            >
+              <div
+                className="w-full max-w-[2.25rem] min-w-[0.75rem] rounded-t-md transition-all"
+                style={{
+                  height: `${pct}%`,
+                  minHeight: seg.value > 0 ? 6 : 0,
+                  backgroundColor: seg.color,
+                }}
+              />
+            </div>
+            <div className="mt-2 flex flex-col items-center gap-1">
+              <ChartIconSlot tinted={seg.color}>{renderIcon(seg)}</ChartIconSlot>
+              <span className="line-clamp-2 w-full text-center text-[10px] leading-tight text-gray-500 dark:text-gray-400">
+                {seg.label}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** 仅两项（或少量）数据时用饼图 + 右侧图例 */
+export function PieChartPanel({
+  segments,
+  renderIcon,
+  size = 96,
+  strokeWidth = 14,
+  className,
+}: {
+  segments: SummarySegment[];
+  renderIcon: (seg: SummarySegment) => ReactNode;
+  size?: number;
+  strokeWidth?: number;
+  className?: string;
+}) {
+  if (segments.length === 0) return <ChartEmpty className={className} />;
+
+  const total = segments.reduce((sum, s) => sum + s.value, 0);
+
+  return (
+    <div className={cn("flex h-full items-center gap-4", className)}>
+      <div className="flex shrink-0 flex-col items-center justify-center">
+        <DonutChart segments={segments} size={size} strokeWidth={strokeWidth} />
+        <span className="mt-1 text-[10px] tabular-nums text-gray-400">共 {total}</span>
+      </div>
+      <ul className="flex min-w-0 flex-1 flex-col justify-center gap-2">
+        {segments.map((seg) => (
+          <li
+            key={seg.key ?? seg.label}
+            className="grid grid-cols-[1.5rem_1fr_auto] items-center gap-x-2 rounded-md bg-gray-50 px-2 py-1.5 dark:bg-gray-800/50"
+          >
+            <ChartIconSlot tinted={seg.color}>{renderIcon(seg)}</ChartIconSlot>
+            <span className="truncate text-xs text-gray-600 dark:text-gray-300">{seg.label}</span>
+            <span className="text-xs font-semibold tabular-nums text-gray-900 dark:text-gray-100">
+              {seg.value}
+              <span className="ml-0.5 font-normal text-gray-400">
+                ({total > 0 ? Math.round((seg.value / total) * 100) : 0}%)
+              </span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** ≤2 项用饼图，更多项用柱形图 */
+export function AdaptiveDistributionChart({
+  segments,
+  renderIcon,
+  pieMaxSegments = 2,
+  className,
+}: {
+  segments: SummarySegment[];
+  renderIcon: (seg: SummarySegment) => ReactNode;
+  pieMaxSegments?: number;
+  className?: string;
+}) {
+  if (segments.length === 0) return <ChartEmpty className={className} />;
+  if (segments.length <= pieMaxSegments) {
+    return <PieChartPanel segments={segments} renderIcon={renderIcon} className={className} />;
+  }
+  return <VerticalBarChart segments={segments} renderIcon={renderIcon} className={className} />;
+}
+
 export function usePlanSummary() {
   const [summary, setSummary] = useState<PlanSummaryStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -142,9 +297,7 @@ export function IconHorizontalBars({
         <li key={seg.key ?? seg.label}>
           <div className="mb-1 flex items-center justify-between gap-2 text-xs">
             <span className="flex min-w-0 items-center gap-1.5 text-gray-600 dark:text-gray-300">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gray-50 dark:bg-gray-800/80">
-                {renderIcon(seg)}
-              </span>
+              <ChartIconSlot tinted={seg.color}>{renderIcon(seg)}</ChartIconSlot>
               <span className="truncate">{seg.label}</span>
             </span>
             <span className="shrink-0 font-semibold tabular-nums text-gray-900 dark:text-gray-100">{seg.value}</span>
@@ -181,9 +334,7 @@ export function IconLegend({
           className="flex items-center justify-between gap-2 rounded-md bg-gray-50 px-2 py-1.5 dark:bg-gray-800/50"
         >
           <span className="flex min-w-0 items-center gap-1.5 text-gray-600 dark:text-gray-300">
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center" style={{ color: seg.color }}>
-              {renderIcon(seg)}
-            </span>
+            <ChartIconSlot tinted={seg.color}>{renderIcon(seg)}</ChartIconSlot>
             <span className="truncate">{seg.label}</span>
           </span>
           <span className="shrink-0 font-semibold tabular-nums text-gray-900 dark:text-gray-100">{seg.value}</span>

@@ -2,12 +2,13 @@
 
 import { EmptyState, Loading } from "@/components/ui/feedback";
 import {
+  AdaptiveDistributionChart,
   DonutChart,
   IconHorizontalBars,
-  IconLegend,
   IconMetricTile,
   PRIMARY_PLAN_STAT_ITEMS,
   SectionShell,
+  VerticalBarChart,
   getPrimaryPlanStatValue,
   usePlanSummary,
 } from "@/components/summary/summary-widgets";
@@ -66,6 +67,16 @@ export function SummaryDashboard({ className }: { className?: string }) {
   }
   if (!summary) return <EmptyState title="暂无数据" description="创建计划后会在这里显示统计。" />;
 
+  const renderStatusIcon = (seg: { key?: string }) => (
+    <StatusIcon status={(seg.key ?? "not_started") as PlanStatus} className="h-3.5 w-3.5" />
+  );
+  const renderTypeIcon = (seg: { key?: string }) => (
+    <TypeIcon type={(seg.key ?? "goal") as PlanType} className="h-3.5 w-3.5" />
+  );
+  const renderExecutionIcon = (seg: { key?: string }) => (
+    <ExecutionIcon variant={(seg.key ?? "onTrack") as ExecutionVariant} className="h-3.5 w-3.5" />
+  );
+
   return (
     <div className={cn("flex h-full min-h-0 flex-col gap-3", className)}>
       <section className="shrink-0 rounded-xl border border-gray-100 bg-gradient-to-r from-indigo-50/80 via-white to-cyan-50/50 p-3 shadow-sm dark:border-gray-800 dark:from-indigo-950/25 dark:via-gray-900 dark:to-cyan-950/15">
@@ -73,7 +84,7 @@ export function SummaryDashboard({ className }: { className?: string }) {
           核心指标
         </h2>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="flex shrink-0 items-center justify-center gap-3 lg:w-36 lg:flex-col lg:justify-center">
+          <div className="flex shrink-0 items-center justify-center lg:w-36">
             <DonutChart
               segments={summary.statusSegments}
               size={96}
@@ -103,29 +114,18 @@ export function SummaryDashboard({ className }: { className?: string }) {
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-2">
         <SectionShell icon={<IconStatus className="h-3.5 w-3.5" />} title="状态分布">
-          <div className="flex h-full items-center gap-3">
-            <DonutChart segments={summary.statusSegments} size={88} strokeWidth={12} />
-            <div className="min-w-0 flex-1">
-              <IconLegend
-                dense
-                segments={summary.statusSegments}
-                renderIcon={(seg) => (
-                  <StatusIcon
-                    status={(seg.key ?? "not_started") as PlanStatus}
-                    className="h-3.5 w-3.5"
-                  />
-                )}
-              />
-            </div>
-          </div>
+          <VerticalBarChart
+            segments={summary.statusSegments}
+            renderIcon={renderStatusIcon}
+            barAreaHeight={88}
+          />
         </SectionShell>
 
         <SectionShell icon={<IconType className="h-3.5 w-3.5" />} title="计划类型">
-          <IconHorizontalBars
+          <AdaptiveDistributionChart
             segments={summary.typeSegments}
-            renderIcon={(seg) => (
-              <TypeIcon type={(seg.key ?? "goal") as PlanType} className="h-3.5 w-3.5" />
-            )}
+            renderIcon={renderTypeIcon}
+            pieMaxSegments={2}
           />
         </SectionShell>
 
@@ -135,22 +135,28 @@ export function SummaryDashboard({ className }: { className?: string }) {
           className="lg:col-span-2"
           contentClassName="p-2.5"
         >
-          <div className="flex h-full items-stretch gap-3">
-            <div className="flex shrink-0 items-center justify-center lg:w-28">
-              <DonutChart segments={summary.executionSegments} size={88} strokeWidth={12} />
-            </div>
-            <div className="min-h-0 min-w-0 flex-1">
-              <IconHorizontalBars
-                columns={2}
+          <div className="flex h-full items-stretch gap-4">
+            {summary.executionSegments.length <= 2 ? (
+              <AdaptiveDistributionChart
+                className="w-full"
                 segments={summary.executionSegments}
-                renderIcon={(seg) => (
-                  <ExecutionIcon
-                    variant={(seg.key ?? "onTrack") as ExecutionVariant}
-                    className="h-3.5 w-3.5"
-                  />
-                )}
+                renderIcon={renderExecutionIcon}
+                pieMaxSegments={2}
               />
-            </div>
+            ) : (
+              <>
+                <div className="flex shrink-0 items-center justify-center self-center lg:w-28">
+                  <DonutChart segments={summary.executionSegments} size={88} strokeWidth={12} />
+                </div>
+                <div className="min-h-0 min-w-0 flex-1 self-center">
+                  <IconHorizontalBars
+                    columns={2}
+                    segments={summary.executionSegments}
+                    renderIcon={renderExecutionIcon}
+                  />
+                </div>
+              </>
+            )}
           </div>
         </SectionShell>
       </div>
