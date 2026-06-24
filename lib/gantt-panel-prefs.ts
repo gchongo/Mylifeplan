@@ -8,7 +8,7 @@ export const MAX_TITLE_WIDTH = 360;
 export const DEFAULT_TITLE_WIDTH = 200;
 
 export const MIN_SCHEDULE_VIEWPORT_COLS = 1;
-export const MAX_SCHEDULE_VIEWPORT_COLS = 8;
+export const MAX_SCHEDULE_VIEWPORT_COLS = 7;
 export const DEFAULT_SCHEDULE_VIEWPORT_COLS = 3;
 
 const GANTT_TITLE_WIDTH_KEY = "mylifeplan-gantt-title-width";

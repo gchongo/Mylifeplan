@@ -107,6 +107,7 @@ export function MemoBoardQuadrantGrid({
 
   function onHandlePointerDown(e: React.PointerEvent) {
     e.stopPropagation();
+    e.preventDefault();
     dragRef.current = {
       startX: e.clientX,
       startY: e.clientY,
@@ -114,7 +115,6 @@ export function MemoBoardQuadrantGrid({
       origYRatio: axis.axisYRatio,
     };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    e.preventDefault();
   }
 
   function onHandlePointerMove(e: React.PointerEvent) {
@@ -137,53 +137,55 @@ export function MemoBoardQuadrantGrid({
   }
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-[5]" aria-hidden>
-      {MEMO_QUADRANTS.map((q) => {
-        const bounds = (() => {
-          switch (q.id) {
-            case "urgent_important":
-              return { left: axisX, top: 0, width: boardWidth - axisX, height: axisY };
-            case "not_urgent_important":
-              return { left: 0, top: 0, width: axisX, height: axisY };
-            case "urgent_not_important":
-              return { left: axisX, top: axisY, width: boardWidth - axisX, height: boardHeight - axisY };
-            default:
-              return { left: 0, top: axisY, width: axisX, height: boardHeight - axisY };
-          }
-        })();
-        return (
-          <div
-            key={q.id}
-            className="absolute border border-dashed border-black/10 dark:border-white/10"
-            style={{
-              left: bounds.left,
-              top: bounds.top,
-              width: bounds.width,
-              height: bounds.height,
-            }}
-          >
-            <span className="inline-flex p-1.5 text-[10px] font-bold text-gray-500/70 dark:text-gray-400/70">
-              {localizeMemoQuadrantOption(t, q.id).shortLabel}
-            </span>
-          </div>
-        );
-      })}
+    <>
+      <div className="pointer-events-none absolute inset-0 z-[5]" aria-hidden>
+        {MEMO_QUADRANTS.map((q) => {
+          const bounds = (() => {
+            switch (q.id) {
+              case "urgent_important":
+                return { left: axisX, top: 0, width: boardWidth - axisX, height: axisY };
+              case "not_urgent_important":
+                return { left: 0, top: 0, width: axisX, height: axisY };
+              case "urgent_not_important":
+                return { left: axisX, top: axisY, width: boardWidth - axisX, height: boardHeight - axisY };
+              default:
+                return { left: 0, top: axisY, width: axisX, height: boardHeight - axisY };
+            }
+          })();
+          return (
+            <div
+              key={q.id}
+              className="absolute border border-dashed border-black/10 dark:border-white/10"
+              style={{
+                left: bounds.left,
+                top: bounds.top,
+                width: bounds.width,
+                height: bounds.height,
+              }}
+            >
+              <span className="pointer-events-none inline-flex p-1.5 text-[10px] font-bold text-gray-500/70 dark:text-gray-400/70">
+                {localizeMemoQuadrantOption(t, q.id).shortLabel}
+              </span>
+            </div>
+          );
+        })}
 
-      <div
-        className="absolute top-0 w-px bg-black/20 dark:bg-white/20"
-        style={{ left: axisX, height: boardHeight }}
-      />
-      <div
-        className="absolute left-0 h-px bg-black/20 dark:bg-white/20"
-        style={{ top: axisY, width: boardWidth }}
-      />
+        <div
+          className="absolute top-0 w-px bg-black/20 dark:bg-white/20"
+          style={{ left: axisX, height: boardHeight }}
+        />
+        <div
+          className="absolute left-0 h-px bg-black/20 dark:bg-white/20"
+          style={{ top: axisY, width: boardWidth }}
+        />
+      </div>
 
       <button
         type="button"
         className={cn(
-          "pointer-events-auto absolute z-[6] flex h-7 w-7 -translate-x-1/2 -translate-y-1/2",
-          "cursor-move items-center justify-center rounded-full border border-black/15 bg-white/90 shadow-sm",
-          "text-gray-600 hover:bg-white hover:shadow dark:border-white/20 dark:bg-gray-900/90 dark:text-gray-300",
+          "absolute z-30 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2",
+          "cursor-move items-center justify-center rounded-full border border-black/15 bg-white/95 shadow-md",
+          "text-gray-600 hover:bg-white hover:shadow-lg dark:border-white/20 dark:bg-gray-900/95 dark:text-gray-300",
         )}
         style={{ left: axisX, top: axisY }}
         title={t("memos.axis.resize")}
@@ -198,6 +200,6 @@ export function MemoBoardQuadrantGrid({
           <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" />
         </svg>
       </button>
-    </div>
+    </>
   );
 }

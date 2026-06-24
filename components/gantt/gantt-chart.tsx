@@ -105,6 +105,7 @@ import {
   GANTT_SCHEDULE_UNIFORM_COL_WIDTH,
   readStoredScheduleColumns,
   scheduleColumnIndexAtScroll,
+  scheduleColumnsTotalWidth,
   scheduleScrollLeftForIndex,
   type GanttScheduleColumnId,
 } from "@/lib/gantt-schedule-columns";
@@ -355,7 +356,9 @@ export const GanttChart = forwardRef<
     [todayColumnPrefs],
   );
 
-  const scheduleWidth = scheduleWidthFromViewportCols(scheduleViewportCols);
+  const scheduleViewportWidth = scheduleWidthFromViewportCols(scheduleViewportCols);
+  const scheduleColumnsWidth = scheduleColumnsTotalWidth(scheduleColumns);
+  const scheduleWidth = Math.min(scheduleViewportWidth, scheduleColumnsWidth);
   const effectiveTitleWidth = titlePanelVisible ? titleWidth : 0;
   const effectiveScheduleWidth = schedulePanelVisible ? scheduleWidth : 0;
   const effectiveLeftWidth = effectiveTitleWidth + effectiveScheduleWidth;

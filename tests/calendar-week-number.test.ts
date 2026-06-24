@@ -30,11 +30,11 @@ describe("calendar week numbers", () => {
     );
   });
 
-  it("formats ISO and month-ordinal labels", () => {
+  it("formats ISO week labels", () => {
     const week = [null, null, null, null, null, null, 1];
     expect(
       formatCalendarWeekNumber(
-        { ...DEFAULT_CALENDAR_WEEK_NUMBERS, mode: "iso", format: "number" },
+        { ...DEFAULT_CALENDAR_WEEK_NUMBERS, format: "number" },
         2025,
         5,
         week,
@@ -44,13 +44,13 @@ describe("calendar week numbers", () => {
     ).toBe("22");
     expect(
       formatCalendarWeekNumber(
-        { ...DEFAULT_CALENDAR_WEEK_NUMBERS, mode: "month-ordinal", format: "week-label" },
+        { ...DEFAULT_CALENDAR_WEEK_NUMBERS, format: "week-label" },
         2025,
         5,
         week,
         0,
         5,
       ),
-    ).toBe("第1周");
+    ).toBe("第22周");
   });
 });

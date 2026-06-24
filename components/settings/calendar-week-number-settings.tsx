@@ -3,14 +3,12 @@
 import { useI18n } from "@/components/i18n/i18n-provider";
 import {
   CALENDAR_WEEK_NUMBER_FORMAT_OPTIONS,
-  CALENDAR_WEEK_NUMBER_MODE_OPTIONS,
   type CalendarWeekNumberPreferences,
 } from "@/lib/user-preferences";
 import { formatCalendarWeekNumber } from "@/lib/calendar-week-number";
 import {
   localizeSettingsWeekdayMonStart,
   localizeWeekNumberFormatLabel,
-  localizeWeekNumberModeLabel,
 } from "@/lib/i18n/settings-helpers";
 import { cn } from "@/lib/utils";
 
@@ -47,32 +45,7 @@ export function CalendarWeekNumberSettings({
         />
       </label>
 
-      <div
-        className={cn(
-          "grid gap-4 sm:grid-cols-2",
-          !value.enabled && "pointer-events-none opacity-50",
-        )}
-      >
-        <label className="block text-sm">
-          <span className="mb-1 block font-medium text-gray-700 dark:text-gray-300">
-            {t("settings.weekNumber.modeLabel")}
-          </span>
-          <select
-            value={value.mode}
-            disabled={disabled || !value.enabled}
-            onChange={(e) =>
-              onChange({ mode: e.target.value as CalendarWeekNumberPreferences["mode"] })
-            }
-            className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900"
-          >
-            {CALENDAR_WEEK_NUMBER_MODE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {localizeWeekNumberModeLabel(t, opt.value)}
-              </option>
-            ))}
-          </select>
-        </label>
-
+      <div className={cn(!value.enabled && "pointer-events-none opacity-50")}>
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-gray-700 dark:text-gray-300">
             {t("settings.weekNumber.formatLabel")}
@@ -92,6 +65,9 @@ export function CalendarWeekNumberSettings({
             ))}
           </select>
         </label>
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          {t("settings.weekNumber.isoHint")}
+        </p>
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900/50">

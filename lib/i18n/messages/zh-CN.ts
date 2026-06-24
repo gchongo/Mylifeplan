@@ -692,6 +692,7 @@ const zhCN = {
       preview: "预览（2025 年 6 月）",
       weekHeader: "周",
       weekdayMonStart: ["一", "二", "三", "四", "五", "六", "日"],
+      isoHint: "按 ISO 8601 标准显示全年周序（1–52/53 周），非月内第几周。",
     },
     weekNumberMode: {
       iso: "ISO 周年（周一至周日为一周）",

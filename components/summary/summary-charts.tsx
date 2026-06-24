@@ -118,7 +118,7 @@ export function SummaryCompletionExecutionRow({
 
     const update = () => {
       const h = el.clientHeight;
-      if (h > 0) setDonutSize(Math.max(72, Math.min(112, h)));
+      if (h > 0) setDonutSize(Math.max(84, Math.min(128, h - 6)));
     };
 
     update();
@@ -130,27 +130,27 @@ export function SummaryCompletionExecutionRow({
   return (
     <div
       className={cn(
-        "flex items-stretch gap-3 rounded-lg border border-gray-100 bg-white/60 p-2.5 dark:border-gray-800 dark:bg-gray-900/40",
+        "flex items-stretch gap-3 rounded-lg border border-gray-100 bg-white/60 py-2.5 pl-3 pr-2.5 dark:border-gray-800 dark:bg-gray-900/40",
         className,
       )}
     >
-      <div className="flex w-[38%] min-w-[5.5rem] max-w-[7.5rem] shrink-0 flex-col items-center self-stretch">
+      <div className="flex min-w-[6.5rem] shrink-0 flex-col items-center self-stretch">
         <p className="mb-1 w-full text-center text-[10px] font-medium text-gray-500 dark:text-gray-400">
           {t("summary.completionRate")}
         </p>
-        <div className="flex flex-1 items-center justify-center">
+        <div className="flex flex-1 items-center justify-center py-0.5">
           <CompletionRateDonut
             statusSegments={statusSegments}
             completionRate={summary.completionRate}
             size={donutSize}
-            centerValueClassName={donutSize < 90 ? "text-xs" : "text-sm"}
+            centerValueClassName={donutSize < 96 ? "text-xs" : "text-sm"}
           />
         </div>
       </div>
 
       <div
         ref={barsRef}
-        className="flex min-h-[72px] min-w-0 flex-1 flex-col self-stretch border-l border-gray-100 py-0.5 pl-3 pr-1 dark:border-gray-800"
+        className="flex min-h-[72px] min-w-0 flex-1 flex-col self-stretch border-l border-gray-100 py-0.5 pl-3 dark:border-gray-800"
       >
         <p className="mb-1 text-[10px] font-medium text-gray-500 dark:text-gray-400">{t("summary.execution")}</p>
         <div className="flex flex-1 items-center">

@@ -51,12 +51,7 @@ export function formatCalendarWeekNumber(
   weekCount: number,
 ): string {
   const anchor = weekRowAnchorDate(year, month, week, weekIndex, weekCount);
-  let n: number;
-  if (prefs.mode === "month-ordinal") {
-    n = weekIndex + 1;
-  } else {
-    n = isoWeekYearAndNumber(anchor).week;
-  }
+  const n = isoWeekYearAndNumber(anchor).week;
 
   if (prefs.format === "week-label") {
     return `第${n}周`;

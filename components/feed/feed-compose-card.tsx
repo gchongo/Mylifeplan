@@ -150,7 +150,7 @@ export function FeedComposeCard({
       </div>
 
       {/* 3. 内容 / 描述 */}
-      <div className="flex flex-wrap items-center gap-0.5 border-b border-gray-100 px-2 py-1.5 dark:border-gray-800">
+      <div className="flex flex-wrap items-center gap-0.5 border-b border-gray-100 px-4 py-1.5 dark:border-gray-800">
         <ToolbarBtn title={t("feed.composeCard.toolbarBold")} onClick={() => wrapMarkdown("**", "**", t("feed.composeCard.placeholderBold"))}>
           <strong className="text-xs">B</strong>
         </ToolbarBtn>

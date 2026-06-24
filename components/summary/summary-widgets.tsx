@@ -602,29 +602,36 @@ export function HorizontalBars({
         <li key={seg.label}>
           <div
             className={cn(
-              "mb-0.5 flex items-center justify-between gap-2",
+              "mb-0.5 truncate text-gray-600 dark:text-gray-300",
               dense ? "text-[10px]" : "text-xs",
             )}
           >
-            <span className="truncate text-gray-600 dark:text-gray-300">{seg.label}</span>
-            <span className="shrink-0 font-medium tabular-nums text-gray-900 dark:text-gray-100">
+            {seg.label}
+          </div>
+          <div className="flex items-center gap-1">
+            <div
+              className={cn(
+                "min-w-0 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800",
+                dense ? "h-1.5" : "h-2",
+              )}
+              style={{ width: `${widthScale * 100}%` }}
+            >
+              <div
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${(seg.value / max) * 100}%`,
+                  backgroundColor: seg.color,
+                }}
+              />
+            </div>
+            <span
+              className={cn(
+                "shrink-0 font-medium tabular-nums text-gray-900 dark:text-gray-100",
+                dense ? "w-4 text-right text-[10px]" : "w-5 text-right text-xs",
+              )}
+            >
               {seg.value}
             </span>
-          </div>
-          <div
-            className={cn(
-              "overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800",
-              dense ? "h-1.5" : "h-2",
-            )}
-            style={{ width: `${widthScale * 100}%` }}
-          >
-            <div
-              className="h-full rounded-full transition-all"
-              style={{
-                width: `${(seg.value / max) * 100}%`,
-                backgroundColor: seg.color,
-              }}
-            />
           </div>
         </li>
       ))}

@@ -11,8 +11,8 @@ const sidebarNavItems = [
   { href: "/gantt", labelKey: "nav.gantt", icon: "▬" },
   { href: "/calendar", labelKey: "nav.calendar", icon: "▦" },
   { href: "/plans", labelKey: "nav.plans", icon: "◎" },
-  { href: "/summary", labelKey: "nav.summary", icon: "◫" },
   { href: "/memos", labelKey: "nav.memos", icon: "▤" },
+  { href: "/summary", labelKey: "nav.summary", icon: "◫" },
 ] as const;
 
 export function SidebarNavMenu({ onNavigate }: { onNavigate?: () => void }) {
@@ -33,14 +33,19 @@ export function SidebarNavMenu({ onNavigate }: { onNavigate?: () => void }) {
               href={item.href}
               onClick={onNavigate}
               className={cn(
-                "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
+                "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
                 active
                   ? "bg-brand-50 font-medium text-brand-700 dark:bg-brand-950 dark:text-brand-300"
                   : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100",
               )}
             >
-              <span aria-hidden>{item.icon}</span>
-              {t(item.labelKey)}
+              <span
+                className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-base leading-none"
+                aria-hidden
+              >
+                {item.icon}
+              </span>
+              <span className="min-w-0 truncate">{t(item.labelKey)}</span>
             </Link>
           );
         })}
@@ -50,14 +55,19 @@ export function SidebarNavMenu({ onNavigate }: { onNavigate?: () => void }) {
         href="/settings"
         onClick={onNavigate}
         className={cn(
-          "mt-2 flex items-center gap-2 rounded-lg border-t border-gray-100 px-3 py-2 pt-3 text-sm transition-colors dark:border-gray-800",
+          "mt-2 flex items-center gap-2.5 rounded-lg border-t border-gray-100 px-3 py-2 pt-3 text-sm transition-colors dark:border-gray-800",
           pathname === "/settings" || pathname.startsWith("/settings/")
             ? "bg-brand-50 font-medium text-brand-700 dark:bg-brand-950 dark:text-brand-300"
             : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100",
         )}
       >
-        <span aria-hidden>⚙</span>
-        {t("nav.settings")}
+        <span
+          className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-base leading-none"
+          aria-hidden
+        >
+          ⚙
+        </span>
+        <span className="min-w-0 truncate">{t("nav.settings")}</span>
       </Link>
     </nav>
   );

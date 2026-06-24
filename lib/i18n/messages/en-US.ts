@@ -69,7 +69,7 @@ const enUS = {
     feed: "Feed",
     gantt: "Gantt",
     calendar: "Calendar",
-    plans: "Board",
+    plans: "Kanban",
     summary: "Summary",
     memos: "Memos",
     settings: "Settings",
@@ -80,7 +80,7 @@ const enUS = {
     calendar: "Calendar",
   },
   plans: {
-    boardTitle: "Plan board",
+    boardTitle: "Kanban",
     loadingPlan: "Loading plan…",
   },
   kanban: {
@@ -692,6 +692,7 @@ const enUS = {
       preview: "Preview (June 2025)",
       weekHeader: "Wk",
       weekdayMonStart: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+      isoHint: "Uses ISO 8601 year weeks (1–52/53), not week-of-month.",
     },
     weekNumberMode: {
       iso: "ISO week (Mon–Sun)",

@@ -247,7 +247,7 @@ export function FeedItemCard({
 
   if (isContribution || logStyle) {
     return (
-      <article className="feed-item-log border-b border-gray-200 py-4 last:border-b-0 dark:border-gray-800">
+      <article className="feed-item-log border-b border-gray-200 px-3 py-4 last:border-b-0 dark:border-gray-800">
         <FeedLogHeader dateLabel={dateLabel} createdAt={item.createdAt} typeLabel={meta.label} />
         {body}
       </article>

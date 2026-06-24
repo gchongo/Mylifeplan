@@ -217,7 +217,7 @@ export function normalizeCalendarWeekNumberPreferences(
   return {
     enabled:
       typeof raw?.enabled === "boolean" ? raw.enabled : DEFAULT_CALENDAR_WEEK_NUMBERS.enabled,
-    mode: isCalendarWeekNumberMode(raw?.mode) ? raw.mode : DEFAULT_CALENDAR_WEEK_NUMBERS.mode,
+    mode: "iso",
     format: isCalendarWeekNumberFormat(raw?.format)
       ? raw.format
       : DEFAULT_CALENDAR_WEEK_NUMBERS.format,

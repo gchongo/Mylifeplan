@@ -19,7 +19,7 @@ describe("i18n", () => {
 
   it("translates en-US keys", () => {
     const t = createTranslator("en-US");
-    expect(t("nav.plans")).toBe("Board");
+    expect(t("nav.plans")).toBe("Kanban");
     expect(t("summary.completionRate")).toBe("Completion");
   });
 
