@@ -7,10 +7,8 @@ import { FeedComposer } from "@/components/feed/feed-composer";
 import { FeedTypeFilter } from "@/components/feed/feed-type-filter";
 import { FeedItemCard } from "@/components/feed/feed-item-card";
 import { ContributionDetailModal } from "@/components/contributions/contribution-detail-modal";
-import { PlanDetailModal } from "@/components/plans/plan-detail-modal";
 import { PanelExpandButton } from "@/components/home/panel-expand-button";
 import type { FeedTypeFilter as FeedTypeFilterId } from "@/lib/feed-filters";
-import type { FeedPlanDetail } from "@/lib/feed-enrich";
 import type { FeedActionType, FeedItemType } from "@prisma/client";
 import { cn } from "@/lib/utils";
 import { apiJson } from "@/lib/client-api";
@@ -26,7 +24,7 @@ interface FeedRow {
   excerpt: string | null;
   contextLabel: string | null;
   actionPhrase: string;
-  planDetail?: FeedPlanDetail;
+  planUpdateSummary: string | null;
 }
 
 export function FeedPanelLive({
@@ -42,7 +40,6 @@ export function FeedPanelLive({
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<FeedTypeFilterId>("all");
-  const [planModalId, setPlanModalId] = useState<string | null>(null);
   const [contributionModalId, setContributionModalId] = useState<string | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const loadMoreRef = useRef<HTMLLIElement>(null);
@@ -154,20 +151,12 @@ export function FeedPanelLive({
                   <FeedItemCard
                     item={item}
                     logStyle={item.itemType === "contribution"}
-                    inlinePlan={typeFilter === "plan"}
-                    onPlanClick={typeFilter === "plan" ? undefined : (id) => setPlanModalId(id)}
                     onContributionClick={(id) => setContributionModalId(id)}
                   />
                 </li>
               ))}
               {nextCursor && <li ref={loadMoreRef} className="h-1 shrink-0" aria-hidden />}
             </ul>
-            <PlanDetailModal
-              planId={planModalId}
-              open={planModalId !== null}
-              onClose={() => setPlanModalId(null)}
-              onChanged={refreshFeed}
-            />
             <ContributionDetailModal
               contributionId={contributionModalId}
               open={contributionModalId !== null}

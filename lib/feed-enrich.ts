@@ -1,16 +1,7 @@
 import type { Feed, FeedActionType, FeedItemType } from "@prisma/client";
 import { feedActionPhrase, feedExcerpt } from "@/lib/feed-display";
-import { formatPlanDateTime } from "@/lib/dates";
+import { resolvePlanFeedUpdateSummary } from "@/lib/plan-feed-change";
 import { prisma } from "@/lib/db";
-
-export interface FeedPlanDetail {
-  description: string | null;
-  startDate: string | null;
-  endDate: string | null;
-  actualStartDate: string | null;
-  actualEndDate: string | null;
-  status: string;
-}
 
 export interface EnrichedFeedItem {
   id: string;
@@ -23,7 +14,7 @@ export interface EnrichedFeedItem {
   excerpt: string | null;
   contextLabel: string | null;
   actionPhrase: string;
-  planDetail?: FeedPlanDetail;
+  planUpdateSummary: string | null;
 }
 
 export async function enrichFeedItems(
@@ -42,16 +33,7 @@ export async function enrichFeedItems(
     planIds.length
       ? prisma.plan.findMany({
           where: { userId, id: { in: planIds } },
-          select: {
-            id: true,
-            title: true,
-            description: true,
-            startDate: true,
-            endDate: true,
-            actualStartDate: true,
-            actualEndDate: true,
-            status: true,
-          },
+          select: { id: true, title: true, description: true },
         })
       : [],
     memoIds.length
@@ -90,16 +72,7 @@ export async function enrichFeedItems(
         excerpt: feedExcerpt(plan?.description),
         contextLabel: null,
         actionPhrase,
-        planDetail: plan
-          ? {
-              description: plan.description,
-              startDate: formatPlanDateTime(plan.startDate),
-              endDate: formatPlanDateTime(plan.endDate),
-              actualStartDate: formatPlanDateTime(plan.actualStartDate),
-              actualEndDate: formatPlanDateTime(plan.actualEndDate),
-              status: plan.status,
-            }
-          : undefined,
+        planUpdateSummary: resolvePlanFeedUpdateSummary(item.content, headline),
       };
     }
 
@@ -113,6 +86,7 @@ export async function enrichFeedItems(
         excerpt: feedExcerpt(body),
         contextLabel: null,
         actionPhrase,
+        planUpdateSummary: null,
       };
     }
 
@@ -126,6 +100,7 @@ export async function enrichFeedItems(
       excerpt: feedExcerpt(body),
       contextLabel: planTitle ? `贡献 · ${planTitle}` : "贡献",
       actionPhrase,
+      planUpdateSummary: null,
     };
   });
 }

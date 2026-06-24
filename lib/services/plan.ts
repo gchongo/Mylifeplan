@@ -15,6 +15,11 @@ import {
   reconcilePlanStatusAndActualDates,
   resolveInitialPlanStatusAndActualDates,
 } from "@/lib/plan-status-actual-dates";
+import {
+  describePlanChanges,
+  joinPlanFeedChanges,
+  planToFeedSnapshot,
+} from "@/lib/plan-feed-change";
 import { aggregateParentActualDates } from "@/lib/plan-actual-rollup";
 import type { createPlanSchema } from "@/lib/validations/plan";
 import type { z } from "zod";
@@ -189,25 +194,6 @@ async function validatePlanCoversContributions(
   return null;
 }
 
-async function applyPlanStatusIfChanged(
-  userId: string,
-  planId: string,
-  prevStatus: PlanStatus,
-  nextStatus: PlanStatus,
-  tx: Tx,
-  planTitle: string,
-) {
-  if (prevStatus === nextStatus) return;
-
-  await writeFeed({
-    userId,
-    itemType: "plan",
-    itemId: planId,
-    actionType: feedActionForPlan(prevStatus, nextStatus),
-    content: planTitle,
-  });
-}
-
 async function rollupParentPlan(userId: string, parentPlanId: string | null, tx: Tx) {
   if (!parentPlanId) return;
 
@@ -249,16 +235,23 @@ async function rollupParentPlan(userId: string, parentPlanId: string | null, tx:
     },
   });
   await syncMemoForPlan(updated, tx);
-  if (statusChanged) {
-    await applyPlanStatusIfChanged(
+
+  const feedChanges = describePlanChanges(
+    planToFeedSnapshot(parent),
+    planToFeedSnapshot(updated),
+  );
+  if (feedChanges.length > 0) {
+    await writeFeed({
       userId,
-      parent.id,
-      parent.status,
-      nextStatus,
-      tx,
-      updated.title,
-    );
+      itemType: "plan",
+      itemId: parent.id,
+      actionType: statusChanged
+        ? feedActionForPlan(parent.status, nextStatus)
+        : "update",
+      content: joinPlanFeedChanges(feedChanges),
+    });
   }
+
   await rollupParentPlan(userId, parent.parentPlanId, tx);
 }
 
@@ -313,7 +306,6 @@ export async function createPlan(userId: string, input: CreatePlanInput): Promis
       itemType: "plan",
       itemId: plan.id,
       actionType: "create",
-      content: plan.title,
     });
 
     return plan;
@@ -476,22 +468,19 @@ export async function updatePlan(
       await shiftDescendantPlanDates(tx, userId, planId, startDeltaMs);
     }
 
-    if (statusChanged) {
-      await applyPlanStatusIfChanged(
-        userId,
-        planId,
-        existing.status,
-        plan.status,
-        tx,
-        plan.title,
-      );
-    } else {
+    const feedChanges = describePlanChanges(
+      planToFeedSnapshot(existing),
+      planToFeedSnapshot(plan),
+    );
+    if (feedChanges.length > 0) {
       await writeFeed({
         userId,
         itemType: "plan",
         itemId: plan.id,
-        actionType: "update",
-        content: plan.title,
+        actionType: statusChanged
+          ? feedActionForPlan(existing.status, plan.status)
+          : "update",
+        content: joinPlanFeedChanges(feedChanges),
       });
     }
 
