@@ -225,7 +225,7 @@ export function StickyNote({
           >
             <option value="">—</option>
             {MEMO_QUADRANTS.map((q) => (
-              <option key={q.id} value={q.id} title={`${q.label} · ${q.hint}`}>
+              <option key={q.id} value={q.id} title={`${q.shortLabel} ${q.label}`}>
                 {q.shortLabel}
               </option>
             ))}

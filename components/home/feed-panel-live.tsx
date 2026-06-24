@@ -27,6 +27,7 @@ interface FeedRow {
   actionPhrase: string;
   planUpdateChanges: PlanFeedChangeItem[] | null;
   planUpdateSummary: string | null;
+  memoQuadrant: string | null;
 }
 
 export function FeedPanelLive({

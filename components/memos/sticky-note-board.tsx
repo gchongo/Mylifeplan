@@ -9,9 +9,12 @@ import {
   computeMemoBoardSize,
   DEFAULT_STICKY_HEIGHT,
   DEFAULT_STICKY_WIDTH,
+  defaultPositionForQuadrant,
   detectMemoQuadrant,
+  isMemoQuadrantId,
   MEMO_AXIS_LABELS,
   MEMO_QUADRANTS,
+  type MemoQuadrantId,
 } from "@/lib/memo-quadrant";
 import { effectiveStickyPosition, nextStickyColor } from "@/lib/memo-sticky";
 
@@ -166,14 +169,39 @@ export function StickyNoteBoard() {
   }
 
   async function handleUpdate(id: string, patch: Partial<StickyNoteData & { content: string }>) {
+    const note = notes.find((n) => n.id === id);
+    let persistBody: Record<string, unknown> = { ...patch };
+
+    if (patch.quadrant !== undefined && note) {
+      const nextQuadrant = patch.quadrant as MemoQuadrantId | null;
+      if (nextQuadrant && isMemoQuadrantId(nextQuadrant) && note.quadrant !== nextQuadrant) {
+        const peerCount = notes.filter((n) => n.quadrant === nextQuadrant && n.id !== id).length;
+        const pos = defaultPositionForQuadrant(
+          nextQuadrant,
+          boardSize.width,
+          boardSize.height,
+          peerCount,
+        );
+        persistBody = { ...persistBody, posX: pos.x, posY: pos.y };
+        patchNote(id, {
+          quadrant: nextQuadrant,
+          x: pos.x,
+          y: pos.y,
+          posX: pos.x,
+          posY: pos.y,
+        });
+      } else {
+        patchNote(id, { quadrant: nextQuadrant });
+      }
+    }
+
     if (patch.color) patchNote(id, { color: patch.color });
-    if (patch.quadrant !== undefined) patchNote(id, { quadrant: patch.quadrant });
     try {
-      await persistNote(id, patch);
+      await persistNote(id, persistBody);
       if (patch.content !== undefined) {
         setEditingId(null);
+        await load();
       }
-      await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存失败");
     }

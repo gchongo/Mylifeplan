@@ -9,6 +9,13 @@ describe("memo-content", () => {
     });
   });
 
+  it("keeps single-line memo body empty", () => {
+    expect(splitMemoContent("咯")).toEqual({
+      title: "咯",
+      body: "",
+    });
+  });
+
   it("uses body for display when present", () => {
     expect(
       memoDisplayBody({ title: "T", body: "# hi", description: "old" }),

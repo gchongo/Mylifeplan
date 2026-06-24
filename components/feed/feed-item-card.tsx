@@ -23,6 +23,53 @@ export interface FeedItemCardData {
   actionPhrase: string;
   planUpdateChanges?: PlanFeedChangeItem[] | null;
   planUpdateSummary?: string | null;
+  memoQuadrant?: string | null;
+}
+
+function FeedTypeBadge({ label }: { label: string }) {
+  return (
+    <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+      {label}
+    </span>
+  );
+}
+
+function FeedCardHeader({
+  dateLabel,
+  createdAt,
+  typeLabel,
+}: {
+  dateLabel: string;
+  createdAt: string;
+  typeLabel: string;
+}) {
+  return (
+    <header className="flex items-center gap-2 border-b border-gray-100 px-3 py-2 dark:border-gray-800">
+      <FeedTypeBadge label={typeLabel} />
+      <time className="ml-auto text-xs text-gray-500" dateTime={createdAt}>
+        {dateLabel}
+      </time>
+    </header>
+  );
+}
+
+function FeedLogHeader({
+  dateLabel,
+  createdAt,
+  typeLabel,
+}: {
+  dateLabel: string;
+  createdAt: string;
+  typeLabel: string;
+}) {
+  return (
+    <header className="mb-2 flex items-center gap-2">
+      <FeedTypeBadge label={typeLabel} />
+      <time className="ml-auto text-xs text-gray-500" dateTime={createdAt}>
+        {dateLabel}
+      </time>
+    </header>
+  );
 }
 
 function ExcerptText({
@@ -65,13 +112,15 @@ export function FeedItemCard({
   logStyle?: boolean;
 }) {
   const isPlan = item.itemType === "plan";
+  const isMemo = item.itemType === "memo";
   const isContribution = item.itemType === "contribution";
   const meta = feedItemMeta(item.itemType, item.actionType);
   const dateLabel = formatFeedCardDate(item.createdAt);
   const hasPlanUpdateDetail =
     isPlan &&
     ((item.planUpdateChanges?.length ?? 0) > 0 || Boolean(item.planUpdateSummary));
-  const showActionPhrase = !hasPlanUpdateDetail;
+  const hasMemoDetail = isMemo && Boolean(item.memoQuadrant);
+  const showActionPhrase = !hasPlanUpdateDetail && !hasMemoDetail;
 
   const body = (
     <div className="space-y-1">
@@ -124,6 +173,11 @@ export function FeedItemCard({
           >
             {item.headline}
           </h3>
+          {hasMemoDetail && item.memoQuadrant && (
+            <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+              象限：{item.memoQuadrant}
+            </p>
+          )}
           {hasPlanUpdateDetail && item.planUpdateChanges && item.planUpdateChanges.length > 0 && (
             <PlanFeedChangeLines changes={item.planUpdateChanges} />
           )}
@@ -132,7 +186,7 @@ export function FeedItemCard({
               {item.planUpdateSummary}
             </p>
           )}
-          {item.excerpt && !isPlan && (
+          {item.excerpt && (
             <ExcerptText text={item.excerpt} className="line-clamp-2" />
           )}
         </>
@@ -143,14 +197,7 @@ export function FeedItemCard({
   if (isContribution || logStyle) {
     return (
       <article className="feed-item-log border-b border-gray-200 py-4 last:border-b-0 dark:border-gray-800">
-        <header className="mb-2 flex items-center justify-between gap-2">
-          <time className="text-xs text-gray-500" dateTime={item.createdAt}>
-            {dateLabel}
-          </time>
-          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-500 dark:bg-gray-800">
-            {meta.label}
-          </span>
-        </header>
+        <FeedLogHeader dateLabel={dateLabel} createdAt={item.createdAt} typeLabel={meta.label} />
         {body}
       </article>
     );
@@ -158,14 +205,7 @@ export function FeedItemCard({
 
   return (
     <article className="feed-item-card rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
-      <header className="flex items-center justify-between gap-2 border-b border-gray-100 px-3 py-2 dark:border-gray-800">
-        <time className="text-xs text-gray-500" dateTime={item.createdAt}>
-          {dateLabel}
-        </time>
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-500 dark:bg-gray-800">
-          {meta.label}
-        </span>
-      </header>
+      <FeedCardHeader dateLabel={dateLabel} createdAt={item.createdAt} typeLabel={meta.label} />
       <div className="px-3 py-2.5">{body}</div>
     </article>
   );

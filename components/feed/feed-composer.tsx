@@ -241,8 +241,8 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
                 aria-label="便签四象限"
               >
                 {MEMO_QUADRANTS.map((q) => (
-                  <option key={q.id} value={q.id} title={`${q.label} · ${q.hint}`}>
-                    {q.shortLabel}
+                  <option key={q.id} value={q.id} title={q.hint}>
+                    {q.shortLabel} {q.label}
                   </option>
                 ))}
               </select>

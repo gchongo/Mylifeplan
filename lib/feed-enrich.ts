@@ -1,6 +1,7 @@
 import type { Feed, FeedActionType, FeedItemType } from "@prisma/client";
 import { feedActionPhrase, feedExcerpt } from "@/lib/feed-display";
 import { parsePlanFeedContent, type PlanFeedChangeItem } from "@/lib/plan-feed-change";
+import { quadrantFeedLabel } from "@/lib/memo-quadrant";
 import { prisma } from "@/lib/db";
 
 export interface EnrichedFeedItem {
@@ -16,6 +17,7 @@ export interface EnrichedFeedItem {
   actionPhrase: string;
   planUpdateChanges: PlanFeedChangeItem[] | null;
   planUpdateSummary: string | null;
+  memoQuadrant: string | null;
 }
 
 export async function enrichFeedItems(
@@ -40,7 +42,7 @@ export async function enrichFeedItems(
     memoIds.length
       ? prisma.memo.findMany({
           where: { userId, id: { in: memoIds } },
-          select: { id: true, title: true, body: true, description: true },
+          select: { id: true, title: true, body: true, description: true, quadrant: true },
         })
       : [],
     contributionIds.length
@@ -76,6 +78,7 @@ export async function enrichFeedItems(
         actionPhrase,
         planUpdateChanges: changes,
         planUpdateSummary: legacySummary,
+        memoQuadrant: null,
       };
     }
 
@@ -83,14 +86,19 @@ export async function enrichFeedItems(
       const memo = memoMap.get(item.itemId);
       const headline = memo?.title ?? item.content?.trim() ?? "便签";
       const body = memo?.body ?? memo?.description ?? null;
+      const excerpt = feedExcerpt(body);
+      const headlineTrim = headline.trim();
+      const excerptTrim = excerpt?.trim() ?? "";
       return {
         ...item,
         headline,
-        excerpt: feedExcerpt(body),
+        excerpt:
+          excerptTrim && excerptTrim !== headlineTrim ? excerpt : null,
         contextLabel: null,
         actionPhrase,
         planUpdateChanges: null,
         planUpdateSummary: null,
+        memoQuadrant: quadrantFeedLabel(memo?.quadrant),
       };
     }
 
@@ -106,6 +114,7 @@ export async function enrichFeedItems(
       actionPhrase,
       planUpdateChanges: null,
       planUpdateSummary: null,
+      memoQuadrant: null,
     };
   });
 }

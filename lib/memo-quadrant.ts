@@ -143,6 +143,13 @@ export function quadrantShortLabel(id: string | null | undefined): string | null
   return MEMO_QUADRANTS.find((q) => q.id === id)?.shortLabel ?? null;
 }
 
+/** 信息流等宽充足处：Q1 重要且紧急 */
+export function quadrantFeedLabel(id: string | null | undefined): string | null {
+  if (!isMemoQuadrantId(id)) return null;
+  const q = MEMO_QUADRANTS.find((item) => item.id === id);
+  return q ? `${q.shortLabel} ${q.label}` : null;
+}
+
 export function isBlankStickyMemo(memo: {
   title: string;
   body?: string | null;

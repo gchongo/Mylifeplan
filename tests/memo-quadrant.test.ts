@@ -4,6 +4,7 @@ import {
   DEFAULT_STICKY_WIDTH,
   detectMemoQuadrant,
   defaultPositionForQuadrant,
+  quadrantFeedLabel,
   MEMO_QUADRANT_BOARD_HEIGHT,
   MEMO_QUADRANT_BOARD_WIDTH,
 } from "@/lib/memo-quadrant";
@@ -50,5 +51,12 @@ describe("defaultPositionForQuadrant", () => {
       const pos = defaultPositionForQuadrant(id, boardW, boardH, 0);
       expect(detectMemoQuadrant(pos.x, pos.y, w, h, boardW, boardH)).toBe(id);
     }
+  });
+});
+
+describe("quadrantFeedLabel", () => {
+  it("combines short label and full name", () => {
+    expect(quadrantFeedLabel("urgent_important")).toBe("Q1 重要且紧急");
+    expect(quadrantFeedLabel("not_urgent_important")).toBe("Q2 重要不紧急");
   });
 });
