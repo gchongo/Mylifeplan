@@ -2,7 +2,11 @@ import type { LanguagePreference } from "@/lib/user-preferences";
 import enUS from "@/lib/i18n/messages/en-US";
 import zhCN from "@/lib/i18n/messages/zh-CN";
 
-export type MessageTree = typeof zhCN;
+type DeepStringRecord<T> = T extends string
+  ? string
+  : { [K in keyof T]: DeepStringRecord<T[K]> };
+
+export type MessageTree = DeepStringRecord<typeof zhCN>;
 
 const MESSAGES: Record<LanguagePreference, MessageTree> = {
   "zh-CN": zhCN,

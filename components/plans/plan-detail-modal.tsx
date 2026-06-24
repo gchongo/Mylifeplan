@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Loading } from "@/components/ui/feedback";
 import { useI18n } from "@/components/i18n/i18n-provider";
@@ -41,59 +41,62 @@ export function PlanDetailModal({
     if (open && planId) setActivePlanId(planId);
   }, [open, planId]);
 
-  function loadPlan(id: string) {
-    setLoading(true);
-    setError("");
-    setPlan(null);
-    setAncestors([]);
-    setSubPlans([]);
-    setContributions([]);
+  const loadPlan = useCallback(
+    (id: string) => {
+      setLoading(true);
+      setError("");
+      setPlan(null);
+      setAncestors([]);
+      setSubPlans([]);
+      setContributions([]);
 
-    Promise.all([
-      fetch(`/api/plans/${id}`).then((r) => r.json()),
-      fetch(`/api/contributions?planId=${id}&includeSubtree=true`).then((r) => r.json()),
-    ])
-      .then(([planData, contribData]) => {
-        if (!planData.plan) {
-          setError(t("common.planNotFound"));
-          return;
-        }
-        const payload = planData.plan as PlanPayload;
-        setPlan(payload);
-        const ancestorList = payload.ancestors ?? [];
-        setAncestors(ancestorList);
+      Promise.all([
+        fetch(`/api/plans/${id}`).then((r) => r.json()),
+        fetch(`/api/contributions?planId=${id}&includeSubtree=true`).then((r) => r.json()),
+      ])
+        .then(([planData, contribData]) => {
+          if (!planData.plan) {
+            setError(t("common.planNotFound"));
+            return;
+          }
+          const payload = planData.plan as PlanPayload;
+          setPlan(payload);
+          const ancestorList = payload.ancestors ?? [];
+          setAncestors(ancestorList);
 
-        const currentNode = planOverdueNode(payload);
-        const immediateParent = ancestorList[ancestorList.length - 1];
-        setOverdue(
-          immediateParent
-            ? isSubPlanOverdueAgainstParent(currentNode, planOverdueNode(immediateParent))
-            : false,
-        );
+          const currentNode = planOverdueNode(payload);
+          const immediateParent = ancestorList[ancestorList.length - 1];
+          setOverdue(
+            immediateParent
+              ? isSubPlanOverdueAgainstParent(currentNode, planOverdueNode(immediateParent))
+              : false,
+          );
 
-        setSubPlans(
-          (payload.subPlans ?? []).map((sp) => ({
-            id: sp.id,
-            title: sp.title,
-            status: sp.status ?? "not_started",
-            overdue: isSubPlanOverdueAgainstParent(planOverdueNode(sp), currentNode),
-          })),
-        );
-        setContributions(contribData.contributions ?? []);
-      })
-      .catch(() => setError(t("common.loadFailed")))
-      .finally(() => setLoading(false));
-  }
+          setSubPlans(
+            (payload.subPlans ?? []).map((sp) => ({
+              id: sp.id,
+              title: sp.title,
+              status: sp.status ?? "not_started",
+              overdue: isSubPlanOverdueAgainstParent(planOverdueNode(sp), currentNode),
+            })),
+          );
+          setContributions(contribData.contributions ?? []);
+        })
+        .catch(() => setError(t("common.loadFailed")))
+        .finally(() => setLoading(false));
+    },
+    [t],
+  );
 
   useEffect(() => {
     if (!open || !activePlanId) return;
     loadPlan(activePlanId);
-  }, [open, activePlanId]);
+  }, [open, activePlanId, loadPlan]);
 
-  function handleChanged() {
+  const handleChanged = useCallback(() => {
     onChanged?.();
     if (activePlanId) loadPlan(activePlanId);
-  }
+  }, [activePlanId, loadPlan, onChanged]);
 
   return (
     <Modal
