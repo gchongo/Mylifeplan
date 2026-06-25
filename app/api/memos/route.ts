@@ -7,6 +7,7 @@ import { requireSession } from "@/lib/auth/get-session";
 import { handleProtectedRouteError } from "@/lib/api/route-auth";
 import { prisma } from "@/lib/db";
 import { createPlan, serializePlan } from "@/lib/services/plan";
+import { EntitlementError } from "@/lib/entitlements";
 import {
   createStandaloneMemo,
   serializeMemo,
@@ -125,6 +126,9 @@ export async function POST(request: NextRequest) {
       201,
     );
   } catch (e) {
+    if (e instanceof EntitlementError) {
+      return jsonError(e.message, 403);
+    }
     if (e instanceof Error) {
       return jsonError(e.message, 400);
     }

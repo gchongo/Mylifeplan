@@ -7,6 +7,7 @@ import {
   SESSION_COOKIE,
 } from "@/lib/auth/session";
 import { registerSchema } from "@/lib/validations/auth";
+import { provisionNewUserBilling } from "@/lib/services/billing";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -37,6 +38,8 @@ export async function POST(request: Request) {
         role: "user",
       },
     });
+
+    await provisionNewUserBilling(user.id);
 
     const token = await createSessionToken({
       userId: user.id,

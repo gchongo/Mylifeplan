@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorMessage, Loading } from "@/components/ui/feedback";
+import { formatBytes } from "@/lib/format-bytes";
 import { useI18n } from "@/components/i18n/i18n-provider";
 
 interface UserDetail {
@@ -15,10 +16,18 @@ interface UserDetail {
   role: string;
   isActive: boolean;
   createdAt: string;
-  stats: { plans: number; memos: number };
+  stats: { plans: number; activePlans: number; memos: number };
+  entitlements: {
+    planNameZh: string | null;
+    maxPlans: number | null;
+    maxStorageBytes: number;
+    usedPlans: number;
+    usedStorageBytes: number;
+  };
   subscriptions: Array<{
     id: string;
     planName: string;
+    billingPlanSlug: string | null;
     status: string;
     paymentStatus: string;
     startAt: string;
@@ -95,6 +104,27 @@ export function AdminUserDetail({ userId }: { userId: string }) {
             {t("admin.plansCount", { count: user.stats.plans })} ·{" "}
             {t("admin.memosCount", { count: user.stats.memos })}
           </p>
+          <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm">
+            <p className="font-medium text-gray-700">{t("admin.usageTitle")}</p>
+            <p className="mt-1 text-gray-600">
+              {t("admin.usagePlans", {
+                used: user.entitlements.usedPlans,
+                max:
+                  user.entitlements.maxPlans == null
+                    ? t("admin.plans.unlimitedPlans")
+                    : String(user.entitlements.maxPlans),
+              })}
+            </p>
+            <p className="text-gray-600">
+              {t("admin.usageStorage", {
+                used: formatBytes(user.entitlements.usedStorageBytes),
+                max: formatBytes(user.entitlements.maxStorageBytes),
+              })}
+            </p>
+            <p className="mt-1 text-xs text-gray-400">
+              {t("admin.currentPlanLabel")}: {user.entitlements.planNameZh ?? "—"}
+            </p>
+          </div>
           <Button
             size="sm"
             variant={user.isActive ? "danger" : "secondary"}

@@ -27,15 +27,17 @@ export function AppShellClient({
   children,
   title,
   userEmail,
+  userRole,
 }: {
   children: React.ReactNode;
   title?: string;
   userEmail?: string | null;
+  userRole?: "user" | "admin";
 }) {
   return (
     <SettingsProvider>
       <I18nProvider>
-        <AppShellInner title={title} userEmail={userEmail}>
+        <AppShellInner title={title} userEmail={userEmail} userRole={userRole}>
           {children}
         </AppShellInner>
       </I18nProvider>
@@ -47,10 +49,12 @@ function AppShellInner({
   children,
   title,
   userEmail,
+  userRole,
 }: {
   children: React.ReactNode;
   title?: string;
   userEmail?: string | null;
+  userRole?: "user" | "admin";
 }) {
   const { t } = useI18n();
   const [isDesktop, setIsDesktop] = useState(true);
@@ -117,7 +121,7 @@ function AppShellInner({
 
         {isDesktop ? (
           <SidebarNavDrawer open={navOpen} className="hidden lg:block">
-            <SidebarNavMenu />
+            <SidebarNavMenu userRole={userRole} />
           </SidebarNavDrawer>
         ) : (
           navOpen && (
@@ -127,7 +131,7 @@ function AppShellInner({
                 "border-r border-gray-200 bg-white shadow-xl dark:border-gray-800 dark:bg-gray-900 lg:hidden",
               )}
             >
-              <SidebarNavMenu onNavigate={closeNav} />
+              <SidebarNavMenu onNavigate={closeNav} userRole={userRole} />
             </aside>
           )
         )}

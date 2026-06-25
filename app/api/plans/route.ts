@@ -7,6 +7,7 @@ import { handleProtectedRouteError } from "@/lib/api/route-auth";
 import { prisma } from "@/lib/db";
 import { createPlan, serializePlan } from "@/lib/services/plan";
 import { createPlanSchema } from "@/lib/validations/plan";
+import { assertCanCreatePlan, EntitlementError } from "@/lib/entitlements";
 
 export async function GET(request: NextRequest) {
   try {
@@ -56,6 +57,8 @@ export async function POST(request: NextRequest) {
       return jsonError(parsed.error.errors[0]?.message ?? "参数错误", 400);
     }
 
+    await assertCanCreatePlan(session.userId);
+
     const input = {
       ...parsed.data,
       startDate: parsed.data.startDate || null,
@@ -65,6 +68,9 @@ export async function POST(request: NextRequest) {
     const plan = await createPlan(session.userId, input);
     return jsonOk({ plan: serializePlan(plan) }, 201);
   } catch (error) {
+    if (error instanceof EntitlementError) {
+      return jsonError(error.message, 403);
+    }
     if (error instanceof Error && error.message !== "UNAUTHORIZED" && error.message !== "FORBIDDEN") {
       return jsonError(error.message, 400);
     }

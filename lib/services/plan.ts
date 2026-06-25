@@ -4,6 +4,7 @@ import { isPlanUnscheduled, validateDateFields, getEffectiveEndDate } from "@/li
 import { UNSCHEDULED_BLOCKED_HINT } from "@/lib/kanban-board";
 import { parsePlanDateTime, formatPlanDateTime, formatDateOnly, toDatetimeLocalInput, parsePlanStartDateTime, parsePlanEndDateTime } from "@/lib/dates";
 import { prisma } from "@/lib/db";
+import { assertCanCreatePlan } from "@/lib/entitlements";
 import { writeFeed } from "@/lib/services/feed";
 import { deleteMemoForPlan, syncMemoForPlan } from "@/lib/services/memo-sync";
 import {
@@ -256,6 +257,8 @@ async function rollupParentPlan(userId: string, parentPlanId: string | null, tx:
 }
 
 export async function createPlan(userId: string, input: CreatePlanInput): Promise<Plan> {
+  await assertCanCreatePlan(userId);
+
   const dateError = validateDates(input.startDate, input.endDate);
   if (dateError) throw new Error(dateError);
 

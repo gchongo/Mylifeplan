@@ -9,7 +9,7 @@ import { GanttTodayColumnSettings } from "@/components/settings/gantt-today-colu
 import { CalendarWeekNumberSettings } from "@/components/settings/calendar-week-number-settings";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { TIMEZONE_OPTIONS, THEME_OPTIONS, LANGUAGE_OPTIONS, resolveTimezone } from "@/lib/user-preferences";
-import { useSettings } from "@/components/settings/settings-provider";
+import { SettingsSubscriptionSection } from "@/components/settings/settings-subscription-section";
 
 function SettingsSection({
   title,
@@ -113,6 +113,8 @@ export function SettingsPageClient({ userEmail }: { userEmail?: string | null })
           onChange={setGanttActualLine}
         />
       </SettingsSection>
+
+      <SettingsSubscriptionSection />
 
       <SettingsSection title={t("settings.account")}>
         <dl className="space-y-3 text-sm">

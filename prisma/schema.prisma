@@ -74,8 +74,37 @@ model User {
   feeds         Feed[]
   contributions PlanContribution[]
   subscriptions Subscription[]
+  userStorage   UserStorage?
 
   @@map("users")
+}
+
+model BillingPlan {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  nameZh          String   @map("name_zh")
+  nameEn          String   @map("name_en")
+  maxPlans        Int?     @map("max_plans")
+  maxStorageBytes Int      @map("max_storage_bytes")
+  maxFileBytes    Int      @map("max_file_bytes")
+  isActive        Boolean  @default(true) @map("is_active")
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  subscriptions Subscription[]
+
+  @@map("billing_plans")
+}
+
+model UserStorage {
+  userId    String   @id @map("user_id")
+  usedBytes Int      @default(0) @map("used_bytes")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_storage")
 }
 
 model Plan {
@@ -137,6 +166,7 @@ model MemoImage {
   id        String   @id @default(cuid())
   memoId    String   @map("memo_id")
   url       String
+  sizeBytes Int      @default(0) @map("size_bytes")
   createdAt DateTime @default(now()) @map("created_at")
 
   memo Memo @relation(fields: [memoId], references: [id], onDelete: Cascade)
@@ -201,6 +231,7 @@ model ContributionImage {
   id             String   @id @default(cuid())
   contributionId String   @map("contribution_id")
   url            String
+  sizeBytes      Int      @default(0) @map("size_bytes")
   createdAt      DateTime @default(now()) @map("created_at")
 
   contribution PlanContribution @relation(fields: [contributionId], references: [id], onDelete: Cascade)
@@ -212,6 +243,7 @@ model ContributionImage {
 model Subscription {
   id            String             @id @default(cuid())
   userId        String             @map("user_id")
+  billingPlanId String?            @map("billing_plan_id")
   planName      String             @map("plan_name")
   status        SubscriptionStatus @default(active)
   startAt       DateTime           @map("start_at")
@@ -220,9 +252,11 @@ model Subscription {
   createdAt     DateTime           @default(now()) @map("created_at")
   updatedAt     DateTime           @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  billingPlan BillingPlan? @relation(fields: [billingPlanId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([status])
+  @@index([billingPlanId])
   @@map("subscriptions")
 }

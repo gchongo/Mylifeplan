@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input, Select } from "@/components/ui";
+import { Select } from "@/components/ui";
 import { PlanDateTimeField } from "@/components/forms/plan-datetime-field";
 import { EmptyState, ErrorMessage, Loading } from "@/components/ui/feedback";
 import { useI18n } from "@/components/i18n/i18n-provider";
@@ -12,8 +12,11 @@ import { toDatetimeLocalInput, datetimeLocalToIso } from "@/lib/dates";
 
 interface SubscriptionRow {
   id: string;
+  userId: string;
   userEmail: string | null;
   userName: string | null;
+  billingPlanId: string | null;
+  billingPlanSlug: string | null;
   planName: string;
   status: string;
   paymentStatus: string;
@@ -21,14 +24,21 @@ interface SubscriptionRow {
   endAt: string;
 }
 
+interface BillingPlanOption {
+  id: string;
+  nameZh: string;
+  slug: string;
+}
+
 export function AdminSubscriptionsTable() {
   const { t } = useI18n();
   const [subs, setSubs] = useState<SubscriptionRow[]>([]);
+  const [billingPlans, setBillingPlans] = useState<BillingPlanOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({
-    planName: "",
+    billingPlanId: "",
     status: "active",
     paymentStatus: "paid",
     startAt: "",
@@ -49,13 +59,24 @@ export function AdminSubscriptionsTable() {
   ];
 
   async function load() {
-    const res = await fetch("/api/admin/subscriptions");
-    const data = await res.json();
-    if (!res.ok) {
+    const [subsRes, plansRes] = await Promise.all([
+      fetch("/api/admin/subscriptions"),
+      fetch("/api/admin/billing-plans"),
+    ]);
+    const data = await subsRes.json();
+    const plansData = await plansRes.json();
+    if (!subsRes.ok) {
       setError(data.error ?? t("common.loadFailed"));
       return;
     }
     setSubs(data.subscriptions ?? []);
+    setBillingPlans(
+      (plansData.plans ?? []).map((p: BillingPlanOption & { isActive: boolean }) => ({
+        id: p.id,
+        nameZh: p.nameZh,
+        slug: p.slug,
+      })),
+    );
   }
 
   useEffect(() => {
@@ -65,7 +86,7 @@ export function AdminSubscriptionsTable() {
   function startEdit(sub: SubscriptionRow) {
     setEditingId(sub.id);
     setForm({
-      planName: sub.planName,
+      billingPlanId: sub.billingPlanId ?? "",
       status: sub.status,
       paymentStatus: sub.paymentStatus,
       startAt: toDatetimeLocalInput(sub.startAt),
@@ -82,7 +103,7 @@ export function AdminSubscriptionsTable() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          planName: form.planName,
+          billingPlanId: form.billingPlanId || undefined,
           status: form.status,
           paymentStatus: form.paymentStatus,
           startAt: datetimeLocalToIso(form.startAt) ?? new Date(form.startAt).toISOString(),
@@ -127,10 +148,17 @@ export function AdminSubscriptionsTable() {
             {subs.map((sub) => (
               <tr key={sub.id} className="border-b border-gray-100 last:border-0 align-top">
                 <td className="px-4 py-3">
-                  <p>{sub.userEmail ?? "—"}</p>
+                  <Link href={`/admin/users/${sub.userId}`} className="hover:underline">
+                    <p>{sub.userEmail ?? "—"}</p>
+                  </Link>
                   {sub.userName && <p className="text-xs text-gray-400">{sub.userName}</p>}
                 </td>
-                <td className="px-4 py-3">{sub.planName}</td>
+                <td className="px-4 py-3">
+                  {sub.planName}
+                  {sub.billingPlanSlug && (
+                    <span className="ml-1 text-xs text-gray-400">({sub.billingPlanSlug})</span>
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   <Badge variant={sub.status === "active" ? "success" : "warning"}>{sub.status}</Badge>
                 </td>
@@ -154,10 +182,11 @@ export function AdminSubscriptionsTable() {
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <h3 className="mb-3 font-medium">{t("admin.editSubscription")}</h3>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Input
-              label={t("admin.planName")}
-              value={form.planName}
-              onChange={(e) => setForm({ ...form, planName: e.target.value })}
+            <Select
+              label={t("admin.table.plan")}
+              options={billingPlans.map((p) => ({ value: p.id, label: `${p.nameZh} (${p.slug})` }))}
+              value={form.billingPlanId}
+              onChange={(e) => setForm({ ...form, billingPlanId: e.target.value })}
             />
             <Select
               label={t("admin.subStatus")}
