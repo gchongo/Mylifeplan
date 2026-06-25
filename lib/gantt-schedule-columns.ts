@@ -135,9 +135,9 @@ export function getScheduleEditRawValue(
 ): string | null {
   switch (columnId) {
     case "planStart":
-      return item.startDate ?? null;
+      return item.isUnscheduled ? null : item.startDate ?? null;
     case "planEnd":
-      return item.endDate ?? null;
+      return item.isUnscheduled ? null : item.endDate ?? null;
     case "actualStart":
       return item.actualStartDate ?? null;
     case "actualEnd":
@@ -203,8 +203,14 @@ export function getScheduleCellValue(
 ): ScheduleCellValue {
   switch (columnId) {
     case "planStart":
+      if (item.isUnscheduled) {
+        return { text: "—", muted: true };
+      }
       return { text: formatScheduleDate(item.startDate), muted: !item.startDate };
     case "planEnd":
+      if (item.isUnscheduled) {
+        return { text: "—", muted: true };
+      }
       return hasRealPlanEnd(item)
         ? { text: formatScheduleDate(item.endDate) }
         : { text: "—", muted: true };

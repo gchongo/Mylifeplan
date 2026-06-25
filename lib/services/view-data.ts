@@ -7,6 +7,10 @@ import { formatDateOnly, formatPlanDateTime, planRangeEdgeMs } from "@/lib/dates
 import { prisma } from "@/lib/db";
 import { getContributionsInRange } from "@/lib/services/contribution";
 import { isPlanOverdue, type PlanOverdueNode } from "@/lib/gantt-plan-status";
+import {
+  planTreeDepth,
+  resolveUnscheduledGanttAnchor,
+} from "@/lib/gantt-unscheduled-anchor";
 import type { GanttContribution, GanttItem, CalendarItem } from "@/types";
 
 function parseRange(from?: string | null, to?: string | null) {
@@ -36,22 +40,6 @@ type PlanRow = {
   status: string;
   color: string | null;
 };
-
-function findAnchorDate(
-  planId: string | null,
-  byId: Map<string, PlanRow>,
-  fallback: string,
-): string {
-  let cur = planId;
-  while (cur) {
-    const p = byId.get(cur);
-    if (!p) break;
-    const start = formatPlanDateTime(p.startDate);
-    if (start) return start;
-    cur = p.parentPlanId;
-  }
-  return fallback;
-}
 
 function hasScheduledAncestor(planId: string | null, onGantt: Set<string>, byId: Map<string, PlanRow>): boolean {
   let cur = planId;
@@ -89,6 +77,7 @@ export async function getGanttItems(
   const byId = new Map(allPlans.map((p) => [p.id, p]));
   const items: GanttItem[] = [];
   const onGantt = new Set<string>();
+  const unscheduledCandidates: PlanRow[] = [];
 
   for (const plan of allPlans) {
     const startDate = formatPlanDateTime(plan.startDate);
@@ -124,8 +113,32 @@ export async function getGanttItems(
     if (plan.startDate || !plan.parentPlanId) continue;
     if (!hasScheduledAncestor(plan.parentPlanId, onGantt, byId)) continue;
     if (onGantt.has(plan.id)) continue;
+    unscheduledCandidates.push(plan);
+  }
 
-    const anchor = findAnchorDate(plan.parentPlanId, byId, rangeFromStr);
+  const anchorRows = new Map(
+    allPlans.map((p) => [
+      p.id,
+      {
+        id: p.id,
+        parentPlanId: p.parentPlanId,
+        startDate: formatPlanDateTime(p.startDate),
+      },
+    ]),
+  );
+  const computedAnchors = new Map<string, string>();
+  unscheduledCandidates.sort(
+    (a, b) => planTreeDepth(a.id, anchorRows) - planTreeDepth(b.id, anchorRows),
+  );
+
+  for (const plan of unscheduledCandidates) {
+    const anchor = resolveUnscheduledGanttAnchor(
+      plan.parentPlanId,
+      anchorRows,
+      computedAnchors,
+      rangeFromStr,
+    );
+    computedAnchors.set(plan.id, anchor);
     items.push({
       id: plan.id,
       title: plan.title,
