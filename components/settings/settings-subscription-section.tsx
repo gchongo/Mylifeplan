@@ -29,6 +29,7 @@ export function SettingsSubscriptionSection() {
 
   if (!data) return null;
 
+  const isFreePlan = data.planSlug === "free";
   const planName =
     locale === "en-US" && data.planNameEn ? data.planNameEn : data.planNameZh ?? data.planSlug ?? "—";
   const planLimit =
@@ -51,7 +52,7 @@ export function SettingsSubscriptionSection() {
           <span className="text-gray-500">{t("settings.subscription.currentPlan")}</span>
           <span className="font-medium text-gray-900 dark:text-gray-100">{planName}</span>
         </div>
-        {data.subscriptionEndAt && (
+        {data.subscriptionEndAt && !isFreePlan && (
           <div className="flex justify-between gap-4">
             <span className="text-gray-500">{t("settings.subscription.validUntil")}</span>
             <span>{new Date(data.subscriptionEndAt).toLocaleDateString()}</span>
