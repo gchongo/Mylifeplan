@@ -10,44 +10,18 @@ import {
 } from "@/components/summary/summary-charts";
 import {
   AdaptiveDistributionChart,
-  IconMetricTile,
-  PRIMARY_PLAN_STAT_ITEMS,
+  PrimaryPlanStats,
   SectionShell,
   VerticalBarChart,
-  getPrimaryPlanStatValue,
   usePlanSummary,
 } from "@/components/summary/summary-widgets";
 import {
-  IconDone,
-  IconEarly,
   IconExecution,
-  IconInProgress,
-  IconNotStarted,
-  IconOverdue,
-  IconPlans,
   IconStatus,
   IconType,
 } from "@/components/summary/summary-icons";
 import { localizeSummarySegments } from "@/lib/i18n/summary-segments";
 import { cn } from "@/lib/utils";
-
-const PRIMARY_ICONS = {
-  total: IconPlans,
-  in_progress: IconInProgress,
-  done: IconDone,
-  not_started: IconNotStarted,
-  deadlineOverdue: IconOverdue,
-  earlyCompleted: IconEarly,
-} as const;
-
-const PRIMARY_ACCENTS: Record<(typeof PRIMARY_PLAN_STAT_ITEMS)[number]["key"], string> = {
-  total: "#6366f1",
-  in_progress: "#3b82f6",
-  done: "#22c55e",
-  not_started: "#f59e0b",
-  deadlineOverdue: "#ef4444",
-  earlyCompleted: "#10b981",
-};
 
 export function SummaryDashboard({ className }: { className?: string }) {
   const { t } = useI18n();
@@ -93,20 +67,8 @@ export function SummaryDashboard({ className }: { className?: string }) {
               centerValueClassName="text-lg"
             />
           </div>
-          <div className="grid min-w-0 flex-1 grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-            {PRIMARY_PLAN_STAT_ITEMS.map((item) => {
-              const Icon = PRIMARY_ICONS[item.key];
-              return (
-                <IconMetricTile
-                  key={item.key}
-                  title={t(`summary.metric.${item.key}`)}
-                  value={getPrimaryPlanStatValue(summary, item.key)}
-                  accent={PRIMARY_ACCENTS[item.key]}
-                  icon={<Icon className="h-4 w-4 text-white" />}
-                  compact
-                />
-              );
-            })}
+          <div className="min-w-0 flex-1">
+            <PrimaryPlanStats summary={summary} singleRow />
           </div>
         </div>
       </section>

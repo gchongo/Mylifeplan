@@ -444,6 +444,16 @@ export function StatCard({
   );
 }
 
+export function textOnSolidBackground(hex: string): "#000000" | "#ffffff" {
+  const normalized = hex.replace("#", "");
+  if (normalized.length !== 6) return "#ffffff";
+  const r = parseInt(normalized.slice(0, 2), 16);
+  const g = parseInt(normalized.slice(2, 4), 16);
+  const b = parseInt(normalized.slice(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.58 ? "#000000" : "#ffffff";
+}
+
 export function MiniStat({
   label,
   value,
@@ -457,42 +467,45 @@ export function MiniStat({
   hint?: string;
   compact?: boolean;
 }) {
+  const backgroundColor = color ?? "#64748b";
+  const textColor = textOnSolidBackground(backgroundColor);
+
   return (
     <div
       className={cn(
-        "rounded-lg border border-gray-100 bg-gray-50/80 text-center dark:border-gray-800 dark:bg-gray-800/40",
-        compact ? "px-1 py-1" : "px-1.5 py-1.5",
+        "rounded-md text-center shadow-sm",
+        compact ? "px-1 py-1.5" : "px-2 py-2",
       )}
+      style={{ backgroundColor, color: textColor }}
       title={hint}
     >
       <p
         className={cn(
-          "font-bold tabular-nums leading-none text-gray-900 dark:text-gray-100",
-          compact ? "text-sm" : "text-base",
-        )}
-        style={color ? { color } : undefined}
-      >
-        {value}
-      </p>
-      <p
-        className={cn(
-          "mt-0.5 truncate leading-tight text-gray-500",
+          "truncate leading-tight",
           compact ? "text-[9px]" : "text-[10px]",
         )}
       >
         {label}
+      </p>
+      <p
+        className={cn(
+          "mt-0.5 font-bold tabular-nums leading-none",
+          compact ? "text-lg" : "text-xl",
+        )}
+      >
+        {value}
       </p>
     </div>
   );
 }
 
 export const PRIMARY_PLAN_STAT_ITEMS = [
-  { key: "total", label: "total", color: "#6366f1", hintKey: "totalHint" as const },
-  { key: "in_progress", label: "in_progress", color: "#3b82f6" },
-  { key: "done", label: "done", color: "#22c55e" },
-  { key: "not_started", label: "not_started", color: "#f59e0b" },
-  { key: "deadlineOverdue", label: "deadlineOverdue", color: "#ef4444", hintKey: "deadlineOverdueHint" as const },
-  { key: "earlyCompleted", label: "earlyCompleted", color: "#10b981", hintKey: "earlyCompletedHint" as const },
+  { key: "total", label: "total", color: "#6366F1", hintKey: "totalHint" as const },
+  { key: "in_progress", label: "in_progress", color: "#42B0E3" },
+  { key: "done", label: "done", color: "#92D050" },
+  { key: "not_started", label: "not_started", color: "#FFC000" },
+  { key: "deadlineOverdue", label: "deadlineOverdue", color: "#FF5252", hintKey: "deadlineOverdueHint" as const },
+  { key: "earlyCompleted", label: "earlyCompleted", color: "#FFFF00", hintKey: "earlyCompletedHint" as const },
 ] as const;
 
 export function getPrimaryPlanStatValue(
@@ -525,7 +538,7 @@ export function PrimaryPlanStats({
   const { t } = useI18n();
 
   return (
-    <div className={cn("grid gap-1", singleRow ? "grid-cols-6" : "grid-cols-3 gap-1.5")}>
+    <div className={cn("grid gap-1.5", singleRow ? "grid-cols-6" : "grid-cols-3")}>
       {PRIMARY_PLAN_STAT_ITEMS.map((item) => (
         <MiniStat
           key={item.key}
