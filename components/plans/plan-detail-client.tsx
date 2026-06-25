@@ -206,6 +206,7 @@ export function PlanDetailClient({
           <PlanForm
             plan={{ ...plan, status }}
             hasSubPlans={hasSubPlans}
+            contributionCount={contributions.length}
             redirectTo={embedded ? undefined : `/plans/${plan.id}`}
             submitLabel={t("common.save")}
             onCancel={() => setShowEdit(false)}

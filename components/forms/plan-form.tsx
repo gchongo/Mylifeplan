@@ -9,12 +9,24 @@ import { Input, Select, Textarea } from "@/components/ui";
 import { ParentPlanSelect } from "@/components/forms/parent-plan-select";
 import { PlanColorPicker } from "@/components/forms/plan-color-picker";
 import { PlanDateTimeField } from "@/components/forms/plan-datetime-field";
-import { toDatetimeLocalInput, datetimeLocalToIso, normalizePlanDateInput } from "@/lib/dates";
+import { toDatetimeLocalInput, datetimeLocalToIso, normalizePlanDateInput, nowDatetimeLocal } from "@/lib/dates";
+import { isPlanUnscheduled } from "@/lib/content-router";
+import { kanbanPatchForColumn, UNSCHEDULED_BLOCKED_HINT, type KanbanPlan } from "@/lib/kanban-board";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import type { SerializedPlanForGantt } from "@/lib/gantt-plan-sync";
 import type { TranslationKey } from "@/lib/i18n/translate";
 
-const STATUS_VALUES = ["not_started", "in_progress", "done"] as const;
+const FORM_STATUS_VALUES = ["unscheduled", "not_started", "in_progress", "done"] as const;
+type FormStatusValue = (typeof FORM_STATUS_VALUES)[number];
+
+function initialFormStatus(plan?: PlanFormValues): FormStatusValue {
+  if (plan && isPlanUnscheduled({ startDate: plan.startDate, endDate: plan.endDate })) {
+    return "unscheduled";
+  }
+  const status = plan?.status ?? "not_started";
+  if (status === "in_progress" || status === "done") return status;
+  return "not_started";
+}
 
 export interface PlanFormValues {
   id?: string;
@@ -40,6 +52,7 @@ export function PlanForm({
   onCancel,
   submitLabel,
   hasSubPlans = false,
+  contributionCount = 0,
 }: {
   plan?: PlanFormValues;
   redirectTo?: string;
@@ -49,14 +62,14 @@ export function PlanForm({
   onSuccess?: (plan?: SerializedPlanForGantt) => void;
   onCancel?: () => void;
   submitLabel?: string;
-  /** 有子计划时实际起止由子计划汇总，不可手填 */
   hasSubPlans?: boolean;
+  contributionCount?: number;
 }) {
   const { t } = useI18n();
   const router = useRouter();
   const statusOptions = useMemo(
     () =>
-      STATUS_VALUES.map((value) => ({
+      FORM_STATUS_VALUES.map((value) => ({
         value,
         label: t(`kanban.column.${value}` as TranslationKey),
       })),
@@ -65,6 +78,7 @@ export function PlanForm({
   const isEdit = Boolean(plan?.id);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [scheduleStatus, setScheduleStatus] = useState<FormStatusValue>(() => initialFormStatus(plan));
   const [parentPlanId, setParentPlanId] = useState<string | null>(
     plan?.parentPlanId ?? defaultParentPlanId ?? null,
   );
@@ -81,6 +95,81 @@ export function PlanForm({
     () => toDatetimeLocalInput(plan?.actualEndDate) || "",
   );
 
+  const canMoveToUnscheduled = contributionCount === 0;
+
+  function handleScheduleStatusChange(next: FormStatusValue) {
+    if (next === "unscheduled" && !canMoveToUnscheduled) {
+      setError(UNSCHEDULED_BLOCKED_HINT);
+      return;
+    }
+    setError("");
+    setScheduleStatus(next);
+    if (next === "unscheduled") {
+      setStartDate("");
+      setEndDate("");
+    } else if (next === "not_started" || next === "in_progress") {
+      if (!startDate.trim()) setStartDate(nowDatetimeLocal());
+    }
+  }
+
+  function buildSchedulePayload(): {
+    status: string;
+    startDate: string | null;
+    endDate: string | null;
+  } {
+    const kanbanPlan: KanbanPlan = {
+      id: plan?.id ?? "",
+      title: plan?.title ?? "",
+      description: plan?.description ?? null,
+      type: "goal",
+      status: (plan?.status as KanbanPlan["status"]) ?? "not_started",
+      startDate: plan?.startDate ?? null,
+      endDate: plan?.endDate ?? null,
+      parentPlanId: parentPlanId,
+      parentTitle: null,
+      childStatuses: hasSubPlans ? ["not_started"] : [],
+      contributionCount,
+    };
+
+    if (scheduleStatus === "unscheduled") {
+      return kanbanPatchForColumn("unscheduled", kanbanPlan);
+    }
+
+    if (scheduleStatus === "done") {
+      return {
+        status: "done",
+        startDate: startDate ? datetimeLocalToIso(normalizePlanDateInput(startDate, "start")!) : null,
+        endDate: endDate ? datetimeLocalToIso(normalizePlanDateInput(endDate, "end")!) : null,
+      };
+    }
+
+    const columnPatch = kanbanPatchForColumn(scheduleStatus, {
+      ...kanbanPlan,
+      startDate: startDate ? datetimeLocalToIso(normalizePlanDateInput(startDate, "start")!) : null,
+      endDate: endDate ? datetimeLocalToIso(normalizePlanDateInput(endDate, "end")!) : null,
+    });
+
+    let startIso = startDate ? datetimeLocalToIso(normalizePlanDateInput(startDate, "start")!) : null;
+    let endIso = endDate ? datetimeLocalToIso(normalizePlanDateInput(endDate, "end")!) : null;
+
+    if (columnPatch.startDate !== undefined) {
+      startIso = columnPatch.startDate
+        ? datetimeLocalToIso(normalizePlanDateInput(columnPatch.startDate, "start")!)
+        : null;
+    }
+    if (columnPatch.endDate !== undefined) {
+      endIso = columnPatch.endDate
+        ? datetimeLocalToIso(normalizePlanDateInput(columnPatch.endDate, "end")!)
+        : null;
+    }
+
+    return {
+      status: columnPatch.status,
+      startDate: startIso,
+      endDate: endIso,
+    };
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
@@ -89,25 +178,38 @@ export function PlanForm({
     const fd = new FormData(e.currentTarget);
     const title = String(fd.get("title") ?? "").trim();
     const description = String(fd.get("description") ?? "").trim();
-    const status = String(fd.get("status") ?? "not_started");
     const color = String(fd.get("color") ?? "").trim() || null;
 
     const canEditActual = isEdit && !hasSubPlans;
 
-    const normalizedStart = startDate ? normalizePlanDateInput(startDate, "start") : null;
-    const normalizedEnd = endDate ? normalizePlanDateInput(endDate, "end") : null;
     const normalizedActualStart =
       canEditActual && actualStartDate ? normalizePlanDateInput(actualStartDate, "start") : null;
     const normalizedActualEnd =
       canEditActual && actualEndDate ? normalizePlanDateInput(actualEndDate, "end") : null;
+
+    let scheduleFields = {
+      status: plan?.status ?? "not_started",
+      startDate: startDate ? datetimeLocalToIso(normalizePlanDateInput(startDate, "start")!) : null,
+      endDate: endDate ? datetimeLocalToIso(normalizePlanDateInput(endDate, "end")!) : null,
+    };
+
+    if (isEdit) {
+      try {
+        scheduleFields = buildSchedulePayload();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : UNSCHEDULED_BLOCKED_HINT);
+        setLoading(false);
+        return;
+      }
+    }
 
     const payload = {
       title,
       description: description || null,
       type: plan?.type ?? "goal",
       parentPlanId,
-      startDate: normalizedStart ? datetimeLocalToIso(normalizedStart) : null,
-      endDate: normalizedEnd ? datetimeLocalToIso(normalizedEnd) : null,
+      startDate: scheduleFields.startDate,
+      endDate: scheduleFields.endDate,
       actualStartDate: canEditActual
         ? normalizedActualStart
           ? datetimeLocalToIso(normalizedActualStart)
@@ -119,7 +221,7 @@ export function PlanForm({
           : null
         : undefined,
       color,
-      ...(isEdit && { status }),
+      ...(isEdit && { status: scheduleFields.status }),
     };
 
     try {
@@ -211,12 +313,21 @@ export function PlanForm({
         </div>
       )}
       {isEdit && (
-        <Select
-          name="status"
-          label={t("common.status")}
-          options={statusOptions}
-          defaultValue={plan?.status ?? "not_started"}
-        />
+        <div className="space-y-1">
+          <Select
+            name="status"
+            label={t("common.status")}
+            options={statusOptions}
+            value={scheduleStatus}
+            onChange={(e) => handleScheduleStatusChange(e.target.value as FormStatusValue)}
+          />
+          {scheduleStatus === "unscheduled" && (
+            <p className="text-xs text-violet-600 dark:text-violet-400">{t("memos.assignModal.unscheduledHint")}</p>
+          )}
+          {!canMoveToUnscheduled && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">{UNSCHEDULED_BLOCKED_HINT}</p>
+          )}
+        </div>
       )}
       {onCancel ? (
         <div className="flex justify-end gap-2">
