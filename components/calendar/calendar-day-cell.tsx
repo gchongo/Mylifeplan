@@ -26,7 +26,7 @@ function DayNumber({
         "inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full text-xs font-semibold",
         isToday && "bg-red-500 text-white",
         !isToday && isSelected && "bg-gray-900 text-white",
-        !isToday && !isSelected && "text-gray-800",
+        !isToday && !isSelected && "text-gray-800 dark:text-gray-200",
       )}
     >
       {day}
@@ -130,7 +130,7 @@ export function CalendarDayCell({
       data-date={ds}
       onClick={() => onSelectDate(ds)}
       className={cn(
-        "flex flex-col bg-white p-1.5 text-left transition-colors hover:bg-gray-50/80",
+        "flex flex-col bg-white p-1.5 text-left transition-colors hover:bg-gray-50/80 dark:bg-gray-900 dark:hover:bg-gray-800/80",
         cellMin,
         isSelected && "ring-1 ring-inset ring-brand-400",
       )}
@@ -146,7 +146,7 @@ export function CalendarDayCell({
 }
 
 export function CalendarEmptyDayCell({ cellMin }: { cellMin: string }) {
-  return <div className={cn("bg-white", cellMin)} />;
+  return <div className={cn("bg-white dark:bg-gray-900", cellMin)} />;
 }
 
 export function useCalendarCellMin(displayMode: CalendarDisplayMode, fullPage: boolean) {

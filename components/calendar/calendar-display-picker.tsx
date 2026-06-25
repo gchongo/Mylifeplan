@@ -89,8 +89,8 @@ export function CalendarDisplayPicker({
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50",
-          isToolbar ? "px-3 py-1.5 text-sm text-gray-800" : "px-2.5 py-1.5 text-xs text-gray-700",
+          "inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800",
+          isToolbar ? "px-3 py-1.5 text-sm text-gray-800 dark:text-gray-100" : "px-2.5 py-1.5 text-xs text-gray-700 dark:text-gray-200",
         )}
         aria-label={t("calendar.displayPickerAria")}
       >
@@ -101,7 +101,7 @@ export function CalendarDisplayPicker({
       {open && (
         <div
           className={cn(
-            "absolute right-0 top-full z-50 mt-1 rounded-lg border border-gray-200 bg-white py-1 shadow-lg",
+            "absolute right-0 top-full z-50 mt-1 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900",
             isToolbar ? "min-w-[140px]" : "w-44 rounded-xl",
           )}
         >
@@ -115,9 +115,9 @@ export function CalendarDisplayPicker({
                 setOpen(false);
               }}
               className={cn(
-                "flex w-full items-center gap-2 text-left hover:bg-gray-50",
+                "flex w-full items-center gap-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800",
                 isToolbar ? "px-4 py-2 text-sm" : "px-3 py-2 text-sm",
-                isToolbar && mode.id === value && "bg-gray-100 font-medium",
+                isToolbar && mode.id === value && "bg-gray-100 font-medium dark:bg-gray-800",
               )}
             >
               {!isToolbar && (
@@ -125,7 +125,7 @@ export function CalendarDisplayPicker({
                   <ModeIcon mode={mode.id} />
                 </span>
               )}
-              <span className="flex-1 text-gray-800">{localizeCalendarDisplayLabel(t, mode.id)}</span>
+              <span className="flex-1 text-gray-800 dark:text-gray-100">{localizeCalendarDisplayLabel(t, mode.id)}</span>
               {!isToolbar && value === mode.id && <span className="text-brand-600">✓</span>}
             </button>
           ))}

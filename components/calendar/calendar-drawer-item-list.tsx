@@ -47,7 +47,7 @@ function PlanInlineDetail({ plan }: { plan: PlanDetail }) {
   return (
     <div className="space-y-2 text-xs text-gray-600">
       {plan.description ? (
-        <p className="whitespace-pre-wrap rounded-md bg-gray-50 p-2 text-sm text-gray-700">
+        <p className="whitespace-pre-wrap rounded-md bg-gray-50 p-2 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-300">
           {plan.description}
         </p>
       ) : (
@@ -146,7 +146,7 @@ function CalendarDrawerItemRow({
       </div>
 
       {expanded && (
-        <div className="ml-6 mt-2 space-y-2 border-l border-dashed border-gray-200 pl-3">
+        <div className="ml-6 mt-2 space-y-2 border-l border-dashed border-gray-200 pl-3 dark:border-gray-700">
           {loading && <p className="text-xs text-gray-400">{t("calendar.drawer.loadingDetails")}</p>}
           {!loading && planDetail && <PlanInlineDetail plan={planDetail} />}
         </div>

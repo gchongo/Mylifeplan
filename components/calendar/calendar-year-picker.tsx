@@ -27,14 +27,14 @@ export function CalendarYearPicker({
   const cells = [...currentYearMonths, ...nextYearMonths];
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-auto bg-gray-50/80 p-6">
+    <div className="flex min-h-0 flex-1 flex-col overflow-auto bg-gray-50/80 p-6 dark:bg-gray-950">
       <div className="mx-auto flex w-full max-w-md items-center justify-between">
-        <h2 className="text-2xl font-semibold text-gray-900">{formatCalendarYearLabel(year, locale, t)}</h2>
+        <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{formatCalendarYearLabel(year, locale, t)}</h2>
         <div className="flex flex-col gap-0.5">
           <button
             type="button"
             onClick={() => onYearChange(year - 1)}
-            className="rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-200"
+            className="rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-800"
             aria-label={t("calendar.yearNav.prev")}
           >
             ▲
@@ -42,7 +42,7 @@ export function CalendarYearPicker({
           <button
             type="button"
             onClick={() => onYearChange(year + 1)}
-            className="rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-200"
+            className="rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-800"
             aria-label={t("calendar.yearNav.next")}
           >
             ▼
@@ -63,8 +63,8 @@ export function CalendarYearPicker({
               onClick={() => onSelectMonth(month, cellYear)}
               className={cn(
                 "flex h-10 items-center justify-center rounded-full text-sm transition-colors",
-                isNextYear && !isSelected && "text-gray-300 hover:text-gray-500",
-                !isNextYear && !isSelected && "text-gray-800 hover:bg-gray-200/80",
+                isNextYear && !isSelected && "text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400",
+                !isNextYear && !isSelected && "text-gray-800 hover:bg-gray-200/80 dark:text-gray-200 dark:hover:bg-gray-800",
                 isSelected && "bg-brand-500 font-medium text-white hover:bg-brand-600",
                 isToday && !isSelected && "font-semibold text-brand-600",
               )}

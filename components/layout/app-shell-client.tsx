@@ -123,7 +123,7 @@ function AppShellInner({
             <aside
               className={cn(
                 "sidebar-nav-drawer fixed left-0 top-14 z-50 h-[calc(100vh-3.5rem)] w-56",
-                "border-r border-gray-200 bg-white shadow-xl lg:hidden",
+                "border-r border-gray-200 bg-white shadow-xl dark:border-gray-800 dark:bg-gray-900 lg:hidden",
               )}
             >
               <SidebarNavMenu onNavigate={closeNav} />

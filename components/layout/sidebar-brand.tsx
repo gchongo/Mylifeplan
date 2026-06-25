@@ -31,15 +31,15 @@ export function SidebarBrand({
       <button
         type="button"
         onClick={onToggle}
-        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-700 hover:bg-gray-100"
+        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
         aria-label={navOpen ? t("layout.collapseNav") : t("layout.expandNav")}
         aria-expanded={navOpen}
       >
         <MenuIcon className="h-5 w-5" />
       </button>
       <div className="min-w-0">
-        <p className="truncate text-base font-bold text-brand-700 lg:text-lg">MyLifePlan</p>
-        <p className="truncate text-xs text-gray-500">{t("layout.brandTagline")}</p>
+        <p className="truncate text-base font-bold text-brand-700 dark:text-brand-300 lg:text-lg">MyLifePlan</p>
+        <p className="truncate text-xs text-gray-500 dark:text-gray-400">{t("layout.brandTagline")}</p>
       </div>
     </div>
   );
@@ -57,8 +57,8 @@ export function SidebarNavDrawer({
   return (
     <aside
       className={cn(
-        "sidebar-nav-drawer shrink-0 overflow-hidden bg-white transition-[width] duration-300 ease-in-out",
-        open ? "w-56 border-r border-gray-200" : "w-0 border-r-0",
+        "sidebar-nav-drawer shrink-0 overflow-hidden bg-white transition-[width] duration-300 ease-in-out dark:bg-gray-900",
+        open ? "w-56 border-r border-gray-200 dark:border-gray-800" : "w-0 border-r-0",
         className,
       )}
       aria-hidden={!open}

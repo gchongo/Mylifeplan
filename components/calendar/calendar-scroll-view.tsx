@@ -227,7 +227,7 @@ export const CalendarScrollView = forwardRef<
   return (
     <div ref={outerRef} className="flex h-0 min-h-0 w-full flex-1 flex-col overflow-hidden">
       {showWeekNumbers ? (
-        <div className="flex shrink-0 border-b border-gray-200 bg-white text-center text-[11px] text-gray-500">
+        <div className="flex shrink-0 border-b border-gray-200 bg-white text-center text-[11px] text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
           <div className={cn(weekColClass, "py-1.5 font-medium")}>{t("settings.weekNumber.weekHeader")}</div>
           <div className="grid min-w-0 flex-1 grid-cols-7">
             {weekdayLabels.map((w) => (
@@ -238,7 +238,7 @@ export const CalendarScrollView = forwardRef<
           </div>
         </div>
       ) : (
-        <div className="grid shrink-0 grid-cols-7 border-b border-gray-200 bg-white text-center text-[11px] text-gray-500">
+        <div className="grid shrink-0 grid-cols-7 border-b border-gray-200 bg-white text-center text-[11px] text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
           {weekdayLabels.map((w) => (
             <div key={w} className="py-1.5 font-medium">
               {w}
@@ -249,7 +249,7 @@ export const CalendarScrollView = forwardRef<
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="scrollbar-hide h-0 min-h-0 flex-1 overflow-y-auto overscroll-contain bg-gray-100"
+        className="scrollbar-hide h-0 min-h-0 flex-1 overflow-y-auto overscroll-contain bg-gray-100 dark:bg-gray-950"
         tabIndex={0}
       >
         {months.map((key, index) => {
@@ -263,8 +263,8 @@ export const CalendarScrollView = forwardRef<
             <section key={id} ref={(el) => setMonthRef(id, el)} data-month-id={id} className="mb-1">
               <h3
                 className={cn(
-                  "bg-gray-100 px-3 py-2 text-base font-semibold",
-                  isCurrentMonth ? "text-red-600" : "text-gray-900",
+                  "bg-gray-100 px-3 py-2 text-base font-semibold dark:bg-gray-900",
+                  isCurrentMonth ? "text-red-600" : "text-gray-900 dark:text-gray-100",
                 )}
               >
                 {title}
@@ -276,7 +276,7 @@ export const CalendarScrollView = forwardRef<
                       <div
                         className={cn(
                           weekColClass,
-                          "flex items-start justify-center bg-gray-50 pt-1.5 text-[11px] font-medium text-gray-500",
+                          "flex items-start justify-center bg-gray-50 pt-1.5 text-[11px] font-medium text-gray-500 dark:bg-gray-900 dark:text-gray-400",
                           cellMin,
                         )}
                       >

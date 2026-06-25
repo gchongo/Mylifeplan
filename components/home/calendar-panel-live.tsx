@@ -373,8 +373,8 @@ export function CalendarPanelLive({
             {viewMode === "month" && (
               <div
                 className={cn(
-                  "relative flex h-0 min-h-0 flex-1 flex-col overflow-hidden bg-white",
-                  fullPage ? "" : "rounded-xl border border-gray-200",
+                  "relative flex h-0 min-h-0 flex-1 flex-col overflow-hidden bg-white dark:bg-gray-900",
+                  fullPage ? "" : "rounded-xl border border-gray-200 dark:border-gray-800",
                 )}
               >
                 <CalendarScrollView
@@ -390,7 +390,7 @@ export function CalendarPanelLive({
                 />
                 {loading && items.length > 0 && (
                   <div className="pointer-events-none absolute inset-x-0 top-10 z-20 flex justify-center">
-                    <span className="rounded-full bg-white/90 px-3 py-1 text-xs text-gray-500 shadow-sm">
+                    <span className="rounded-full bg-white/90 px-3 py-1 text-xs text-gray-500 shadow-sm dark:bg-gray-900/90 dark:text-gray-400">
                       {t("calendar.updating")}
                     </span>
                   </div>
@@ -398,14 +398,14 @@ export function CalendarPanelLive({
               </div>
             )}
             {!loading && viewMode === "week" && (
-              <div className="scrollbar-hide grid min-h-0 flex-1 grid-cols-7 gap-px overflow-y-auto overscroll-contain bg-gray-100 text-xs">
+              <div className="scrollbar-hide grid min-h-0 flex-1 grid-cols-7 gap-px overflow-y-auto overscroll-contain bg-gray-100 text-xs dark:bg-gray-950">
                 {weekDays.map((ds) => {
                   const list = itemsOnDate(items, ds);
                   const d = parseInt(ds.slice(8, 10), 10);
                   const isToday = ds === todayStr;
                   const isSelected = ds === selectedDate;
                   return (
-                    <div key={ds} className={cn("flex flex-col bg-white p-1", weekCellMin)}>
+                    <div key={ds} className={cn("flex flex-col bg-white p-1 dark:bg-gray-900", weekCellMin)}>
                       <div className="mb-1 flex justify-center">
                         <button
                           type="button"
@@ -414,7 +414,7 @@ export function CalendarPanelLive({
                             "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold hover:ring-2 hover:ring-brand-200",
                             isToday && "bg-red-500 text-white",
                             !isToday && isSelected && "bg-gray-900 text-white",
-                            !isToday && !isSelected && "text-gray-800",
+                            !isToday && !isSelected && "text-gray-800 dark:text-gray-200",
                           )}
                         >
                           {d}
@@ -445,7 +445,7 @@ export function CalendarPanelLive({
               </div>
             )}
             {!loading && viewMode === "day" && (
-              <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white">
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
                 <ul className="scrollbar-hide min-h-0 flex-1 space-y-0 overflow-y-auto overscroll-contain">
                   {dayItems.length === 0 ? (
                     <li className="px-4 py-6 text-sm text-gray-400">{t("calendar.emptyDay")}</li>
@@ -453,10 +453,10 @@ export function CalendarPanelLive({
                     dayItems.map((item) => {
                       const accent = itemAccent(item);
                       return (
-                        <li key={item.id} className="border-b border-gray-100 last:border-0">
+                        <li key={item.id} className="border-b border-gray-100 last:border-0 dark:border-gray-800">
                           <Link
                             href={itemHref(item)}
-                            className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50"
+                            className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/60"
                           >
                             <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", accent.dot)} />
                             <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">

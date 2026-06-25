@@ -35,11 +35,11 @@ export function CalendarToolbarControls({
 
   return (
     <div className={cn("flex shrink-0 items-center gap-2", className)}>
-      <div className="flex items-center rounded-lg border border-gray-200 bg-white">
+      <div className="flex items-center rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
         <button
           type="button"
           onClick={onPrev}
-          className="px-2 py-1 text-sm text-gray-600 hover:bg-gray-50"
+          className="px-2 py-1 text-sm text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
           aria-label={t("calendar.toolbar.prev")}
         >
           ‹
@@ -47,14 +47,14 @@ export function CalendarToolbarControls({
         <button
           type="button"
           onClick={onToday}
-          className="border-x border-gray-200 px-2.5 py-1 text-sm text-gray-800 hover:bg-gray-50"
+          className="border-x border-gray-200 px-2.5 py-1 text-sm text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800"
         >
           {t("calendar.toolbar.today")}
         </button>
         <button
           type="button"
           onClick={onNext}
-          className="px-2 py-1 text-sm text-gray-600 hover:bg-gray-50"
+          className="px-2 py-1 text-sm text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
           aria-label={t("calendar.toolbar.next")}
         >
           ›
@@ -65,13 +65,13 @@ export function CalendarToolbarControls({
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-sm text-gray-800 hover:bg-gray-50"
+          className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-sm text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800"
         >
           {localizeCalendarViewLabel(t, viewMode)}
           <span className="text-[10px] text-gray-400">▼</span>
         </button>
         {open && (
-          <div className="absolute right-0 top-full z-50 mt-1 min-w-[120px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+          <div className="absolute right-0 top-full z-50 mt-1 min-w-[120px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900">
             {CALENDAR_VIEW_MODES.map((mode) => (
               <button
                 key={mode.id}
@@ -81,8 +81,8 @@ export function CalendarToolbarControls({
                   setOpen(false);
                 }}
                 className={cn(
-                  "block w-full px-4 py-2 text-left text-sm hover:bg-gray-50",
-                  mode.id === viewMode && "bg-gray-100 font-medium",
+                  "block w-full px-4 py-2 text-left text-sm hover:bg-gray-50 dark:text-gray-100 dark:hover:bg-gray-800",
+                  mode.id === viewMode && "bg-gray-100 font-medium dark:bg-gray-800",
                 )}
               >
                 {localizeCalendarViewLabel(t, mode.id)}
