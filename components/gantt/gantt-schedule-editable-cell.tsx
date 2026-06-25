@@ -3,6 +3,7 @@
 import {
   scheduleColumnPlanField,
   type GanttScheduleEditableColumnId,
+  type ScheduleCellValue,
 } from "@/lib/gantt-schedule-columns";
 import { datetimeLocalToIso, toDatetimeLocalInput } from "@/lib/dates";
 import { PlanDateTimeField } from "@/components/forms/plan-datetime-field";
@@ -12,7 +13,7 @@ import {
   localizeScheduleEditableLabel,
 } from "@/lib/i18n/gantt-helpers";
 import { cn } from "@/lib/utils";
-import type { ScheduleCellValue } from "@/lib/gantt-schedule-columns";
+import type { GanttPlanPatch } from "@/lib/gantt-plan-sync";
 
 function scheduleFieldEdge(
   field: ReturnType<typeof scheduleColumnPlanField>,
@@ -33,7 +34,7 @@ export function GanttScheduleEditableCell({
   rawValue: string | null;
   cell: ScheduleCellValue;
   width: number;
-  onSaved: () => void;
+  onSaved: (plan?: GanttPlanPatch) => void;
 }) {
   const { t } = useI18n();
   const edge = scheduleFieldEdge(scheduleColumnPlanField(columnId));
@@ -76,11 +77,12 @@ export function GanttScheduleEditableCell({
           const res = await fetch(`/api/plans/${planId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
+            cache: "no-store",
             body: JSON.stringify({ [field]: nextIso }),
           });
-          const data = (await res.json()) as { error?: string };
+          const data = (await res.json()) as { error?: string; plan?: GanttPlanPatch };
           if (!res.ok) return data.error ?? t("gantt.contributionDrawer.saveFailed");
-          onSaved();
+          onSaved(data.plan);
         } catch {
           return t("gantt.contributionDrawer.networkError");
         }

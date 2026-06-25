@@ -13,6 +13,7 @@ import {
   type GanttScheduleColumnId,
 } from "@/lib/gantt-schedule-columns";
 import { GanttScheduleEditableCell } from "@/components/gantt/gantt-schedule-editable-cell";
+import type { GanttPlanPatch } from "@/lib/gantt-plan-sync";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import {
   localizedScheduleColumnDefs,
@@ -281,7 +282,7 @@ export function GanttScheduleColumnPanel({
     item: GanttItem;
   }[];
   allPlans: GanttItem[];
-  onPlanFieldUpdated?: () => void;
+  onPlanFieldUpdated?: (plan?: GanttPlanPatch) => void;
 }) {
   const { t } = useI18n();
   const columnDefs = localizedScheduleColumnDefs(t, visibleColumns);

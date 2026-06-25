@@ -2,8 +2,8 @@
 
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getEffectiveEndDate } from "@/lib/content-router";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
+import { patchGanttItemFromPlan, type GanttPlanPatch } from "@/lib/gantt-plan-sync";
 import { ganttPlanBarMetrics, type TimelineLayout } from "@/lib/gantt-scale";
 import {
   constrainPlanMoveByMs,
@@ -181,23 +181,14 @@ export function GanttDraggableBar({
         const res = await fetch(`/api/plans/${item.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
+          cache: "no-store",
           body: JSON.stringify(body),
         });
         const data = await res.json();
         if (!res.ok) return;
 
-        const plan = data.plan;
-        const { effectiveEnd, isVirtualEnd } = getEffectiveEndDate({
-          startDate: plan.startDate,
-          dueDate: plan.endDate,
-        });
-        onUpdated({
-          ...item,
-          startDate: plan.startDate,
-          endDate: plan.endDate,
-          effectiveEnd: effectiveEnd ?? plan.startDate,
-          isVirtualEnd,
-        });
+        const plan = data.plan as GanttPlanPatch;
+        onUpdated(patchGanttItemFromPlan(item, plan));
         dispatchPlanUpdated();
       } finally {
         setSaving(false);

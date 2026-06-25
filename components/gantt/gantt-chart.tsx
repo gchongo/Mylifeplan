@@ -99,6 +99,7 @@ import { deriveParentStatus } from "@/lib/services/plan-rollup";
 import type { GanttContribution, GanttItem, PlanStatus } from "@/types";
 import { apiJson } from "@/lib/client-api";
 import { dispatchPlanUpdated, PLAN_UPDATED_EVENT } from "@/lib/plan-events";
+import { patchGanttItemFromPlan, type GanttPlanPatch } from "@/lib/gantt-plan-sync";
 import {
   DEFAULT_VISIBLE_SCHEDULE_COLUMNS,
   GANTT_SCHEDULE_TABLE_HEADER_HEIGHT,
@@ -307,6 +308,7 @@ export const GanttChart = forwardRef<
   const scrollTarget = useRef<"today" | "anchor">("today");
   const panRef = useRef<{ startX: number; startScrollLeft: number } | null>(null);
   const pendingScrollLeft = useRef<number | null>(null);
+  const ganttFetchSeq = useRef(0);
   const [isPanning, setIsPanning] = useState(false);
 
   const [planModal, setPlanModal] = useState<PlanModalState>({
@@ -430,19 +432,45 @@ export const GanttChart = forwardRef<
   const todayVisible = today >= layout.from && today <= layout.to;
 
   useEffect(() => {
+    const seq = ++ganttFetchSeq.current;
     setIsLoading(true);
     apiJson<{ items?: GanttItem[]; contributions?: GanttContribution[] }>(
       `/api/gantt?from=${from}&to=${to}`,
     )
       .then((data) => {
+        if (seq !== ganttFetchSeq.current) return;
         setItems(data.items ?? []);
         setContributions(data.contributions ?? []);
       })
       .catch(() => {
+        if (seq !== ganttFetchSeq.current) return;
         setItems([]);
         setContributions([]);
       })
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        if (seq !== ganttFetchSeq.current) return;
+        setIsLoading(false);
+      });
+  }, [from, to]);
+
+  const applyPlanPatch = useCallback((plan: GanttPlanPatch) => {
+    setItems((prev) =>
+      prev.map((item) => (item.id === plan.id ? patchGanttItemFromPlan(item, plan) : item)),
+    );
+  }, []);
+
+  const refetchGantt = useCallback(async () => {
+    const seq = ++ganttFetchSeq.current;
+    try {
+      const data = await apiJson<{ items?: GanttItem[]; contributions?: GanttContribution[] }>(
+        `/api/gantt?from=${from}&to=${to}`,
+      );
+      if (seq !== ganttFetchSeq.current) return;
+      setItems(data.items ?? []);
+      setContributions(data.contributions ?? []);
+    } catch {
+      // Keep optimistic local state when background refresh fails.
+    }
   }, [from, to]);
 
   const planById = useMemo(() => new Map(items.map((p) => [p.id, p])), [items]);
@@ -617,18 +645,13 @@ export const GanttChart = forwardRef<
   const rowsBodyHeight = computeRowsTotalHeight(rows);
   const bodyAreaHeight = Math.max(rowsBodyHeight, scrollViewportHeight);
 
-  const refetchGantt = useCallback(() => {
-    apiJson<{ items?: GanttItem[]; contributions?: GanttContribution[] }>(
-      `/api/gantt?from=${from}&to=${to}`,
-    ).then((data) => {
-      setItems(data.items ?? []);
-      setContributions(data.contributions ?? []);
-    });
-  }, [from, to]);
+  const refetchGanttStable = useCallback(() => {
+    void refetchGantt();
+  }, [refetchGantt]);
 
   useEffect(() => {
     function onPlanUpdated() {
-      refetchGantt();
+      void refetchGantt();
     }
     window.addEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
     return () => window.removeEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
@@ -802,6 +825,11 @@ export const GanttChart = forwardRef<
 
   function handleItemUpdated(updated: GanttItem) {
     setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+  }
+
+  function handleScheduleFieldSaved(plan?: GanttPlanPatch) {
+    if (plan) applyPlanPatch(plan);
+    dispatchPlanUpdated();
   }
 
   function handlePlanStatusChanged(planId: string, apiStatus: PlanStatus) {
@@ -1486,8 +1514,8 @@ export const GanttChart = forwardRef<
         <GanttContributionDrawerPanel
           contributionId={selectedContributionId}
           onClose={closeContributionDrawer}
-          onDeleted={refetchGantt}
-          onUpdated={refetchGantt}
+          onDeleted={refetchGanttStable}
+          onUpdated={refetchGanttStable}
         />
       );
     }
@@ -1776,10 +1804,7 @@ export const GanttChart = forwardRef<
                   scrollLeft={scheduleScrollLeft}
                   rows={mappedRows}
                   allPlans={items}
-                  onPlanFieldUpdated={() => {
-                    refetchGantt();
-                    dispatchPlanUpdated();
-                  }}
+                  onPlanFieldUpdated={handleScheduleFieldSaved}
                 />
               )}
             </div>
@@ -1832,7 +1857,7 @@ export const GanttChart = forwardRef<
         defaultStartAt={planModal.defaultStartDate}
         defaultEndAt={planModal.defaultEndDate}
         onSuccess={() => {
-          refetchGantt();
+          void refetchGantt();
           dispatchPlanUpdated();
         }}
       />
