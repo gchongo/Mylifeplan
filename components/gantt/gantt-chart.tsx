@@ -98,9 +98,17 @@ import { GRID_BORDER, GRID_ROW_BORDER } from "@/lib/gantt-grid-colors";
 import { deriveParentStatus } from "@/lib/services/plan-rollup";
 import type { GanttContribution, GanttItem, PlanStatus } from "@/types";
 import { apiJson } from "@/lib/client-api";
-import { dispatchPlanUpdated, PLAN_UPDATED_EVENT } from "@/lib/plan-events";
+import { dispatchPlanUpdated, PLAN_UPDATED_EVENT, planDataVersion, type PlanUpdatedDetail } from "@/lib/plan-events";
 import type { PlanContributionComposeResult } from "@/components/forms/plan-contribution-compose-form";
-import { patchGanttItemFromPlan, applyGanttPlanPatch, mergeGanttItem, serializedPlanToGanttItem, type GanttPlanPatch, type SerializedPlanForGantt } from "@/lib/gantt-plan-sync";
+import {
+  patchGanttItemFromPlan,
+  applyGanttPlanPatch,
+  mergeGanttItem,
+  serializedPlanToGanttItem,
+  syncGanttItemsFromPlanUpdate,
+  type GanttPlanPatch,
+  type SerializedPlanForGantt,
+} from "@/lib/gantt-plan-sync";
 import {
   DEFAULT_VISIBLE_SCHEDULE_COLUMNS,
   GANTT_SCHEDULE_TABLE_HEADER_HEIGHT,
@@ -311,6 +319,7 @@ export const GanttChart = forwardRef<
   const pendingScrollLeft = useRef<number | null>(null);
   const ganttFetchSeq = useRef(0);
   const skipNextPlanSyncRef = useRef(false);
+  const planSyncedVersionRef = useRef(planDataVersion);
   const [isPanning, setIsPanning] = useState(false);
 
   const [planModal, setPlanModal] = useState<PlanModalState>({
@@ -656,17 +665,61 @@ export const GanttChart = forwardRef<
     void refetchGantt();
   }, [refetchGantt]);
 
-  useEffect(() => {
-    function onPlanUpdated() {
-      if (skipNextPlanSyncRef.current) {
-        skipNextPlanSyncRef.current = false;
-        return;
+  const expandAncestorsForPlan = useCallback((parentId: string | null, itemsList: GanttItem[]) => {
+    if (!parentId) return;
+    setExpanded((prev) => {
+      const ancestors = new Set(prev);
+      let cur: string | null = parentId;
+      const byId = new Map(itemsList.map((item) => [item.id, item]));
+      while (cur) {
+        ancestors.add(cur);
+        cur = byId.get(cur)?.parentId ?? null;
       }
+      return ancestors;
+    });
+  }, []);
+
+  useEffect(() => {
+    function applyPlanDetail(detail: PlanUpdatedDetail | undefined) {
+      if (detail?.plan) {
+        setItems((prev) => {
+          const next = syncGanttItemsFromPlanUpdate(prev, detail.plan!, fetchRange.from);
+          if (detail.plan?.parentPlanId) {
+            expandAncestorsForPlan(detail.plan.parentPlanId, next);
+          }
+          return next;
+        });
+        return true;
+      }
+      return false;
+    }
+
+    function onPlanUpdated(event: Event) {
+      const detail = (event as CustomEvent<PlanUpdatedDetail>).detail;
+      const skipped = skipNextPlanSyncRef.current;
+      skipNextPlanSyncRef.current = false;
+      planSyncedVersionRef.current = detail?.version ?? planDataVersion;
+
+      if (applyPlanDetail(detail)) return;
+      if (skipped) return;
       void refetchGantt();
     }
+
+    function syncIfStale() {
+      if (document.visibilityState !== "visible") return;
+      if (planDataVersion <= planSyncedVersionRef.current) return;
+      planSyncedVersionRef.current = planDataVersion;
+      void refetchGantt();
+    }
+
     window.addEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
-    return () => window.removeEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
-  }, [refetchGantt]);
+    document.addEventListener("visibilitychange", syncIfStale);
+    syncIfStale();
+    return () => {
+      window.removeEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
+      document.removeEventListener("visibilitychange", syncIfStale);
+    };
+  }, [refetchGantt, fetchRange.from, expandAncestorsForPlan]);
 
   useEffect(() => {
     if (!isPanning) return;
@@ -858,11 +911,9 @@ export const GanttChart = forwardRef<
   }
 
   function handlePlanStatusChanged(planId: string, apiStatus: PlanStatus) {
-    skipNextPlanSyncRef.current = true;
     setItems((prev) =>
       prev.map((i) => (i.id === planId ? { ...i, status: apiStatus } : i)),
     );
-    dispatchPlanUpdated();
   }
 
   function openPlan(planId: string) {
@@ -899,30 +950,20 @@ export const GanttChart = forwardRef<
   }
 
   function handlePlanComposeSuccess(result?: PlanContributionComposeResult) {
-    skipNextPlanSyncRef.current = true;
     if (result?.kind === "plan") {
-      const ganttItem = serializedPlanToGanttItem(result.plan as SerializedPlanForGantt);
-      if (ganttItem) {
-        setItems((prev) => {
-          const next = mergeGanttItem(prev, ganttItem);
-          if (ganttItem.parentId) {
-            setExpanded((expanded) => {
-              const ancestors = new Set(expanded);
-              let cur: string | null = ganttItem.parentId ?? null;
-              const byId = new Map(next.map((item) => [item.id, item]));
-              while (cur) {
-                ancestors.add(cur);
-                cur = byId.get(cur)?.parentId ?? null;
-              }
-              return ancestors;
-            });
-          }
-          return next;
-        });
-        return;
-      }
+      const plan = result.plan as SerializedPlanForGantt;
+      setItems((prev) => {
+        const next = syncGanttItemsFromPlanUpdate(prev, plan, fetchRange.from);
+        if (plan.parentPlanId) {
+          expandAncestorsForPlan(plan.parentPlanId, next);
+        }
+        return next;
+      });
+      dispatchPlanUpdated({ plan });
+      return;
     }
     if (result?.kind === "contribution") {
+      skipNextPlanSyncRef.current = true;
       void refetchGantt();
     }
   }
@@ -1166,6 +1207,8 @@ export const GanttChart = forwardRef<
           <PlanStatusMenuButton
             planId={item.id}
             status={item.status}
+            startDate={item.isUnscheduled ? null : item.startDate}
+            endDate={item.endDate}
             overdue={isPlanOverdue(item, planById)}
             isUnscheduled={item.isUnscheduled}
             displayStatus={displayStatus}
@@ -1582,6 +1625,7 @@ export const GanttChart = forwardRef<
           planId={selectedPlanId}
           onClose={closePlanDrawer}
           onPlanChange={setSelectedPlanId}
+          onPlanSaved={refetchGanttStable}
         />
       );
     }

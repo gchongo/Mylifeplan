@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { patchGanttItemFromPlan, applyGanttPlanPatch, mergeGanttItem, serializedPlanToGanttItem } from "@/lib/gantt-plan-sync";
+import { patchGanttItemFromPlan, applyGanttPlanPatch, mergeGanttItem, serializedPlanToGanttItem, syncGanttItemsFromPlanUpdate } from "@/lib/gantt-plan-sync";
 import type { GanttItem } from "@/types";
 
 function baseItem(overrides: Partial<GanttItem> = {}): GanttItem {
@@ -84,5 +84,65 @@ describe("patchGanttItemFromPlan", () => {
     const next = mergeGanttItem(items, created!);
     expect(next).toHaveLength(2);
     expect(next.some((item) => item.id === "p2")).toBe(true);
+  });
+});
+
+describe("syncGanttItemsFromPlanUpdate", () => {
+  it("adds unscheduled child when parent is on gantt", () => {
+    const items: GanttItem[] = [
+      {
+        id: "parent",
+        title: "Parent",
+        startDate: "2025-06-01T00:00:00.000Z",
+        endDate: null,
+        effectiveEnd: "2026-06-01",
+        isVirtualEnd: true,
+        status: "not_started",
+        parentId: null,
+      },
+    ];
+    const next = syncGanttItemsFromPlanUpdate(
+      items,
+      {
+        id: "child",
+        title: "Child",
+        startDate: null,
+        endDate: null,
+        parentPlanId: "parent",
+        status: "not_started",
+      },
+      "2025-05-01",
+    );
+    expect(next.some((item) => item.id === "child" && item.isUnscheduled)).toBe(true);
+    expect(next.find((item) => item.id === "child")?.parentId).toBe("parent");
+  });
+
+  it("removes unscheduled plan when parent is cleared", () => {
+    const items: GanttItem[] = [
+      {
+        id: "child",
+        title: "Child",
+        startDate: "2025-06-01T00:00:00.000Z",
+        endDate: null,
+        effectiveEnd: "2025-06-01T00:00:00.000Z",
+        isVirtualEnd: false,
+        status: "not_started",
+        parentId: "parent",
+        isUnscheduled: true,
+      },
+    ];
+    const next = syncGanttItemsFromPlanUpdate(
+      items,
+      {
+        id: "child",
+        title: "Child",
+        startDate: null,
+        endDate: null,
+        parentPlanId: null,
+        status: "not_started",
+      },
+      "2025-05-01",
+    );
+    expect(next.some((item) => item.id === "child")).toBe(false);
   });
 });

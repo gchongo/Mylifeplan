@@ -21,6 +21,7 @@ import {
 import { PlanStatusMenuButton } from "@/components/plans/plan-status-menu";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { formatPlanDateTimeDisplay } from "@/lib/dates";
+import { isPlanUnscheduled } from "@/lib/content-router";
 import { describeAggregatedActualTimes, type AggregatedChildNode } from "@/lib/gantt-actual-timeline";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import type { PlanRelationNode } from "@/lib/plan-relationship";
@@ -64,8 +65,8 @@ export function PlanDetailClient({
     setComposeOpen(true);
   }
 
-  function afterChange() {
-    dispatchPlanUpdated();
+  function afterChange(options?: { skipDispatch?: boolean }) {
+    if (!options?.skipDispatch) dispatchPlanUpdated();
     onChanged?.();
   }
 
@@ -210,7 +211,7 @@ export function PlanDetailClient({
             onCancel={() => setShowEdit(false)}
             onSuccess={() => {
               setShowEdit(false);
-              afterChange();
+              afterChange({ skipDispatch: true });
             }}
           />
         </CardContent>
@@ -230,10 +231,13 @@ export function PlanDetailClient({
             planId={plan.id}
             status={status}
             dueDate={plan.endDate}
+            startDate={plan.startDate}
+            endDate={plan.endDate}
             overdue={overdue}
+            isUnscheduled={isPlanUnscheduled({ startDate: plan.startDate, endDate: plan.endDate })}
             onStatusChanged={(next: PlanStatus) => {
               setStatus(next);
-              afterChange();
+              afterChange({ skipDispatch: true });
               if (next === "archived") leaveAfterDelete();
             }}
           />

@@ -10,6 +10,8 @@ import { ParentPlanSelect } from "@/components/forms/parent-plan-select";
 import { PlanColorPicker } from "@/components/forms/plan-color-picker";
 import { PlanDateTimeField } from "@/components/forms/plan-datetime-field";
 import { toDatetimeLocalInput, datetimeLocalToIso, normalizePlanDateInput } from "@/lib/dates";
+import { dispatchPlanUpdated } from "@/lib/plan-events";
+import type { SerializedPlanForGantt } from "@/lib/gantt-plan-sync";
 import type { TranslationKey } from "@/lib/i18n/translate";
 
 const STATUS_VALUES = ["not_started", "in_progress", "done"] as const;
@@ -44,7 +46,7 @@ export function PlanForm({
   defaultParentPlanId?: string | null;
   defaultStartDate?: string | null;
   defaultEndDate?: string | null;
-  onSuccess?: () => void;
+  onSuccess?: (plan?: SerializedPlanForGantt) => void;
   onCancel?: () => void;
   submitLabel?: string;
   /** 有子计划时实际起止由子计划汇总，不可手填 */
@@ -133,10 +135,11 @@ export function PlanForm({
       }
 
       if (onSuccess) {
-        onSuccess();
+        onSuccess(data.plan);
       } else {
         router.push(redirectTo ?? "/plans");
       }
+      dispatchPlanUpdated({ plan: data.plan });
       router.refresh();
     } catch {
       setError(t("common.networkError"));

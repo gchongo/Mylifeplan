@@ -20,10 +20,12 @@ export function GanttPlanDrawerPanel({
   planId,
   onClose,
   onPlanChange,
+  onPlanSaved,
 }: {
   planId: string;
   onClose: () => void;
   onPlanChange?: (planId: string) => void;
+  onPlanSaved?: () => void;
 }) {
   const { t } = useI18n();
   const [activePlanId, setActivePlanId] = useState(planId);
@@ -104,7 +106,10 @@ export function GanttPlanDrawerPanel({
             contributions={contributions}
             overdue={overdue}
             embedded
-            onChanged={() => loadPlan(activePlanId)}
+            onChanged={() => {
+              loadPlan(activePlanId);
+              onPlanSaved?.();
+            }}
             onClose={onClose}
             onNavigatePlan={(id) => {
               setActivePlanId(id);

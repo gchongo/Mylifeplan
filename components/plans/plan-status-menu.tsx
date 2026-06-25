@@ -7,31 +7,46 @@ import { useI18n } from "@/components/i18n/i18n-provider";
 import { localizeVisualStatusLabel } from "@/lib/i18n/gantt-helpers";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import {
+  kanbanCanMoveToUnscheduled,
+  kanbanPatchForColumn,
+  UNSCHEDULED_BLOCKED_HINT,
+  type KanbanColumnId,
+  type KanbanPlan,
+} from "@/lib/kanban-board";
+import { datetimeLocalToIso, normalizePlanDateInput } from "@/lib/dates";
+import {
   STATUS_STYLES,
   type VisualStatusKey,
 } from "@/lib/task-status-style";
 import type { PlanStatus } from "@/types";
 import { cn } from "@/lib/utils";
 
-const PLAN_STATUS_OPTIONS: { api: PlanStatus; visual: VisualStatusKey }[] = [
-  { api: "not_started", visual: "todo" },
-  { api: "in_progress", visual: "in_progress" },
-  { api: "done", visual: "done" },
-  { api: "archived", visual: "archived" },
+type StatusMenuOption =
+  | { kind: "unscheduled"; visual: "unscheduled" }
+  | { kind: "status"; api: PlanStatus; visual: VisualStatusKey };
+
+const PLAN_MENU_OPTIONS: StatusMenuOption[] = [
+  { kind: "unscheduled", visual: "unscheduled" },
+  { kind: "status", api: "not_started", visual: "todo" },
+  { kind: "status", api: "in_progress", visual: "in_progress" },
+  { kind: "status", api: "done", visual: "done" },
+  { kind: "status", api: "archived", visual: "archived" },
 ];
 
 const MENU_WIDTH = 144;
 const MENU_GAP = 4;
 const VIEWPORT_PADDING = 8;
-/** Rough row height before the menu mounts (py-2 + text-xs line). */
 const ESTIMATED_MENU_ITEM_HEIGHT = 36;
 
 export function PlanStatusMenuButton({
   planId,
   status,
   dueDate,
+  startDate,
+  endDate,
   overdue = false,
   isUnscheduled = false,
+  contributionCount = 0,
   displayStatus,
   hasRollup = false,
   disabled = false,
@@ -40,8 +55,11 @@ export function PlanStatusMenuButton({
   planId: string;
   status: string | undefined | null;
   dueDate?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
   overdue?: boolean;
   isUnscheduled?: boolean;
+  contributionCount?: number;
   displayStatus?: string | null;
   hasRollup?: boolean;
   disabled?: boolean;
@@ -50,9 +68,26 @@ export function PlanStatusMenuButton({
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [menuError, setMenuError] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const kanbanPlan: KanbanPlan = {
+    id: planId,
+    title: "",
+    description: null,
+    type: "goal",
+    status: (status as PlanStatus) ?? "not_started",
+    startDate: startDate ?? null,
+    endDate: endDate ?? dueDate ?? null,
+    parentPlanId: null,
+    parentTitle: null,
+    childStatuses: hasRollup ? ["not_started"] : [],
+    contributionCount,
+  };
+
+  const canMoveToUnscheduled = kanbanCanMoveToUnscheduled(kanbanPlan);
 
   const updateMenuPos = useCallback(() => {
     const el = buttonRef.current;
@@ -60,7 +95,7 @@ export function PlanStatusMenuButton({
     const rect = el.getBoundingClientRect();
     const menuHeight =
       menuRef.current?.offsetHeight ??
-      PLAN_STATUS_OPTIONS.length * ESTIMATED_MENU_ITEM_HEIGHT + 8;
+      PLAN_MENU_OPTIONS.length * ESTIMATED_MENU_ITEM_HEIGHT + 8;
     const spaceBelow = window.innerHeight - rect.bottom - MENU_GAP - VIEWPORT_PADDING;
     const spaceAbove = rect.top - MENU_GAP - VIEWPORT_PADDING;
     const openUpward = menuHeight > spaceBelow && spaceAbove >= spaceBelow;
@@ -101,18 +136,70 @@ export function PlanStatusMenuButton({
     };
   }, [open, updateMenuPos]);
 
-  async function selectStatus(apiStatus: PlanStatus) {
+  function buildPatchBody(option: StatusMenuOption): Record<string, unknown> {
+    if (option.kind === "unscheduled") {
+      return kanbanPatchForColumn("unscheduled", kanbanPlan);
+    }
+
+    if (isUnscheduled && (option.api === "not_started" || option.api === "in_progress")) {
+      const column: KanbanColumnId = option.api === "in_progress" ? "in_progress" : "not_started";
+      return kanbanPatchForColumn(column, kanbanPlan);
+    }
+
+    if (isUnscheduled && option.api === "done") {
+      return { status: "done" as PlanStatus };
+    }
+
+    return { status: option.api };
+  }
+
+  function isOptionActive(option: StatusMenuOption): boolean {
+    if (option.kind === "unscheduled") return isUnscheduled;
+    if (isUnscheduled) return false;
+    return status === option.api;
+  }
+
+  async function selectOption(option: StatusMenuOption) {
     if (saving || disabled) return;
+    if (option.kind === "unscheduled" && !canMoveToUnscheduled) {
+      setMenuError(UNSCHEDULED_BLOCKED_HINT);
+      return;
+    }
+    if (isOptionActive(option)) {
+      setOpen(false);
+      return;
+    }
+
     setSaving(true);
+    setMenuError(null);
     try {
+      let body: Record<string, unknown>;
+      try {
+        body = buildPatchBody(option);
+      } catch (e) {
+        setMenuError(e instanceof Error ? e.message : UNSCHEDULED_BLOCKED_HINT);
+        return;
+      }
+
+      if (body.startDate && typeof body.startDate === "string") {
+        const normalized = normalizePlanDateInput(body.startDate, "start");
+        body.startDate = normalized ? datetimeLocalToIso(normalized) : null;
+      }
+
       const res = await fetch(`/api/plans/${planId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: apiStatus }),
+        body: JSON.stringify(body),
       });
-      if (!res.ok) return;
-      onStatusChanged?.(apiStatus);
-      dispatchPlanUpdated();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMenuError(typeof data.error === "string" ? data.error : t("common.updateFailed"));
+        return;
+      }
+
+      const nextStatus = (data.plan?.status ?? body.status) as PlanStatus;
+      dispatchPlanUpdated({ plan: data.plan });
+      onStatusChanged?.(nextStatus);
       setOpen(false);
     } finally {
       setSaving(false);
@@ -128,21 +215,29 @@ export function PlanStatusMenuButton({
             className="fixed z-[200] w-36 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900"
             style={{ top: menuPos.top, left: menuPos.left }}
           >
-            {PLAN_STATUS_OPTIONS.map((opt) => {
+            {PLAN_MENU_OPTIONS.map((opt) => {
               const style = STATUS_STYLES[opt.visual];
-              const active = status === opt.api;
+              const active = isOptionActive(opt);
+              const optionDisabled =
+                saving || (opt.kind === "unscheduled" && !canMoveToUnscheduled);
               return (
                 <button
-                  key={opt.api}
+                  key={opt.kind === "unscheduled" ? "unscheduled" : opt.api}
                   type="button"
                   data-no-pan
-                  disabled={saving}
-                  onClick={() => void selectStatus(opt.api)}
+                  disabled={optionDisabled}
+                  onClick={() => void selectOption(opt)}
                   className={cn(
                     "flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-gray-50 dark:hover:bg-gray-800",
                     active && "bg-gray-50 dark:bg-gray-800/80",
+                    optionDisabled && "cursor-not-allowed opacity-50",
                     saving && "opacity-60",
                   )}
+                  title={
+                    opt.kind === "unscheduled" && !canMoveToUnscheduled
+                      ? UNSCHEDULED_BLOCKED_HINT
+                      : undefined
+                  }
                 >
                   <span className={cn("rounded-full ring-1 ring-inset ring-black/5", style.dot, "h-2 w-2 shrink-0")} />
                   <span className="text-gray-700 dark:text-gray-200">{localizeVisualStatusLabel(t, opt.visual)}</span>
@@ -150,6 +245,11 @@ export function PlanStatusMenuButton({
                 </button>
               );
             })}
+            {menuError && (
+              <p className="border-t border-gray-100 px-3 py-2 text-[10px] leading-snug text-red-600 dark:border-gray-800 dark:text-red-400">
+                {menuError}
+              </p>
+            )}
           </div>,
           document.body,
         )
@@ -164,6 +264,7 @@ export function PlanStatusMenuButton({
         disabled={disabled || saving}
         onClick={(e) => {
           e.stopPropagation();
+          setMenuError(null);
           setOpen((v) => !v);
         }}
         className={cn(

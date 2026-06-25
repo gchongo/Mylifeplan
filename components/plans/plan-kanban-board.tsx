@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   groupPlansByKanbanColumn,
   kanbanArchivePatch,
@@ -17,7 +17,7 @@ import {
   type KanbanPlan,
 } from "@/lib/kanban-board";
 import { getKanbanColumnAccentClass, getKanbanTitleBarStyle } from "@/lib/task-status-style";
-import { dispatchPlanUpdated, PLAN_UPDATED_EVENT } from "@/lib/plan-events";
+import { dispatchPlanUpdated, PLAN_UPDATED_EVENT, planDataVersion } from "@/lib/plan-events";
 import { apiJson } from "@/lib/client-api";
 import { ROLLUP_STATUS_HINT } from "@/lib/services/plan-rollup";
 import { PlanDetailModal } from "@/components/plans/plan-detail-modal";
@@ -272,6 +272,7 @@ export function PlanKanbanBoard({
   const [moving, setMoving] = useState(false);
   const [planModalId, setPlanModalId] = useState<string | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
+  const planSyncedVersionRef = useRef(planDataVersion);
   const { t } = useI18n();
 
   const grouped = useMemo(() => groupPlansByKanbanColumn(plans), [plans]);
@@ -290,11 +291,26 @@ export function PlanKanbanBoard({
   }, [reloadPlans]);
 
   useEffect(() => {
-    function onPlanUpdated() {
+    function onPlanUpdated(event: Event) {
+      const detail = (event as CustomEvent<{ version?: number }>).detail;
+      planSyncedVersionRef.current = detail?.version ?? planDataVersion;
       void reloadPlans();
     }
+
+    function syncIfStale() {
+      if (document.visibilityState !== "visible") return;
+      if (planDataVersion <= planSyncedVersionRef.current) return;
+      planSyncedVersionRef.current = planDataVersion;
+      void reloadPlans();
+    }
+
     window.addEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
-    return () => window.removeEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
+    document.addEventListener("visibilitychange", syncIfStale);
+    syncIfStale();
+    return () => {
+      window.removeEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
+      document.removeEventListener("visibilitychange", syncIfStale);
+    };
   }, [reloadPlans]);
 
   const movePlan = useCallback(

@@ -1,7 +1,8 @@
-import { getEffectiveEndDate } from "@/lib/content-router";
+import { getEffectiveEndDate, isPlanUnscheduled } from "@/lib/content-router";
 import { parsePlanDateTime } from "@/lib/dates";
 import { collectDescendantPlans } from "@/lib/gantt-plan-bind";
 import { shiftPlanDateTime } from "@/lib/gantt-plan-drag";
+import { resolveUnscheduledGanttAnchor } from "@/lib/gantt-unscheduled-anchor";
 import type { GanttItem } from "@/types";
 
 export type GanttPlanPatch = {
@@ -115,4 +116,80 @@ export function applyGanttPlanPatch(
     next = shiftDescendantGanttItems(next, plan.id, options.previousStart, plan.startDate);
   }
   return next;
+}
+
+function hasGanttAncestor(
+  parentPlanId: string | null,
+  onGantt: Set<string>,
+  byId: Map<string, { parentPlanId: string | null }>,
+): boolean {
+  let cur = parentPlanId;
+  while (cur) {
+    if (onGantt.has(cur)) return true;
+    cur = byId.get(cur)?.parentPlanId ?? null;
+  }
+  return false;
+}
+
+/** Apply a saved plan snapshot to the in-memory gantt list (parent / schedule changes). */
+export function syncGanttItemsFromPlanUpdate(
+  items: GanttItem[],
+  plan: SerializedPlanForGantt,
+  rangeFrom: string,
+): GanttItem[] {
+  const parentId = plan.parentPlanId ?? null;
+  const unscheduled = isPlanUnscheduled({ startDate: plan.startDate, endDate: plan.endDate ?? null });
+
+  if (unscheduled && !parentId) {
+    return items.filter((item) => item.id !== plan.id);
+  }
+
+  if (!unscheduled && plan.startDate) {
+    const scheduled = serializedPlanToGanttItem(plan);
+    if (!scheduled) return items.filter((item) => item.id !== plan.id);
+    return mergeGanttItem(items, { ...scheduled, parentId });
+  }
+
+  const onGantt = new Set(items.map((item) => item.id));
+  const anchorRows = new Map<
+    string,
+    { id: string; parentPlanId: string | null; startDate: string | null }
+  >();
+  const computedAnchors = new Map<string, string>();
+
+  for (const item of items) {
+    anchorRows.set(item.id, {
+      id: item.id,
+      parentPlanId: item.parentId ?? null,
+      startDate: item.isUnscheduled ? null : item.startDate,
+    });
+    if (item.isUnscheduled) {
+      computedAnchors.set(item.id, item.startDate);
+    }
+  }
+
+  anchorRows.set(plan.id, {
+    id: plan.id,
+    parentPlanId: parentId,
+    startDate: null,
+  });
+
+  if (!hasGanttAncestor(parentId, onGantt, anchorRows)) {
+    return items.filter((item) => item.id !== plan.id);
+  }
+
+  const anchor = resolveUnscheduledGanttAnchor(parentId, anchorRows, computedAnchors, rangeFrom);
+
+  return mergeGanttItem(items, {
+    id: plan.id,
+    title: plan.title,
+    startDate: anchor,
+    endDate: null,
+    effectiveEnd: anchor,
+    isVirtualEnd: false,
+    parentId,
+    status: plan.status,
+    color: plan.color ?? null,
+    isUnscheduled: true,
+  });
 }
