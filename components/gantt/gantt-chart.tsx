@@ -1167,6 +1167,7 @@ export const GanttChart = forwardRef<
             planId={item.id}
             status={item.status}
             overdue={isPlanOverdue(item, planById)}
+            isUnscheduled={item.isUnscheduled}
             displayStatus={displayStatus}
             hasRollup={hasRollup}
             onStatusChanged={(apiStatus) => handlePlanStatusChanged(item.id, apiStatus)}

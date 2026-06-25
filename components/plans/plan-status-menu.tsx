@@ -20,11 +20,18 @@ const PLAN_STATUS_OPTIONS: { api: PlanStatus; visual: VisualStatusKey }[] = [
   { api: "archived", visual: "archived" },
 ];
 
+const MENU_WIDTH = 144;
+const MENU_GAP = 4;
+const VIEWPORT_PADDING = 8;
+/** Rough row height before the menu mounts (py-2 + text-xs line). */
+const ESTIMATED_MENU_ITEM_HEIGHT = 36;
+
 export function PlanStatusMenuButton({
   planId,
   status,
   dueDate,
   overdue = false,
+  isUnscheduled = false,
   displayStatus,
   hasRollup = false,
   disabled = false,
@@ -34,6 +41,7 @@ export function PlanStatusMenuButton({
   status: string | undefined | null;
   dueDate?: string | null;
   overdue?: boolean;
+  isUnscheduled?: boolean;
   displayStatus?: string | null;
   hasRollup?: boolean;
   disabled?: boolean;
@@ -50,12 +58,23 @@ export function PlanStatusMenuButton({
     const el = buttonRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    setMenuPos({ top: rect.bottom + 4, left: rect.right - 144 });
+    const menuHeight =
+      menuRef.current?.offsetHeight ??
+      PLAN_STATUS_OPTIONS.length * ESTIMATED_MENU_ITEM_HEIGHT + 8;
+    const spaceBelow = window.innerHeight - rect.bottom - MENU_GAP - VIEWPORT_PADDING;
+    const spaceAbove = rect.top - MENU_GAP - VIEWPORT_PADDING;
+    const openUpward = menuHeight > spaceBelow && spaceAbove >= spaceBelow;
+    const top = openUpward
+      ? Math.max(VIEWPORT_PADDING, rect.top - menuHeight - MENU_GAP)
+      : rect.bottom + MENU_GAP;
+    setMenuPos({ top, left: Math.max(VIEWPORT_PADDING, rect.right - MENU_WIDTH) });
   }, []);
 
   useLayoutEffect(() => {
     if (!open) return;
     updateMenuPos();
+    const frame = requestAnimationFrame(updateMenuPos);
+    return () => cancelAnimationFrame(frame);
   }, [open, updateMenuPos]);
 
   useEffect(() => {
@@ -107,7 +126,7 @@ export function PlanStatusMenuButton({
             ref={menuRef}
             data-no-pan
             className="fixed z-[200] w-36 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900"
-            style={{ top: menuPos.top, left: Math.max(8, menuPos.left) }}
+            style={{ top: menuPos.top, left: menuPos.left }}
           >
             {PLAN_STATUS_OPTIONS.map((opt) => {
               const style = STATUS_STYLES[opt.visual];
@@ -160,6 +179,7 @@ export function PlanStatusMenuButton({
           status={status}
           dueDate={dueDate}
           overdue={overdue}
+          isUnscheduled={isUnscheduled}
           displayStatus={displayStatus}
           hasRollup={hasRollup}
         />

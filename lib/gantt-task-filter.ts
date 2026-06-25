@@ -11,9 +11,8 @@ export function ganttItemVisualStatus(
   displayStatus?: string | null,
   planById?: Map<string, GanttItem>,
 ): VisualStatusKey {
-  if (item.isUnscheduled) return "unscheduled";
   const overdue = planById ? isPlanOverdue(item, planById) : false;
-  return resolveVisualStatus(item.status, item.endDate, displayStatus, overdue);
+  return resolveVisualStatus(item.status, item.endDate, displayStatus, overdue, item.isUnscheduled);
 }
 
 export function isStatusFilterActive(filter: Set<VisualStatusKey>): boolean {

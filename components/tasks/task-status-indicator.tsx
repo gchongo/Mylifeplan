@@ -22,6 +22,7 @@ export function TaskStatusIndicator({
   dueDate,
   displayStatus,
   overdue = false,
+  isUnscheduled = false,
   hasRollup = false,
   size = "sm",
   showLabel = false,
@@ -31,14 +32,18 @@ export function TaskStatusIndicator({
   dueDate?: string | null;
   displayStatus?: string | null;
   overdue?: boolean;
+  isUnscheduled?: boolean;
   hasRollup?: boolean;
   size?: keyof typeof DOT_SIZE;
   showLabel?: boolean;
   className?: string;
 }) {
-  const visual = resolveVisualStatus(status, dueDate, displayStatus, overdue);
-  const style = getStatusStyle(status, dueDate, displayStatus, overdue);
-  const label = statusLabel(status, dueDate, displayStatus, hasRollup, overdue);
+  const { t } = useI18n();
+  const visual = resolveVisualStatus(status, dueDate, displayStatus, overdue, isUnscheduled);
+  const style = getStatusStyle(status, dueDate, displayStatus, overdue, isUnscheduled);
+  const label = isUnscheduled
+    ? localizeVisualStatusLabel(t, "unscheduled")
+    : statusLabel(status, dueDate, displayStatus, hasRollup, overdue);
 
   if (showLabel) {
     return (

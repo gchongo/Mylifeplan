@@ -15,6 +15,11 @@ describe("task-status-style", () => {
     expect(resolveVisualStatus("in_progress", "2020-01-01", undefined, true)).toBe("overdue");
   });
 
+  it("prefers unscheduled over api status", () => {
+    expect(resolveVisualStatus("not_started", null, undefined, false, true)).toBe("unscheduled");
+    expect(resolveVisualStatus("in_progress", null, undefined, true, true)).toBe("unscheduled");
+  });
+
   it("returns solid status bars for parent vs child", () => {
     const parent = getGanttBarStyle("in_progress", null, null, 0);
     const child = getGanttBarStyle("done", null, null, 1);

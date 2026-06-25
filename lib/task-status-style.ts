@@ -171,13 +171,15 @@ export function normalizeStatusKey(status: string | undefined | null): VisualSta
   return "todo";
 }
 
-/** 解析最终用于上色的状态（汇总状态 + 超期优先） */
+/** 解析最终用于上色的状态（未排期 / 汇总状态 / 超期优先） */
 export function resolveVisualStatus(
   status: string | undefined | null,
   dueDate?: string | null,
   displayStatus?: string | null,
   overdue?: boolean,
+  isUnscheduled?: boolean,
 ): VisualStatusKey {
+  if (isUnscheduled) return "unscheduled";
   const effective = displayStatus ?? status ?? "todo";
   if (overdue) return "overdue";
   return normalizeStatusKey(effective);
@@ -188,8 +190,9 @@ export function getStatusStyle(
   dueDate?: string | null,
   displayStatus?: string | null,
   overdue?: boolean,
+  isUnscheduled?: boolean,
 ): StatusStyle {
-  return STATUS_STYLES[resolveVisualStatus(status, dueDate, displayStatus, overdue)];
+  return STATUS_STYLES[resolveVisualStatus(status, dueDate, displayStatus, overdue, isUnscheduled)];
 }
 
 export function getGanttBarStyle(
