@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 import { requireAdmin } from "@/lib/auth/get-session";
 import { getAdminUser, setUserActive } from "@/lib/services/admin";
+import { logAdminAction } from "@/lib/services/admin-audit";
 import { adminUserPatchSchema } from "@/lib/validations/admin";
 
 type Params = { params: Promise<{ id: string }> };
@@ -37,6 +38,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     }
 
     const user = await setUserActive(session.userId, id, parsed.data.isActive);
+    await logAdminAction({
+      adminUserId: session.userId,
+      action: parsed.data.isActive ? "user.enable" : "user.disable",
+      targetType: "user",
+      targetId: id,
+    });
     return jsonOk({ user });
   } catch (e) {
     if (e instanceof Error && e.message === "NOT_FOUND") {

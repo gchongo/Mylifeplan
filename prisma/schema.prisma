@@ -75,6 +75,8 @@ model User {
   contributions PlanContribution[]
   subscriptions Subscription[]
   userStorage   UserStorage?
+  entitlementOverride UserEntitlementOverride?
+  adminAuditLogs      AdminAuditLog[] @relation("AdminAuditLogs")
 
   @@map("users")
 }
@@ -105,6 +107,36 @@ model UserStorage {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_storage")
+}
+
+model UserEntitlementOverride {
+  userId          String    @id @map("user_id")
+  maxPlans        Int?      @map("max_plans")
+  maxStorageBytes Int?      @map("max_storage_bytes")
+  maxFileBytes    Int?      @map("max_file_bytes")
+  reason          String?
+  expiresAt       DateTime? @map("expires_at")
+  updatedBy       String?   @map("updated_by")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_entitlement_overrides")
+}
+
+model AdminAuditLog {
+  id          String   @id @default(cuid())
+  adminUserId String   @map("admin_user_id")
+  action      String
+  targetType  String   @map("target_type")
+  targetId    String?  @map("target_id")
+  detail      Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  admin User @relation("AdminAuditLogs", fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt(sort: Desc)])
+  @@map("admin_audit_logs")
 }
 
 model Plan {

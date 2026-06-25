@@ -7,6 +7,7 @@ import {
   createAdminSubscription,
   listAdminSubscriptions,
 } from "@/lib/services/admin";
+import { logAdminAction } from "@/lib/services/admin-audit";
 import { adminSubscriptionCreateSchema } from "@/lib/validations/admin";
 
 export async function GET(request: NextRequest) {
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdmin(request);
+    const admin = await requireAdmin(request);
     const body = await request.json();
     const parsed = adminSubscriptionCreateSchema.safeParse(body);
     if (!parsed.success) {
@@ -35,6 +36,13 @@ export async function POST(request: NextRequest) {
     }
 
     const subscription = await createAdminSubscription(parsed.data);
+    await logAdminAction({
+      adminUserId: admin.userId,
+      action: "subscription.create",
+      targetType: "subscription",
+      targetId: subscription.id,
+      detail: { userId: parsed.data.userId, billingPlanId: parsed.data.billingPlanId },
+    });
     return jsonOk({ subscription }, 201);
   } catch (e) {
     if (e instanceof Error && e.message === "NOT_FOUND") {

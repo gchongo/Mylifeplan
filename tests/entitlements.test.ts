@@ -17,6 +17,7 @@ function limits(partial: Partial<EffectiveLimits>): EffectiveLimits {
     canCreatePlan: true,
     subscriptionStatus: "active",
     subscriptionEndAt: null,
+    hasOverride: false,
     ...partial,
   };
 }

@@ -4,6 +4,7 @@ import {
   getActiveUserSubscription,
   getUserStorageUsedBytes,
 } from "@/lib/services/billing";
+import { getUserEntitlementOverride } from "@/lib/services/entitlement-override";
 
 export class EntitlementError extends Error {
   constructor(
@@ -28,6 +29,7 @@ export interface EffectiveLimits {
   canCreatePlan: boolean;
   subscriptionStatus: string | null;
   subscriptionEndAt: string | null;
+  hasOverride: boolean;
 }
 
 function limitsFromBillingPlan(plan: BillingPlan): Pick<
@@ -46,10 +48,11 @@ function limitsFromBillingPlan(plan: BillingPlan): Pick<
 }
 
 export async function getEffectiveLimits(userId: string): Promise<EffectiveLimits> {
-  const [subscription, usedPlans, usedStorageBytes] = await Promise.all([
+  const [subscription, usedPlans, usedStorageBytes, override] = await Promise.all([
     getActiveUserSubscription(userId),
     countActiveUserPlans(userId),
     getUserStorageUsedBytes(userId),
+    getUserEntitlementOverride(userId),
   ]);
 
   const billingPlan = subscription?.billingPlan;
@@ -65,16 +68,24 @@ export async function getEffectiveLimits(userId: string): Promise<EffectiveLimit
         maxFileBytes: 5 * 1024 * 1024,
       };
 
+  const merged = {
+    ...base,
+    maxPlans: override?.maxPlans ?? base.maxPlans,
+    maxStorageBytes: override?.maxStorageBytes ?? base.maxStorageBytes,
+    maxFileBytes: override?.maxFileBytes ?? base.maxFileBytes,
+  };
+
   const canCreatePlan =
-    base.maxPlans == null ? true : usedPlans < base.maxPlans;
+    merged.maxPlans == null ? true : usedPlans < merged.maxPlans;
 
   return {
-    ...base,
+    ...merged,
     usedPlans,
     usedStorageBytes,
     canCreatePlan,
     subscriptionStatus: subscription?.status ?? null,
     subscriptionEndAt: subscription?.endAt.toISOString() ?? null,
+    hasOverride: Boolean(override),
   };
 }
 

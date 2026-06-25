@@ -5,17 +5,24 @@ export const runtime = "nodejs";
 import { requireAdmin } from "@/lib/auth/get-session";
 import { provisionNewUserBilling } from "@/lib/services/billing";
 import { getAdminUser } from "@/lib/services/admin";
+import { logAdminAction } from "@/lib/services/admin-audit";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
-    await requireAdmin(request);
+    const admin = await requireAdmin(request);
     const { id } = await context.params;
     const user = await getAdminUser(id);
     if (!user) return jsonError("用户不存在", 404);
 
     await provisionNewUserBilling(id);
+    await logAdminAction({
+      adminUserId: admin.userId,
+      action: "subscription.provision_free",
+      targetType: "user",
+      targetId: id,
+    });
     const updated = await getAdminUser(id);
     return jsonOk({ user: updated });
   } catch (e) {

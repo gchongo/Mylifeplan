@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorMessage, Loading } from "@/components/ui/feedback";
+import { AdminEntitlementOverrideForm } from "@/components/admin/admin-entitlement-override-form";
 import { formatBytes } from "@/lib/format-bytes";
 import { useI18n } from "@/components/i18n/i18n-provider";
 
@@ -23,7 +24,14 @@ interface UserDetail {
     maxStorageBytes: number;
     usedPlans: number;
     usedStorageBytes: number;
+    hasOverride?: boolean;
   };
+  entitlementOverride: {
+    maxPlans: number | null;
+    maxStorageBytes: number | null;
+    maxFileBytes: number | null;
+    reason: string | null;
+  } | null;
   subscriptions: Array<{
     id: string;
     planName: string;
@@ -123,6 +131,7 @@ export function AdminUserDetail({ userId }: { userId: string }) {
             </p>
             <p className="mt-1 text-xs text-gray-400">
               {t("admin.currentPlanLabel")}: {user.entitlements.planNameZh ?? "—"}
+              {user.entitlements.hasOverride ? ` · ${t("admin.override.active")}` : ""}
             </p>
           </div>
           <Button
@@ -135,6 +144,12 @@ export function AdminUserDetail({ userId }: { userId: string }) {
           </Button>
         </CardContent>
       </Card>
+
+      <AdminEntitlementOverrideForm
+        userId={userId}
+        initial={user.entitlementOverride}
+        onSaved={load}
+      />
 
       <Card>
         <CardHeader>

@@ -4,13 +4,14 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 import { requireAdmin } from "@/lib/auth/get-session";
 import { updateBillingPlan } from "@/lib/services/billing";
+import { logAdminAction } from "@/lib/services/admin-audit";
 import { billingPlanPatchSchema } from "@/lib/validations/admin";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
-    await requireAdmin(request);
+    const admin = await requireAdmin(request);
     const { id } = await context.params;
     const body = await request.json();
     const parsed = billingPlanPatchSchema.safeParse(body);
@@ -19,6 +20,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     const plan = await updateBillingPlan(id, parsed.data);
+    await logAdminAction({
+      adminUserId: admin.userId,
+      action: "billing_plan.update",
+      targetType: "billing_plan",
+      targetId: id,
+      detail: parsed.data as Record<string, unknown>,
+    });
     return jsonOk({ plan });
   } catch (e) {
     if (e instanceof Error && e.message === "NOT_FOUND") {

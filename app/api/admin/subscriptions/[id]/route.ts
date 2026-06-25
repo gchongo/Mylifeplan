@@ -4,13 +4,14 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 import { requireAdmin } from "@/lib/auth/get-session";
 import { updateAdminSubscription } from "@/lib/services/admin";
+import { logAdminAction } from "@/lib/services/admin-audit";
 import { adminSubscriptionPatchSchema } from "@/lib/validations/admin";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
-    await requireAdmin(request);
+    const admin = await requireAdmin(request);
     const { id } = await params;
     const body = await request.json();
     const parsed = adminSubscriptionPatchSchema.safeParse(body);
@@ -19,6 +20,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     }
 
     const subscription = await updateAdminSubscription(id, parsed.data);
+    await logAdminAction({
+      adminUserId: admin.userId,
+      action: "subscription.update",
+      targetType: "subscription",
+      targetId: id,
+      detail: parsed.data as Record<string, unknown>,
+    });
     return jsonOk({ subscription });
   } catch (e) {
     if (e instanceof Error && e.message === "NOT_FOUND") {

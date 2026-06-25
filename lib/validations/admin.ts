@@ -36,3 +36,13 @@ export type AdminUserPatchInput = z.infer<typeof adminUserPatchSchema>;
 export type AdminSubscriptionPatchInput = z.infer<typeof adminSubscriptionPatchSchema>;
 export type AdminSubscriptionCreateInput = z.infer<typeof adminSubscriptionCreateSchema>;
 export type BillingPlanPatchInput = z.infer<typeof billingPlanPatchSchema>;
+
+export const entitlementOverridePatchSchema = z.object({
+  maxPlans: z.number().int().min(0).nullable().optional(),
+  maxStorageBytes: z.number().int().min(0).nullable().optional(),
+  maxFileBytes: z.number().int().min(0).nullable().optional(),
+  reason: z.string().max(500).nullable().optional(),
+  expiresAt: z.string().datetime().nullable().optional(),
+});
+
+export type EntitlementOverridePatchInput = z.infer<typeof entitlementOverridePatchSchema>;

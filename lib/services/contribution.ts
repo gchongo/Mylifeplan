@@ -5,6 +5,7 @@ import { normalizePlanColor } from "@/lib/plan-color";
 import { writeFeed } from "@/lib/services/feed";
 import type { CreateContributionInput } from "@/lib/validations/contribution";
 import { findRootPlanId } from "@/lib/gantt-contribution-display";
+import { releaseStorageForImageRows, bytesForUploadUrl } from "@/lib/storage-accounting";
 
 type ContributionWithRelations = PlanContribution & {
   plan?: { title: string; type?: string; id?: string };
@@ -95,16 +96,28 @@ async function validateContributionPlanReassignment(
 }
 
 async function syncContributionImages(
+  userId: string,
   contributionId: string,
   imageUrls: string[] | undefined,
   tx: Pick<typeof prisma, "contributionImage"> = prisma,
 ) {
   if (imageUrls === undefined) return;
+  const existing = await tx.contributionImage.findMany({ where: { contributionId } });
+  const nextSet = new Set(imageUrls);
+  const removed = existing.filter((img) => !nextSet.has(img.url));
+  if (removed.length > 0) {
+    await releaseStorageForImageRows(userId, removed);
+  }
   await tx.contributionImage.deleteMany({ where: { contributionId } });
   if (imageUrls.length > 0) {
-    await tx.contributionImage.createMany({
-      data: imageUrls.map((url) => ({ contributionId, url })),
-    });
+    const rows = await Promise.all(
+      imageUrls.map(async (url) => ({
+        contributionId,
+        url,
+        sizeBytes: await bytesForUploadUrl(url),
+      })),
+    );
+    await tx.contributionImage.createMany({ data: rows });
   }
 }
 
@@ -127,7 +140,7 @@ export async function createContribution(userId: string, input: CreateContributi
       },
       include: { plan: { select: { title: true } }, images: true },
     });
-    await syncContributionImages(row.id, input.imageUrls, tx);
+    await syncContributionImages(userId, row.id, input.imageUrls, tx);
     return tx.planContribution.findFirstOrThrow({
       where: { id: row.id },
       include: { plan: { select: { title: true } }, images: true },
@@ -199,7 +212,7 @@ export async function updateContribution(
       },
       include: { plan: { select: { title: true } }, images: true },
     });
-    await syncContributionImages(row.id, input.imageUrls, tx);
+    await syncContributionImages(userId, row.id, input.imageUrls, tx);
     return tx.planContribution.findFirstOrThrow({
       where: { id: row.id },
       include: { plan: { select: { title: true } }, images: true },
@@ -220,9 +233,16 @@ export async function updateContribution(
 export async function deleteContribution(userId: string, id: string) {
   const existing = await prisma.planContribution.findFirst({
     where: { id, userId },
-    include: { plan: { select: { title: true } } },
+    include: {
+      plan: { select: { title: true } },
+      images: true,
+    },
   });
   if (!existing) throw new Error("NOT_FOUND");
+
+  if (existing.images.length > 0) {
+    await releaseStorageForImageRows(userId, existing.images);
+  }
 
   await prisma.$transaction(async (tx) => {
     await tx.planContribution.delete({ where: { id } });

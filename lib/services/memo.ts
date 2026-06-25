@@ -14,6 +14,7 @@ import { parseDateOnly } from "@/lib/dates";
 import { prisma } from "@/lib/db";
 import { syncMemoForPlan } from "@/lib/services/memo-sync";
 import { createPlan, updatePlan } from "@/lib/services/plan";
+import { bytesForUploadUrl, releaseStorageForImageRows } from "@/lib/storage-accounting";
 import { writeFeed } from "@/lib/services/feed";
 
 export async function createStandaloneMemo(
@@ -358,9 +359,14 @@ export async function addMemoImages(userId: string, memoId: string, urls: string
   const memo = await prisma.memo.findFirst({ where: { id: memoId, userId } });
   if (!memo) throw new Error("NOT_FOUND");
   if (urls.length === 0) return [];
-  await prisma.memoImage.createMany({
-    data: urls.map((url) => ({ memoId, url })),
-  });
+  const rows = await Promise.all(
+    urls.map(async (url) => ({
+      memoId,
+      url,
+      sizeBytes: await bytesForUploadUrl(url),
+    })),
+  );
+  await prisma.memoImage.createMany({ data: rows });
   return prisma.memoImage.findMany({ where: { memoId }, orderBy: { createdAt: "asc" } });
 }
 
@@ -441,8 +447,15 @@ export async function assignMemoToPlan(
 }
 
 export async function deleteMemoById(userId: string, memoId: string) {
-  const memo = await prisma.memo.findFirst({ where: { id: memoId, userId } });
+  const memo = await prisma.memo.findFirst({
+    where: { id: memoId, userId },
+    include: { images: true },
+  });
   if (!memo) throw new Error("NOT_FOUND");
+
+  if (memo.images.length > 0) {
+    await releaseStorageForImageRows(userId, memo.images);
+  }
 
   await prisma.$transaction(async (tx) => {
     if (memo.linkedPlanId) {

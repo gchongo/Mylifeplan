@@ -6,6 +6,10 @@ import type {
 } from "@/lib/validations/admin";
 import { getEffectiveLimits } from "@/lib/entitlements";
 import { countActiveUserPlans } from "@/lib/services/billing";
+import {
+  getUserEntitlementOverride,
+  serializeEntitlementOverride,
+} from "@/lib/services/entitlement-override";
 
 export function serializeAdminUser(user: User) {
   return {
@@ -72,6 +76,7 @@ export async function getAdminUser(userId: string) {
 
   const entitlements = await getEffectiveLimits(userId);
   const activePlanCount = await countActiveUserPlans(userId);
+  const overrideRow = await getUserEntitlementOverride(userId);
 
   return {
     ...serializeAdminUser(user),
@@ -81,6 +86,7 @@ export async function getAdminUser(userId: string) {
       memos: user._count.memos,
     },
     entitlements,
+    entitlementOverride: overrideRow ? serializeEntitlementOverride(overrideRow) : null,
     subscriptions: user.subscriptions.map((s) =>
       serializeAdminSubscription({ ...s, billingPlan: s.billingPlan }),
     ),

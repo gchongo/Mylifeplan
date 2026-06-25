@@ -11,6 +11,7 @@ const adminNav = [
   { href: "/admin/plans", key: "admin.plans.nav" as const },
   { href: "/admin/users", key: "admin.users" as const },
   { href: "/admin/subscriptions", key: "admin.subscriptions" as const },
+  { href: "/admin/audit", key: "admin.audit.nav" as const },
 ];
 
 export function AdminPanelHeader({ email }: { email: string }) {
