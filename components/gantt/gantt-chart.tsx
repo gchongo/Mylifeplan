@@ -902,10 +902,11 @@ export const GanttChart = forwardRef<
     setItems((prev) => applyGanttPlanPatch(prev, planPatch, meta));
   }
 
-  function handleScheduleFieldSaved(plan?: GanttPlanPatch) {
+  function handleScheduleFieldSaved(plan?: SerializedPlanForGantt) {
     if (plan) {
       skipNextPlanSyncRef.current = true;
-      applyPlanPatch(plan);
+      dispatchPlanUpdated({ plan });
+      return;
     }
     dispatchPlanUpdated();
   }

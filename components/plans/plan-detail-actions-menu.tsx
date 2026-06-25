@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useI18n } from "@/components/i18n/i18n-provider";
+import { computeFloatingMenuPosition } from "@/lib/floating-menu-position";
 import { cn } from "@/lib/utils";
 
 export interface PlanDetailMenuItem {
@@ -33,12 +34,18 @@ export function PlanDetailActionsMenu({
     const el = buttonRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    setMenuPos({ top: rect.bottom + 4, left: rect.right - 160 });
-  }, []);
+    const menuHeight =
+      menuRef.current?.offsetHeight ?? items.length * 40 + 8;
+    setMenuPos(
+      computeFloatingMenuPosition(rect, menuHeight, 176, { gap: 4, viewportPadding: 8 }),
+    );
+  }, [items.length]);
 
   useLayoutEffect(() => {
     if (!open) return;
     updateMenuPos();
+    const frame = requestAnimationFrame(updateMenuPos);
+    return () => cancelAnimationFrame(frame);
   }, [open, updateMenuPos]);
 
   useEffect(() => {
@@ -82,7 +89,7 @@ export function PlanDetailActionsMenu({
               menuClassName ??
                 "rounded-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900",
             )}
-            style={{ top: menuPos.top, left: Math.max(8, menuPos.left) }}
+            style={{ top: menuPos.top, left: menuPos.left }}
           >
             {items.map((item) => (
               <button

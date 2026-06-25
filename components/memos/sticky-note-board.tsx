@@ -20,6 +20,8 @@ import {
   type MemoQuadrantId,
 } from "@/lib/memo-quadrant";
 import { effectiveStickyPosition, nextStickyColor } from "@/lib/memo-sticky";
+import { dispatchPlanUpdated } from "@/lib/plan-events";
+import type { SerializedPlanForGantt } from "@/lib/gantt-plan-sync";
 
 type NoteState = StickyNoteData & { x: number; y: number };
 
@@ -426,6 +428,7 @@ export function StickyNoteBoard() {
     });
     const body = await res.json();
     if (!res.ok) throw new Error(body.error ?? t("memos.assignModal.assignFailed"));
+    dispatchPlanUpdated({ plan: body.plan as SerializedPlanForGantt });
     setNotes((prev) => prev.filter((n) => n.id !== assignNoteId));
     setAssignNoteId(null);
     if (activeId === assignNoteId) setActiveId(null);

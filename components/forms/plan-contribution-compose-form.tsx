@@ -14,6 +14,7 @@ import { ContributionMarkerColorField } from "@/components/contributions/contrib
 import { PlanColorSwatchField } from "@/components/forms/plan-color-swatch-field";
 import { apiJson } from "@/lib/client-api";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
+import type { SerializedPlanForGantt } from "@/lib/gantt-plan-sync";
 import { nowDatetimeLocal } from "@/lib/dates";
 import { DEFAULT_PLAN_COLOR } from "@/lib/plan-color";
 import { cn } from "@/lib/utils";
@@ -148,6 +149,7 @@ export function PlanContributionComposeForm({
           }),
         });
         onSuccess?.({ kind: "contribution" });
+        dispatchPlanUpdated();
       } else {
         const title = planValues.title.trim();
         if (!title) {
@@ -172,9 +174,8 @@ export function PlanContributionComposeForm({
         );
         setPlanListRefreshKey((k) => k + 1);
         onSuccess?.({ kind: "plan", plan: created.plan });
+        dispatchPlanUpdated({ plan: created.plan as SerializedPlanForGantt });
       }
-
-      dispatchPlanUpdated();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("common.saveFailed"));
     } finally {

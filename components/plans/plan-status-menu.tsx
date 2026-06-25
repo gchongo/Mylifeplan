@@ -18,6 +18,7 @@ import {
   STATUS_STYLES,
   type VisualStatusKey,
 } from "@/lib/task-status-style";
+import { computeFloatingMenuPosition } from "@/lib/floating-menu-position";
 import type { PlanStatus } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -34,8 +35,6 @@ const PLAN_MENU_OPTIONS: StatusMenuOption[] = [
 ];
 
 const MENU_WIDTH = 144;
-const MENU_GAP = 4;
-const VIEWPORT_PADDING = 8;
 const ESTIMATED_MENU_ITEM_HEIGHT = 36;
 
 export function PlanStatusMenuButton({
@@ -96,13 +95,12 @@ export function PlanStatusMenuButton({
     const menuHeight =
       menuRef.current?.offsetHeight ??
       PLAN_MENU_OPTIONS.length * ESTIMATED_MENU_ITEM_HEIGHT + 8;
-    const spaceBelow = window.innerHeight - rect.bottom - MENU_GAP - VIEWPORT_PADDING;
-    const spaceAbove = rect.top - MENU_GAP - VIEWPORT_PADDING;
-    const openUpward = menuHeight > spaceBelow && spaceAbove >= spaceBelow;
-    const top = openUpward
-      ? Math.max(VIEWPORT_PADDING, rect.top - menuHeight - MENU_GAP)
-      : rect.bottom + MENU_GAP;
-    setMenuPos({ top, left: Math.max(VIEWPORT_PADDING, rect.right - MENU_WIDTH) });
+    setMenuPos(
+      computeFloatingMenuPosition(rect, menuHeight, MENU_WIDTH, {
+        gap: 4,
+        viewportPadding: 8,
+      }),
+    );
   }, []);
 
   useLayoutEffect(() => {

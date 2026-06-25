@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useI18n } from "@/components/i18n/i18n-provider";
+import { PLAN_UPDATED_EVENT } from "@/lib/plan-events";
 import { Select } from "@/components/ui";
 
 interface PlanOption {
@@ -35,6 +36,15 @@ export function ParentPlanSelect({
   const resolvedEmptyLabel = emptyLabel ?? t("forms.noParentPlan");
   const [options, setOptions] = useState<{ value: string; label: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    function onPlanUpdated() {
+      setRefreshKey((k) => k + 1);
+    }
+    window.addEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
+    return () => window.removeEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -53,7 +63,7 @@ export function ParentPlanSelect({
         ]);
       })
       .finally(() => setLoading(false));
-  }, [excludePlanId, resolvedEmptyLabel]);
+  }, [excludePlanId, resolvedEmptyLabel, refreshKey]);
 
   return (
     <Select

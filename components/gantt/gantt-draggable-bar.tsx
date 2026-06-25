@@ -3,7 +3,7 @@
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
-import { patchGanttItemFromPlan, type GanttPlanPatch } from "@/lib/gantt-plan-sync";
+import { patchGanttItemFromPlan, type GanttPlanPatch, type SerializedPlanForGantt } from "@/lib/gantt-plan-sync";
 import { ganttPlanBarMetrics, type TimelineLayout } from "@/lib/gantt-scale";
 import {
   constrainPlanMoveByMs,
@@ -245,7 +245,7 @@ export function GanttDraggableBar({
           endDate: commit.endDate,
         });
         onUpdated(patchGanttItemFromPlan(optimisticItem, plan), { fromServer: true });
-        dispatchPlanUpdated();
+        dispatchPlanUpdated({ plan: data.plan as SerializedPlanForGantt });
       } catch {
         onDragFailed?.();
       } finally {

@@ -13,7 +13,7 @@ import {
   localizeScheduleEditableLabel,
 } from "@/lib/i18n/gantt-helpers";
 import { cn } from "@/lib/utils";
-import type { GanttPlanPatch } from "@/lib/gantt-plan-sync";
+import type { SerializedPlanForGantt } from "@/lib/gantt-plan-sync";
 
 function scheduleFieldEdge(
   field: ReturnType<typeof scheduleColumnPlanField>,
@@ -34,7 +34,7 @@ export function GanttScheduleEditableCell({
   rawValue: string | null;
   cell: ScheduleCellValue;
   width: number;
-  onSaved: (plan?: GanttPlanPatch) => void;
+  onSaved: (plan?: SerializedPlanForGantt) => void;
 }) {
   const { t } = useI18n();
   const edge = scheduleFieldEdge(scheduleColumnPlanField(columnId));
@@ -80,7 +80,7 @@ export function GanttScheduleEditableCell({
             cache: "no-store",
             body: JSON.stringify({ [field]: nextIso }),
           });
-          const data = (await res.json()) as { error?: string; plan?: GanttPlanPatch };
+          const data = (await res.json()) as { error?: string; plan?: SerializedPlanForGantt };
           if (!res.ok) return data.error ?? t("gantt.contributionDrawer.saveFailed");
           onSaved(data.plan);
         } catch {

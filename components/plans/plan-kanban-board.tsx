@@ -349,7 +349,7 @@ export function PlanKanbanBoard({
           const data = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(data.error ?? t("common.restoreFailed"));
           await reloadPlans();
-          dispatchPlanUpdated();
+          dispatchPlanUpdated(data.plan ? { plan: data.plan } : undefined);
         } catch (e) {
           setArchivedPlans(prevArchived);
           setPlans(prevActive);
@@ -402,7 +402,7 @@ export function PlanKanbanBoard({
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error ?? t("common.updateFailed"));
         await reloadPlans();
-        dispatchPlanUpdated();
+        dispatchPlanUpdated(data.plan ? { plan: data.plan } : undefined);
       } catch (e) {
         setPlans(prevPlans);
         setError(e instanceof Error ? e.message : t("common.updateFailed"));
@@ -439,7 +439,7 @@ export function PlanKanbanBoard({
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error ?? t("common.archiveFailed"));
         await reloadPlans();
-        dispatchPlanUpdated();
+        dispatchPlanUpdated(data.plan ? { plan: data.plan } : undefined);
       } catch (e) {
         setPlans(prevPlans);
         setArchivedPlans(prevArchived);

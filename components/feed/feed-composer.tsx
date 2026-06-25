@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { apiJson } from "@/lib/client-api";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
+import type { SerializedPlanForGantt } from "@/lib/gantt-plan-sync";
 import { cn } from "@/lib/utils";
 import { nowDatetimeLocal } from "@/lib/dates";
 import { DEFAULT_PLAN_COLOR } from "@/lib/plan-color";
@@ -111,7 +112,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
           setError(t("feed.composer.errorTitle"));
           return;
         }
-        await apiJson("/api/plans", {
+        const created = await apiJson<{ plan?: SerializedPlanForGantt }>("/api/plans", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -124,7 +125,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
             color: planColor,
           }),
         });
-        dispatchPlanUpdated();
+        dispatchPlanUpdated({ plan: created.plan });
       } else {
         const content = memoText.trim();
         if (!content) return;

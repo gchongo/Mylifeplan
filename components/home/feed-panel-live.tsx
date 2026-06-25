@@ -14,6 +14,7 @@ import type { FeedActionType, FeedItemType } from "@prisma/client";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 import { apiJson } from "@/lib/client-api";
+import { PLAN_UPDATED_EVENT, planDataVersion } from "@/lib/plan-events";
 
 interface FeedRow {
   id: string;
@@ -49,6 +50,7 @@ export function FeedPanelLive({
   const [typeFilter, setTypeFilter] = useState<FeedTypeFilterId>("all");
   const listRef = useRef<HTMLUListElement>(null);
   const loadMoreRef = useRef<HTMLLIElement>(null);
+  const planSyncedVersionRef = useRef(planDataVersion);
 
   const load = useCallback(
     async (
@@ -104,10 +106,38 @@ export function FeedPanelLive({
     return () => observer.disconnect();
   }, [items.length, nextCursor, loadMore]);
 
-  function refreshFeed() {
-    setLoading(true);
-    load(null, false, typeFilter).finally(() => setLoading(false));
-  }
+  const refreshFeed = useCallback(
+    (opts?: { silent?: boolean }) => {
+      if (!opts?.silent) setLoading(true);
+      load(null, false, typeFilter).finally(() => {
+        if (!opts?.silent) setLoading(false);
+      });
+    },
+    [load, typeFilter],
+  );
+
+  useEffect(() => {
+    function onPlanUpdated(event: Event) {
+      const detail = (event as CustomEvent<{ version?: number }>).detail;
+      planSyncedVersionRef.current = detail?.version ?? planDataVersion;
+      refreshFeed({ silent: true });
+    }
+
+    function syncIfStale() {
+      if (document.visibilityState !== "visible") return;
+      if (planDataVersion <= planSyncedVersionRef.current) return;
+      planSyncedVersionRef.current = planDataVersion;
+      refreshFeed({ silent: true });
+    }
+
+    window.addEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
+    document.addEventListener("visibilitychange", syncIfStale);
+    syncIfStale();
+    return () => {
+      window.removeEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
+      document.removeEventListener("visibilitychange", syncIfStale);
+    };
+  }, [refreshFeed]);
 
   const emptyDescription =
     typeFilter === "all"
