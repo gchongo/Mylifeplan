@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { PlanSummaryStats } from "@/lib/plan-summary";
 import { apiJson } from "@/lib/client-api";
+import { APP_REFRESH_EVENT } from "@/lib/app-refresh-events";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
@@ -178,12 +179,6 @@ export function usePlanSummary() {
     setSummary(data.summary);
   }, []);
 
-  useEffect(() => {
-    load()
-      .catch((e) => setError(e instanceof Error ? e.message : t("summary.loadFailed")))
-      .finally(() => setLoading(false));
-  }, [load]);
-
   const reload = useCallback(async () => {
     setLoading(true);
     try {
@@ -192,6 +187,20 @@ export function usePlanSummary() {
       setLoading(false);
     }
   }, [load]);
+
+  useEffect(() => {
+    load()
+      .catch((e) => setError(e instanceof Error ? e.message : t("summary.loadFailed")))
+      .finally(() => setLoading(false));
+  }, [load, t]);
+
+  useEffect(() => {
+    function onAppRefresh() {
+      void reload();
+    }
+    window.addEventListener(APP_REFRESH_EVENT, onAppRefresh);
+    return () => window.removeEventListener(APP_REFRESH_EVENT, onAppRefresh);
+  }, [reload]);
 
   return { summary, loading, error, reload };
 }

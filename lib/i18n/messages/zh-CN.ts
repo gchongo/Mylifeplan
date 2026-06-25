@@ -267,8 +267,8 @@ const zhCN = {
     memoQuadrant: {
       urgent_important: { short: "Q1", label: "重要且紧急", hint: "立即处理" },
       not_urgent_important: { short: "Q2", label: "重要不紧急", hint: "计划安排" },
-      urgent_not_important: { short: "Q3", label: "紧急不重要", hint: "委托他人" },
-      not_urgent_not_important: { short: "Q4", label: "不重要不紧急", hint: "尽量精简" },
+      urgent_not_important: { short: "Q4", label: "紧急不重要", hint: "委托他人" },
+      not_urgent_not_important: { short: "Q3", label: "不重要不紧急", hint: "尽量精简" },
     },
   },
   gantt: {
@@ -664,6 +664,8 @@ const zhCN = {
     expandNav: "展开导航",
     closeNav: "关闭导航",
     settings: "设置",
+    refresh: "刷新数据",
+    openProfileSettings: "个人资料与设置",
   },
   panel: {
     expandView: "放大查看{label}",
@@ -711,7 +713,7 @@ const zhCN = {
   },
   settings: {
     title: "设置",
-    intro: "管理时区、主题、语言等个人偏好。",
+    intro: "管理个人资料、订阅、时区、主题、语言等偏好。",
     languageNote: "切换语言将立即更新界面文案；用户创建的内容不会翻译。",
     general: "通用",
     generalDesc: "影响日期显示与界面语言。",
@@ -723,6 +725,19 @@ const zhCN = {
     theme: "主题",
     account: "账户",
     email: "登录邮箱",
+    profile: {
+      title: "个人资料",
+      intro: "设置头像与昵称，右上角将显示你的头像。",
+      nickname: "昵称",
+      nicknamePlaceholder: "输入昵称（可选）",
+      changeAvatar: "更换头像",
+      removeAvatar: "移除头像",
+      uploading: "上传中…",
+      saved: "昵称已保存",
+      avatarUpdated: "头像已更新",
+      avatarRemoved: "头像已移除",
+      uploadFailed: "头像上传失败",
+    },
     calendarWeek: "日历 · 周数",
     calendarWeekDesc: "在月历网格左侧显示周数，便于对照全年进度。",
     ganttToday: "甘特图 · 今天列",

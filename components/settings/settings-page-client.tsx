@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/select";
 import { GanttActualLineSettings } from "@/components/settings/gantt-actual-line-settings";
 import { GanttTodayColumnSettings } from "@/components/settings/gantt-today-column-settings";
 import { CalendarWeekNumberSettings } from "@/components/settings/calendar-week-number-settings";
+import { SettingsProfileSection } from "@/components/settings/settings-profile-section";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { TIMEZONE_OPTIONS, THEME_OPTIONS, LANGUAGE_OPTIONS, resolveTimezone } from "@/lib/user-preferences";
 import { useSettings } from "@/components/settings/settings-provider";
@@ -32,7 +33,7 @@ function SettingsSection({
   );
 }
 
-export function SettingsPageClient({ userEmail }: { userEmail?: string | null }) {
+export function SettingsPageClient() {
   const { t } = useI18n();
   const { preferences, ready, setTimezone, setTheme, setLanguage, setGanttActualLine, setGanttTodayColumn, setCalendarWeekNumbers } =
     useSettings();
@@ -57,6 +58,10 @@ export function SettingsPageClient({ userEmail }: { userEmail?: string | null })
         <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{t("settings.title")}</h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t("settings.intro")}</p>
       </div>
+
+      <SettingsSubscriptionSection />
+
+      <SettingsProfileSection />
 
       <SettingsSection title={t("settings.general")} description={t("settings.generalDesc")}>
         <Select
@@ -115,16 +120,8 @@ export function SettingsPageClient({ userEmail }: { userEmail?: string | null })
         />
       </SettingsSection>
 
-      <SettingsSubscriptionSection />
-
       <SettingsSection title={t("settings.account")}>
-        <dl className="space-y-3 text-sm">
-          <div className="flex items-center justify-between gap-4">
-            <dt className="text-gray-500 dark:text-gray-400">{t("settings.email")}</dt>
-            <dd className="font-medium text-gray-900 dark:text-gray-100">{userEmail ?? "—"}</dd>
-          </div>
-        </dl>
-        <div className="flex flex-wrap items-center gap-3 pt-2">
+        <div className="flex flex-wrap items-center gap-3">
           <Link href="/plans" className="text-sm text-brand-600 hover:underline dark:text-brand-400">
             {t("common.backToPlans")}
           </Link>

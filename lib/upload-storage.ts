@@ -10,7 +10,7 @@ const ALLOWED = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 export async function saveUserImageUpload(params: {
   userId: string;
   file: File;
-  category: "contributions" | "memos";
+  category: "contributions" | "memos" | "avatars";
 }): Promise<{ url: string; sizeBytes: number }> {
   const { userId, file, category } = params;
 

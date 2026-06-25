@@ -7,6 +7,7 @@ import {
   MEMO_QUADRANTS,
   resolveMemoBoardAxisPixels,
 } from "@/lib/memo-quadrant";
+import { cn } from "@/lib/utils";
 
 function AxisIconImportant({ className }: { className?: string }) {
   return (
@@ -119,7 +120,15 @@ export function MemoBoardQuadrantGrid({
               height: bounds.height,
             }}
           >
-            <span className="pointer-events-none inline-flex gap-1 p-1.5 text-[10px] font-bold text-gray-500/70 dark:text-gray-400/70">
+            <span
+              className={cn(
+                "pointer-events-none absolute inline-flex gap-1 text-[10px] font-bold text-gray-500/70 dark:text-gray-400/70",
+                q.id === "urgent_important" && "right-0 top-0 p-1.5",
+                q.id === "not_urgent_important" && "left-0 top-0 p-1.5",
+                q.id === "not_urgent_not_important" && "bottom-0 left-0 p-1.5",
+                q.id === "urgent_not_important" && "bottom-0 right-0 p-1.5",
+              )}
+            >
               <span>{localizeMemoQuadrantOption(t, q.id).shortLabel}</span>
               <span className="font-normal opacity-90">{localizeMemoQuadrantOption(t, q.id).label}</span>
             </span>

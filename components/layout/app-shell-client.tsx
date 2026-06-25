@@ -8,6 +8,7 @@ import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 import { SidebarNavDrawer } from "@/components/layout/sidebar-brand";
 import { SidebarNavMenu } from "@/components/layout/sidebar-nav";
 import { TopBar } from "@/components/layout/top-bar";
+import { UserProfileProvider, type UserProfile } from "@/components/user/user-profile-provider";
 import { isAppShellFullBleed } from "@/lib/app-shell-layout";
 import { readStorageItem, writeStorageItem } from "@/lib/app-storage";
 import { cn } from "@/lib/utils";
@@ -26,20 +27,22 @@ function readStoredOpen(fallback: boolean) {
 export function AppShellClient({
   children,
   title,
-  userEmail,
+  userProfile,
   userRole,
 }: {
   children: React.ReactNode;
   title?: string;
-  userEmail?: string | null;
+  userProfile: UserProfile;
   userRole?: "user" | "admin";
 }) {
   return (
     <SettingsProvider>
       <I18nProvider>
-        <AppShellInner title={title} userEmail={userEmail} userRole={userRole}>
-          {children}
-        </AppShellInner>
+        <UserProfileProvider initialProfile={userProfile}>
+          <AppShellInner title={title} userRole={userRole}>
+            {children}
+          </AppShellInner>
+        </UserProfileProvider>
       </I18nProvider>
     </SettingsProvider>
   );
@@ -48,12 +51,10 @@ export function AppShellClient({
 function AppShellInner({
   children,
   title,
-  userEmail,
   userRole,
 }: {
   children: React.ReactNode;
   title?: string;
-  userEmail?: string | null;
   userRole?: "user" | "admin";
 }) {
   const { t } = useI18n();
@@ -107,7 +108,7 @@ function AppShellInner({
         fullBleed ? "h-screen max-h-[100dvh] overflow-hidden" : "min-h-screen",
       )}
     >
-      <TopBar title={title} userEmail={userEmail} navOpen={navOpen} onNavToggle={toggleNav} />
+      <TopBar title={title} navOpen={navOpen} onNavToggle={toggleNav} />
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {!isDesktop && navOpen && (

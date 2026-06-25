@@ -267,8 +267,8 @@ const enUS = {
     memoQuadrant: {
       urgent_important: { short: "Q1", label: "Urgent & important", hint: "Do now" },
       not_urgent_important: { short: "Q2", label: "Important, not urgent", hint: "Schedule" },
-      urgent_not_important: { short: "Q3", label: "Urgent, not important", hint: "Delegate" },
-      not_urgent_not_important: { short: "Q4", label: "Neither urgent nor important", hint: "Minimize" },
+      urgent_not_important: { short: "Q4", label: "Urgent, not important", hint: "Delegate" },
+      not_urgent_not_important: { short: "Q3", label: "Neither urgent nor important", hint: "Minimize" },
     },
   },
   gantt: {
@@ -664,6 +664,8 @@ const enUS = {
     expandNav: "Expand navigation",
     closeNav: "Close navigation",
     settings: "Settings",
+    refresh: "Refresh data",
+    openProfileSettings: "Profile and settings",
   },
   panel: {
     expandView: "Expand {label}",
@@ -711,7 +713,7 @@ const enUS = {
   },
   settings: {
     title: "Settings",
-    intro: "Manage timezone, theme, language, and other preferences.",
+    intro: "Manage profile, subscription, timezone, theme, language, and other preferences.",
     languageNote: "Language changes apply immediately. Your own plan and memo text is not translated.",
     general: "General",
     generalDesc: "Affects date display and UI language.",
@@ -723,6 +725,19 @@ const enUS = {
     theme: "Theme",
     account: "Account",
     email: "Email",
+    profile: {
+      title: "Profile",
+      intro: "Set your avatar and nickname. Your avatar appears in the top bar.",
+      nickname: "Nickname",
+      nicknamePlaceholder: "Enter a nickname (optional)",
+      changeAvatar: "Change avatar",
+      removeAvatar: "Remove avatar",
+      uploading: "Uploading…",
+      saved: "Nickname saved",
+      avatarUpdated: "Avatar updated",
+      avatarRemoved: "Avatar removed",
+      uploadFailed: "Avatar upload failed",
+    },
     calendarWeek: "Calendar · Week numbers",
     calendarWeekDesc: "Show week numbers on the left of the month grid.",
     ganttToday: "Gantt · Today column",

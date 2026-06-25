@@ -1,18 +1,19 @@
 import { AppShellClient } from "@/components/layout/app-shell-client";
+import type { UserProfile } from "@/components/user/user-profile-provider";
 
 export function AppShell({
   children,
   title,
-  userEmail,
+  userProfile,
   userRole,
 }: {
   children: React.ReactNode;
   title?: string;
-  userEmail?: string | null;
+  userProfile: UserProfile;
   userRole?: "user" | "admin";
 }) {
   return (
-    <AppShellClient title={title} userEmail={userEmail} userRole={userRole}>
+    <AppShellClient title={title} userProfile={userProfile} userRole={userRole}>
       {children}
     </AppShellClient>
   );

@@ -18,14 +18,14 @@ export function FullPanelPage({
     <div
       className={cn(
         "flex min-w-0 flex-col",
-        scrollable ? "w-full" : "min-h-0 flex-1 overflow-hidden",
+        scrollable ? "min-h-0 flex-1 overflow-y-auto overscroll-contain" : "min-h-0 flex-1 overflow-hidden",
         centered && "bg-gray-50 dark:bg-gray-950",
       )}
     >
       <div
         className={cn(
-          "mx-auto flex w-full max-w-full flex-col gap-3 px-4 lg:px-6",
-          scrollable ? "py-0" : "h-full min-h-0 overflow-hidden",
+          "mx-auto flex w-full max-w-full flex-col gap-3 px-4 py-4 lg:px-6",
+          scrollable ? "min-h-min" : "h-full min-h-0 overflow-hidden",
           centered && centeredPageWidthClass,
         )}
       >
