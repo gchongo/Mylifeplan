@@ -71,6 +71,7 @@ export function ExecutionBreakdown({
   className,
   emptyText,
   barWidthScale = 1,
+  layout,
 }: {
   segments: Seg[];
   columns?: 1 | 2;
@@ -78,6 +79,7 @@ export function ExecutionBreakdown({
   className?: string;
   emptyText?: string;
   barWidthScale?: number;
+  layout?: "stacked" | "inline";
 }) {
   const { t } = useI18n();
   const label = emptyText ?? t("summary.noExecutionData");
@@ -93,6 +95,7 @@ export function ExecutionBreakdown({
       columns={columns}
       dense={dense}
       barWidthScale={barWidthScale}
+      layout={layout ?? (dense ? "inline" : "stacked")}
       className={className}
     />
   );
@@ -130,15 +133,15 @@ export function SummaryCompletionExecutionRow({
   return (
     <div
       className={cn(
-        "flex items-stretch gap-3 rounded-lg border border-gray-100 bg-white/60 py-2.5 pl-3 pr-2.5 dark:border-gray-800 dark:bg-gray-900/40",
+        "flex items-stretch gap-4 rounded-lg border border-gray-100 bg-white/60 py-2.5 pl-4 pr-3 dark:border-gray-800 dark:bg-gray-900/40",
         className,
       )}
     >
-      <div className="flex min-w-[6.5rem] shrink-0 flex-col items-center self-stretch">
+      <div className="flex min-w-[7rem] shrink-0 flex-col items-center self-stretch px-2">
         <p className="mb-1 w-full text-center text-[10px] font-medium text-gray-500 dark:text-gray-400">
           {t("summary.completionRate")}
         </p>
-        <div className="flex flex-1 items-center justify-center py-0.5">
+        <div className="flex flex-1 items-center justify-center px-1 py-1">
           <CompletionRateDonut
             statusSegments={statusSegments}
             completionRate={summary.completionRate}
@@ -150,11 +153,11 @@ export function SummaryCompletionExecutionRow({
 
       <div
         ref={barsRef}
-        className="flex min-h-[72px] min-w-0 flex-1 flex-col self-stretch border-l border-gray-100 py-0.5 pl-3 dark:border-gray-800"
+        className="flex min-h-[72px] min-w-0 flex-1 flex-col self-stretch border-l border-gray-100 py-0.5 pl-3.5 dark:border-gray-800"
       >
-        <p className="mb-1 text-[10px] font-medium text-gray-500 dark:text-gray-400">{t("summary.execution")}</p>
+        <p className="mb-1.5 text-[10px] font-medium text-gray-500 dark:text-gray-400">{t("summary.execution")}</p>
         <div className="flex flex-1 items-center">
-          <ExecutionBreakdown segments={executionSegments} dense barWidthScale={0.88} className="w-full" />
+          <ExecutionBreakdown segments={executionSegments} dense layout="inline" className="w-full" />
         </div>
       </div>
     </div>

@@ -276,6 +276,7 @@ export function IconHorizontalBars({
   columns = 1,
   dense = false,
   barWidthScale = 1,
+  layout = "stacked",
 }: {
   segments: SummarySegment[];
   renderIcon: (seg: SummarySegment) => ReactNode;
@@ -283,10 +284,15 @@ export function IconHorizontalBars({
   columns?: 1 | 2;
   dense?: boolean;
   barWidthScale?: number;
+  layout?: "stacked" | "inline";
 }) {
   const { t } = useI18n();
   const max = Math.max(1, ...segments.map((s) => s.value));
   const widthScale = Math.min(1, Math.max(0.5, barWidthScale));
+  const inline = layout === "inline";
+  const labelWidth = dense ? "5.75rem" : "6.5rem";
+  const barHeight = dense ? "h-2.5" : "h-3";
+  const textSize = dense ? "text-[10px]" : "text-xs";
 
   if (segments.length === 0) {
     return (
@@ -308,7 +314,49 @@ export function IconHorizontalBars({
         className,
       )}
     >
-      {segments.map((seg) => (
+      {segments.map((seg) => {
+        const barPct = (seg.value / max) * 100;
+
+        if (inline) {
+          return (
+            <li key={seg.key ?? seg.label} className="flex min-w-0 items-center gap-2">
+              <span
+                className={cn(
+                  "flex shrink-0 items-center gap-1.5 text-gray-600 dark:text-gray-300",
+                  textSize,
+                )}
+                style={{ width: labelWidth }}
+              >
+                <ChartIconSlot tinted={seg.color}>{renderIcon(seg)}</ChartIconSlot>
+                <span className="min-w-0 truncate">{seg.label}</span>
+              </span>
+              <div className="flex min-w-0 flex-1 items-center">
+                <div
+                  className="flex items-center gap-1"
+                  style={{
+                    width: `${Math.max(barPct * widthScale, seg.value > 0 ? 14 : 0)}%`,
+                    minWidth: seg.value > 0 ? "2.25rem" : undefined,
+                  }}
+                >
+                  <div
+                    className={cn("min-w-0 flex-1 rounded-full transition-all", barHeight)}
+                    style={{ backgroundColor: seg.color }}
+                  />
+                  <span
+                    className={cn(
+                      "shrink-0 font-semibold tabular-nums text-gray-900 dark:text-gray-100",
+                      textSize,
+                    )}
+                  >
+                    {seg.value}
+                  </span>
+                </div>
+              </div>
+            </li>
+          );
+        }
+
+        return (
         <li key={seg.key ?? seg.label}>
           <div
             className={cn(
@@ -338,7 +386,8 @@ export function IconHorizontalBars({
             />
           </div>
         </li>
-      ))}
+        );
+      })}
     </ul>
   );
 }
