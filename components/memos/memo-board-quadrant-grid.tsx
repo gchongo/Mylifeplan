@@ -1,15 +1,12 @@
 "use client";
 
-import { useRef } from "react";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { localizeMemoQuadrantOption } from "@/lib/i18n/feed-helpers";
 import {
-  clampMemoAxisRatio,
+  DEFAULT_MEMO_BOARD_AXIS,
   MEMO_QUADRANTS,
   resolveMemoBoardAxisPixels,
-  type MemoBoardAxis,
 } from "@/lib/memo-quadrant";
-import { cn } from "@/lib/utils";
 
 function AxisIconImportant({ className }: { className?: string }) {
   return (
@@ -85,123 +82,58 @@ export function MemoBoardAxisEdgeIcons() {
 export function MemoBoardQuadrantGrid({
   boardWidth,
   boardHeight,
-  axis,
-  onAxisDragStart,
-  onAxisChange,
-  onAxisCommit,
 }: {
   boardWidth: number;
   boardHeight: number;
-  axis: MemoBoardAxis;
-  onAxisDragStart: () => void;
-  onAxisChange: (axis: MemoBoardAxis) => void;
-  onAxisCommit: (axis: MemoBoardAxis) => void;
 }) {
   const { t } = useI18n();
-  const dragRef = useRef<{
-    startX: number;
-    startY: number;
-    origXRatio: number;
-    origYRatio: number;
-  } | null>(null);
-
-  const { axisX, axisY } = resolveMemoBoardAxisPixels(boardWidth, boardHeight, axis);
-
-  function onHandlePointerDown(e: React.PointerEvent) {
-    e.stopPropagation();
-    e.preventDefault();
-    onAxisDragStart();
-    dragRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      origXRatio: axis.axisXRatio,
-      origYRatio: axis.axisYRatio,
-    };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  }
-
-  function onHandlePointerMove(e: React.PointerEvent) {
-    const drag = dragRef.current;
-    if (!drag) return;
-    const nextX = clampMemoAxisRatio(drag.origXRatio + (e.clientX - drag.startX) / boardWidth);
-    const nextY = clampMemoAxisRatio(drag.origYRatio + (e.clientY - drag.startY) / boardHeight);
-    onAxisChange({ axisXRatio: nextX, axisYRatio: nextY });
-  }
-
-  function onHandlePointerUp(e: React.PointerEvent) {
-    const drag = dragRef.current;
-    if (!drag) return;
-    dragRef.current = null;
-    const nextX = clampMemoAxisRatio(drag.origXRatio + (e.clientX - drag.startX) / boardWidth);
-    const nextY = clampMemoAxisRatio(drag.origYRatio + (e.clientY - drag.startY) / boardHeight);
-    const next = { axisXRatio: nextX, axisYRatio: nextY };
-    onAxisCommit(next);
-  }
+  const { axisX, axisY } = resolveMemoBoardAxisPixels(
+    boardWidth,
+    boardHeight,
+    DEFAULT_MEMO_BOARD_AXIS,
+  );
 
   return (
-    <>
-      <div className="pointer-events-none absolute inset-0 z-[5]" aria-hidden>
-        {MEMO_QUADRANTS.map((q) => {
-          const bounds = (() => {
-            switch (q.id) {
-              case "urgent_important":
-                return { left: axisX, top: 0, width: boardWidth - axisX, height: axisY };
-              case "not_urgent_important":
-                return { left: 0, top: 0, width: axisX, height: axisY };
-              case "urgent_not_important":
-                return { left: axisX, top: axisY, width: boardWidth - axisX, height: boardHeight - axisY };
-              default:
-                return { left: 0, top: axisY, width: axisX, height: boardHeight - axisY };
-            }
-          })();
-          return (
-            <div
-              key={q.id}
-              className="absolute border border-dashed border-black/10 dark:border-white/10"
-              style={{
-                left: bounds.left,
-                top: bounds.top,
-                width: bounds.width,
-                height: bounds.height,
-              }}
-            >
-              <span className="pointer-events-none inline-flex p-1.5 text-[10px] font-bold text-gray-500/70 dark:text-gray-400/70">
-                {localizeMemoQuadrantOption(t, q.id).shortLabel}
-              </span>
-            </div>
-          );
-        })}
+    <div className="pointer-events-none absolute inset-0 z-[5]" aria-hidden>
+      {MEMO_QUADRANTS.map((q) => {
+        const bounds = (() => {
+          switch (q.id) {
+            case "urgent_important":
+              return { left: axisX, top: 0, width: boardWidth - axisX, height: axisY };
+            case "not_urgent_important":
+              return { left: 0, top: 0, width: axisX, height: axisY };
+            case "urgent_not_important":
+              return { left: axisX, top: axisY, width: boardWidth - axisX, height: boardHeight - axisY };
+            default:
+              return { left: 0, top: axisY, width: axisX, height: boardHeight - axisY };
+          }
+        })();
+        return (
+          <div
+            key={q.id}
+            className="absolute border border-dashed border-black/10 dark:border-white/10"
+            style={{
+              left: bounds.left,
+              top: bounds.top,
+              width: bounds.width,
+              height: bounds.height,
+            }}
+          >
+            <span className="pointer-events-none inline-flex p-1.5 text-[10px] font-bold text-gray-500/70 dark:text-gray-400/70">
+              {localizeMemoQuadrantOption(t, q.id).shortLabel}
+            </span>
+          </div>
+        );
+      })}
 
-        <div
-          className="absolute top-0 w-px bg-black/20 dark:bg-white/20"
-          style={{ left: axisX, height: boardHeight }}
-        />
-        <div
-          className="absolute left-0 h-px bg-black/20 dark:bg-white/20"
-          style={{ top: axisY, width: boardWidth }}
-        />
-      </div>
-
-      <button
-        type="button"
-        className={cn(
-          "absolute z-30 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2",
-          "cursor-move items-center justify-center rounded-full border border-black/15 bg-white/95 shadow-md",
-          "text-gray-600 hover:bg-white hover:shadow-lg dark:border-white/20 dark:bg-gray-900/95 dark:text-gray-300",
-        )}
-        style={{ left: axisX, top: axisY }}
-        title={t("memos.axis.resize")}
-        aria-label={t("memos.axis.resize")}
-        onPointerDown={onHandlePointerDown}
-        onPointerMove={onHandlePointerMove}
-        onPointerUp={onHandlePointerUp}
-        onPointerCancel={onHandlePointerUp}
-      >
-        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" d="M12 3v18M3 12h18" />
-          <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" />
-        </svg>
-      </button>
-    </>
+      <div
+        className="absolute top-0 w-px bg-black/20 dark:bg-white/20"
+        style={{ left: axisX, height: boardHeight }}
+      />
+      <div
+        className="absolute left-0 h-px bg-black/20 dark:bg-white/20"
+        style={{ top: axisY, width: boardWidth }}
+      />
+    </div>
   );
 }

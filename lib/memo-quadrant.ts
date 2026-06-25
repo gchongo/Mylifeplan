@@ -65,10 +65,6 @@ export const MEMO_AXIS_LABELS = {
   right: "紧急",
 } as const;
 
-export const MEMO_BOARD_AXIS_STORAGE_KEY = "mylifeplan-memo-board-axis";
-export const MEMO_AXIS_RATIO_MIN = 0.22;
-export const MEMO_AXIS_RATIO_MAX = 0.78;
-
 export type MemoBoardAxis = {
   axisXRatio: number;
   axisYRatio: number;
@@ -79,47 +75,16 @@ export const DEFAULT_MEMO_BOARD_AXIS: MemoBoardAxis = {
   axisYRatio: 0.5,
 };
 
-export function clampMemoAxisRatio(ratio: number): number {
-  return Math.min(MEMO_AXIS_RATIO_MAX, Math.max(MEMO_AXIS_RATIO_MIN, ratio));
-}
-
-export function normalizeMemoBoardAxis(
-  axis: Partial<MemoBoardAxis> | null | undefined,
-): MemoBoardAxis {
-  return {
-    axisXRatio: clampMemoAxisRatio(axis?.axisXRatio ?? DEFAULT_MEMO_BOARD_AXIS.axisXRatio),
-    axisYRatio: clampMemoAxisRatio(axis?.axisYRatio ?? DEFAULT_MEMO_BOARD_AXIS.axisYRatio),
-  };
-}
-
-export function readMemoBoardAxisFromStorage(): MemoBoardAxis {
-  if (typeof window === "undefined") return DEFAULT_MEMO_BOARD_AXIS;
-  try {
-    const raw = localStorage.getItem(MEMO_BOARD_AXIS_STORAGE_KEY);
-    if (!raw) return DEFAULT_MEMO_BOARD_AXIS;
-    return normalizeMemoBoardAxis(JSON.parse(raw) as Partial<MemoBoardAxis>);
-  } catch {
-    return DEFAULT_MEMO_BOARD_AXIS;
-  }
-}
-
-export function writeMemoBoardAxisToStorage(axis: MemoBoardAxis): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(MEMO_BOARD_AXIS_STORAGE_KEY, JSON.stringify(normalizeMemoBoardAxis(axis)));
-}
-
 export function resolveMemoBoardAxisPixels(
   boardWidth: number,
   boardHeight: number,
   axis: MemoBoardAxis = DEFAULT_MEMO_BOARD_AXIS,
 ) {
-  const axisXRatio = clampMemoAxisRatio(axis.axisXRatio);
-  const axisYRatio = clampMemoAxisRatio(axis.axisYRatio);
   return {
-    axisXRatio,
-    axisYRatio,
-    axisX: boardWidth * axisXRatio,
-    axisY: boardHeight * axisYRatio,
+    axisXRatio: axis.axisXRatio,
+    axisYRatio: axis.axisYRatio,
+    axisX: boardWidth * axis.axisXRatio,
+    axisY: boardHeight * axis.axisYRatio,
   };
 }
 
@@ -184,36 +149,6 @@ export function detectMemoQuadrant(
   if (important && !urgent) return "not_urgent_important";
   if (!important && urgent) return "urgent_not_important";
   return "not_urgent_not_important";
-}
-
-export function mapStickyPositionForAxisChange(
-  x: number,
-  y: number,
-  stickyWidth: number,
-  stickyHeight: number,
-  quadrant: MemoQuadrantId,
-  boardWidth: number,
-  boardHeight: number,
-  fromAxis: MemoBoardAxis,
-  toAxis: MemoBoardAxis,
-): { x: number; y: number } {
-  const oldBounds = getQuadrantBounds(quadrant, boardWidth, boardHeight, fromAxis);
-  const newBounds = getQuadrantBounds(quadrant, boardWidth, boardHeight, toAxis);
-
-  if (oldBounds.width <= 0 || oldBounds.height <= 0) {
-    return { x, y };
-  }
-
-  const relX = (x - oldBounds.left) / oldBounds.width;
-  const relY = (y - oldBounds.top) / oldBounds.height;
-
-  let nextX = newBounds.left + relX * newBounds.width;
-  let nextY = newBounds.top + relY * newBounds.height;
-
-  nextX = Math.max(0, Math.min(boardWidth - stickyWidth, nextX));
-  nextY = Math.max(0, Math.min(boardHeight - stickyHeight, nextY));
-
-  return { x: nextX, y: nextY };
 }
 
 /** 远程创建便签时，按象限落在板上的默认位置 */

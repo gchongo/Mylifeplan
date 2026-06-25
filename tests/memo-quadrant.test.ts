@@ -4,7 +4,6 @@ import {
   DEFAULT_STICKY_WIDTH,
   detectMemoQuadrant,
   defaultPositionForQuadrant,
-  mapStickyPositionForAxisChange,
   quadrantFeedLabel,
   MEMO_QUADRANT_BOARD_HEIGHT,
   MEMO_QUADRANT_BOARD_WIDTH,
@@ -58,28 +57,6 @@ describe("defaultPositionForQuadrant", () => {
     const axis = { axisXRatio: 0.7, axisYRatio: 0.35 };
     const pos = defaultPositionForQuadrant("not_urgent_important", boardW, boardH, 0, axis);
     expect(detectMemoQuadrant(pos.x, pos.y, w, h, boardW, boardH, axis)).toBe(
-      "not_urgent_important",
-    );
-  });
-});
-
-describe("mapStickyPositionForAxisChange", () => {
-  it("preserves relative position within assigned quadrant when axis moves", () => {
-    const fromAxis = { axisXRatio: 0.5, axisYRatio: 0.5 };
-    const toAxis = { axisXRatio: 0.7, axisYRatio: 0.35 };
-    const start = defaultPositionForQuadrant("not_urgent_important", boardW, boardH, 0, fromAxis);
-    const moved = mapStickyPositionForAxisChange(
-      start.x,
-      start.y,
-      w,
-      h,
-      "not_urgent_important",
-      boardW,
-      boardH,
-      fromAxis,
-      toAxis,
-    );
-    expect(detectMemoQuadrant(moved.x, moved.y, w, h, boardW, boardH, toAxis)).toBe(
       "not_urgent_important",
     );
   });
