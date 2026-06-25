@@ -16,6 +16,11 @@ export async function GET(request: NextRequest) {
     const { items, contributions } = await getGanttData(session.userId, from, to);
     return jsonOk({ items, contributions });
   } catch (error) {
+    if (error instanceof Error) {
+      console.error("[api/gantt GET]", error.message, error.stack);
+    } else {
+      console.error("[api/gantt GET]", error);
+    }
     return handleProtectedRouteError(error, "api/gantt GET");
   }
 }

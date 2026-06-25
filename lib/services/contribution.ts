@@ -251,9 +251,11 @@ export async function getContributionsInRange(
   from?: string | null,
   to?: string | null,
   planIds?: string[] | null,
+  options?: { includeImages?: boolean },
 ) {
   const fromDate = from ? parseDateOnly(from) : null;
   const toDate = to ? parseDateOnly(to) : null;
+  const includeImages = options?.includeImages ?? true;
 
   const rows = await prisma.planContribution.findMany({
     where: {
@@ -263,13 +265,15 @@ export async function getContributionsInRange(
     orderBy: [{ occurredOn: "desc" }, { createdAt: "desc" }],
     include: {
       plan: { select: { title: true, type: true } },
-      images: { orderBy: { createdAt: "asc" } },
+      ...(includeImages
+        ? { images: { orderBy: { createdAt: "asc" } } }
+        : {}),
     },
   });
 
   return rows
     .filter((c) => contributionOverlapsRange(c, fromDate, toDate))
-    .map(serializeContribution);
+    .map((c) => serializeContribution(c));
 }
 
 export async function getContributionsForPlanTree(userId: string, planId: string) {

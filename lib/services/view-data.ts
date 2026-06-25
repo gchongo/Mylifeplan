@@ -155,7 +155,9 @@ export async function getGanttData(
   to?: string | null,
 ): Promise<{ items: GanttItem[]; contributions: GanttContribution[] }> {
   const items = await getGanttItems(userId, from, to);
-  const contributions = await getContributionsInRange(userId, from, to);
+  const contributions = await getContributionsInRange(userId, from, to, null, {
+    includeImages: false,
+  });
 
   const planIds = new Set(items.map((i) => i.id));
 
