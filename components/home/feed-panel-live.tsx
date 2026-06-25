@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { EmptyState, Loading } from "@/components/ui/feedback";
 import { FeedComposer } from "@/components/feed/feed-composer";
 import { FeedTypeFilter } from "@/components/feed/feed-type-filter";
@@ -127,10 +127,10 @@ export function FeedPanelLive({
       )}
     >
       {!fullPage && (
-        <CardHeader className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 space-y-0 pb-2">
-          <CardTitle className="min-w-0 truncate text-gray-900">{t("feed.homeTitle")}</CardTitle>
+        <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-1 pb-2">
+          <CardTitle className="min-w-0 truncate text-gray-900 dark:text-gray-100">{t("feed.homeTitle")}</CardTitle>
           <PanelExpandButton href="/feed" label={t("feed.expand")} />
-        </CardHeader>
+        </div>
       )}
 
       <CardContent className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-0">
@@ -148,7 +148,7 @@ export function FeedPanelLive({
               ref={listRef}
               className={cn(
                 "feed-item-list scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain pr-0.5",
-                typeFilter === "contribution" ? "space-y-0 px-1" : "space-y-3",
+                !fullPage || typeFilter === "contribution" ? "space-y-0 px-1" : "space-y-3",
                 fullPage && typeFilter !== "contribution" && "space-y-4",
               )}
             >
@@ -156,7 +156,7 @@ export function FeedPanelLive({
                 <li key={item.id}>
                   <FeedItemCard
                     item={item}
-                    logStyle={item.itemType === "contribution"}
+                    logStyle={!fullPage || item.itemType === "contribution"}
                     onContributionChanged={refreshFeed}
                   />
                 </li>

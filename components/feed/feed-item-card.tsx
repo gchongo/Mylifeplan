@@ -57,7 +57,7 @@ function FeedCardHeader({
   return (
     <header className="flex items-center gap-2 border-b border-gray-100 px-3 py-2 dark:border-gray-800">
       <FeedTypeBadge label={typeLabel} />
-      <time className="ml-auto text-xs text-gray-500" dateTime={createdAt}>
+      <time className="ml-auto text-xs text-gray-500 dark:text-gray-400" dateTime={createdAt}>
         {dateLabel}
       </time>
     </header>
@@ -76,7 +76,7 @@ function FeedLogHeader({
   return (
     <header className="mb-2 flex items-center gap-2">
       <FeedTypeBadge label={typeLabel} />
-      <time className="ml-auto text-xs text-gray-500" dateTime={createdAt}>
+      <time className="ml-auto text-xs text-gray-500 dark:text-gray-400" dateTime={createdAt}>
         {dateLabel}
       </time>
     </header>
@@ -207,7 +207,7 @@ export function FeedItemCard({
           {showActionPhrase && (
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {meta.completed && (
-                <span className="mr-1.5 inline-flex h-4 w-4 items-center justify-center rounded border border-gray-300 bg-gray-100 text-[10px] text-gray-600">
+                <span className="mr-1.5 inline-flex h-4 w-4 items-center justify-center rounded border border-gray-300 bg-gray-100 text-[10px] text-gray-600 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300">
                   ✓
                 </span>
               )}

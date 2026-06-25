@@ -15,7 +15,7 @@ export function FullPanelPage({
     <div
       className={cn(
         "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
-        centered && "bg-gray-50",
+        centered && "bg-gray-50 dark:bg-gray-950",
       )}
     >
       <div
@@ -24,7 +24,7 @@ export function FullPanelPage({
           centered && centeredPageWidthClass,
         )}
       >
-        <h1 className="shrink-0 text-lg font-semibold text-gray-900">{title}</h1>
+        <h1 className="shrink-0 text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h1>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
       </div>
     </div>

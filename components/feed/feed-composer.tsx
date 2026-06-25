@@ -178,7 +178,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
                 "rounded-full px-3 py-1 text-xs font-medium transition-colors",
                 mode === modeId
                   ? "bg-brand-100 text-brand-700 dark:bg-brand-950 dark:text-brand-300"
-                  : "text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:hover:bg-gray-800",
+                  : "text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200",
               )}
             >
               {t(`feed.typeFilter.${modeId}`)}

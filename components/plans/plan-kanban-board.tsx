@@ -69,7 +69,7 @@ function PlanKanbanCard({
     >
       <div className={cn("px-3 py-2", titleBar.shell)}>
         {plan.parentTitle && (
-          <p className="mb-0.5 truncate text-[10px] text-gray-400">↑ {plan.parentTitle}</p>
+          <p className="mb-0.5 truncate text-[10px] text-gray-400 dark:text-gray-500">↑ {plan.parentTitle}</p>
         )}
         <button
           type="button"
@@ -127,8 +127,8 @@ function KanbanColumn({
   return (
     <div
       className={cn(
-        "flex h-full min-h-0 min-w-0 flex-col rounded-xl bg-gray-100/80 p-2 transition-colors",
-        isTarget && "ring-2 ring-brand-400 ring-offset-1",
+        "flex h-full min-h-0 min-w-0 flex-col rounded-xl bg-gray-100/80 p-2 transition-colors dark:bg-gray-900/60",
+        isTarget && "ring-2 ring-brand-400 ring-offset-1 dark:ring-offset-gray-950",
       )}
       onDragOver={(e) => {
         e.preventDefault();
