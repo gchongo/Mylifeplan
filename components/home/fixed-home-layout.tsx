@@ -7,9 +7,10 @@ import {
   SummaryPanelLive,
 } from "@/components/home/home-panels-dynamic";
 import { PanelResizeHandle } from "@/components/home/panel-resize-handle";
+import { readStorageItem, writeStorageItem } from "@/lib/app-storage";
 import { PanelSkeleton } from "@/components/ui/panel-skeleton";
 
-const STORAGE_FEED_WIDTH = "mylifeplan-home-feed-width";
+const STORAGE_FEED_WIDTH = "meridian-home-feed-width";
 
 const RESIZE_HANDLE_SIZE = 12;
 
@@ -22,7 +23,7 @@ const MIN_RIGHT_COLUMN_WIDTH = 380;
 
 function readNumber(key: string): number | null {
   if (typeof window === "undefined") return null;
-  const raw = localStorage.getItem(key);
+  const raw = readStorageItem(key);
   if (!raw) return null;
   const n = Number(raw);
   return Number.isFinite(n) ? n : null;
@@ -94,7 +95,7 @@ export function FixedHomeLayout() {
     }
 
     function onUp() {
-      localStorage.setItem(STORAGE_FEED_WIDTH, String(Math.round(latest)));
+      writeStorageItem(STORAGE_FEED_WIDTH, String(Math.round(latest)));
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     }

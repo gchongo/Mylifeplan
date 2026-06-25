@@ -38,7 +38,7 @@ export function SidebarBrand({
         <MenuIcon className="h-5 w-5" />
       </button>
       <div className="min-w-0">
-        <p className="truncate text-base font-bold text-brand-700 dark:text-brand-300 lg:text-lg">MyLifePlan</p>
+        <p className="truncate text-base font-bold text-brand-700 dark:text-brand-300 lg:text-lg">{t("layout.brandName")}</p>
         <p className="truncate text-xs text-gray-500 dark:text-gray-400">{t("layout.brandTagline")}</p>
       </div>
     </div>

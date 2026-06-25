@@ -4,10 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CalendarPanelLive } from "@/components/home/calendar-panel-live";
 import { FeedPanelLive } from "@/components/home/feed-panel-live";
 import { SummaryPanelLive } from "@/components/home/summary-panel-live";
+import { readStorageItem, writeStorageItem } from "@/lib/app-storage";
 import { PanelResizeHandle } from "@/components/home/panel-resize-handle";
 
-const STORAGE_FEED_WIDTH = "mylifeplan-home-feed-width";
-const STORAGE_SUMMARY_HEIGHT = "mylifeplan-home-gantt-height";
+const STORAGE_FEED_WIDTH = "meridian-home-feed-width";
+const STORAGE_SUMMARY_HEIGHT = "meridian-home-gantt-height";
 
 const RESIZE_HANDLE_SIZE = 12;
 
@@ -25,7 +26,7 @@ const MAX_SUMMARY_HEIGHT_RATIO = 0.62;
 
 function readNumber(key: string): number | null {
   if (typeof window === "undefined") return null;
-  const raw = localStorage.getItem(key);
+  const raw = readStorageItem(key);
   if (!raw) return null;
   const n = Number(raw);
   return Number.isFinite(n) ? n : null;
@@ -110,7 +111,7 @@ export function ResizableHomeLayout() {
     }
 
     function onUp() {
-      localStorage.setItem(STORAGE_FEED_WIDTH, String(Math.round(latest)));
+      writeStorageItem(STORAGE_FEED_WIDTH, String(Math.round(latest)));
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     }
@@ -134,7 +135,7 @@ export function ResizableHomeLayout() {
     }
 
     function onUp() {
-      localStorage.setItem(STORAGE_SUMMARY_HEIGHT, String(Math.round(latest)));
+      writeStorageItem(STORAGE_SUMMARY_HEIGHT, String(Math.round(latest)));
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     }

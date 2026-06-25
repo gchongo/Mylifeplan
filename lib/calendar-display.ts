@@ -1,3 +1,4 @@
+import { readStorageItem, writeStorageItem } from "@/lib/app-storage";
 import { resolveVisualStatus } from "@/lib/task-status-style";
 import { datePartOf, formatPlanDateTimeCompact } from "@/lib/dates";
 import type { CalendarItem } from "@/types";
@@ -23,23 +24,23 @@ export const CALENDAR_DISPLAY_MODES: {
   { id: "detailed", label: "详细信息", hint: "显示标题与时间" },
 ];
 
-const STORAGE_KEY = "mylifeplan-calendar-display";
+const STORAGE_KEY = "meridian-calendar-display";
 export const CALENDAR_MOBILE_BREAKPOINT = 768;
 
-export const CALENDAR_DRAWER_WIDTH_KEY = "mylifeplan-calendar-drawer-width";
+export const CALENDAR_DRAWER_WIDTH_KEY = "meridian-calendar-drawer-width";
 export const CALENDAR_DRAWER_MIN_WIDTH_PX = 184;
 export const CALENDAR_DRAWER_DEFAULT_WIDTH_PX = 240;
 
 export function loadCalendarDrawerWidthPx(): number {
   if (typeof window === "undefined") return CALENDAR_DRAWER_DEFAULT_WIDTH_PX;
-  const raw = localStorage.getItem(CALENDAR_DRAWER_WIDTH_KEY);
+  const raw = readStorageItem(CALENDAR_DRAWER_WIDTH_KEY);
   const parsed = raw ? Number.parseInt(raw, 10) : NaN;
   if (!Number.isFinite(parsed)) return CALENDAR_DRAWER_DEFAULT_WIDTH_PX;
   return Math.max(CALENDAR_DRAWER_MIN_WIDTH_PX, parsed);
 }
 
 export function saveCalendarDrawerWidthPx(width: number) {
-  localStorage.setItem(CALENDAR_DRAWER_WIDTH_KEY, String(Math.round(width)));
+  writeStorageItem(CALENDAR_DRAWER_WIDTH_KEY, String(Math.round(width)));
 }
 
 /** 侧栏最大宽度：保证左侧日历区域宽度 ≥ 其高度 */
@@ -83,7 +84,7 @@ export function defaultCalendarDisplayMode(isMobile = isMobileCalendarViewport()
 
 export function loadCalendarDisplayMode(isMobile = isMobileCalendarViewport()): CalendarDisplayMode {
   if (typeof window === "undefined") return "detailed";
-  const raw = localStorage.getItem(STORAGE_KEY);
+  const raw = readStorageItem(STORAGE_KEY);
   if (raw === "list") return defaultCalendarDisplayMode(isMobile);
   const stored = CALENDAR_DISPLAY_MODES.some((m) => m.id === raw)
     ? (raw as CalendarDisplayMode)
@@ -92,7 +93,7 @@ export function loadCalendarDisplayMode(isMobile = isMobileCalendarViewport()): 
 }
 
 export function saveCalendarDisplayMode(mode: CalendarDisplayMode) {
-  localStorage.setItem(STORAGE_KEY, mode);
+  writeStorageItem(STORAGE_KEY, mode);
 }
 
 export function itemsOnDate(items: CalendarItem[], dateStr: string): CalendarItem[] {

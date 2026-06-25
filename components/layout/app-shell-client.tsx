@@ -9,14 +9,15 @@ import { SidebarNavDrawer } from "@/components/layout/sidebar-brand";
 import { SidebarNavMenu } from "@/components/layout/sidebar-nav";
 import { TopBar } from "@/components/layout/top-bar";
 import { isAppShellFullBleed } from "@/lib/app-shell-layout";
+import { readStorageItem, writeStorageItem } from "@/lib/app-storage";
 import { cn } from "@/lib/utils";
 
-const STORAGE_KEY = "mylifeplan-sidebar-open";
+const STORAGE_KEY = "meridian-sidebar-open";
 const DESKTOP_QUERY = "(min-width: 1024px)";
 
 function readStoredOpen(fallback: boolean) {
   if (typeof window === "undefined") return fallback;
-  const raw = localStorage.getItem(STORAGE_KEY);
+  const raw = readStorageItem(STORAGE_KEY);
   if (raw === "true") return true;
   if (raw === "false") return false;
   return fallback;
@@ -70,14 +71,14 @@ function AppShellInner({
   const toggleNav = useCallback(() => {
     setNavOpen((prev) => {
       const next = !prev;
-      localStorage.setItem(STORAGE_KEY, String(next));
+      writeStorageItem(STORAGE_KEY, String(next));
       return next;
     });
   }, []);
 
   const closeNav = useCallback(() => {
     setNavOpen(false);
-    localStorage.setItem(STORAGE_KEY, "false");
+    writeStorageItem(STORAGE_KEY, "false");
   }, []);
 
   const pathname = usePathname();

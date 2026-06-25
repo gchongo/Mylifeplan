@@ -22,7 +22,7 @@ describe("auth validations", () => {
 
   it("login accepts valid email", () => {
     const result = loginSchema.safeParse({
-      email: "demo@mylifeplan.local",
+      email: "demo@meridian.local",
       password: "password123",
     });
     expect(result.success).toBe(true);
@@ -30,7 +30,7 @@ describe("auth validations", () => {
 
   it("login accepts .local seed emails", () => {
     const result = loginSchema.safeParse({
-      email: "admin@mylifeplan.local",
+      email: "admin@meridian.local",
       password: "password123",
     });
     expect(result.success).toBe(true);

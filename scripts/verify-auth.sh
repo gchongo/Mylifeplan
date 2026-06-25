@@ -9,7 +9,7 @@ trap 'rm -f "$JAR"' EXIT
 echo "== Login =="
 LOGIN=$(curl -sS -c "$JAR" -b "$JAR" -X POST "$BASE/api/auth/login" \
   -H 'Content-Type: application/json' \
-  -d '{"email":"admin@mylifeplan.local","password":"password123"}')
+  -d '{"email":"admin@meridian.local","password":"password123"}')
 echo "$LOGIN"
 
 echo "== Session =="
@@ -34,7 +34,7 @@ if [ "$PLANS_HTTP" = "401" ]; then
   echo "Likely causes:"
   echo "  1) DB schema out of sync — run: npx prisma db push"
   echo "  2) Old API code hides DB errors as 401 — git pull, npm run build, pm2 restart"
-  echo "Then check: pm2 logs mylifeplan --lines 50"
+  echo "Then check: pm2 logs meridian --lines 50"
   exit 1
 fi
 

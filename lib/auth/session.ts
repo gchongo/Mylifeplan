@@ -1,7 +1,9 @@
 import { SignJWT, jwtVerify } from "jose";
 import type { UserRole } from "@prisma/client";
 
-export const SESSION_COOKIE = "mylifeplan_session";
+export const SESSION_COOKIE = "meridian_session";
+export const LEGACY_SESSION_COOKIE = "mylifeplan_session";
+export const SESSION_COOKIE_NAMES = [SESSION_COOKIE, LEGACY_SESSION_COOKIE] as const;
 
 export interface SessionPayload {
   userId: string;

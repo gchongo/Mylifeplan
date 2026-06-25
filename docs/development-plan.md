@@ -1,4 +1,4 @@
-# MyLifePlan 开发计划
+# Meridian Plan 开发计划
 
 > 版本：MVP v1.0  
 > 依据：`requirements.md` · `data-model.md` · `routes.md` · `plan.md`  
@@ -64,7 +64,7 @@ lib/services/feed.ts
 
 ```mermaid
 gantt
-    title MyLifePlan MVP 里程碑（周）
+    title Meridian Plan MVP 里程碑（周）
     dateFormat YYYY-MM-DD
     axisFormat W%W
 
@@ -220,7 +220,7 @@ gantt
 ## 5. 推荐目录结构
 
 ```
-mylifeplan/
+meridian-plan/
 ├── app/
 │   ├── (auth)/login, register
 │   ├── (app)/              # 用户端（需登录）

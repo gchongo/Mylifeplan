@@ -9,7 +9,7 @@ export type KanbanColumnId = "unscheduled" | "not_started" | "in_progress" | "do
 
 export type KanbanDropZoneId = KanbanColumnId | "archived";
 
-export const KANBAN_ARCHIVED_STORAGE_KEY = "mylifeplan-kanban-archived-open";
+export const KANBAN_ARCHIVED_STORAGE_KEY = "meridian-kanban-archived-open";
 
 /** 看板「未排期」列：无开始/结束时间，视觉与甘特「未排期」一致 */
 export const KANBAN_COLUMNS: { id: KanbanColumnId; label: string }[] = [

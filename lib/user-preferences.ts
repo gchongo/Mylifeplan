@@ -40,7 +40,9 @@ export interface UserPreferences {
   calendarWeekNumbers: CalendarWeekNumberPreferences;
 }
 
-export const USER_PREFERENCES_STORAGE_KEY = "mylifeplan-user-preferences";
+import { readStorageItem, writeStorageItem } from "@/lib/app-storage";
+
+export const USER_PREFERENCES_STORAGE_KEY = "meridian-user-preferences";
 
 export const DEFAULT_GANTT_ACTUAL_LINE: GanttActualLinePreferences = {
   enabled: true,
@@ -257,7 +259,7 @@ export function normalizeUserPreferences(raw: Partial<UserPreferences> | null | 
 export function readUserPreferences(): UserPreferences {
   if (typeof window === "undefined") return DEFAULT_USER_PREFERENCES;
   try {
-    const raw = localStorage.getItem(USER_PREFERENCES_STORAGE_KEY);
+    const raw = readStorageItem(USER_PREFERENCES_STORAGE_KEY);
     if (!raw) return DEFAULT_USER_PREFERENCES;
     return normalizeUserPreferences(JSON.parse(raw) as Partial<UserPreferences>);
   } catch {
@@ -266,7 +268,7 @@ export function readUserPreferences(): UserPreferences {
 }
 
 export function writeUserPreferences(prefs: UserPreferences) {
-  localStorage.setItem(USER_PREFERENCES_STORAGE_KEY, JSON.stringify(prefs));
+  writeStorageItem(USER_PREFERENCES_STORAGE_KEY, JSON.stringify(prefs));
 }
 
 export function resolveTimezone(pref: string): string {

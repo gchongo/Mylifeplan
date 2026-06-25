@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { SESSION_COOKIE } from "@/lib/auth/session";
+import { SESSION_COOKIE_NAMES } from "@/lib/auth/session";
 
 const PUBLIC_PAGES = ["/login", "/register", "/admin/login"];
 
 function hasSessionCookie(request: NextRequest): boolean {
-  return Boolean(request.cookies.get(SESSION_COOKIE)?.value);
+  return SESSION_COOKIE_NAMES.some((name) => Boolean(request.cookies.get(name)?.value));
 }
 
 export async function middleware(request: NextRequest) {

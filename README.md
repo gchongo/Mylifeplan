@@ -1,6 +1,6 @@
-# MyLifePlan
+# Meridian Plan
 
-个人长期规划与短期计划管理系统（MVP）。
+个人长期规划与短期计划管理系统（MVP）。**Meridian Plan** — 让时间看得见 · Make time visible。
 
 ## 文档
 
@@ -41,7 +41,7 @@ npm install
 cp .env.example .env   # 编辑 DATABASE_URL 与 AUTH_SECRET
 npm run db:generate && npm run db:push && npm run db:seed
 npm run build
-pm2 start npm --name mylifeplan -- start
+pm2 start npm --name meridian -- start
 ```
 
 完整说明见 [docs/deploy-vps.md](docs/deploy-vps.md)。
@@ -50,8 +50,8 @@ pm2 start npm --name mylifeplan -- start
 
 | 角色 | 邮箱 | 密码 |
 |------|------|------|
-| 管理员 | admin@mylifeplan.local | password123 |
-| 演示用户 | demo@mylifeplan.local | password123 |
+| 管理员 | admin@meridian.local | password123 |
+| 演示用户 | demo@meridian.local | password123 |
 
 ## 当前进度
 

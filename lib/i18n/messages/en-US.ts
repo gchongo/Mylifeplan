@@ -491,7 +491,7 @@ const enUS = {
     },
   },
   auth: {
-    loginTitle: "Sign in to MyLifePlan",
+    loginTitle: "Sign in to Meridian Plan",
     registerTitle: "Create account",
     adminLoginTitle: "Admin sign in",
     userLoginLink: "User sign in",
@@ -512,7 +512,7 @@ const enUS = {
     confirmPasswordPlaceholder: "Re-enter password",
   },
   admin: {
-    brand: "MyLifePlan Admin",
+    brand: "Meridian Plan Admin",
     backToApp: "App",
     users: "Users",
     usersIntro: "View registered users and enable or disable accounts.",
@@ -596,7 +596,8 @@ const enUS = {
     titlePlaceholder: "Title",
   },
   layout: {
-    brandTagline: "Personal planning",
+    brandName: "Meridian Plan",
+    brandTagline: "Make time visible",
     collapseNav: "Collapse navigation",
     expandNav: "Expand navigation",
     closeNav: "Close navigation",

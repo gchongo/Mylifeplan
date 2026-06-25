@@ -4,8 +4,8 @@ import { hashPassword } from "../lib/auth/password";
 const prisma = new PrismaClient();
 
 async function main() {
-  const adminEmail = "admin@mylifeplan.local";
-  const demoEmail = "demo@mylifeplan.local";
+  const adminEmail = "admin@meridian.local";
+  const demoEmail = "demo@meridian.local";
   const password = "password123";
 
   const passwordHash = await hashPassword(password);

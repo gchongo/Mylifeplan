@@ -1,3 +1,4 @@
+import { readStorageItem, writeStorageItem } from "@/lib/app-storage";
 import { parsePlanDateTime, formatPlanLocalDateSlash } from "@/lib/dates";
 import { formatCompletionPercent, planCompletionPercent } from "@/lib/gantt-plan-completion";
 import type { GanttItem } from "@/types";
@@ -5,7 +6,7 @@ import type { GanttItem } from "@/types";
 export const GANTT_TITLE_COL_WIDTH = 140;
 export const GANTT_SCHEDULE_TABLE_HEADER_HEIGHT = 26;
 export const GANTT_SCHEDULE_UNIFORM_COL_WIDTH = 72;
-export const GANTT_SCHEDULE_COLUMNS_STORAGE_KEY = "mylifeplan-gantt-schedule-columns";
+export const GANTT_SCHEDULE_COLUMNS_STORAGE_KEY = "meridian-gantt-schedule-columns";
 
 export const GANTT_SCHEDULE_COLUMN_IDS = [
   "planStart",
@@ -59,7 +60,7 @@ function isLegacyDefaultScheduleColumns(ids: GanttScheduleColumnId[]): boolean {
 export function readStoredScheduleColumns(): GanttScheduleColumnId[] {
   if (typeof window === "undefined") return DEFAULT_VISIBLE_SCHEDULE_COLUMNS;
   try {
-    const raw = localStorage.getItem(GANTT_SCHEDULE_COLUMNS_STORAGE_KEY);
+    const raw = readStorageItem(GANTT_SCHEDULE_COLUMNS_STORAGE_KEY);
     if (!raw) return DEFAULT_VISIBLE_SCHEDULE_COLUMNS;
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return DEFAULT_VISIBLE_SCHEDULE_COLUMNS;
@@ -76,7 +77,7 @@ export function readStoredScheduleColumns(): GanttScheduleColumnId[] {
 
 export function writeStoredScheduleColumns(ids: GanttScheduleColumnId[]) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(GANTT_SCHEDULE_COLUMNS_STORAGE_KEY, JSON.stringify(ids));
+  writeStorageItem(GANTT_SCHEDULE_COLUMNS_STORAGE_KEY, JSON.stringify(ids));
 }
 
 export function visibleScheduleColumnDefs(ids: GanttScheduleColumnId[]): GanttScheduleColumnDef[] {

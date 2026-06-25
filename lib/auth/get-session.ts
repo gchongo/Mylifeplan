@@ -1,6 +1,10 @@
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
-import { verifySessionToken, SESSION_COOKIE, type SessionPayload } from "@/lib/auth/session";
+import {
+  verifySessionToken,
+  SESSION_COOKIE_NAMES,
+  type SessionPayload,
+} from "@/lib/auth/session";
 
 type RequestLike = Pick<NextRequest, "cookies" | "headers">;
 
@@ -22,13 +26,23 @@ function parseCookieHeader(header: string, name: string): string | undefined {
   return undefined;
 }
 
+function tokenFromCookieHeader(header: string): string | undefined {
+  for (const name of SESSION_COOKIE_NAMES) {
+    const token = parseCookieHeader(header, name);
+    if (token) return token;
+  }
+  return undefined;
+}
+
 function tokenFromRequest(request: RequestLike): string | undefined {
-  const fromCookies = request.cookies.get(SESSION_COOKIE)?.value;
-  if (fromCookies) return fromCookies;
+  for (const name of SESSION_COOKIE_NAMES) {
+    const fromCookies = request.cookies.get(name)?.value;
+    if (fromCookies) return fromCookies;
+  }
 
   const header = request.headers.get("cookie");
   if (!header) return undefined;
-  return parseCookieHeader(header, SESSION_COOKIE);
+  return tokenFromCookieHeader(header);
 }
 
 async function sessionFromToken(token: string | undefined): Promise<SessionPayload | null> {
@@ -43,8 +57,12 @@ export async function getSession(request?: RequestLike): Promise<SessionPayload 
   }
 
   const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
-  return sessionFromToken(token);
+  for (const name of SESSION_COOKIE_NAMES) {
+    const token = cookieStore.get(name)?.value;
+    const session = await sessionFromToken(token);
+    if (session) return session;
+  }
+  return null;
 }
 
 export async function requireSession(request?: RequestLike): Promise<SessionPayload> {

@@ -48,11 +48,13 @@ echo "== build =="
 npm run build
 
 echo "== pm2 restart =="
-if pm2 describe mylifeplan >/dev/null 2>&1; then
+if pm2 describe meridian >/dev/null 2>&1; then
+  pm2 restart meridian
+elif pm2 describe mylifeplan >/dev/null 2>&1; then
   pm2 restart mylifeplan
 else
-  echo "Process 'mylifeplan' not found — starting fresh"
-  pm2 start npm --name mylifeplan -- start
+  echo "Process 'meridian' not found — starting fresh"
+  pm2 start npm --name meridian -- start
   pm2 save
 fi
 

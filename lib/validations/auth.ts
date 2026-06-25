@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-/** 接受 demo@mylifeplan.local 等 .local 邮箱 */
+/** 接受 demo@meridian.local 等 .local 邮箱 */
 export const emailSchema = z
   .string()
   .min(1, "请输入邮箱")

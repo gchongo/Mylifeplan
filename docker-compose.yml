@@ -1,16 +1,16 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: mylifeplan-db
+    container_name: meridian-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: mylifeplan
+      POSTGRES_DB: meridian
     ports:
       - "5432:5432"
     volumes:
-      - mylifeplan_pg:/var/lib/postgresql/data
+      - meridian_pg:/var/lib/postgresql/data
 
 volumes:
-  mylifeplan_pg:
+  meridian_pg:

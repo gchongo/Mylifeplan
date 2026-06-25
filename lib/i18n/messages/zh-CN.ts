@@ -491,7 +491,7 @@ const zhCN = {
     },
   },
   auth: {
-    loginTitle: "登录 MyLifePlan",
+    loginTitle: "登录 Meridian Plan",
     registerTitle: "注册账号",
     adminLoginTitle: "管理员登录",
     userLoginLink: "普通用户登录",
@@ -512,7 +512,7 @@ const zhCN = {
     confirmPasswordPlaceholder: "再次输入密码",
   },
   admin: {
-    brand: "MyLifePlan 后台",
+    brand: "Meridian Plan 后台",
     backToApp: "用户端",
     users: "用户管理",
     usersIntro: "查看注册用户，启用或禁用账号。",
@@ -596,7 +596,8 @@ const zhCN = {
     titlePlaceholder: "标题",
   },
   layout: {
-    brandTagline: "个人规划系统",
+    brandName: "Meridian Plan",
+    brandTagline: "让时间看得见",
     collapseNav: "收起导航",
     expandNav: "展开导航",
     closeNav: "关闭导航",
