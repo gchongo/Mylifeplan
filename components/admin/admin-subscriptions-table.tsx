@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -58,7 +58,7 @@ export function AdminSubscriptionsTable() {
     { value: "failed", label: "failed" },
   ];
 
-  async function load() {
+  const load = useCallback(async () => {
     const [subsRes, plansRes] = await Promise.all([
       fetch("/api/admin/subscriptions"),
       fetch("/api/admin/billing-plans"),
@@ -77,11 +77,11 @@ export function AdminSubscriptionsTable() {
         slug: p.slug,
       })),
     );
-  }
+  }, [t]);
 
   useEffect(() => {
     load().finally(() => setLoading(false));
-  }, []);
+  }, [load]);
 
   function startEdit(sub: SubscriptionRow) {
     setEditingId(sub.id);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,7 +38,7 @@ export function AdminBillingPlansPageClient() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, BillingPlanRow>>({});
 
-  async function load() {
+  const load = useCallback(async () => {
     const res = await fetch("/api/admin/billing-plans");
     const data = await res.json();
     if (!res.ok) {
@@ -48,11 +48,11 @@ export function AdminBillingPlansPageClient() {
     const rows: BillingPlanRow[] = data.plans ?? [];
     setPlans(rows);
     setDrafts(Object.fromEntries(rows.map((p) => [p.id, { ...p }])));
-  }
+  }, [t]);
 
   useEffect(() => {
     load().finally(() => setLoading(false));
-  }, []);
+  }, [load]);
 
   function updateDraft(id: string, patch: Partial<BillingPlanRow>) {
     setDrafts((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
