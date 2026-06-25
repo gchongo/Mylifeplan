@@ -99,7 +99,8 @@ import { deriveParentStatus } from "@/lib/services/plan-rollup";
 import type { GanttContribution, GanttItem, PlanStatus } from "@/types";
 import { apiJson } from "@/lib/client-api";
 import { dispatchPlanUpdated, PLAN_UPDATED_EVENT } from "@/lib/plan-events";
-import { patchGanttItemFromPlan, applyGanttPlanPatch, type GanttPlanPatch } from "@/lib/gantt-plan-sync";
+import type { PlanContributionComposeResult } from "@/components/forms/plan-contribution-compose-form";
+import { patchGanttItemFromPlan, applyGanttPlanPatch, mergeGanttItem, serializedPlanToGanttItem, type GanttPlanPatch, type SerializedPlanForGantt } from "@/lib/gantt-plan-sync";
 import {
   DEFAULT_VISIBLE_SCHEDULE_COLUMNS,
   GANTT_SCHEDULE_TABLE_HEADER_HEIGHT,
@@ -895,6 +896,35 @@ export const GanttChart = forwardRef<
       defaultParentPlanId: parentPlanId ?? null,
       defaultStartDate: defaultStartDate ?? null,
     });
+  }
+
+  function handlePlanComposeSuccess(result?: PlanContributionComposeResult) {
+    skipNextPlanSyncRef.current = true;
+    if (result?.kind === "plan") {
+      const ganttItem = serializedPlanToGanttItem(result.plan as SerializedPlanForGantt);
+      if (ganttItem) {
+        setItems((prev) => {
+          const next = mergeGanttItem(prev, ganttItem);
+          if (ganttItem.parentId) {
+            setExpanded((expanded) => {
+              const ancestors = new Set(expanded);
+              let cur: string | null = ganttItem.parentId ?? null;
+              const byId = new Map(next.map((item) => [item.id, item]));
+              while (cur) {
+                ancestors.add(cur);
+                cur = byId.get(cur)?.parentId ?? null;
+              }
+              return ancestors;
+            });
+          }
+          return next;
+        });
+        return;
+      }
+    }
+    if (result?.kind === "contribution") {
+      void refetchGantt();
+    }
   }
 
   function closePlanModal() {
@@ -1882,10 +1912,7 @@ export const GanttChart = forwardRef<
         fixedPlanId={planModal.defaultParentPlanId}
         defaultStartAt={planModal.defaultStartDate}
         defaultEndAt={planModal.defaultEndDate}
-        onSuccess={() => {
-          void refetchGantt();
-          dispatchPlanUpdated();
-        }}
+        onSuccess={handlePlanComposeSuccess}
       />
     );
   }

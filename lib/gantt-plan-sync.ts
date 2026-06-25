@@ -12,6 +12,50 @@ export type GanttPlanPatch = {
   actualEndDate?: string | null;
 };
 
+export type SerializedPlanForGantt = {
+  id: string;
+  title: string;
+  startDate: string | null;
+  endDate?: string | null;
+  actualStartDate?: string | null;
+  actualEndDate?: string | null;
+  parentPlanId?: string | null;
+  status?: string;
+  color?: string | null;
+};
+
+export function serializedPlanToGanttItem(plan: SerializedPlanForGantt): GanttItem | null {
+  const startDate = plan.startDate;
+  if (!startDate) return null;
+  const endDate = plan.endDate ?? null;
+  const { effectiveEnd, isVirtualEnd } = getEffectiveEndDate({
+    startDate,
+    dueDate: endDate,
+  });
+  if (!effectiveEnd) return null;
+  return {
+    id: plan.id,
+    title: plan.title,
+    startDate,
+    endDate,
+    actualStartDate: plan.actualStartDate ?? null,
+    actualEndDate: plan.actualEndDate ?? null,
+    effectiveEnd,
+    isVirtualEnd,
+    parentId: plan.parentPlanId ?? null,
+    status: plan.status,
+    color: plan.color ?? null,
+  };
+}
+
+export function mergeGanttItem(items: GanttItem[], item: GanttItem): GanttItem[] {
+  const without = items.filter((row) => row.id !== item.id);
+  return [...without, item].sort((a, b) => {
+    if (a.isUnscheduled !== b.isUnscheduled) return a.isUnscheduled ? 1 : -1;
+    return a.startDate.localeCompare(b.startDate);
+  });
+}
+
 export function patchGanttItemFromPlan(item: GanttItem, plan: GanttPlanPatch): GanttItem {
   if (!plan.startDate) return item;
   const { effectiveEnd, isVirtualEnd } = getEffectiveEndDate({

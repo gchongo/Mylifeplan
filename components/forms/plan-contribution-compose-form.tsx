@@ -20,6 +20,10 @@ import { cn } from "@/lib/utils";
 
 export type PlanContributionComposeMode = "plan" | "contribution";
 
+export type PlanContributionComposeResult =
+  | { kind: "plan"; plan: Record<string, unknown> & { id: string; title: string } }
+  | { kind: "contribution" };
+
 function emptyCompose(startAt = ""): FeedComposeValues {
   return { title: "", body: "", startAt, endAt: startAt, imageUrls: [] };
 }
@@ -48,7 +52,7 @@ export function PlanContributionComposeForm({
   defaultStartAt?: string | null;
   defaultEndAt?: string | null;
   allowModeSwitch?: boolean;
-  onSuccess?: () => void;
+  onSuccess?: (result?: PlanContributionComposeResult) => void;
   onCancel?: () => void;
   submitLabel?: string;
 }) {
@@ -143,30 +147,34 @@ export function PlanContributionComposeForm({
             markerColor: contributionMarkerColor,
           }),
         });
+        onSuccess?.({ kind: "contribution" });
       } else {
         const title = planValues.title.trim();
         if (!title) {
           setError(t("forms.errorTitle"));
           return;
         }
-        await apiJson("/api/plans", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title,
-            description: planValues.body.trim() || null,
-            type: "goal",
-            parentPlanId: planRelatedId,
-            startDate: planValues.startAt || null,
-            endDate: planValues.endAt || null,
-            color: planColor,
-          }),
-        });
+        const created = await apiJson<{ plan: Record<string, unknown> & { id: string; title: string } }>(
+          "/api/plans",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title,
+              description: planValues.body.trim() || null,
+              type: "goal",
+              parentPlanId: planRelatedId,
+              startDate: planValues.startAt || null,
+              endDate: planValues.endAt || null,
+              color: planColor,
+            }),
+          },
+        );
         setPlanListRefreshKey((k) => k + 1);
+        onSuccess?.({ kind: "plan", plan: created.plan });
       }
 
       dispatchPlanUpdated();
-      onSuccess?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("common.saveFailed"));
     } finally {

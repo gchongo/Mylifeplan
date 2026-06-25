@@ -5,6 +5,7 @@ import { Modal } from "@/components/ui/modal";
 import {
   PlanContributionComposeForm,
   type PlanContributionComposeMode,
+  type PlanContributionComposeResult,
 } from "@/components/forms/plan-contribution-compose-form";
 
 export function PlanContributionComposeModal({
@@ -21,7 +22,7 @@ export function PlanContributionComposeModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onSuccess?: () => void;
+  onSuccess?: (result?: PlanContributionComposeResult) => void;
   title?: string;
   defaultMode?: PlanContributionComposeMode;
   fixedParentPlanId?: string | null;
@@ -55,8 +56,8 @@ export function PlanContributionComposeModal({
           defaultStartAt={defaultStartAt}
           defaultEndAt={defaultEndAt}
           allowModeSwitch={allowModeSwitch}
-          onSuccess={() => {
-            onSuccess?.();
+          onSuccess={(result) => {
+            onSuccess?.(result);
             onClose();
           }}
           onCancel={onClose}

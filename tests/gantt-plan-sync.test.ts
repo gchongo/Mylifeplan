@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { patchGanttItemFromPlan, applyGanttPlanPatch } from "@/lib/gantt-plan-sync";
+import { patchGanttItemFromPlan, applyGanttPlanPatch, mergeGanttItem, serializedPlanToGanttItem } from "@/lib/gantt-plan-sync";
 import type { GanttItem } from "@/types";
 
 function baseItem(overrides: Partial<GanttItem> = {}): GanttItem {
@@ -68,5 +68,21 @@ describe("patchGanttItemFromPlan", () => {
       { shiftDescendants: true, previousStart: "2025-01-01T00:00:00.000Z" },
     );
     expect(next.find((item) => item.id === "child")?.startDate).toBe("2025-01-17T00:00:00.000Z");
+  });
+
+  it("merges a new plan into gantt items", () => {
+    const items = [baseItem()];
+    const created = serializedPlanToGanttItem({
+      id: "p2",
+      title: "Child",
+      startDate: "2025-03-01T00:00:00.000Z",
+      endDate: "2025-04-01T00:00:00.000Z",
+      parentPlanId: "p1",
+      status: "not_started",
+    });
+    expect(created).not.toBeNull();
+    const next = mergeGanttItem(items, created!);
+    expect(next).toHaveLength(2);
+    expect(next.some((item) => item.id === "p2")).toBe(true);
   });
 });
