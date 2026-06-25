@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { apiJson } from "@/lib/client-api";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
+import { dispatchMemoUpdated } from "@/lib/memo-events";
 import type { SerializedPlanForGantt } from "@/lib/gantt-plan-sync";
 import { cn } from "@/lib/utils";
 import { nowDatetimeLocal } from "@/lib/dates";
@@ -134,6 +135,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ content, quadrant: memoQuadrant }),
         });
+        dispatchMemoUpdated();
       }
 
       resetForm();

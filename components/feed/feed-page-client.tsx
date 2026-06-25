@@ -8,7 +8,7 @@ export function FeedPageClient() {
   const { t } = useI18n();
 
   return (
-    <FullPanelPage title={t("feed.homeTitle")} centered>
+    <FullPanelPage title={t("feed.homeTitle")} centered scrollable>
       <FeedPanelLive fullPage />
     </FullPanelPage>
   );

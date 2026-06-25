@@ -15,6 +15,7 @@ import { useI18n } from "@/components/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 import { apiJson } from "@/lib/client-api";
 import { PLAN_UPDATED_EVENT, planDataVersion } from "@/lib/plan-events";
+import { MEMO_UPDATED_EVENT, memoDataVersion } from "@/lib/memo-events";
 
 interface FeedRow {
   id: string;
@@ -51,6 +52,7 @@ export function FeedPanelLive({
   const listRef = useRef<HTMLUListElement>(null);
   const loadMoreRef = useRef<HTMLLIElement>(null);
   const planSyncedVersionRef = useRef(planDataVersion);
+  const memoSyncedVersionRef = useRef(memoDataVersion);
 
   const load = useCallback(
     async (
@@ -89,9 +91,8 @@ export function FeedPanelLive({
   }, [load, typeFilter]);
 
   useEffect(() => {
-    const root = listRef.current;
     const sentinel = loadMoreRef.current;
-    if (!root || !sentinel || !nextCursor) return;
+    if (!sentinel || !nextCursor) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -99,12 +100,16 @@ export function FeedPanelLive({
           void loadMore();
         }
       },
-      { root, rootMargin: "120px", threshold: 0 },
+      {
+        root: fullPage ? null : listRef.current,
+        rootMargin: "120px",
+        threshold: 0,
+      },
     );
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [items.length, nextCursor, loadMore]);
+  }, [fullPage, items.length, nextCursor, loadMore]);
 
   const refreshFeed = useCallback(
     (opts?: { silent?: boolean }) => {
@@ -123,18 +128,33 @@ export function FeedPanelLive({
       refreshFeed({ silent: true });
     }
 
-    function syncIfStale() {
-      if (document.visibilityState !== "visible") return;
-      if (planDataVersion <= planSyncedVersionRef.current) return;
-      planSyncedVersionRef.current = planDataVersion;
+    function onMemoUpdated(event: Event) {
+      const detail = (event as CustomEvent<{ version?: number }>).detail;
+      memoSyncedVersionRef.current = detail?.version ?? memoDataVersion;
       refreshFeed({ silent: true });
     }
 
+    function syncIfStale() {
+      if (document.visibilityState !== "visible") return;
+      let stale = false;
+      if (planDataVersion > planSyncedVersionRef.current) {
+        planSyncedVersionRef.current = planDataVersion;
+        stale = true;
+      }
+      if (memoDataVersion > memoSyncedVersionRef.current) {
+        memoSyncedVersionRef.current = memoDataVersion;
+        stale = true;
+      }
+      if (stale) refreshFeed({ silent: true });
+    }
+
     window.addEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
+    window.addEventListener(MEMO_UPDATED_EVENT, onMemoUpdated);
     document.addEventListener("visibilitychange", syncIfStale);
     syncIfStale();
     return () => {
       window.removeEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
+      window.removeEventListener(MEMO_UPDATED_EVENT, onMemoUpdated);
       document.removeEventListener("visibilitychange", syncIfStale);
     };
   }, [refreshFeed]);
@@ -151,7 +171,8 @@ export function FeedPanelLive({
   return (
     <Card
       className={cn(
-        "flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden border-0 bg-transparent shadow-none",
+        "flex min-w-0 max-w-full flex-col border-0 bg-transparent shadow-none",
+        fullPage ? "w-full" : "h-full min-h-0 overflow-hidden",
         !fullPage && "rounded-none",
         className,
       )}
@@ -163,7 +184,12 @@ export function FeedPanelLive({
         </div>
       )}
 
-      <CardContent className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-0">
+      <CardContent
+        className={cn(
+          "flex flex-col gap-3 p-0",
+          !fullPage && "min-h-0 flex-1 overflow-hidden",
+        )}
+      >
         <FeedComposer onPublished={refreshFeed} />
         <FeedTypeFilter value={typeFilter} onChange={setTypeFilter} />
 
@@ -177,9 +203,15 @@ export function FeedPanelLive({
             <ul
               ref={listRef}
               className={cn(
-                "feed-item-list scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain pr-0.5",
-                !fullPage || typeFilter === "contribution" ? "space-y-0 px-1" : "space-y-3",
-                fullPage && typeFilter !== "contribution" && "space-y-4",
+                "feed-item-list scrollbar-hide pr-0.5",
+                fullPage
+                  ? typeFilter === "contribution"
+                    ? "space-y-0 px-1"
+                    : "space-y-4"
+                  : cn(
+                      "min-h-0 flex-1 overflow-y-auto overscroll-contain",
+                      typeFilter === "contribution" ? "space-y-0 px-1" : "space-y-3",
+                    ),
               )}
             >
               {items.map((item) => (

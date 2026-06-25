@@ -21,6 +21,7 @@ import {
 } from "@/lib/memo-quadrant";
 import { effectiveStickyPosition, nextStickyColor } from "@/lib/memo-sticky";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
+import { MEMO_UPDATED_EVENT, memoDataVersion } from "@/lib/memo-events";
 import type { SerializedPlanForGantt } from "@/lib/gantt-plan-sync";
 
 type NoteState = StickyNoteData & { x: number; y: number };
@@ -200,8 +201,33 @@ export function StickyNoteBoard() {
     setNotes(reconciled);
   }, [batchPersistLayout]);
 
+  const memoSyncedVersionRef = useRef(memoDataVersion);
+
   useEffect(() => {
     load().finally(() => setLoading(false));
+  }, [load]);
+
+  useEffect(() => {
+    function onMemoUpdated(event: Event) {
+      const detail = (event as CustomEvent<{ version?: number }>).detail;
+      memoSyncedVersionRef.current = detail?.version ?? memoDataVersion;
+      void load();
+    }
+
+    function syncIfStale() {
+      if (document.visibilityState !== "visible") return;
+      if (memoDataVersion <= memoSyncedVersionRef.current) return;
+      memoSyncedVersionRef.current = memoDataVersion;
+      void load();
+    }
+
+    window.addEventListener(MEMO_UPDATED_EVENT, onMemoUpdated);
+    document.addEventListener("visibilitychange", syncIfStale);
+    syncIfStale();
+    return () => {
+      window.removeEventListener(MEMO_UPDATED_EVENT, onMemoUpdated);
+      document.removeEventListener("visibilitychange", syncIfStale);
+    };
   }, [load]);
 
   useEffect(() => {

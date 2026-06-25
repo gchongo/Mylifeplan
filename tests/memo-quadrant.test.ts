@@ -27,16 +27,16 @@ describe("detectMemoQuadrant", () => {
     expect(detectMemoQuadrant(x, y, w, h, boardW, boardH)).toBe("not_urgent_important");
   });
 
-  it("places Q3 in bottom-right", () => {
-    const x = boardW * 0.75 - w / 2;
-    const y = boardH * 0.75 - h / 2;
-    expect(detectMemoQuadrant(x, y, w, h, boardW, boardH)).toBe("urgent_not_important");
-  });
-
-  it("places Q4 in bottom-left", () => {
+  it("places Q3 in bottom-left", () => {
     const x = boardW * 0.25 - w / 2;
     const y = boardH * 0.75 - h / 2;
     expect(detectMemoQuadrant(x, y, w, h, boardW, boardH)).toBe("not_urgent_not_important");
+  });
+
+  it("places Q4 in bottom-right", () => {
+    const x = boardW * 0.75 - w / 2;
+    const y = boardH * 0.75 - h / 2;
+    expect(detectMemoQuadrant(x, y, w, h, boardW, boardH)).toBe("urgent_not_important");
   });
 });
 

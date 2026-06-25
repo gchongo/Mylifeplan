@@ -119,8 +119,9 @@ export function MemoBoardQuadrantGrid({
               height: bounds.height,
             }}
           >
-            <span className="pointer-events-none inline-flex p-1.5 text-[10px] font-bold text-gray-500/70 dark:text-gray-400/70">
-              {localizeMemoQuadrantOption(t, q.id).shortLabel}
+            <span className="pointer-events-none inline-flex gap-1 p-1.5 text-[10px] font-bold text-gray-500/70 dark:text-gray-400/70">
+              <span>{localizeMemoQuadrantOption(t, q.id).shortLabel}</span>
+              <span className="font-normal opacity-90">{localizeMemoQuadrantOption(t, q.id).label}</span>
             </span>
           </div>
         );

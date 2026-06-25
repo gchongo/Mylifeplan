@@ -132,7 +132,12 @@ export function PlanForm({
     };
 
     if (scheduleStatus === "unscheduled") {
-      return kanbanPatchForColumn("unscheduled", kanbanPlan);
+      const patch = kanbanPatchForColumn("unscheduled", kanbanPlan);
+      return {
+        status: patch.status,
+        startDate: patch.startDate ?? null,
+        endDate: patch.endDate ?? null,
+      };
     }
 
     if (scheduleStatus === "done") {

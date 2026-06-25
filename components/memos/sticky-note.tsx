@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { MemoMarkdown } from "@/components/memos/memo-markdown";
-import { localizeMemoQuadrantOption } from "@/lib/i18n/feed-helpers";
 import { localizeStickyColorLabel } from "@/lib/i18n/memo-helpers";
 import { memoDisplayBody } from "@/lib/memo-content";
 import {
@@ -90,9 +89,6 @@ export function StickyNote({
   const pendingResizeRef = useRef<{ width: number; height: number } | null>(null);
 
   const displayBody = memoDisplayBody(note);
-  const quadrantMeta = note.quadrant
-    ? localizeMemoQuadrantOption(t, note.quadrant as MemoQuadrantId)
-    : null;
   const displayWidth = resizeSize?.width ?? width;
   const displayHeight = resizeSize?.height ?? height;
   const isDragging = dragDelta !== null;
@@ -251,9 +247,6 @@ export function StickyNote({
               day: "numeric",
             })}
           </span>
-          {quadrantMeta && (
-            <span className="ml-1.5 text-[10px] font-medium opacity-70">{quadrantMeta.shortLabel}</span>
-          )}
         </div>
         <div className="flex items-center gap-0.5" data-no-drag>
           <select
@@ -268,14 +261,11 @@ export function StickyNote({
             aria-label={t("memos.note.quadrant")}
           >
             <option value="">—</option>
-            {MEMO_QUADRANTS.map((q) => {
-              const option = localizeMemoQuadrantOption(t, q.id);
-              return (
-                <option key={q.id} value={q.id} title={`${option.shortLabel} ${option.label}`}>
-                  {option.shortLabel}
-                </option>
-              );
-            })}
+            {MEMO_QUADRANTS.map((q) => (
+              <option key={q.id} value={q.id} title={`${q.shortLabel} ${q.label}`}>
+                {q.shortLabel}
+              </option>
+            ))}
           </select>
           {onAssign && (
             <button

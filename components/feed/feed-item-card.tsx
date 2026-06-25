@@ -134,10 +134,11 @@ export function FeedItemCard({
   const hasPlanUpdateDetail =
     isPlan &&
     ((item.planUpdateChanges?.length ?? 0) > 0 || Boolean(item.planUpdateSummary));
-  const hasMemoDetail = isMemo && Boolean(memoQuadrantLabel);
-  const showActionPhrase = !hasPlanUpdateDetail && !hasMemoDetail;
+  const showMemoQuadrantOnCreate =
+    isMemo && item.actionType === "create" && Boolean(memoQuadrantLabel);
+  const showActionPhrase = !hasPlanUpdateDetail && !showMemoQuadrantOnCreate;
   const showExcerpt =
-    Boolean(item.excerpt) && !hasPlanUpdateDetail && !hasMemoDetail && !isContribution;
+    Boolean(item.excerpt) && !hasPlanUpdateDetail && !showMemoQuadrantOnCreate && !isContribution;
 
   const contributionDateLabel =
     item.contributionDetail &&
@@ -223,7 +224,7 @@ export function FeedItemCard({
           >
             {item.headline}
           </h3>
-          {hasMemoDetail && memoQuadrantLabel && (
+          {showMemoQuadrantOnCreate && memoQuadrantLabel && (
             <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-400">
               {t("feed.memoTypeLabel")}
               {memoQuadrantLabel}

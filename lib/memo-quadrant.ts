@@ -10,7 +10,7 @@ export const MEMO_QUADRANT_IDS = [
 
 export type MemoQuadrantId = (typeof MEMO_QUADRANT_IDS)[number];
 
-/** 经典矩阵：右上 Q1，左上 Q2，右下 Q3，左下 Q4 */
+/** 经典矩阵：右上 Q1，左上 Q2，左下 Q3，右下 Q4 */
 export const MEMO_QUADRANTS: {
   id: MemoQuadrantId;
   label: string;
@@ -35,14 +35,14 @@ export const MEMO_QUADRANTS: {
   {
     id: "urgent_not_important",
     label: "紧急不重要",
-    shortLabel: "Q3",
+    shortLabel: "Q4",
     hint: "委托他人",
     gridClass: "col-start-2 row-start-2",
   },
   {
     id: "not_urgent_not_important",
     label: "不重要不紧急",
-    shortLabel: "Q4",
+    shortLabel: "Q3",
     hint: "尽量精简",
     gridClass: "col-start-1 row-start-2",
   },
