@@ -1,4 +1,4 @@
-import { parsePlanDateTime, formatPlanLocalDateSlash, formatPlanDateTimeCompact } from "@/lib/dates";
+import { parsePlanDateTime, formatPlanLocalDateSlash } from "@/lib/dates";
 import { formatCompletionPercent, planCompletionPercent } from "@/lib/gantt-plan-completion";
 import type { GanttItem } from "@/types";
 
@@ -38,13 +38,23 @@ export const GANTT_SCHEDULE_COLUMNS: GanttScheduleColumnDef[] = [
 
 const COLUMN_BY_ID = new Map(GANTT_SCHEDULE_COLUMNS.map((c) => [c.id, c]));
 
-export const DEFAULT_VISIBLE_SCHEDULE_COLUMNS: GanttScheduleColumnId[] = [
+export const DEFAULT_VISIBLE_SCHEDULE_COLUMNS: GanttScheduleColumnId[] = [...GANTT_SCHEDULE_COLUMN_IDS];
+
+/** @deprecated previous default omitted planDays and actualDays */
+const LEGACY_DEFAULT_VISIBLE_SCHEDULE_COLUMNS: GanttScheduleColumnId[] = [
   "planStart",
   "planEnd",
   "actualStart",
   "actualEnd",
   "completion",
 ];
+
+function isLegacyDefaultScheduleColumns(ids: GanttScheduleColumnId[]): boolean {
+  return (
+    ids.length === LEGACY_DEFAULT_VISIBLE_SCHEDULE_COLUMNS.length &&
+    LEGACY_DEFAULT_VISIBLE_SCHEDULE_COLUMNS.every((id, i) => ids[i] === id)
+  );
+}
 
 export function readStoredScheduleColumns(): GanttScheduleColumnId[] {
   if (typeof window === "undefined") return DEFAULT_VISIBLE_SCHEDULE_COLUMNS;
@@ -56,7 +66,9 @@ export function readStoredScheduleColumns(): GanttScheduleColumnId[] {
     const valid = parsed.filter((id): id is GanttScheduleColumnId =>
       GANTT_SCHEDULE_COLUMN_IDS.includes(id as GanttScheduleColumnId),
     );
-    return valid.length > 0 ? valid : DEFAULT_VISIBLE_SCHEDULE_COLUMNS;
+    if (valid.length === 0) return DEFAULT_VISIBLE_SCHEDULE_COLUMNS;
+    if (isLegacyDefaultScheduleColumns(valid)) return DEFAULT_VISIBLE_SCHEDULE_COLUMNS;
+    return valid;
   } catch {
     return DEFAULT_VISIBLE_SCHEDULE_COLUMNS;
   }
@@ -159,11 +171,6 @@ function formatScheduleDate(value: string | null | undefined): string {
   return formatPlanLocalDateSlash(value);
 }
 
-function formatScheduleDateTime(value: string | null | undefined): string {
-  if (!value) return "—";
-  return formatPlanDateTimeCompact(value);
-}
-
 function daySpanMs(start: string, end: string): number | null {
   const a = parsePlanDateTime(start, "start")?.getTime();
   const b = parsePlanDateTime(end, "end")?.getTime();
@@ -205,9 +212,9 @@ export function getScheduleCellValue(
       return { text: formatDayCount(daySpanMs(item.startDate, end)) };
     }
     case "actualStart":
-      return { text: formatScheduleDateTime(item.actualStartDate), muted: !item.actualStartDate };
+      return { text: formatScheduleDate(item.actualStartDate), muted: !item.actualStartDate };
     case "actualEnd":
-      return { text: formatScheduleDateTime(item.actualEndDate), muted: !item.actualEndDate };
+      return { text: formatScheduleDate(item.actualEndDate), muted: !item.actualEndDate };
     case "actualDays": {
       if (!item.actualStartDate) return { text: "—", muted: true };
       const end = item.actualEndDate ?? null;
