@@ -1,3 +1,5 @@
+"use client";
+
 import dynamic from "next/dynamic";
 import { PanelSkeleton } from "@/components/ui/panel-skeleton";
 
