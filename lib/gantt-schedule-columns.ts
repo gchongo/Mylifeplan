@@ -191,6 +191,10 @@ export interface ScheduleCellValue {
   highlight?: boolean;
 }
 
+function hasRealPlanEnd(item: Pick<GanttItem, "endDate" | "isVirtualEnd">): boolean {
+  return Boolean(item.endDate) && !item.isVirtualEnd;
+}
+
 export function getScheduleCellValue(
   columnId: GanttScheduleColumnId,
   item: GanttItem,
@@ -199,17 +203,13 @@ export function getScheduleCellValue(
   switch (columnId) {
     case "planStart":
       return { text: formatScheduleDate(item.startDate), muted: !item.startDate };
-    case "planEnd": {
-      if (item.endDate) return { text: formatScheduleDate(item.endDate) };
-      if (item.isVirtualEnd && item.effectiveEnd) {
-        return { text: formatScheduleDate(item.effectiveEnd), virtual: true };
-      }
-      return { text: "—", muted: true };
-    }
+    case "planEnd":
+      return hasRealPlanEnd(item)
+        ? { text: formatScheduleDate(item.endDate) }
+        : { text: "—", muted: true };
     case "planDays": {
-      const end = item.endDate ?? (item.isVirtualEnd ? item.effectiveEnd : null);
-      if (!item.startDate || !end) return { text: "—", muted: true };
-      return { text: formatDayCount(daySpanMs(item.startDate, end)) };
+      if (!item.startDate || !hasRealPlanEnd(item)) return { text: "—", muted: true };
+      return { text: formatDayCount(daySpanMs(item.startDate, item.endDate!)) };
     }
     case "actualStart":
       return { text: formatScheduleDate(item.actualStartDate), muted: !item.actualStartDate };
