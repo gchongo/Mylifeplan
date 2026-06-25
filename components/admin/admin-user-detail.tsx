@@ -142,7 +142,32 @@ export function AdminUserDetail({ userId }: { userId: string }) {
         </CardHeader>
         <CardContent>
           {user.subscriptions.length === 0 ? (
-            <p className="text-sm text-gray-500">{t("admin.noSubscriptionRecords")}</p>
+            <div className="space-y-3">
+              <p className="text-sm text-gray-500">{t("admin.noSubscriptionRecords")}</p>
+              <Button
+                size="sm"
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  setError("");
+                  try {
+                    const res = await fetch(`/api/admin/users/${userId}/provision-billing`, {
+                      method: "POST",
+                    });
+                    const data = await res.json();
+                    if (!res.ok) {
+                      setError(data.error ?? t("common.operationFailed"));
+                      return;
+                    }
+                    await load();
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                {t("admin.provisionFree")}
+              </Button>
+            </div>
           ) : (
             <ul className="space-y-2">
               {user.subscriptions.map((sub) => (
