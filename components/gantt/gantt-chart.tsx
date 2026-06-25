@@ -99,7 +99,7 @@ import { deriveParentStatus } from "@/lib/services/plan-rollup";
 import type { GanttContribution, GanttItem, PlanStatus } from "@/types";
 import { apiJson } from "@/lib/client-api";
 import { dispatchPlanUpdated, PLAN_UPDATED_EVENT } from "@/lib/plan-events";
-import { patchGanttItemFromPlan, type GanttPlanPatch } from "@/lib/gantt-plan-sync";
+import { patchGanttItemFromPlan, applyGanttPlanPatch, type GanttPlanPatch } from "@/lib/gantt-plan-sync";
 import {
   DEFAULT_VISIBLE_SCHEDULE_COLUMNS,
   GANTT_SCHEDULE_TABLE_HEADER_HEIGHT,
@@ -309,6 +309,7 @@ export const GanttChart = forwardRef<
   const panRef = useRef<{ startX: number; startScrollLeft: number } | null>(null);
   const pendingScrollLeft = useRef<number | null>(null);
   const ganttFetchSeq = useRef(0);
+  const skipNextPlanSyncRef = useRef(false);
   const [isPanning, setIsPanning] = useState(false);
 
   const [planModal, setPlanModal] = useState<PlanModalState>({
@@ -401,6 +402,11 @@ export const GanttChart = forwardRef<
 
   const dataBounds = useMemo(() => dataBoundsFromItems(items), [items]);
 
+  const fetchRange = useMemo(() => {
+    const { from, to } = buildTimelineLayout(scale, anchor, null);
+    return { from, to };
+  }, [scale, anchor]);
+
   const layout: TimelineLayout = useMemo(() => {
     const base = buildTimelineLayout(scale, anchor, dataBounds);
     if (scale === "5year" && timelineViewportWidth > 0) {
@@ -435,7 +441,7 @@ export const GanttChart = forwardRef<
     const seq = ++ganttFetchSeq.current;
     setIsLoading(true);
     apiJson<{ items?: GanttItem[]; contributions?: GanttContribution[] }>(
-      `/api/gantt?from=${from}&to=${to}`,
+      `/api/gantt?from=${fetchRange.from}&to=${fetchRange.to}`,
     )
       .then((data) => {
         if (seq !== ganttFetchSeq.current) return;
@@ -451,7 +457,7 @@ export const GanttChart = forwardRef<
         if (seq !== ganttFetchSeq.current) return;
         setIsLoading(false);
       });
-  }, [from, to]);
+  }, [fetchRange.from, fetchRange.to]);
 
   const applyPlanPatch = useCallback((plan: GanttPlanPatch) => {
     setItems((prev) =>
@@ -463,7 +469,7 @@ export const GanttChart = forwardRef<
     const seq = ++ganttFetchSeq.current;
     try {
       const data = await apiJson<{ items?: GanttItem[]; contributions?: GanttContribution[] }>(
-        `/api/gantt?from=${from}&to=${to}`,
+        `/api/gantt?from=${fetchRange.from}&to=${fetchRange.to}`,
       );
       if (seq !== ganttFetchSeq.current) return;
       setItems(data.items ?? []);
@@ -471,7 +477,7 @@ export const GanttChart = forwardRef<
     } catch {
       // Keep optimistic local state when background refresh fails.
     }
-  }, [from, to]);
+  }, [fetchRange.from, fetchRange.to]);
 
   const planById = useMemo(() => new Map(items.map((p) => [p.id, p])), [items]);
 
@@ -651,6 +657,10 @@ export const GanttChart = forwardRef<
 
   useEffect(() => {
     function onPlanUpdated() {
+      if (skipNextPlanSyncRef.current) {
+        skipNextPlanSyncRef.current = false;
+        return;
+      }
       void refetchGantt();
     }
     window.addEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
@@ -823,20 +833,35 @@ export const GanttChart = forwardRef<
     [navigatePrev, navigateNext, goToday],
   );
 
-  function handleItemUpdated(updated: GanttItem) {
-    setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+  function handleItemUpdated(
+    updated: GanttItem,
+    meta?: { shiftDescendants?: boolean; previousStart?: string; fromServer?: boolean },
+  ) {
+    skipNextPlanSyncRef.current = true;
+    const planPatch: GanttPlanPatch = {
+      id: updated.id,
+      startDate: updated.startDate,
+      endDate: updated.endDate,
+      actualStartDate: updated.actualStartDate,
+      actualEndDate: updated.actualEndDate,
+    };
+    setItems((prev) => applyGanttPlanPatch(prev, planPatch, meta));
   }
 
   function handleScheduleFieldSaved(plan?: GanttPlanPatch) {
-    if (plan) applyPlanPatch(plan);
+    if (plan) {
+      skipNextPlanSyncRef.current = true;
+      applyPlanPatch(plan);
+    }
     dispatchPlanUpdated();
   }
 
   function handlePlanStatusChanged(planId: string, apiStatus: PlanStatus) {
+    skipNextPlanSyncRef.current = true;
     setItems((prev) =>
       prev.map((i) => (i.id === planId ? { ...i, status: apiStatus } : i)),
     );
-    refetchGantt();
+    dispatchPlanUpdated();
   }
 
   function openPlan(planId: string) {
@@ -1494,6 +1519,7 @@ export const GanttChart = forwardRef<
             onPreviewDates={isRootWithChildren ? onRootDragPreview : undefined}
             isVirtualEnd={item.isVirtualEnd}
             onDragEnd={clearBarPreview}
+            onDragFailed={() => void refetchGantt()}
             onUpdated={handleItemUpdated}
             onTaskClick={() => openPlan(item.id)}
           />

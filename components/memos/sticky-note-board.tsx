@@ -82,14 +82,18 @@ export function StickyNoteBoard() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [assignNoteId, setAssignNoteId] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
   const [viewportSize, setViewportSize] = useState({ width: 800, height: 600 });
   const maxZRef = useRef(1);
   const boardRef = useRef<HTMLDivElement>(null);
+  const creatingRef = useRef(false);
+  const memoFetchSeq = useRef(0);
 
   const persistNote = useCallback(async (id: string, body: Record<string, unknown>) => {
     const res = await fetch(`/api/memos/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
+      cache: "no-store",
       body: JSON.stringify(body),
     });
     const data = await res.json();
@@ -112,6 +116,7 @@ export function StickyNoteBoard() {
       const res = await fetch("/api/memos/batch-layout", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        cache: "no-store",
         body: JSON.stringify({ updates }),
       });
       const data = await res.json();
@@ -143,21 +148,22 @@ export function StickyNoteBoard() {
   );
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/memos?standaloneOnly=true");
+    const seq = ++memoFetchSeq.current;
+    const res = await fetch("/api/memos?standaloneOnly=true", { cache: "no-store" });
     const data = await res.json();
+    if (seq !== memoFetchSeq.current) return;
     const memos: StickyNoteData[] = data.memos ?? [];
     maxZRef.current = Math.max(1, ...memos.map((m) => m.zIndex ?? 1));
+
+    const viewW = boardRef.current?.clientWidth ?? 800;
+    const viewH = boardRef.current?.clientHeight ?? 600;
 
     const mapped = memos.map((memo, index) => {
       const pos = effectiveStickyPosition(memo.posX, memo.posY, index);
       return { ...memo, x: pos.x, y: pos.y };
     });
 
-    const board = computeMemoBoardSize(
-      boardRef.current?.clientWidth ?? viewportSize.width,
-      boardRef.current?.clientHeight ?? viewportSize.height,
-      mapped,
-    );
+    const board = computeMemoBoardSize(viewW, viewH, mapped);
 
     const quadrantFixes: Array<{ id: string; quadrant: string }> = [];
     const reconciled: NoteState[] = [];
@@ -190,7 +196,7 @@ export function StickyNoteBoard() {
     }
 
     setNotes(reconciled);
-  }, [batchPersistLayout, viewportSize.width, viewportSize.height]);
+  }, [batchPersistLayout]);
 
   useEffect(() => {
     load().finally(() => setLoading(false));
@@ -309,7 +315,10 @@ export function StickyNoteBoard() {
       await persistNote(id, persistBody);
       if (patch.content !== undefined) {
         setEditingId(null);
-        await load();
+        patchNote(id, {
+          title: patch.content.split("\n")[0]?.slice(0, 80) || note?.title || "",
+          body: patch.content,
+        });
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : t("common.saveFailed"));
@@ -332,7 +341,11 @@ export function StickyNoteBoard() {
   }
 
   async function handleAdd() {
+    if (creatingRef.current) return;
+    creatingRef.current = true;
+    setIsCreating(true);
     setError("");
+
     const board = boardRef.current;
     const scrollLeft = board?.scrollLeft ?? 0;
     const scrollTop = board?.scrollTop ?? 0;
@@ -341,14 +354,39 @@ export function StickyNoteBoard() {
     const posX = scrollLeft + Math.max(0, (viewW - DEFAULT_STICKY_WIDTH) / 2);
     const posY = scrollTop + Math.max(0, (viewH - DEFAULT_STICKY_HEIGHT) / 2);
     const quadrant = detectQuadrant(posX, posY, DEFAULT_STICKY_WIDTH, DEFAULT_STICKY_HEIGHT);
+    const color = nextStickyColor(notes.length);
+    const tempId = `temp-${Date.now()}`;
+    maxZRef.current += 1;
+
+    const optimistic: NoteState = {
+      id: tempId,
+      title: "",
+      description: null,
+      body: null,
+      posX,
+      posY,
+      zIndex: maxZRef.current,
+      color,
+      quadrant,
+      width: DEFAULT_STICKY_WIDTH,
+      height: DEFAULT_STICKY_HEIGHT,
+      updatedAt: new Date().toISOString(),
+      x: posX,
+      y: posY,
+    };
+
+    setNotes((prev) => [...prev, optimistic]);
+    setActiveId(tempId);
+    setEditingId(tempId);
 
     try {
       const res = await fetch("/api/memos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        cache: "no-store",
         body: JSON.stringify({
           empty: true,
-          color: nextStickyColor(notes.length),
+          color,
           posX,
           posY,
           quadrant,
@@ -356,13 +394,22 @@ export function StickyNoteBoard() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? t("common.createFailed"));
-      await load();
-      if (data.memo?.id) {
-        setActiveId(data.memo.id);
-        setEditingId(data.memo.id);
-      }
+
+      const memo = data.memo as StickyNoteData;
+      const pos = effectiveStickyPosition(memo.posX, memo.posY, notes.length);
+      const saved: NoteState = { ...memo, x: pos.x, y: pos.y };
+
+      setNotes((prev) => prev.map((n) => (n.id === tempId ? saved : n)));
+      setActiveId(saved.id);
+      setEditingId(saved.id);
     } catch (e) {
+      setNotes((prev) => prev.filter((n) => n.id !== tempId));
+      setActiveId((current) => (current === tempId ? null : current));
+      setEditingId((current) => (current === tempId ? null : current));
       setError(e instanceof Error ? e.message : t("common.createFailed"));
+    } finally {
+      creatingRef.current = false;
+      setIsCreating(false);
     }
   }
 
@@ -395,6 +442,7 @@ export function StickyNoteBoard() {
         <div className="flex items-center gap-1.5">
           <button
             type="button"
+            disabled={isCreating}
             onClick={() => void handleAdd()}
             className="inline-flex h-8 items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
             title={t("memos.newNote")}

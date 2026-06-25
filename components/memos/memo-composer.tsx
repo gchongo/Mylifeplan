@@ -12,6 +12,7 @@ export function MemoComposer({ onCreated }: { onCreated: () => void }) {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const savingRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -49,12 +50,15 @@ export function MemoComposer({ onCreated }: { onCreated: () => void }) {
   async function handleSave() {
     const text = content.trim();
     if (!text && pendingImages.length === 0) return;
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setError("");
     try {
       const res = await fetch("/api/memos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        cache: "no-store",
         body: JSON.stringify({
           content: text || t("common.imageOnly"),
           imageUrls: pendingImages.length ? pendingImages : undefined,
@@ -68,6 +72,7 @@ export function MemoComposer({ onCreated }: { onCreated: () => void }) {
     } catch (e) {
       setError(e instanceof Error ? e.message : t("common.saveFailed"));
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }

@@ -30,6 +30,16 @@ interface DragState {
   hadDueDate: boolean;
 }
 
+interface CommitDates {
+  startDate: string;
+  endDate: string | null;
+  body: {
+    startDate: string;
+    endDate?: string | null;
+    shiftDescendants?: boolean;
+  };
+}
+
 export function GanttDraggableBar({
   item,
   layout,
@@ -52,6 +62,7 @@ export function GanttDraggableBar({
   previewOverride,
   onPreviewDates,
   onDragEnd,
+  onDragFailed,
   shellWidth,
   isVirtualEnd = false,
 }: {
@@ -67,7 +78,11 @@ export function GanttDraggableBar({
   statusDotClass: string;
   showTitle?: boolean;
   isSelected?: boolean;
-  onUpdated: (updated: GanttItem) => void;
+  onUpdated: (
+    updated: GanttItem,
+    meta?: { shiftDescendants?: boolean; previousStart?: string; fromServer?: boolean },
+  ) => void;
+  onDragFailed?: () => void;
   onTaskClick?: () => void;
   hitRowHeight?: number;
   minStartDate?: string;
@@ -85,6 +100,7 @@ export function GanttDraggableBar({
 }) {
   const [dragging, setDragging] = useState<DragState | null>(null);
   const [preview, setPreview] = useState<{ start: string; end: string } | null>(null);
+  const [commitPreview, setCommitPreview] = useState<{ start: string; end: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const dragRef = useRef<DragState | null>(null);
 
@@ -131,10 +147,10 @@ export function GanttDraggableBar({
     [layout, item.id, onPreviewDates, dragConstraints, maxContributionDate],
   );
 
-  const commitDrag = useCallback(
-    async (state: DragState, clientX: number) => {
+  const computeCommitDates = useCallback(
+    (state: DragState, clientX: number): CommitDates | null => {
       const dragAmount = pixelDeltaToDragAmount(clientX - state.startX, layout);
-      if (dragAmount === 0 && state.mode === "move") return;
+      if (dragAmount === 0 && state.mode === "move") return null;
 
       let startDate = state.origStart;
       let endDate: string | null = state.hadDueDate ? state.origEnd : null;
@@ -162,39 +178,91 @@ export function GanttDraggableBar({
         );
       }
 
-      if (startDate === item.startDate && endDate === (item.endDate ?? null)) return;
+      if (startDate === item.startDate && endDate === (item.endDate ?? null)) return null;
+
+      const body: CommitDates["body"] = { startDate };
+      if (state.hadDueDate || state.mode === "resize-end") {
+        body.endDate = endDate;
+      }
+      if (state.mode === "move") {
+        body.shiftDescendants = true;
+      }
+
+      return { startDate, endDate, body };
+    },
+    [layout, item.startDate, item.endDate, dragConstraints, maxContributionDate],
+  );
+
+  const commitDrag = useCallback(
+    async (state: DragState, clientX: number) => {
+      const commit = computeCommitDates(state, clientX);
+      if (!commit) {
+        onPreviewDates?.(item.id, null, state.mode);
+        onDragEnd?.();
+        return;
+      }
+
+      const previousStart = item.startDate;
+      const optimisticPreview = {
+        start: commit.startDate,
+        end: commit.endDate ?? item.effectiveEnd,
+      };
+
+      setPreview(null);
+      setCommitPreview(optimisticPreview);
+      onPreviewDates?.(item.id, optimisticPreview, state.mode);
+
+      onUpdated(
+        patchGanttItemFromPlan(item, {
+          id: item.id,
+          startDate: commit.startDate,
+          endDate: commit.endDate,
+        }),
+        {
+          shiftDescendants: commit.body.shiftDescendants === true,
+          previousStart,
+        },
+      );
 
       setSaving(true);
       try {
-        const body: {
-          startDate: string;
-          endDate?: string | null;
-          shiftDescendants?: boolean;
-        } = { startDate };
-        if (state.hadDueDate || state.mode === "resize-end") {
-          body.endDate = endDate;
-        }
-        if (state.mode === "move") {
-          body.shiftDescendants = true;
-        }
-
         const res = await fetch(`/api/plans/${item.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           cache: "no-store",
-          body: JSON.stringify(body),
+          body: JSON.stringify(commit.body),
         });
         const data = await res.json();
-        if (!res.ok) return;
+        if (!res.ok) {
+          onDragFailed?.();
+          return;
+        }
 
         const plan = data.plan as GanttPlanPatch;
-        onUpdated(patchGanttItemFromPlan(item, plan));
+        const optimisticItem = patchGanttItemFromPlan(item, {
+          id: item.id,
+          startDate: commit.startDate,
+          endDate: commit.endDate,
+        });
+        onUpdated(patchGanttItemFromPlan(optimisticItem, plan), { fromServer: true });
         dispatchPlanUpdated();
+      } catch {
+        onDragFailed?.();
       } finally {
         setSaving(false);
+        setCommitPreview(null);
+        onPreviewDates?.(item.id, null, state.mode);
+        onDragEnd?.();
       }
     },
-    [item, layout, onUpdated, dragConstraints, maxContributionDate],
+    [
+      item,
+      computeCommitDates,
+      onUpdated,
+      onDragFailed,
+      onPreviewDates,
+      onDragEnd,
+    ],
   );
 
   useEffect(() => {
@@ -208,19 +276,21 @@ export function GanttDraggableBar({
 
     function onUp(e: MouseEvent) {
       const state = dragRef.current;
-      if (state) {
-        const moved = Math.abs(e.clientX - state.startX) > 3;
-        if (!moved && state.mode === "move") {
-          onTaskClick?.();
-        } else {
-          void commitDrag(state, e.clientX);
-        }
-      }
       dragRef.current = null;
       setDragging(null);
-      setPreview(null);
-      onPreviewDates?.(item.id, null, state?.mode);
-      onDragEnd?.();
+
+      if (!state) return;
+
+      const moved = Math.abs(e.clientX - state.startX) > 3;
+      if (!moved && state.mode === "move") {
+        setPreview(null);
+        onPreviewDates?.(item.id, null, state.mode);
+        onDragEnd?.();
+        onTaskClick?.();
+        return;
+      }
+
+      void commitDrag(state, e.clientX);
     }
 
     window.addEventListener("mousemove", onMove);
@@ -245,7 +315,7 @@ export function GanttDraggableBar({
     setDragging(state);
   }
 
-  const activePreview = dragging ? preview : previewOverride ?? null;
+  const activePreview = dragging ? preview : commitPreview ?? previewOverride ?? null;
 
   const metrics = activePreview
     ? ganttPlanBarMetrics(activePreview.start, activePreview.end, layout, { isVirtualEnd })
@@ -271,8 +341,8 @@ export function GanttDraggableBar({
           "group absolute top-1/2 -translate-y-1/2 overflow-hidden rounded-full transition-[box-shadow,filter] duration-300 ease-out motion-reduce:transition-none",
           barShell,
           saving && "opacity-60",
-          dragging && "ring-2 ring-brand-400 ring-offset-1",
-          isSelected && !dragging && "relative z-10 ring-2 ring-brand-500/45 ring-offset-1 shadow-sm brightness-[1.06]",
+          (dragging || commitPreview) && "ring-2 ring-brand-400 ring-offset-1",
+          isSelected && !dragging && !commitPreview && "relative z-10 ring-2 ring-brand-500/45 ring-offset-1 shadow-sm brightness-[1.06]",
         )}
         style={{ ...barShellStyle, height: barHeightPx, width: visibleShellWidth }}
       >
