@@ -353,7 +353,8 @@ export async function updatePlan(
     endDate: existing.endDate,
   });
   const wouldBeUnscheduled = isPlanUnscheduled({ startDate: nextStart, endDate: nextEnd });
-  if (wasScheduled && wouldBeUnscheduled) {
+  const becomingUnscheduled = wasScheduled && wouldBeUnscheduled;
+  if (becomingUnscheduled) {
     const contributionCount = await prisma.planContribution.count({
       where: { planId, userId },
     });
@@ -421,6 +422,11 @@ export async function updatePlan(
     nextActualEnd = reconciled.actualEnd;
   }
 
+  if (becomingUnscheduled) {
+    nextActualStart = null;
+    nextActualEnd = null;
+  }
+
   const actualStartChanged =
     (nextActualStart?.getTime() ?? null) !== (existing.actualStartDate?.getTime() ?? null);
   const actualEndChanged =
@@ -428,6 +434,16 @@ export async function updatePlan(
   const statusChanged = nextStatus !== existing.status;
 
   if (input.startDate !== undefined || input.endDate !== undefined) {
+    const contribError = await validatePlanCoversContributions(
+      userId,
+      planId,
+      nextStartDate,
+      nextEndDate,
+    );
+    if (contribError) throw new Error(contribError);
+  }
+
+  if (nextStatus === "done" && nextStatus !== existing.status) {
     const contribError = await validatePlanCoversContributions(
       userId,
       planId,

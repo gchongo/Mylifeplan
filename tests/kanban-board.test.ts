@@ -49,13 +49,15 @@ describe("kanban-board", () => {
     expect(patch.startDate).toBeTruthy();
   });
 
-  it("patch for unscheduled clears dates", () => {
+  it("patch for unscheduled clears dates and actuals", () => {
     const patch = kanbanPatchForColumn(
       "unscheduled",
       plan({ id: "1", title: "A", startDate: "2026-06-20T08:00:00.000Z" }),
     );
     expect(patch.startDate).toBeNull();
     expect(patch.endDate).toBeNull();
+    expect(patch.actualStartDate).toBeNull();
+    expect(patch.actualEndDate).toBeNull();
   });
 
   it("groups plans into columns", () => {

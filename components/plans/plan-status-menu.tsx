@@ -8,12 +8,14 @@ import { localizeVisualStatusLabel } from "@/lib/i18n/gantt-helpers";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import {
   kanbanCanMoveToUnscheduled,
-  kanbanPatchForColumn,
   UNSCHEDULED_BLOCKED_HINT,
-  type KanbanColumnId,
   type KanbanPlan,
 } from "@/lib/kanban-board";
-import { datetimeLocalToIso, normalizePlanDateInput } from "@/lib/dates";
+import {
+  buildPlanScheduleTransitionPatch,
+  normalizeSchedulePatchForApi,
+  type ScheduleTransitionTarget,
+} from "@/lib/plan-schedule-transition";
 import {
   STATUS_STYLES,
   type VisualStatusKey,
@@ -135,20 +137,15 @@ export function PlanStatusMenuButton({
   }, [open, updateMenuPos]);
 
   function buildPatchBody(option: StatusMenuOption): Record<string, unknown> {
-    if (option.kind === "unscheduled") {
-      return kanbanPatchForColumn("unscheduled", kanbanPlan);
-    }
+    const target: ScheduleTransitionTarget =
+      option.kind === "unscheduled"
+        ? "unscheduled"
+        : option.api === "archived"
+          ? "archived"
+          : option.api;
 
-    if (isUnscheduled && (option.api === "not_started" || option.api === "in_progress")) {
-      const column: KanbanColumnId = option.api === "in_progress" ? "in_progress" : "not_started";
-      return kanbanPatchForColumn(column, kanbanPlan);
-    }
-
-    if (isUnscheduled && option.api === "done") {
-      return { status: "done" as PlanStatus };
-    }
-
-    return { status: option.api };
+    const patch = buildPlanScheduleTransitionPatch(kanbanPlan, target);
+    return normalizeSchedulePatchForApi(patch);
   }
 
   function isOptionActive(option: StatusMenuOption): boolean {
@@ -177,11 +174,6 @@ export function PlanStatusMenuButton({
       } catch (e) {
         setMenuError(e instanceof Error ? e.message : UNSCHEDULED_BLOCKED_HINT);
         return;
-      }
-
-      if (body.startDate && typeof body.startDate === "string") {
-        const normalized = normalizePlanDateInput(body.startDate, "start");
-        body.startDate = normalized ? datetimeLocalToIso(normalized) : null;
       }
 
       const res = await fetch(`/api/plans/${planId}`, {

@@ -11,7 +11,12 @@ import { PlanColorPicker } from "@/components/forms/plan-color-picker";
 import { PlanDateTimeField } from "@/components/forms/plan-datetime-field";
 import { toDatetimeLocalInput, datetimeLocalToIso, normalizePlanDateInput, nowDatetimeLocal } from "@/lib/dates";
 import { isPlanUnscheduled } from "@/lib/content-router";
-import { kanbanPatchForColumn, UNSCHEDULED_BLOCKED_HINT, type KanbanPlan } from "@/lib/kanban-board";
+import { UNSCHEDULED_BLOCKED_HINT, type KanbanPlan } from "@/lib/kanban-board";
+import {
+  buildPlanScheduleTransitionPatch,
+  normalizeSchedulePatchForApi,
+  type ScheduleTransitionTarget,
+} from "@/lib/plan-schedule-transition";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import type { SerializedPlanForGantt } from "@/lib/gantt-plan-sync";
 import type { TranslationKey } from "@/lib/i18n/translate";
@@ -116,6 +121,8 @@ export function PlanForm({
     status: string;
     startDate: string | null;
     endDate: string | null;
+    actualStartDate?: string | null;
+    actualEndDate?: string | null;
   } {
     const kanbanPlan: KanbanPlan = {
       id: plan?.id ?? "",
@@ -123,55 +130,34 @@ export function PlanForm({
       description: plan?.description ?? null,
       type: "goal",
       status: (plan?.status as KanbanPlan["status"]) ?? "not_started",
-      startDate: plan?.startDate ?? null,
-      endDate: plan?.endDate ?? null,
+      startDate: startDate ? datetimeLocalToIso(normalizePlanDateInput(startDate, "start")!) : null,
+      endDate: endDate ? datetimeLocalToIso(normalizePlanDateInput(endDate, "end")!) : null,
       parentPlanId: parentPlanId,
       parentTitle: null,
       childStatuses: hasSubPlans ? ["not_started"] : [],
       contributionCount,
     };
 
-    if (scheduleStatus === "unscheduled") {
-      const patch = kanbanPatchForColumn("unscheduled", kanbanPlan);
-      return {
-        status: patch.status,
-        startDate: patch.startDate ?? null,
-        endDate: patch.endDate ?? null,
-      };
-    }
-
-    if (scheduleStatus === "done") {
-      return {
-        status: "done",
-        startDate: startDate ? datetimeLocalToIso(normalizePlanDateInput(startDate, "start")!) : null,
-        endDate: endDate ? datetimeLocalToIso(normalizePlanDateInput(endDate, "end")!) : null,
-      };
-    }
-
-    const columnPatch = kanbanPatchForColumn(scheduleStatus, {
-      ...kanbanPlan,
-      startDate: startDate ? datetimeLocalToIso(normalizePlanDateInput(startDate, "start")!) : null,
-      endDate: endDate ? datetimeLocalToIso(normalizePlanDateInput(endDate, "end")!) : null,
-    });
-
-    let startIso = startDate ? datetimeLocalToIso(normalizePlanDateInput(startDate, "start")!) : null;
-    let endIso = endDate ? datetimeLocalToIso(normalizePlanDateInput(endDate, "end")!) : null;
-
-    if (columnPatch.startDate !== undefined) {
-      startIso = columnPatch.startDate
-        ? datetimeLocalToIso(normalizePlanDateInput(columnPatch.startDate, "start")!)
-        : null;
-    }
-    if (columnPatch.endDate !== undefined) {
-      endIso = columnPatch.endDate
-        ? datetimeLocalToIso(normalizePlanDateInput(columnPatch.endDate, "end")!)
-        : null;
-    }
+    const target = scheduleStatus as ScheduleTransitionTarget;
+    const patch = buildPlanScheduleTransitionPatch(kanbanPlan, target);
+    const normalized = normalizeSchedulePatchForApi(patch);
 
     return {
-      status: columnPatch.status,
-      startDate: startIso,
-      endDate: endIso,
+      status: normalized.status as string,
+      startDate:
+        normalized.startDate !== undefined
+          ? (normalized.startDate as string | null)
+          : kanbanPlan.startDate,
+      endDate:
+        normalized.endDate !== undefined
+          ? (normalized.endDate as string | null)
+          : kanbanPlan.endDate,
+      ...(normalized.actualStartDate !== undefined && {
+        actualStartDate: normalized.actualStartDate as string | null,
+      }),
+      ...(normalized.actualEndDate !== undefined && {
+        actualEndDate: normalized.actualEndDate as string | null,
+      }),
     };
   }
 
@@ -192,7 +178,13 @@ export function PlanForm({
     const normalizedActualEnd =
       canEditActual && actualEndDate ? normalizePlanDateInput(actualEndDate, "end") : null;
 
-    let scheduleFields = {
+    let scheduleFields: {
+      status: string;
+      startDate: string | null;
+      endDate: string | null;
+      actualStartDate?: string | null;
+      actualEndDate?: string | null;
+    } = {
       status: plan?.status ?? "not_started",
       startDate: startDate ? datetimeLocalToIso(normalizePlanDateInput(startDate, "start")!) : null,
       endDate: endDate ? datetimeLocalToIso(normalizePlanDateInput(endDate, "end")!) : null,
@@ -215,16 +207,22 @@ export function PlanForm({
       parentPlanId,
       startDate: scheduleFields.startDate,
       endDate: scheduleFields.endDate,
-      actualStartDate: canEditActual
-        ? normalizedActualStart
-          ? datetimeLocalToIso(normalizedActualStart)
-          : null
-        : undefined,
-      actualEndDate: canEditActual
-        ? normalizedActualEnd
-          ? datetimeLocalToIso(normalizedActualEnd)
-          : null
-        : undefined,
+      actualStartDate:
+        scheduleFields.actualStartDate !== undefined
+          ? scheduleFields.actualStartDate
+          : canEditActual
+            ? normalizedActualStart
+              ? datetimeLocalToIso(normalizedActualStart)
+              : null
+            : undefined,
+      actualEndDate:
+        scheduleFields.actualEndDate !== undefined
+          ? scheduleFields.actualEndDate
+          : canEditActual
+            ? normalizedActualEnd
+              ? datetimeLocalToIso(normalizedActualEnd)
+              : null
+            : undefined,
       color,
       ...(isEdit && { status: scheduleFields.status }),
     };

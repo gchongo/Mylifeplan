@@ -1,8 +1,11 @@
 import { isPlanUnscheduled } from "@/lib/content-router";
-import { toDatetimeLocalInput } from "@/lib/dates";
 import { deriveStatusFromDirectChildren } from "@/lib/services/plan-rollup";
 import type { VisualStatusKey } from "@/lib/task-status-style";
 import { getKanbanColumnVisual } from "@/lib/task-status-style";
+import {
+  buildPlanScheduleTransitionPatch,
+  type ScheduleTransitionPatch,
+} from "@/lib/plan-schedule-transition";
 import type { PlanStatus, PlanType } from "@/types";
 
 export type KanbanColumnId = "unscheduled" | "not_started" | "in_progress" | "done";
@@ -83,26 +86,8 @@ export function kanbanCanDrag(plan: KanbanPlan): boolean {
 export function kanbanPatchForColumn(
   columnId: KanbanColumnId,
   plan: KanbanPlan,
-): { status: PlanStatus; startDate?: string | null; endDate?: string | null } {
-  if (columnId === "unscheduled" && !kanbanCanMoveToUnscheduled(plan)) {
-    throw new Error(UNSCHEDULED_BLOCKED_HINT);
-  }
-  switch (columnId) {
-    case "unscheduled":
-      return { status: "not_started", startDate: null, endDate: null };
-    case "not_started":
-      return {
-        status: "not_started",
-        ...(plan.startDate ? {} : { startDate: toDatetimeLocalInput(new Date()) }),
-      };
-    case "in_progress":
-      return {
-        status: "in_progress",
-        ...(plan.startDate ? {} : { startDate: toDatetimeLocalInput(new Date()) }),
-      };
-    case "done":
-      return { status: "done" };
-  }
+): ScheduleTransitionPatch {
+  return buildPlanScheduleTransitionPatch(plan, columnId);
 }
 
 export function kanbanArchivePatch(): { status: PlanStatus } {
@@ -112,8 +97,8 @@ export function kanbanArchivePatch(): { status: PlanStatus } {
 export function kanbanRestorePatch(
   targetColumn: KanbanColumnId,
   plan: KanbanPlan,
-): { status: PlanStatus; startDate?: string | null; endDate?: string | null } {
-  return kanbanPatchForColumn(targetColumn, { ...plan, status: "not_started" });
+): ScheduleTransitionPatch {
+  return buildPlanScheduleTransitionPatch({ ...plan, status: "not_started" }, targetColumn);
 }
 
 export function groupPlansByKanbanColumn(plans: KanbanPlan[]): Record<KanbanColumnId, KanbanPlan[]> {
