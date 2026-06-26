@@ -36,9 +36,20 @@ function mergeKanbanPlan(existing: KanbanPlan, plan: SerializedPlanForGantt): Ka
   };
 }
 
-function listKindFromPlansKey(queryKey: readonly unknown[]): "active" | "archived" {
-  const filter = queryKey[1] as { status?: string } | undefined;
-  return filter?.status === "archived" ? "archived" : "active";
+function toKanbanPlan(plan: SerializedPlanForGantt): KanbanPlan {
+  return {
+    id: plan.id,
+    title: plan.title,
+    description: null,
+    type: "goal",
+    status: (plan.status as PlanStatus) ?? "not_started",
+    startDate: plan.startDate,
+    endDate: plan.endDate ?? null,
+    parentPlanId: plan.parentPlanId ?? null,
+    parentTitle: null,
+    childStatuses: [],
+    contributionCount: 0,
+  };
 }
 
 function patchPlansQuery(
@@ -61,7 +72,7 @@ function patchPlansQuery(
       plans[idx] = mergeKanbanPlan(plans[idx], plan);
       return { plans };
     }
-    return old;
+    return { plans: [toKanbanPlan(plan), ...old.plans] };
   }
 
   if (!isArchived) {
@@ -73,7 +84,7 @@ function patchPlansQuery(
     plans[idx] = mergeKanbanPlan(plans[idx], plan);
     return { plans };
   }
-  return old;
+  return { plans: [toKanbanPlan(plan), ...old.plans] };
 }
 
 function patchCalendarQuery(
@@ -111,25 +122,12 @@ export function applyPlanUpdateToCache(rawPlan: Record<string, unknown>) {
   const qc = getQueryClient();
   const plan = toGanttPlanSnapshot(rawPlan);
 
-  for (const [queryKey, data] of qc.getQueriesData<PlansQueryData>({
-    queryKey: queryKeys.plans.all,
-  })) {
-    const listKind = listKindFromPlansKey(queryKey);
-    const next = patchPlansQuery(data, plan, listKind);
-    if (next && next !== data) {
-      qc.setQueryData(queryKey, next);
-    }
-  }
-
-  // 看板页常用 initialData，确保 active 列表 query 存在时也能命中
-  const activeKey = queryKeys.plans.list();
-  const activeData = qc.getQueryData<PlansQueryData>(activeKey);
-  if (activeData?.plans) {
-    const next = patchPlansQuery(activeData, plan, "active");
-    if (next && next !== activeData) {
-      qc.setQueryData(activeKey, next);
-    }
-  }
+  qc.setQueriesData<PlansQueryData>({ queryKey: queryKeys.plans.list() }, (data) =>
+    patchPlansQuery(data, plan, "active"),
+  );
+  qc.setQueriesData<PlansQueryData>({ queryKey: queryKeys.plans.list("archived") }, (data) =>
+    patchPlansQuery(data, plan, "archived"),
+  );
 
   for (const [queryKey, data] of qc.getQueriesData<GanttQueryData>({
     queryKey: queryKeys.gantt.all,

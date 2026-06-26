@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { ErrorMessage, Loading } from "@/components/ui/feedback";
 import { StickyNote, type StickyNoteData } from "@/components/memos/sticky-note";
@@ -80,6 +81,7 @@ function MemoBoardSearch({
 
 export function StickyNoteBoard() {
   const { t } = useI18n();
+  const qc = useQueryClient();
   const [notes, setNotes] = useState<NoteState[]>([]);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -361,6 +363,9 @@ export function StickyNoteBoard() {
         throw new Error(data.error ?? t("common.deleteFailed"));
       }
       setNotes((prev) => prev.filter((n) => n.id !== id));
+      qc.setQueryData<StickyNoteData[]>(queryKeys.memos.standalone, (prev = []) =>
+        prev.filter((m) => m.id !== id),
+      );
       notifyMemoUpdated();
       if (editingId === id) setEditingId(null);
     } catch (e) {
@@ -428,8 +433,14 @@ export function StickyNoteBoard() {
       const saved: NoteState = { ...memo, x: pos.x, y: pos.y };
 
       setNotes((prev) => prev.map((n) => (n.id === tempId ? saved : n)));
+      qc.setQueryData<StickyNoteData[]>(queryKeys.memos.standalone, (prev = []) => {
+        const withoutTemp = prev.filter((m) => m.id !== tempId);
+        if (withoutTemp.some((m) => m.id === saved.id)) return withoutTemp;
+        return [memo, ...withoutTemp];
+      });
       setActiveId(saved.id);
       setEditingId(saved.id);
+      notifyMemoUpdated();
     } catch (e) {
       setNotes((prev) => prev.filter((n) => n.id !== tempId));
       setActiveId((current) => (current === tempId ? null : current));
