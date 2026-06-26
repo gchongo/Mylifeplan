@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, forwardRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   groupPlansByKanbanColumn,
   kanbanArchivePatch,
@@ -256,17 +256,13 @@ function KanbanArchivedDrawerPanel({
   );
 }
 
-export interface PlanKanbanBoardHandle {
-  reload: () => Promise<void>;
-}
-
-export const PlanKanbanBoard = forwardRef<
-  PlanKanbanBoardHandle,
-  {
-    initialPlans: KanbanPlan[];
-    className?: string;
-  }
->(function PlanKanbanBoard({ initialPlans, className }, ref) {
+export function PlanKanbanBoard({
+  initialPlans,
+  className,
+}: {
+  initialPlans: KanbanPlan[];
+  className?: string;
+}) {
   const [plans, setPlans] = useState(initialPlans);
   const [archivedPlans, setArchivedPlans] = useState<KanbanPlan[]>([]);
   const [archivedOpen, setArchivedOpen] = useState(false);
@@ -316,8 +312,6 @@ export const PlanKanbanBoard = forwardRef<
       document.removeEventListener("visibilitychange", syncIfStale);
     };
   }, [reloadPlans]);
-
-  useImperativeHandle(ref, () => ({ reload: reloadPlans }), [reloadPlans]);
 
   const movePlan = useCallback(
     async (planId: string, targetColumn: KanbanColumnId, fromArchived: boolean) => {
@@ -571,4 +565,4 @@ export const PlanKanbanBoard = forwardRef<
       </div>
     </DrawerLayout>
   );
-});
+}

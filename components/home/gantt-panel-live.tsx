@@ -7,7 +7,6 @@ import { PanelExpandButton } from "@/components/home/panel-expand-button";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { GanttChart, type GanttChartHandle } from "@/components/gantt/gantt-chart";
 import { GanttToolbarControls } from "@/components/gantt/gantt-toolbar-controls";
-import { PageRefreshButton } from "@/components/ui/page-refresh-button";
 import type { GanttScaleId } from "@/lib/gantt-scale";
 import { cn } from "@/lib/utils";
 
@@ -52,11 +51,8 @@ export function GanttPanelLive({
         className,
       )}
     >
-      <div className="flex shrink-0 flex-row items-center gap-2 px-4 pb-2 pt-4">
+      <div className="flex shrink-0 flex-row items-center gap-3 px-4 pb-2 pt-4">
         <CardTitle className="shrink-0 text-base">{t("gantt.homeTitle")}</CardTitle>
-        {fullPage && (
-          <PageRefreshButton onRefresh={() => ganttRef.current?.refresh()} />
-        )}
         {toolbar}
       </div>
 

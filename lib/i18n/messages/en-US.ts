@@ -664,8 +664,6 @@ const enUS = {
     expandNav: "Expand navigation",
     closeNav: "Close navigation",
     settings: "Settings",
-    refresh: "Refresh data",
-    refreshPage: "Refresh this page",
     openProfileSettings: "Profile and settings",
   },
   panel: {
