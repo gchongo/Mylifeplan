@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import type { PlanSummaryStats } from "@/lib/plan-summary";
 import { apiJson } from "@/lib/client-api";
-import { usePlanDataSync } from "@/lib/use-plan-data-sync";
+import { queryKeys } from "@/lib/query/keys";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
@@ -169,34 +170,20 @@ export function AdaptiveDistributionChart({
 
 export function usePlanSummary() {
   const { t } = useI18n();
-  const [summary, setSummary] = useState<PlanSummaryStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { data: summary, isLoading: loading, error, refetch } = useQuery({
+    queryKey: queryKeys.summary.all,
+    queryFn: async () => {
+      const data = await apiJson<{ summary: PlanSummaryStats }>("/api/summary");
+      return data.summary;
+    },
+  });
 
-  const load = useCallback(async () => {
-    setError("");
-    const data = await apiJson<{ summary: PlanSummaryStats }>("/api/summary");
-    setSummary(data.summary);
-  }, []);
-
-  const reload = useCallback(async () => {
-    setLoading(true);
-    try {
-      await load();
-    } finally {
-      setLoading(false);
-    }
-  }, [load]);
-
-  useEffect(() => {
-    load()
-      .catch((e) => setError(e instanceof Error ? e.message : t("summary.loadFailed")))
-      .finally(() => setLoading(false));
-  }, [load, t]);
-
-  usePlanDataSync(() => reload());
-
-  return { summary, loading, error, reload };
+  return {
+    summary: summary ?? null,
+    loading,
+    error: error instanceof Error ? error.message : error ? t("summary.loadFailed") : "",
+    reload: () => void refetch(),
+  };
 }
 
 export function IconMetricTile({

@@ -14,7 +14,7 @@ export function CalendarDayCreateActions({
 }: {
   dateStr: string;
   dayItems: CalendarItem[];
-  onSuccess: () => void;
+  onSuccess?: () => void;
 }) {
   const { t } = useI18n();
   const [planId, setPlanId] = useState("");

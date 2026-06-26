@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { ErrorMessage, Loading } from "@/components/ui/feedback";
 import { StickyNote, type StickyNoteData } from "@/components/memos/sticky-note";
@@ -22,7 +23,7 @@ import {
 import { effectiveStickyPosition, nextStickyColor } from "@/lib/memo-sticky";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import { dispatchMemoUpdated } from "@/lib/memo-events";
-import { useMemoDataSync } from "@/lib/use-memo-data-sync";
+import { queryKeys } from "@/lib/query/keys";
 import type { SerializedPlanForGantt } from "@/lib/gantt-plan-sync";
 
 type NoteState = StickyNoteData & { x: number; y: number };
@@ -80,7 +81,6 @@ function MemoBoardSearch({
 export function StickyNoteBoard() {
   const { t } = useI18n();
   const [notes, setNotes] = useState<NoteState[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -91,7 +91,26 @@ export function StickyNoteBoard() {
   const maxZRef = useRef(1);
   const boardRef = useRef<HTMLDivElement>(null);
   const creatingRef = useRef(false);
-  const memoFetchSeq = useRef(0);
+
+  const { data: rawMemos, isLoading: loading, error: queryError } = useQuery({
+    queryKey: queryKeys.memos.standalone,
+    queryFn: async () => {
+      const res = await fetch("/api/memos?standaloneOnly=true", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? t("common.loadFailed"));
+      return (data.memos ?? []) as StickyNoteData[];
+    },
+  });
+
+  useEffect(() => {
+    if (queryError instanceof Error) {
+      setError(queryError.message);
+    } else if (queryError) {
+      setError(t("common.loadFailed"));
+    } else {
+      setError("");
+    }
+  }, [queryError, t]);
 
   const notifyMemoUpdated = useCallback(() => {
     dispatchMemoUpdated();
@@ -155,62 +174,59 @@ export function StickyNoteBoard() {
     [batchPersistLayout],
   );
 
-  const load = useCallback(async () => {
-    const seq = ++memoFetchSeq.current;
-    const res = await fetch("/api/memos?standaloneOnly=true", { cache: "no-store" });
-    const data = await res.json();
-    if (seq !== memoFetchSeq.current) return;
-    const memos: StickyNoteData[] = data.memos ?? [];
-    maxZRef.current = Math.max(1, ...memos.map((m) => m.zIndex ?? 1));
+  const reconcileMemos = useCallback(
+    async (memos: StickyNoteData[]) => {
+      maxZRef.current = Math.max(1, ...memos.map((m) => m.zIndex ?? 1));
 
-    const viewW = boardRef.current?.clientWidth ?? 800;
-    const viewH = boardRef.current?.clientHeight ?? 600;
+      const viewW = boardRef.current?.clientWidth ?? 800;
+      const viewH = boardRef.current?.clientHeight ?? 600;
 
-    const mapped = memos.map((memo, index) => {
-      const pos = effectiveStickyPosition(memo.posX, memo.posY, index);
-      return { ...memo, x: pos.x, y: pos.y };
-    });
+      const mapped = memos.map((memo, index) => {
+        const pos = effectiveStickyPosition(memo.posX, memo.posY, index);
+        return { ...memo, x: pos.x, y: pos.y };
+      });
 
-    const board = computeMemoBoardSize(viewW, viewH, mapped);
+      const board = computeMemoBoardSize(viewW, viewH, mapped);
 
-    const quadrantFixes: Array<{ id: string; quadrant: string }> = [];
-    const reconciled: NoteState[] = [];
-    for (const note of mapped) {
-      const { width, height } = {
-        width: note.width ?? DEFAULT_STICKY_WIDTH,
-        height: note.height ?? DEFAULT_STICKY_HEIGHT,
-      };
-      const expected = detectMemoQuadrant(
-        note.x,
-        note.y,
-        width,
-        height,
-        board.width,
-        board.height,
-        DEFAULT_MEMO_BOARD_AXIS,
-      );
-      if (note.quadrant !== expected) {
-        reconciled.push({ ...note, quadrant: expected });
-        quadrantFixes.push({ id: note.id, quadrant: expected });
-      } else {
-        reconciled.push(note);
+      const quadrantFixes: Array<{ id: string; quadrant: string }> = [];
+      const reconciled: NoteState[] = [];
+      for (const note of mapped) {
+        const { width, height } = {
+          width: note.width ?? DEFAULT_STICKY_WIDTH,
+          height: note.height ?? DEFAULT_STICKY_HEIGHT,
+        };
+        const expected = detectMemoQuadrant(
+          note.x,
+          note.y,
+          width,
+          height,
+          board.width,
+          board.height,
+          DEFAULT_MEMO_BOARD_AXIS,
+        );
+        if (note.quadrant !== expected) {
+          reconciled.push({ ...note, quadrant: expected });
+          quadrantFixes.push({ id: note.id, quadrant: expected });
+        } else {
+          reconciled.push(note);
+        }
       }
-    }
 
-    if (quadrantFixes.length > 0) {
-      void batchPersistLayout(
-        quadrantFixes.map((item) => ({ id: item.id, quadrant: item.quadrant })),
-      ).catch(() => {});
-    }
+      if (quadrantFixes.length > 0) {
+        void batchPersistLayout(
+          quadrantFixes.map((item) => ({ id: item.id, quadrant: item.quadrant })),
+        ).catch(() => {});
+      }
 
-    setNotes(reconciled);
-  }, [batchPersistLayout]);
-
-  useMemoDataSync(() => load());
+      setNotes(reconciled);
+    },
+    [batchPersistLayout],
+  );
 
   useEffect(() => {
-    load().finally(() => setLoading(false));
-  }, [load]);
+    if (!rawMemos) return;
+    void reconcileMemos(rawMemos);
+  }, [rawMemos, reconcileMemos]);
 
   useEffect(() => {
     const board = boardRef.current;

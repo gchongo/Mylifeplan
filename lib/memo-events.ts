@@ -1,12 +1,6 @@
-export const MEMO_UPDATED_EVENT = "meridian:memo-updated";
+import { invalidateMemoViews } from "@/lib/query/invalidate";
 
-export let memoDataVersion = 0;
-
+/** 任意便签保存成功后调用，触发便签板与信息流自动刷新 */
 export function dispatchMemoUpdated() {
-  memoDataVersion += 1;
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(
-      new CustomEvent(MEMO_UPDATED_EVENT, { detail: { version: memoDataVersion } }),
-    );
-  }
+  invalidateMemoViews();
 }

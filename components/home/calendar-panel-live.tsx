@@ -38,7 +38,8 @@ import {
   rangeForMonths,
   type MonthKey,
 } from "@/lib/calendar-month-grid";
-import { usePlanDataSync } from "@/lib/use-plan-data-sync";
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query/keys";
 import { localDateStr } from "@/lib/dates";
 import type { CalendarItem } from "@/types";
 import { cn } from "@/lib/utils";
@@ -111,8 +112,6 @@ export function CalendarPanelLive({
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const [drawerDate, setDrawerDate] = useState<string | null>(() => (fullPage ? null : todayStr));
   const [weekAnchor, setWeekAnchor] = useState(today);
-  const [items, setItems] = useState<CalendarItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const scrollRef = useRef<CalendarScrollViewHandle>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
   const [layoutSize, setLayoutSize] = useState({ width: 0, height: 0 });
@@ -194,24 +193,11 @@ export function CalendarPanelLive({
     return { from: ds, to: ds, label: ds };
   }, [viewMode, loadedMonths, visibleMonth, viewYear, viewMonth, viewDay, weekAnchor, locale, t]);
 
-  const reloadCalendar = useCallback(
-    (opts?: { silent?: boolean }) => {
-      if (!opts?.silent) setLoading(true);
-      apiJson<{ items?: CalendarItem[] }>(`/api/calendar?from=${from}&to=${to}`)
-        .then((data) => setItems(data.items ?? []))
-        .catch(() => setItems([]))
-        .finally(() => {
-          if (!opts?.silent) setLoading(false);
-        });
-    },
-    [from, to],
-  );
-
-  usePlanDataSync(() => reloadCalendar({ silent: true }));
-
-  useEffect(() => {
-    reloadCalendar();
-  }, [reloadCalendar]);
+  const { data, isLoading: loading } = useQuery({
+    queryKey: queryKeys.calendar.range(from, to),
+    queryFn: () => apiJson<{ items?: CalendarItem[] }>(`/api/calendar?from=${from}&to=${to}`),
+  });
+  const items = data?.items ?? [];
 
   const dayStr = toDateStr(viewYear, viewMonth, viewDay);
   const weekDays = weekRange(weekAnchor).days;
@@ -332,7 +318,6 @@ export function CalendarPanelLive({
           open={drawerDate !== null}
           onClose={closeDayDrawer}
           detailExpandable={fullPage}
-          onDataChange={reloadCalendar}
           panelWidthPx={drawerWidthPx}
           onPanelWidthPxChange={handleDrawerWidthChange}
           panelMinWidthPx={CALENDAR_DRAWER_MIN_WIDTH_PX}
@@ -476,7 +461,6 @@ export function CalendarPanelLive({
                 <CalendarDayCreateActions
                   dateStr={dayStr}
                   dayItems={dayItems}
-                  onSuccess={reloadCalendar}
                 />
               </div>
             )}

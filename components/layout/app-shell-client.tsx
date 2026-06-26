@@ -9,8 +9,8 @@ import { SidebarNavDrawer } from "@/components/layout/sidebar-brand";
 import { SidebarNavMenu } from "@/components/layout/sidebar-nav";
 import { TopBar } from "@/components/layout/top-bar";
 import { UserProfileProvider, type UserProfile } from "@/components/user/user-profile-provider";
+import { QueryProvider } from "@/lib/query/provider";
 import { isAppShellFullBleed } from "@/lib/app-shell-layout";
-import { APP_ROUTE_CHANGED_EVENT } from "@/lib/use-plan-data-sync";
 import { readStorageItem, writeStorageItem } from "@/lib/app-storage";
 import { cn } from "@/lib/utils";
 
@@ -37,15 +37,17 @@ export function AppShellClient({
   userRole?: "user" | "admin";
 }) {
   return (
-    <SettingsProvider>
-      <I18nProvider>
-        <UserProfileProvider initialProfile={userProfile}>
-          <AppShellInner title={title} userRole={userRole}>
-            {children}
-          </AppShellInner>
-        </UserProfileProvider>
-      </I18nProvider>
-    </SettingsProvider>
+    <QueryProvider>
+      <SettingsProvider>
+        <I18nProvider>
+          <UserProfileProvider initialProfile={userProfile}>
+            <AppShellInner title={title} userRole={userRole}>
+              {children}
+            </AppShellInner>
+          </UserProfileProvider>
+        </I18nProvider>
+      </SettingsProvider>
+    </QueryProvider>
   );
 }
 
@@ -88,14 +90,7 @@ function AppShellInner({
   }, []);
 
   const pathname = usePathname();
-  const prevPathRef = useRef(pathname);
   const fullBleed = isAppShellFullBleed(pathname);
-
-  useEffect(() => {
-    if (prevPathRef.current === pathname) return;
-    prevPathRef.current = pathname;
-    window.dispatchEvent(new CustomEvent(APP_ROUTE_CHANGED_EVENT));
-  }, [pathname]);
 
   useEffect(() => {
     if (!fullBleed) return;

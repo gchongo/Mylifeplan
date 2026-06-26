@@ -98,8 +98,9 @@ import { GRID_BORDER, GRID_ROW_BORDER } from "@/lib/gantt-grid-colors";
 import { deriveParentStatus } from "@/lib/services/plan-rollup";
 import type { GanttContribution, GanttItem, PlanStatus } from "@/types";
 import { apiJson } from "@/lib/client-api";
-import { dispatchPlanUpdated, type PlanUpdatedDetail } from "@/lib/plan-events";
-import { usePlanDataSync } from "@/lib/use-plan-data-sync";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import { dispatchPlanUpdated } from "@/lib/plan-events";
+import { queryKeys } from "@/lib/query/keys";
 import type { PlanContributionComposeResult } from "@/components/forms/plan-contribution-compose-form";
 import {
   patchGanttItemFromPlan,
@@ -318,8 +319,7 @@ export const GanttChart = forwardRef<
   const scrollTarget = useRef<"today" | "anchor">("today");
   const panRef = useRef<{ startX: number; startScrollLeft: number } | null>(null);
   const pendingScrollLeft = useRef<number | null>(null);
-  const ganttFetchSeq = useRef(0);
-  const skipNextPlanSyncRef = useRef(false);
+  const queryClient = useQueryClient();
   const [isPanning, setIsPanning] = useState(false);
 
   const [planModal, setPlanModal] = useState<PlanModalState>({
@@ -330,9 +330,6 @@ export const GanttChart = forwardRef<
   const scale = scaleProp ?? internalScale;
   const [anchor, setAnchor] = useState(todayStr);
 
-  const [items, setItems] = useState<GanttItem[]>([]);
-  const [contributions, setContributions] = useState<GanttContribution[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<Set<VisualStatusKey>>(defaultGanttStatusFilter);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
@@ -410,12 +407,42 @@ export const GanttChart = forwardRef<
     });
   }, [effectiveLeftWidth, titlePanelVisible, schedulePanelVisible, onTitleColumnLayout]);
 
-  const dataBounds = useMemo(() => dataBoundsFromItems(items), [items]);
-
   const fetchRange = useMemo(() => {
     const { from, to } = buildTimelineLayout(scale, anchor, null);
     return { from, to };
   }, [scale, anchor]);
+
+  type GanttQueryData = { items: GanttItem[]; contributions: GanttContribution[] };
+  const ganttQueryKey = queryKeys.gantt.range(fetchRange.from, fetchRange.to);
+
+  const { data: ganttData, isLoading, refetch: refetchGanttQuery } = useQuery({
+    queryKey: ganttQueryKey,
+    queryFn: async () => {
+      const data = await apiJson<{ items?: GanttItem[]; contributions?: GanttContribution[] }>(
+        `/api/gantt?from=${fetchRange.from}&to=${fetchRange.to}`,
+      );
+      return {
+        items: data.items ?? [],
+        contributions: data.contributions ?? [],
+      };
+    },
+    placeholderData: keepPreviousData,
+  });
+
+  const items = ganttData?.items ?? [];
+  const contributions = ganttData?.contributions ?? [];
+
+  const updateGanttItems = useCallback(
+    (updater: (prev: GanttItem[]) => GanttItem[]) => {
+      queryClient.setQueryData<GanttQueryData>(ganttQueryKey, (old) => ({
+        items: updater(old?.items ?? []),
+        contributions: old?.contributions ?? [],
+      }));
+    },
+    [ganttQueryKey, queryClient],
+  );
+
+  const dataBounds = useMemo(() => dataBoundsFromItems(items), [items]);
 
   const layout: TimelineLayout = useMemo(() => {
     const base = buildTimelineLayout(scale, anchor, dataBounds);
@@ -447,53 +474,14 @@ export const GanttChart = forwardRef<
     : dateToX(today, layout);
   const todayVisible = today >= layout.from && today <= layout.to;
 
-  const loadGantt = useCallback(
-    async (options?: { showLoading?: boolean }) => {
-      const seq = ++ganttFetchSeq.current;
-      const showLoading = options?.showLoading ?? false;
-      if (showLoading) setIsLoading(true);
-
-      try {
-        const data = await apiJson<{ items?: GanttItem[]; contributions?: GanttContribution[] }>(
-          `/api/gantt?from=${fetchRange.from}&to=${fetchRange.to}`,
-        );
-        if (seq !== ganttFetchSeq.current) return;
-        setItems(data.items ?? []);
-        setContributions(data.contributions ?? []);
-      } catch {
-        if (seq !== ganttFetchSeq.current) return;
-        setItems([]);
-        setContributions([]);
-      } finally {
-        if (seq !== ganttFetchSeq.current) return;
-        if (showLoading) setIsLoading(false);
-      }
-    },
-    [fetchRange.from, fetchRange.to],
-  );
-
-  useEffect(() => {
-    void loadGantt({ showLoading: true });
-  }, [loadGantt]);
-
-  const applyPlanPatch = useCallback((plan: GanttPlanPatch) => {
-    setItems((prev) =>
-      prev.map((item) => (item.id === plan.id ? patchGanttItemFromPlan(item, plan) : item)),
-    );
-  }, []);
-
-  /** 后台同步：不占用主加载序号，避免把首屏 loading 卡住 */
-  const refetchGantt = useCallback(async () => {
-    try {
-      const data = await apiJson<{ items?: GanttItem[]; contributions?: GanttContribution[] }>(
-        `/api/gantt?from=${fetchRange.from}&to=${fetchRange.to}`,
+  const applyPlanPatch = useCallback(
+    (plan: GanttPlanPatch) => {
+      updateGanttItems((prev) =>
+        prev.map((item) => (item.id === plan.id ? patchGanttItemFromPlan(item, plan) : item)),
       );
-      setItems(data.items ?? []);
-      setContributions(data.contributions ?? []);
-    } catch {
-      // 保留当前视图，避免后台刷新失败时清空
-    }
-  }, [fetchRange.from, fetchRange.to]);
+    },
+    [updateGanttItems],
+  );
 
   const planById = useMemo(() => new Map(items.map((p) => [p.id, p])), [items]);
 
@@ -668,8 +656,8 @@ export const GanttChart = forwardRef<
   const bodyAreaHeight = Math.max(rowsBodyHeight, scrollViewportHeight);
 
   const refetchGanttStable = useCallback(() => {
-    void refetchGantt();
-  }, [refetchGantt]);
+    void refetchGanttQuery();
+  }, [refetchGanttQuery]);
 
   const expandAncestorsForPlan = useCallback((parentId: string | null, itemsList: GanttItem[]) => {
     if (!parentId) return;
@@ -684,29 +672,6 @@ export const GanttChart = forwardRef<
       return ancestors;
     });
   }, []);
-
-  const applyPlanDetail = useCallback(
-    (detail: PlanUpdatedDetail | undefined) => {
-      if (!detail?.plan) return false;
-      setItems((prev) => {
-        const next = syncGanttItemsFromPlanUpdate(prev, detail.plan!, fetchRange.from);
-        if (detail.plan?.parentPlanId) {
-          expandAncestorsForPlan(detail.plan.parentPlanId, next);
-        }
-        return next;
-      });
-      return true;
-    },
-    [fetchRange.from, expandAncestorsForPlan],
-  );
-
-  usePlanDataSync((detail) => {
-    const skipped = skipNextPlanSyncRef.current;
-    skipNextPlanSyncRef.current = false;
-    if (applyPlanDetail(detail)) return;
-    if (skipped) return;
-    void refetchGantt();
-  });
 
   useEffect(() => {
     if (!isPanning) return;
@@ -878,7 +843,6 @@ export const GanttChart = forwardRef<
     updated: GanttItem,
     meta?: { shiftDescendants?: boolean; previousStart?: string; fromServer?: boolean },
   ) {
-    skipNextPlanSyncRef.current = true;
     const planPatch: GanttPlanPatch = {
       id: updated.id,
       startDate: updated.startDate,
@@ -886,20 +850,15 @@ export const GanttChart = forwardRef<
       actualStartDate: updated.actualStartDate,
       actualEndDate: updated.actualEndDate,
     };
-    setItems((prev) => applyGanttPlanPatch(prev, planPatch, meta));
+    updateGanttItems((prev) => applyGanttPlanPatch(prev, planPatch, meta));
   }
 
   function handleScheduleFieldSaved(plan?: SerializedPlanForGantt) {
-    if (plan) {
-      skipNextPlanSyncRef.current = true;
-      dispatchPlanUpdated({ plan });
-      return;
-    }
-    dispatchPlanUpdated();
+    dispatchPlanUpdated(plan ? { plan } : undefined);
   }
 
   function handlePlanStatusChanged(planId: string, apiStatus: PlanStatus) {
-    setItems((prev) =>
+    updateGanttItems((prev) =>
       prev.map((i) => (i.id === planId ? { ...i, status: apiStatus } : i)),
     );
   }
@@ -940,7 +899,7 @@ export const GanttChart = forwardRef<
   function handlePlanComposeSuccess(result?: PlanContributionComposeResult) {
     if (result?.kind === "plan") {
       const plan = result.plan as SerializedPlanForGantt;
-      setItems((prev) => {
+      updateGanttItems((prev) => {
         const next = syncGanttItemsFromPlanUpdate(prev, plan, fetchRange.from);
         if (plan.parentPlanId) {
           expandAncestorsForPlan(plan.parentPlanId, next);
@@ -948,11 +907,6 @@ export const GanttChart = forwardRef<
         return next;
       });
       dispatchPlanUpdated({ plan });
-      return;
-    }
-    if (result?.kind === "contribution") {
-      skipNextPlanSyncRef.current = true;
-      void refetchGantt();
     }
   }
 
@@ -1581,7 +1535,7 @@ export const GanttChart = forwardRef<
             onPreviewDates={isRootWithChildren ? onRootDragPreview : undefined}
             isVirtualEnd={item.isVirtualEnd}
             onDragEnd={clearBarPreview}
-            onDragFailed={() => void refetchGantt()}
+            onDragFailed={() => void refetchGanttQuery()}
             onUpdated={handleItemUpdated}
             onTaskClick={() => openPlan(item.id)}
           />

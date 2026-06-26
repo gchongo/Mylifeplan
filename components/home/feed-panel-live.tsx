@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { EmptyState, Loading } from "@/components/ui/feedback";
 import { FeedComposer } from "@/components/feed/feed-composer";
@@ -14,8 +15,7 @@ import type { FeedActionType, FeedItemType } from "@prisma/client";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 import { apiJson } from "@/lib/client-api";
-import { usePlanDataSync } from "@/lib/use-plan-data-sync";
-import { useMemoDataSync } from "@/lib/use-memo-data-sync";
+import { queryKeys } from "@/lib/query/keys";
 
 interface FeedRow {
   id: string;
@@ -35,6 +35,19 @@ interface FeedRow {
   contributionDetail: FeedContributionDetail | null;
 }
 
+async function fetchFeedPage(
+  filter: FeedTypeFilterId,
+  limit: number,
+  cursor: string | null,
+) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) params.set("cursor", cursor);
+  if (filter !== "all") params.set("itemType", filter);
+  return apiJson<{ items?: FeedRow[]; nextCursor?: string | null }>(
+    `/api/feed?${params.toString()}`,
+  );
+}
+
 export function FeedPanelLive({
   fullPage = false,
   className,
@@ -44,58 +57,34 @@ export function FeedPanelLive({
 }) {
   const { t } = useI18n();
   const pageSize = fullPage ? 50 : 20;
-  const [items, setItems] = useState<FeedRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<FeedTypeFilterId>("all");
   const listRef = useRef<HTMLUListElement>(null);
   const loadMoreRef = useRef<HTMLLIElement>(null);
 
-  const load = useCallback(
-    async (
-      cursor?: string | null,
-      append = false,
-      filter: FeedTypeFilterId = typeFilter,
-    ) => {
-      const params = new URLSearchParams({ limit: String(pageSize) });
-      if (cursor) params.set("cursor", cursor);
-      if (filter !== "all") params.set("itemType", filter);
-      const data = await apiJson<{ items?: FeedRow[]; nextCursor?: string | null }>(
-        `/api/feed?${params.toString()}`,
-      );
-      const rows: FeedRow[] = data.items ?? [];
-      setItems((prev) => (append ? [...prev, ...rows] : rows));
-      setNextCursor(data.nextCursor ?? null);
-    },
-    [pageSize, typeFilter],
-  );
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: queryKeys.feed.list(typeFilter, pageSize),
+    queryFn: ({ pageParam }) => fetchFeedPage(typeFilter, pageSize, pageParam),
+    initialPageParam: null as string | null,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+  });
 
-  const loadMore = useCallback(async () => {
-    if (!nextCursor || loadingMore) return;
-    setLoadingMore(true);
-    try {
-      await load(nextCursor, true);
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [load, loadingMore, nextCursor]);
-
-  useEffect(() => {
-    setLoading(true);
-    load(null, false, typeFilter)
-      .catch(() => setItems([]))
-      .finally(() => setLoading(false));
-  }, [load, typeFilter]);
+  const items = data?.pages.flatMap((page) => page.items ?? []) ?? [];
 
   useEffect(() => {
     const sentinel = loadMoreRef.current;
-    if (!sentinel || !nextCursor) return;
+    if (!sentinel || !hasNextPage || isFetchingNextPage) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {
-          void loadMore();
+          void fetchNextPage();
         }
       },
       {
@@ -107,20 +96,7 @@ export function FeedPanelLive({
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [fullPage, items.length, nextCursor, loadMore]);
-
-  const refreshFeed = useCallback(
-    (opts?: { silent?: boolean }) => {
-      if (!opts?.silent) setLoading(true);
-      load(null, false, typeFilter).finally(() => {
-        if (!opts?.silent) setLoading(false);
-      });
-    },
-    [load, typeFilter],
-  );
-
-  usePlanDataSync(() => refreshFeed({ silent: true }));
-  useMemoDataSync(() => refreshFeed({ silent: true }));
+  }, [fullPage, items.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const emptyDescription =
     typeFilter === "all"
@@ -153,15 +129,15 @@ export function FeedPanelLive({
           !fullPage && "min-h-0 flex-1 overflow-hidden",
         )}
       >
-        <FeedComposer onPublished={refreshFeed} />
+        <FeedComposer onPublished={() => void refetch()} />
         <FeedTypeFilter value={typeFilter} onChange={setTypeFilter} />
 
-        {loading && <Loading label={t("feed.loading")} />}
-        {!loading && items.length === 0 && (
+        {isLoading && <Loading label={t("feed.loading")} />}
+        {!isLoading && items.length === 0 && (
           <EmptyState title={t("feed.emptyTitle")} description={emptyDescription} />
         )}
 
-        {!loading && items.length > 0 && (
+        {!isLoading && items.length > 0 && (
           <>
             <ul
               ref={listRef}
@@ -182,11 +158,11 @@ export function FeedPanelLive({
                   <FeedItemCard
                     item={item}
                     logStyle={!fullPage || item.itemType === "contribution"}
-                    onContributionChanged={refreshFeed}
+                    onContributionChanged={() => void refetch()}
                   />
                 </li>
               ))}
-              {nextCursor && <li ref={loadMoreRef} className="h-1 shrink-0" aria-hidden />}
+              {hasNextPage && <li ref={loadMoreRef} className="h-1 shrink-0" aria-hidden />}
             </ul>
           </>
         )}
