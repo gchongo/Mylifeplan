@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { GanttToolbarControls } from "@/components/gantt/gantt-toolbar-controls";
+import { GanttMobileDraggableBar } from "@/components/gantt/gantt-mobile-draggable-bar";
 import { GanttPlanDrawerPanel } from "@/components/gantt/gantt-plan-drawer";
 import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribution-drawer";
 import { DrawerLayout, DrawerPanel } from "@/components/ui/drawer";
@@ -10,7 +11,24 @@ import { EmptyState, Loading as LoadingView } from "@/components/ui";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { useSettings } from "@/components/settings/settings-provider";
 import { apiJson } from "@/lib/client-api";
+import {
+  CONTRIBUTION_POINT_WIDTH_PX,
+  contributionIntervalFillStyle,
+  isContributionInterval,
+  resolveContributionMarkerColor,
+} from "@/lib/contribution-marker-style";
+import { contributionsForGanttRow } from "@/lib/gantt-contribution-display";
 import { defaultGanttStatusFilter, filterGanttTasksByStatus } from "@/lib/gantt-task-filter";
+import {
+  buildBoundGroupPreview,
+  getPlanContributionBounds,
+  isDateWithinPlanSpan,
+} from "@/lib/gantt-plan-bind";
+import {
+  applyGanttPlanPatch,
+  patchGanttItemFromPlan,
+  type GanttPlanPatch,
+} from "@/lib/gantt-plan-sync";
 import { deriveParentStatus } from "@/lib/services/plan-rollup";
 import {
   buildTimelineLayout,
@@ -25,6 +43,7 @@ import {
 import {
   ganttTodayColumnBackground,
 } from "@/lib/gantt-today-column-style";
+import type { PlanDragMode } from "@/lib/gantt-plan-drag";
 import { normalizePlanColor } from "@/lib/plan-color";
 import { queryKeys } from "@/lib/query/keys";
 import type { GanttContribution, GanttItem } from "@/types";
@@ -33,7 +52,6 @@ import { cn } from "@/lib/utils";
 const TIME_AXIS_WIDTH = 52;
 const PLAN_COLUMN_WIDTH = 108;
 const HEADER_HEIGHT = 44;
-const MOBILE_BAR_HEIGHT = 22;
 const ROW_GROUP_GAP = 8;
 
 type GanttRow = {
@@ -108,17 +126,20 @@ function dataBoundsFromItems(items: GanttItem[]) {
 }
 
 function planBarVerticalMetrics(
-  item: GanttItem,
+  start: string,
+  end: string,
   layout: TimelineLayout,
+  opts?: { isVirtualEnd?: boolean },
 ): { top: number; height: number } {
-  const { left, width } = ganttPlanBarMetrics(item.startDate, item.effectiveEnd, layout, {
-    isVirtualEnd: item.isVirtualEnd,
-  });
+  const { left, width } = ganttPlanBarMetrics(start, end, layout, opts);
   return { top: left, height: Math.max(width, 6) };
 }
 
+type GanttQueryData = { items: GanttItem[]; contributions: GanttContribution[] };
+
 export function GanttMobileChart({ className }: { className?: string }) {
   const { t } = useI18n();
+  const queryClient = useQueryClient();
   const { preferences } = useSettings();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState<GanttScaleId>("month");
@@ -128,7 +149,11 @@ export function GanttMobileChart({ className }: { className?: string }) {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [selectedContributionId, setSelectedContributionId] = useState<string | null>(null);
   const [headerScrollLeft, setHeaderScrollLeft] = useState(0);
+  const [barPreview, setBarPreview] = useState<Map<string, { start: string; end: string }>>(
+    () => new Map(),
+  );
 
+  const showContributionMarkers = preferences.ganttContributionMarkers.enabled;
   const todayColumnPrefs = preferences.ganttTodayColumn;
   const todayColumnBg = useMemo(
     () => ganttTodayColumnBackground(todayColumnPrefs),
@@ -140,8 +165,10 @@ export function GanttMobileChart({ className }: { className?: string }) {
     return { from, to };
   }, [scale, anchor]);
 
-  const { data: ganttData, isLoading } = useQuery({
-    queryKey: queryKeys.gantt.range(fetchRange.from, fetchRange.to),
+  const ganttQueryKey = queryKeys.gantt.range(fetchRange.from, fetchRange.to);
+
+  const { data: ganttData, isLoading, refetch: refetchGanttQuery } = useQuery({
+    queryKey: ganttQueryKey,
     queryFn: async () => {
       const data = await apiJson<{ items?: GanttItem[]; contributions?: GanttContribution[] }>(
         `/api/gantt?from=${fetchRange.from}&to=${fetchRange.to}`,
@@ -152,6 +179,17 @@ export function GanttMobileChart({ className }: { className?: string }) {
   });
 
   const items = useMemo(() => ganttData?.items ?? [], [ganttData?.items]);
+  const contributions = useMemo(() => ganttData?.contributions ?? [], [ganttData?.contributions]);
+
+  const updateGanttItems = useCallback(
+    (updater: (prev: GanttItem[]) => GanttItem[]) => {
+      queryClient.setQueryData<GanttQueryData>(ganttQueryKey, (old) => ({
+        items: updater(old?.items ?? []),
+        contributions: old?.contributions ?? [],
+      }));
+    },
+    [ganttQueryKey, queryClient],
+  );
   const planById = useMemo(() => new Map(items.map((p) => [p.id, p])), [items]);
   const getDisplayStatus = useCallback(
     (item: GanttItem) => itemDisplayStatus(item, items),
@@ -162,6 +200,16 @@ export function GanttMobileChart({ className }: { className?: string }) {
     [items, statusFilter, getDisplayStatus, planById],
   );
   const rows = useMemo(() => buildPlanTreeRows(filteredPlans, expanded), [filteredPlans, expanded]);
+  const visibleRowIds = useMemo(() => new Set(rows.map((r) => r.item.id)), [rows]);
+
+  const contributionBoundsByPlan = useMemo(() => {
+    const map = new Map<string, { min?: string; max?: string }>();
+    for (const id of items.map((p) => p.id)) {
+      map.set(id, getPlanContributionBounds(id, contributions));
+    }
+    return map;
+  }, [items, contributions]);
+
   const layout = useMemo(
     () => buildTimelineLayout(scale, anchor, dataBoundsFromItems(items)),
     [scale, anchor, items],
@@ -216,6 +264,118 @@ export function GanttMobileChart({ className }: { className?: string }) {
   function closeDrawer() {
     setSelectedPlanId(null);
     setSelectedContributionId(null);
+  }
+
+  function openPlan(planId: string) {
+    setSelectedContributionId(null);
+    setSelectedPlanId(planId);
+  }
+
+  function openContribution(contributionId: string) {
+    setSelectedPlanId(null);
+    setSelectedContributionId(contributionId);
+  }
+
+  function handleItemUpdated(
+    updated: GanttItem,
+    meta?: { shiftDescendants?: boolean; previousStart?: string; fromServer?: boolean },
+  ) {
+    const planPatch: GanttPlanPatch = {
+      id: updated.id,
+      startDate: updated.startDate,
+      endDate: updated.endDate,
+      actualStartDate: updated.actualStartDate,
+      actualEndDate: updated.actualEndDate,
+    };
+    updateGanttItems((prev) => applyGanttPlanPatch(prev, planPatch, meta));
+  }
+
+  const handlePreviewDates = useCallback(
+    (planId: string, preview: { start: string; end: string } | null, mode?: PlanDragMode) => {
+      if (!preview) {
+        setBarPreview(new Map());
+        return;
+      }
+      const item = planById.get(planId);
+      const rootId = item?.parentId
+        ? rows.find((r) => r.item.id === planId)?.rootId ?? planId
+        : planId;
+      const root = planById.get(rootId);
+      if (!root) {
+        setBarPreview(new Map());
+        return;
+      }
+      if (mode === "move") {
+        setBarPreview(buildBoundGroupPreview(root, preview, items));
+        return;
+      }
+      setBarPreview(new Map([[rootId, preview]]));
+    },
+    [items, planById, rows],
+  );
+
+  const clearBarPreview = useCallback(() => setBarPreview(new Map()), []);
+
+  function renderContributionMarkers(
+    rowContributions: GanttContribution[],
+    spanStart: string,
+    spanEnd: string,
+    rowPlanId: string,
+  ) {
+    const visible = rowContributions.filter((c) => {
+      if (!isDateWithinPlanSpan(c.occurredOn, spanStart, spanEnd)) return false;
+      const endOn = c.occurredEndOn ?? c.occurredOn;
+      return isDateWithinPlanSpan(endOn, spanStart, spanEnd) || endOn > spanEnd;
+    });
+
+    if (visible.length === 0) return null;
+
+    return (
+      <>
+        {visible.map((c) => {
+          const color = resolveContributionMarkerColor(c, planById);
+          const title = c.title;
+
+          if (isContributionInterval(c)) {
+            const { top, height } = planBarVerticalMetrics(c.occurredOn, c.occurredEndOn!, layout);
+            return (
+              <button
+                key={`contrib-span-${rowPlanId}-${c.id}`}
+                type="button"
+                data-gantt-bar
+                onClick={() => openContribution(c.id)}
+                className="pointer-events-auto absolute inset-x-1 z-10 rounded-full ring-1 ring-white/80 hover:brightness-110 dark:ring-gray-900/80"
+                style={{
+                  top: Math.max(0, top),
+                  height: Math.max(height, 4),
+                  ...contributionIntervalFillStyle(color),
+                }}
+                title={title}
+                aria-label={t("gantt.contribution.interval", { title })}
+              />
+            );
+          }
+
+          const y = dateToX(c.occurredOn, layout);
+          return (
+            <button
+              key={`contrib-point-${rowPlanId}-${c.id}`}
+              type="button"
+              data-gantt-bar
+              onClick={() => openContribution(c.id)}
+              className="pointer-events-auto absolute inset-x-2 z-20 rounded-full hover:opacity-90"
+              style={{
+                top: Math.max(0, y - CONTRIBUTION_POINT_WIDTH_PX / 2),
+                height: CONTRIBUTION_POINT_WIDTH_PX,
+                backgroundColor: color,
+              }}
+              title={title}
+              aria-label={t("gantt.contribution.point", { title })}
+            />
+          );
+        })}
+      </>
+    );
   }
 
   if (isLoading && items.length === 0) {
@@ -351,27 +511,61 @@ export function GanttMobileChart({ className }: { className?: string }) {
 
               <div className="absolute inset-0 flex">
                 {rows.map((row) => {
-                  const metrics = planBarVerticalMetrics(row.item, layout);
-                  const color = normalizePlanColor(row.item.color);
+                  const item = row.item;
+                  const previewDates = barPreview.get(item.id);
+                  const displayStart = previewDates?.start ?? item.startDate;
+                  const displayEnd = previewDates?.end ?? item.effectiveEnd;
+                  const metrics = planBarVerticalMetrics(displayStart, displayEnd, layout, {
+                    isVirtualEnd: item.isVirtualEnd,
+                  });
+                  const color = normalizePlanColor(item.color);
+                  const parentPlan = item.parentId ? planById.get(item.parentId) : null;
+                  const parentPreview = parentPlan ? barPreview.get(parentPlan.id) : undefined;
+                  const minStartDate = parentPreview?.start ?? parentPlan?.startDate;
+                  const contribBounds = contributionBoundsByPlan.get(item.id);
+                  const rowContributions = showContributionMarkers
+                    ? contributionsForGanttRow(
+                        item.id,
+                        contributions,
+                        planById,
+                        expanded,
+                        visibleRowIds,
+                      )
+                    : [];
+
                   return (
                     <div
-                      key={row.item.id}
+                      key={item.id}
                       className="relative shrink-0 border-r border-gray-100 dark:border-gray-800"
                       style={{ width: PLAN_COLUMN_WIDTH }}
                     >
-                      <button
-                        type="button"
-                        data-gantt-bar
-                        className="absolute left-1 right-1 rounded-full shadow-sm"
-                        style={{
-                          top: metrics.top,
-                          height: metrics.height,
-                          backgroundColor: color,
-                          minHeight: MOBILE_BAR_HEIGHT,
-                        }}
-                        onClick={() => setSelectedPlanId(row.item.id)}
-                        aria-label={row.item.title}
-                      />
+                      {!item.isUnscheduled && !item.contributionOnly && (
+                        <GanttMobileDraggableBar
+                          item={item}
+                          layout={layout}
+                          top={metrics.top}
+                          height={metrics.height}
+                          color={color}
+                          previewOverride={previewDates ?? null}
+                          minStartDate={row.depth > 0 ? minStartDate : undefined}
+                          minContributionDate={contribBounds?.min}
+                          maxContributionDate={contribBounds?.max}
+                          onUpdated={handleItemUpdated}
+                          onPreviewDates={handlePreviewDates}
+                          onDragEnd={clearBarPreview}
+                          onDragFailed={() => void refetchGanttQuery()}
+                          onTaskClick={() => openPlan(item.id)}
+                        />
+                      )}
+                      {showContributionMarkers &&
+                        !item.isUnscheduled &&
+                        !item.contributionOnly &&
+                        renderContributionMarkers(
+                          rowContributions,
+                          displayStart,
+                          displayEnd,
+                          item.id,
+                        )}
                     </div>
                   );
                 })}
