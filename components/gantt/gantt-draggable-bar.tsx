@@ -18,6 +18,7 @@ import {
   type PlanDragConstraints,
 } from "@/lib/gantt-plan-bind";
 import type { GanttItem } from "@/types";
+import { ganttGrabCursor, ganttGrabbingCursor } from "@/lib/gantt-cursors";
 import { cn } from "@/lib/utils";
 
 type DragMode = PlanDragMode;
@@ -268,6 +269,9 @@ export function GanttDraggableBar({
   useEffect(() => {
     if (!dragging) return;
 
+    document.body.style.cursor =
+      dragging.mode === "move" ? ganttGrabbingCursor : "ew-resize";
+
     function onMove(e: MouseEvent) {
       const state = dragRef.current;
       if (!state) return;
@@ -296,6 +300,7 @@ export function GanttDraggableBar({
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
     return () => {
+      document.body.style.cursor = "";
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
@@ -356,7 +361,8 @@ export function GanttDraggableBar({
           </span>
         </div>
         <div
-          className="absolute inset-0 gantt-grab-cursor"
+          className="absolute inset-0"
+          style={{ cursor: dragging ? ganttGrabbingCursor : ganttGrabCursor }}
           onMouseDown={(e) => startDrag(e, "move")}
         >
           <span

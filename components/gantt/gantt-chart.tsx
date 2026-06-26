@@ -68,6 +68,7 @@ import {
 import { buildParentChildForkLines } from "@/lib/gantt-tree-lines";
 import { contributionsForGanttRow } from "@/lib/gantt-contribution-display";
 import { datePartOf, planLocalDatePart } from "@/lib/dates";
+import { ganttGrabCursor, ganttGrabbingCursor } from "@/lib/gantt-cursors";
 import { cn } from "@/lib/utils";
 import { isPlanOverdue, getActiveSubPlanOverrunTail, getParentRolledUpOverrunTail, type PlanOverrunTail } from "@/lib/gantt-plan-status";
 import {
@@ -335,7 +336,6 @@ export const GanttChart = forwardRef<
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [selectedContributionId, setSelectedContributionId] = useState<string | null>(null);
   const [scrollViewportHeight, setScrollViewportHeight] = useState(480);
-  const [horizontalScrollGutter, setHorizontalScrollGutter] = useState(0);
   const [timelineViewportWidth, setTimelineViewportWidth] = useState(0);
   const [titleWidth, setTitleWidth] = useState(DEFAULT_TITLE_WIDTH);
   const [scheduleViewportCols, setScheduleViewportCols] = useState(DEFAULT_SCHEDULE_VIEWPORT_COLS);
@@ -698,17 +698,20 @@ export const GanttChart = forwardRef<
   }, [isPanning]);
 
   useEffect(() => {
+    if (!isPanning) return;
+    document.body.style.cursor = ganttGrabbingCursor;
+    return () => {
+      document.body.style.cursor = "";
+    };
+  }, [isPanning]);
+
+  useEffect(() => {
     const container = containerRef.current;
     const scroll = scrollRef.current;
     if (!container || !scroll) return;
 
     const update = () => {
       setScrollViewportHeight(scroll.clientHeight);
-      const hasHorizontalScroll = scroll.scrollWidth > scroll.clientWidth;
-      const scrollbarHeight = scroll.offsetHeight - scroll.clientHeight;
-      setHorizontalScrollGutter(
-        hasHorizontalScroll ? Math.max(scrollbarHeight, 16) : 0,
-      );
       const w = Math.floor(container.clientWidth - effectiveLeftWidth);
       setTimelineViewportWidth((prev) => (Math.abs(prev - w) > 4 ? w : prev));
     };
@@ -1804,15 +1807,15 @@ export const GanttChart = forwardRef<
           onScroll={syncTimelineHeaderScroll}
           onMouseDown={handlePanStart}
           className={cn(
-            "h-full min-h-0 w-full max-w-full min-w-0 overflow-x-auto overflow-y-auto",
+            "scrollbar-hide h-full min-h-0 w-full max-w-full min-w-0 overflow-x-auto overflow-y-auto",
             isResizingPanels && "cursor-col-resize select-none",
-            isPanning ? "gantt-grabbing-cursor select-none" : !isResizingPanels && "gantt-grab-cursor",
+            isPanning && "select-none",
           )}
+          style={
+            isResizingPanels ? undefined : { cursor: isPanning ? ganttGrabbingCursor : ganttGrabCursor }
+          }
         >
-          <div
-            className="relative flex min-h-0 w-max"
-            style={{ paddingBottom: horizontalScrollGutter }}
-          >
+          <div className="relative flex min-h-0 w-max">
             <div
               className={cn(
                 "sticky left-0 z-20 shrink-0 overflow-hidden",
