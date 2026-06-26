@@ -76,9 +76,14 @@ const zhCN = {
     admin: "管理后台",
   },
   mobile: {
-    feed: "动态",
+    feed: "信息流",
+    gantt: "甘特图",
+    calendar: "日历",
+    kanban: "看板",
+    memos: "标签",
     summary: "总结",
-    calendar: "执行",
+    tabBarAria: "主导航",
+    kanbanPage: "第 {current} / {total} 列",
   },
   plans: {
     boardTitle: "计划看板",

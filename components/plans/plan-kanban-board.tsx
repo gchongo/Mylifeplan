@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   groupPlansByKanbanColumn,
@@ -28,6 +28,7 @@ import { PlanDetailModal } from "@/components/plans/plan-detail-modal";
 import { PlanContributionComposeModal } from "@/components/forms/plan-contribution-compose-modal";
 import { DrawerLayout, DrawerPanel } from "@/components/ui/drawer";
 import { useI18n } from "@/components/i18n/i18n-provider";
+import { useMobileShell } from "@/hooks/use-mobile-shell";
 import { cn } from "@/lib/utils";
 
 function PlanKanbanCard({
@@ -277,11 +278,26 @@ export function PlanKanbanBoard({
   const [plans, setPlans] = useState<KanbanPlan[]>(initialPlans);
   const [archivedPlans, setArchivedPlans] = useState<KanbanPlan[]>([]);
   const { t } = useI18n();
+  const isMobileShell = useMobileShell();
+  const kanbanScrollRef = useRef<HTMLDivElement>(null);
+  const [activeColumnIndex, setActiveColumnIndex] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
     setPlans(initialPlans);
   }, [initialPlans]);
+
+  useEffect(() => {
+    if (!isMobileShell) return;
+    const el = kanbanScrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const width = el.clientWidth || 1;
+      setActiveColumnIndex(Math.round(el.scrollLeft / width));
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [isMobileShell]);
 
   const reloadPlans = useCallback(async () => {
     const [active, archived] = await Promise.all([
@@ -488,14 +504,20 @@ export function PlanKanbanBoard({
         )}
 
         <div
+          ref={kanbanScrollRef}
           className={cn(
-            "grid min-h-0 flex-1 grid-cols-4 gap-3",
+            isMobileShell
+              ? "flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden scrollbar-hide"
+              : "grid min-h-0 flex-1 grid-cols-4 gap-3",
             moving && "pointer-events-none opacity-80",
           )}
         >
           {KANBAN_COLUMNS.map((col) => (
-            <KanbanColumn
+            <div
               key={col.id}
+              className={cn(isMobileShell && "flex h-full w-full shrink-0 snap-center snap-always flex-col px-1")}
+            >
+            <KanbanColumn
               columnId={col.id}
               label={t(`kanban.column.${col.id}`)}
               plans={grouped[col.id]}
@@ -515,8 +537,15 @@ export function PlanKanbanBoard({
               onCreatePlan={() => setComposeOpen(true)}
               newPlanLabel={t("kanban.newPlanOrContribution")}
             />
+            </div>
           ))}
         </div>
+
+        {isMobileShell && (
+          <p className="shrink-0 text-center text-xs text-gray-400">
+            {t("mobile.kanbanPage", { current: activeColumnIndex + 1, total: KANBAN_COLUMNS.length })}
+          </p>
+        )}
 
         <PlanContributionComposeModal
           open={composeOpen}

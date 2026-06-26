@@ -8,6 +8,8 @@ import { useEffect, useState } from "react";
 
 const DEFAULT_DRAWER_WIDTH = "w-80 sm:w-96";
 
+export type DrawerPlacement = "end" | "bottom";
+
 export function DrawerPanel({
   title,
   onClose,
@@ -56,6 +58,7 @@ export function DrawerLayout({
   panel,
   children,
   widthClass = DEFAULT_DRAWER_WIDTH,
+  placement = "end",
   panelTopOffset = 0,
   panelWidthPx,
   onPanelWidthPxChange,
@@ -68,7 +71,7 @@ export function DrawerLayout({
   panel: React.ReactNode;
   children: React.ReactNode;
   widthClass?: string;
-  /** 面板顶部留白（px），用于不遮挡固定页眉，如甘特图日期行 */
+  placement?: DrawerPlacement;
   panelTopOffset?: number;
   panelWidthPx?: number;
   onPanelWidthPxChange?: (width: number) => void;
@@ -84,6 +87,31 @@ export function DrawerLayout({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
+
+  if (placement === "bottom") {
+    return (
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        {children}
+        {open && (
+          <>
+            <button
+              type="button"
+              className="absolute inset-0 z-40 bg-black/40"
+              aria-label="close"
+              onClick={onClose}
+            />
+            <aside
+              role="complementary"
+              aria-labelledby="drawer-title"
+              className="absolute bottom-0 left-0 right-0 z-50 flex max-h-[min(85dvh,640px)] flex-col rounded-t-2xl border-t border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-950"
+            >
+              {panel}
+            </aside>
+          </>
+        )}
+      </div>
+    );
+  }
 
   const usePixelWidth = panelWidthPx != null;
   const openWidthPx = usePixelWidth ? (open ? panelWidthPx : 0) : 0;

@@ -6,10 +6,12 @@ import { useI18n } from "@/components/i18n/i18n-provider";
 import { ErrorMessage, Loading } from "@/components/ui/feedback";
 import { StickyNote, type StickyNoteData } from "@/components/memos/sticky-note";
 import { StickyNoteAssignModal } from "@/components/memos/sticky-note-assign-modal";
+import { MemoQuadrantTabs } from "@/components/memos/memo-quadrant-tabs";
 import {
   MemoBoardAxisEdgeIcons,
   MemoBoardQuadrantGrid,
 } from "@/components/memos/memo-board-quadrant-grid";
+import { useMobileShell } from "@/hooks/use-mobile-shell";
 import {
   computeMemoBoardSize,
   DEFAULT_MEMO_BOARD_AXIS,
@@ -82,7 +84,9 @@ function MemoBoardSearch({
 export function StickyNoteBoard() {
   const { t } = useI18n();
   const router = useRouter();
+  const isMobileShell = useMobileShell();
   const [notes, setNotes] = useState<NoteState[]>([]);
+  const [activeQuadrant, setActiveQuadrant] = useState<MemoQuadrantId>("not_urgent_important");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -279,6 +283,29 @@ export function StickyNoteBoard() {
     });
   }, [notes, search]);
 
+  const displayNotes = useMemo(() => {
+    if (!isMobileShell) return filteredNotes;
+    return filteredNotes.filter((note) => {
+      const stored = note.quadrant;
+      if (stored && isMemoQuadrantId(stored)) return stored === activeQuadrant;
+      const { width, height } = {
+        width: note.width ?? DEFAULT_STICKY_WIDTH,
+        height: note.height ?? DEFAULT_STICKY_HEIGHT,
+      };
+      return (
+        detectMemoQuadrant(
+          note.x,
+          note.y,
+          width,
+          height,
+          boardSize.width,
+          boardSize.height,
+          DEFAULT_MEMO_BOARD_AXIS,
+        ) === activeQuadrant
+      );
+    });
+  }, [filteredNotes, isMobileShell, activeQuadrant, boardSize.width, boardSize.height]);
+
   function patchNote(id: string, patch: Partial<NoteState>) {
     setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, ...patch } : n)));
   }
@@ -402,9 +429,24 @@ export function StickyNoteBoard() {
     const scrollTop = board?.scrollTop ?? 0;
     const viewW = board?.clientWidth ?? viewportSize.width;
     const viewH = board?.clientHeight ?? viewportSize.height;
-    const posX = scrollLeft + Math.max(0, (viewW - DEFAULT_STICKY_WIDTH) / 2);
-    const posY = scrollTop + Math.max(0, (viewH - DEFAULT_STICKY_HEIGHT) / 2);
-    const quadrant = detectQuadrant(posX, posY, DEFAULT_STICKY_WIDTH, DEFAULT_STICKY_HEIGHT);
+    let posX = scrollLeft + Math.max(0, (viewW - DEFAULT_STICKY_WIDTH) / 2);
+    let posY = scrollTop + Math.max(0, (viewH - DEFAULT_STICKY_HEIGHT) / 2);
+    let quadrant: MemoQuadrantId;
+    if (isMobileShell) {
+      quadrant = activeQuadrant;
+      const peerCount = notes.filter((n) => n.quadrant === activeQuadrant).length;
+      const pos = defaultPositionForQuadrant(
+        activeQuadrant,
+        boardSize.width,
+        boardSize.height,
+        peerCount,
+        DEFAULT_MEMO_BOARD_AXIS,
+      );
+      posX = pos.x;
+      posY = pos.y;
+    } else {
+      quadrant = detectQuadrant(posX, posY, DEFAULT_STICKY_WIDTH, DEFAULT_STICKY_HEIGHT);
+    }
     const color = nextStickyColor(notes.length);
     const tempId = `temp-${Date.now()}`;
     maxZRef.current += 1;
@@ -513,8 +555,12 @@ export function StickyNoteBoard() {
 
       {error && <ErrorMessage message={error} className="mb-2 shrink-0" />}
 
+      {isMobileShell && (
+        <MemoQuadrantTabs value={activeQuadrant} onChange={setActiveQuadrant} />
+      )}
+
       <div className="relative min-h-0 flex-1">
-        <MemoBoardAxisEdgeIcons />
+        {!isMobileShell && <MemoBoardAxisEdgeIcons />}
 
         <div
           ref={boardRef}
@@ -538,16 +584,18 @@ export function StickyNoteBoard() {
               minHeight: "100%",
             }}
           >
-            <MemoBoardQuadrantGrid boardWidth={boardSize.width} boardHeight={boardSize.height} />
+            {!isMobileShell && (
+              <MemoBoardQuadrantGrid boardWidth={boardSize.width} boardHeight={boardSize.height} />
+            )}
 
-            {filteredNotes.length === 0 && search.trim() && (
+            {displayNotes.length === 0 && search.trim() && (
               <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center text-sm text-gray-500">
                 {t("memos.noResults")}
               </div>
             )}
 
             <div className="absolute inset-0 z-10">
-              {filteredNotes.map((note) => (
+              {displayNotes.map((note) => (
                 <StickyNote
                   key={note.id}
                   note={note}

@@ -51,9 +51,11 @@ async function fetchFeedPage(
 export function FeedPanelLive({
   fullPage = false,
   className,
+  scrollable = false,
 }: {
   fullPage?: boolean;
   className?: string;
+  scrollable?: boolean;
 }) {
   const { t } = useI18n();
   const pageSize = fullPage ? 50 : 20;
@@ -144,13 +146,15 @@ export function FeedPanelLive({
               className={cn(
                 "feed-item-list scrollbar-hide pr-0.5",
                 fullPage
-                  ? typeFilter === "contribution"
-                    ? "space-y-0 px-1"
-                    : "space-y-4"
-                  : cn(
-                      "min-h-0 flex-1 overflow-y-auto overscroll-contain",
-                      typeFilter === "contribution" ? "space-y-0 px-1" : "space-y-3",
-                    ),
+          ? typeFilter === "contribution"
+            ? "space-y-0 px-1"
+            : "space-y-4"
+          : cn(
+              scrollable || !fullPage
+                ? "min-h-0 flex-1 overflow-y-auto overscroll-contain"
+                : "",
+              typeFilter === "contribution" ? "space-y-0 px-1" : "space-y-3",
+            ),
               )}
             >
               {items.map((item) => (

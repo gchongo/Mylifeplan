@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { SettingsProvider } from "@/components/settings/settings-provider";
 import { I18nProvider, useI18n } from "@/components/i18n/i18n-provider";
@@ -12,10 +12,11 @@ import { UserProfileProvider, type UserProfile } from "@/components/user/user-pr
 import { QueryProvider } from "@/lib/query/provider";
 import { isAppShellFullBleed } from "@/lib/app-shell-layout";
 import { readStorageItem, writeStorageItem } from "@/lib/app-storage";
+import { MOBILE_SHELL_MEDIA } from "@/lib/mobile-shell";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "meridian-sidebar-open";
-const DESKTOP_QUERY = "(min-width: 1024px)";
+const DESKTOP_SIDEBAR_MEDIA = "(min-width: 1024px) and (min-aspect-ratio: 1/1)";
 
 function readStoredOpen(fallback: boolean) {
   if (typeof window === "undefined") return fallback;
@@ -61,19 +62,26 @@ function AppShellInner({
   userRole?: "user" | "admin";
 }) {
   const { t } = useI18n();
-  const [isDesktop, setIsDesktop] = useState(true);
+  const [isDesktopSidebar, setIsDesktopSidebar] = useState(true);
+  const [isMobileShell, setIsMobileShell] = useState(false);
   const [navOpen, setNavOpen] = useState(true);
 
   useEffect(() => {
-    const mq = window.matchMedia(DESKTOP_QUERY);
+    const desktopMq = window.matchMedia(DESKTOP_SIDEBAR_MEDIA);
+    const mobileMq = window.matchMedia(MOBILE_SHELL_MEDIA);
     const sync = () => {
-      const desktop = mq.matches;
-      setIsDesktop(desktop);
+      const desktop = desktopMq.matches;
+      setIsDesktopSidebar(desktop);
+      setIsMobileShell(mobileMq.matches);
       setNavOpen(readStoredOpen(desktop));
     };
     sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
+    desktopMq.addEventListener("change", sync);
+    mobileMq.addEventListener("change", sync);
+    return () => {
+      desktopMq.removeEventListener("change", sync);
+      mobileMq.removeEventListener("change", sync);
+    };
   }, []);
 
   const toggleNav = useCallback(() => {
@@ -114,7 +122,7 @@ function AppShellInner({
       <TopBar title={title} navOpen={navOpen} onNavToggle={toggleNav} />
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
-        {!isDesktop && navOpen && (
+        {!isDesktopSidebar && navOpen && (
           <button
             type="button"
             className="fixed inset-0 top-14 z-40 bg-black/30 lg:hidden"
@@ -123,7 +131,7 @@ function AppShellInner({
           />
         )}
 
-        {isDesktop ? (
+        {isDesktopSidebar ? (
           <SidebarNavDrawer open={navOpen} className="hidden lg:block">
             <SidebarNavMenu userRole={userRole} />
           </SidebarNavDrawer>
@@ -140,12 +148,18 @@ function AppShellInner({
           )
         )}
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pb-16 lg:pb-0">
+        <div
+          className={cn(
+            "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
+            isMobileShell && "pb-[calc(3.5rem+env(safe-area-inset-bottom))]",
+          )}
+        >
           <main
             className={cn(
               "flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden",
               fullBleed ? "overflow-hidden" : "overflow-y-auto",
-              !fullBleed && "p-4 lg:p-6",
+              !fullBleed && !isMobileShell && "p-4 lg:p-6",
+              !fullBleed && isMobileShell && "p-0",
             )}
           >
             {children}

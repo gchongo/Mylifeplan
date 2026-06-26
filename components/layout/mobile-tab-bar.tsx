@@ -2,65 +2,53 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { HomeTab } from "@/types";
 import { useI18n } from "@/components/i18n/i18n-provider";
+import { useMobileShell } from "@/hooks/use-mobile-shell";
+import { shouldShowMobileTabBar, type MobileTabPath } from "@/lib/mobile-shell";
+import { cn } from "@/lib/utils";
 
-const tabs: { id: HomeTab; labelKey: "mobile.feed" | "mobile.summary" | "mobile.calendar"; href: string }[] = [
-  { id: "feed", labelKey: "mobile.feed", href: "/?tab=feed" },
-  { id: "summary", labelKey: "mobile.summary", href: "/?tab=summary" },
-  { id: "calendar", labelKey: "mobile.calendar", href: "/?tab=calendar" },
+const tabs: { href: MobileTabPath; labelKey: "mobile.feed" | "mobile.gantt" | "mobile.calendar" | "mobile.kanban" | "mobile.memos"; icon: string }[] = [
+  { href: "/feed", labelKey: "mobile.feed", icon: "≡" },
+  { href: "/gantt", labelKey: "mobile.gantt", icon: "▬" },
+  { href: "/calendar", labelKey: "mobile.calendar", icon: "▦" },
+  { href: "/plans", labelKey: "mobile.kanban", icon: "◎" },
+  { href: "/memos", labelKey: "mobile.memos", icon: "▤" },
 ];
 
 export function MobileTabBar() {
   const pathname = usePathname();
   const { t } = useI18n();
-  const isHome = pathname === "/";
+  const isMobileShell = useMobileShell();
 
-  if (!isHome) return null;
+  if (!shouldShowMobileTabBar(pathname, isMobileShell)) return null;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white lg:hidden dark:border-gray-800 dark:bg-gray-950">
-      <div className="grid grid-cols-3">
-        {tabs.map((tab) => (
-          <Link
-            key={tab.id}
-            href={tab.href}
-            className="flex flex-col items-center py-2.5 text-xs text-gray-600 hover:text-brand-600 dark:text-gray-400"
-          >
-            <span className="text-base">
-              {tab.id === "feed" ? "📋" : tab.id === "summary" ? "📊" : "📅"}
-            </span>
-            {t(tab.labelKey)}
-          </Link>
-        ))}
+    <nav
+      className="mobile-tab-bar fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)] dark:border-gray-800 dark:bg-gray-950"
+      aria-label={t("mobile.tabBarAria")}
+    >
+      <div className="grid grid-cols-5">
+        {tabs.map((tab) => {
+          const active = pathname === tab.href;
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              className={cn(
+                "flex flex-col items-center gap-0.5 py-2 text-[10px] transition-colors",
+                active
+                  ? "font-medium text-brand-600 dark:text-brand-400"
+                  : "text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200",
+              )}
+            >
+              <span className="text-base leading-none" aria-hidden>
+                {tab.icon}
+              </span>
+              {t(tab.labelKey)}
+            </Link>
+          );
+        })}
       </div>
     </nav>
-  );
-}
-
-export function MobileHomeTabs({
-  active,
-  onChange,
-}: {
-  active: HomeTab;
-  onChange: (tab: HomeTab) => void;
-}) {
-  const { t } = useI18n();
-
-  return (
-    <div className="mb-0 flex rounded-lg border border-gray-200 bg-gray-50 p-1 lg:hidden dark:border-gray-800 dark:bg-gray-900">
-      {tabs.map((tab) => (
-        <button
-          key={tab.id}
-          type="button"
-          onClick={() => onChange(tab.id)}
-          className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
-            active === tab.id ? "bg-white text-brand-700 shadow-sm dark:bg-gray-800 dark:text-brand-300" : "text-gray-600 dark:text-gray-400"
-          }`}
-        >
-          {t(tab.labelKey)}
-        </button>
-      ))}
-    </div>
   );
 }

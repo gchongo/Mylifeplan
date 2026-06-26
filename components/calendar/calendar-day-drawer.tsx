@@ -1,7 +1,8 @@
 "use client";
 
 import { useI18n } from "@/components/i18n/i18n-provider";
-import { DrawerLayout, DrawerPanel } from "@/components/ui/drawer";
+import { DrawerLayout, DrawerPanel, type DrawerPlacement } from "@/components/ui/drawer";
+import { useMobileShell } from "@/hooks/use-mobile-shell";
 import { CalendarDrawerItemList } from "@/components/calendar/calendar-drawer-item-list";
 import { CalendarDayCreateActions } from "@/components/calendar/calendar-day-create-actions";
 import { itemsOnDate } from "@/lib/calendar-display";
@@ -54,6 +55,7 @@ export function CalendarDayDrawer({
   panelMinWidthPx,
   panelMaxWidthPx,
   resizable = false,
+  placement,
   children,
 }: {
   dateStr: string | null;
@@ -67,17 +69,22 @@ export function CalendarDayDrawer({
   panelMinWidthPx?: number;
   panelMaxWidthPx?: number;
   resizable?: boolean;
+  placement?: DrawerPlacement;
   children: React.ReactNode;
 }) {
+  const isMobileShell = useMobileShell();
+  const resolvedPlacement = placement ?? (isMobileShell ? "bottom" : "end");
+
   return (
     <DrawerLayout
       open={open}
       onClose={onClose}
+      placement={resolvedPlacement}
       panelWidthPx={panelWidthPx}
       onPanelWidthPxChange={onPanelWidthPxChange}
       panelMinWidthPx={panelMinWidthPx}
       panelMaxWidthPx={panelMaxWidthPx}
-      resizable={resizable}
+      resizable={resizable && resolvedPlacement === "end"}
       panel={
         <CalendarDayDrawerPanel
           dateStr={dateStr}

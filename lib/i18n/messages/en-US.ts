@@ -77,8 +77,13 @@ const enUS = {
   },
   mobile: {
     feed: "Feed",
-    summary: "Summary",
+    gantt: "Gantt",
     calendar: "Calendar",
+    kanban: "Kanban",
+    memos: "Memos",
+    summary: "Summary",
+    tabBarAria: "Main navigation",
+    kanbanPage: "Column {current} / {total}",
   },
   plans: {
     boardTitle: "Kanban",
