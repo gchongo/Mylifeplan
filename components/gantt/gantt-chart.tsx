@@ -857,12 +857,6 @@ export const GanttChart = forwardRef<
     dispatchPlanUpdated(plan ? { plan } : undefined);
   }
 
-  function handlePlanStatusChanged(planId: string, apiStatus: PlanStatus) {
-    updateGanttItems((prev) =>
-      prev.map((i) => (i.id === planId ? { ...i, status: apiStatus } : i)),
-    );
-  }
-
   function openPlan(planId: string) {
     preserveScrollLeft();
     setSelectedContributionId(null);
@@ -1155,7 +1149,6 @@ export const GanttChart = forwardRef<
             isUnscheduled={item.isUnscheduled}
             displayStatus={displayStatus}
             hasRollup={hasRollup}
-            onStatusChanged={(apiStatus) => handlePlanStatusChanged(item.id, apiStatus)}
           />
         )}
       </div>
