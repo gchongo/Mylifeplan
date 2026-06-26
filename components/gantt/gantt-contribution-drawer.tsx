@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorMessage, Loading } from "@/components/ui/feedback";
 import { ContributionPlanSelect } from "@/components/forms/contribution-plan-select";
 import { ContributionMarkdown } from "@/components/contributions/contribution-markdown";
+import { UploadImage } from "@/components/ui/upload-image";
 import {
   ContributionEditor,
   contributionValuesFromApi,
@@ -293,8 +294,7 @@ export function GanttContributionDrawerPanel({
               {editMode === null && item.imageUrls.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {item.imageUrls.map((url) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img key={url} src={url} alt="" className="max-h-48 rounded-lg object-cover" />
+                    <UploadImage key={url} src={url} alt="" className="max-h-48 rounded-lg object-cover" />
                   ))}
                 </div>
               )}

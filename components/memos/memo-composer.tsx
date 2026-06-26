@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { Button } from "@/components/ui/button";
+import { UploadImage } from "@/components/ui/upload-image";
+import { apiJson } from "@/lib/client-api";
 import { dispatchMemoUpdated } from "@/lib/memo-events";
 import { cn } from "@/lib/utils";
 
@@ -24,10 +26,8 @@ export function MemoComposer({ onCreated }: { onCreated: () => void }) {
   async function uploadFile(file: File) {
     const form = new FormData();
     form.append("file", file);
-    const res = await fetch("/api/memos/upload", { method: "POST", body: form });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? t("common.uploadFailed"));
-    return data.url as string;
+    const data = await apiJson<{ url: string }>("/api/memos/upload", { method: "POST", body: form });
+    return data.url;
   }
 
   async function handlePickImages(files: FileList | null) {
@@ -101,8 +101,7 @@ export function MemoComposer({ onCreated }: { onCreated: () => void }) {
         <div className="flex flex-wrap gap-2 px-4 pb-2">
           {pendingImages.map((url) => (
             <div key={url} className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt="" className="h-16 w-16 rounded-lg object-cover" />
+              <UploadImage src={url} alt="" className="h-16 w-16 rounded-lg object-cover" />
               <button
                 type="button"
                 className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-gray-900 text-[10px] text-white"

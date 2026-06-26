@@ -7,6 +7,7 @@ import { dispatchPlanUpdated } from "@/lib/plan-events";
 import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/ui/feedback";
 import { ContributionMarkdown } from "@/components/contributions/contribution-markdown";
+import { UploadImage } from "@/components/ui/upload-image";
 import { ContributionPlanSelect } from "@/components/forms/contribution-plan-select";
 import {
   ContributionEditor,
@@ -244,8 +245,7 @@ export function ContributionInlinePanel({
       {editMode === null && entry.imageUrls && entry.imageUrls.length > 0 && (
         <div className="flex flex-wrap gap-1 pt-1">
           {entry.imageUrls.slice(0, expanded ? undefined : 3).map((url) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img key={url} src={url} alt="" className="h-16 w-16 rounded object-cover" />
+            <UploadImage key={url} src={url} alt="" className="h-16 w-16 rounded object-cover" />
           ))}
           {!expanded && entry.imageUrls.length > 3 && (
             <span className="self-center text-xs text-gray-400">+{entry.imageUrls.length - 3}</span>

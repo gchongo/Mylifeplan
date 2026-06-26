@@ -5,6 +5,7 @@ export const runtime = "nodejs";
 import { requireSession } from "@/lib/auth/get-session";
 import { handleProtectedRouteError } from "@/lib/api/route-auth";
 import { prisma } from "@/lib/db";
+import { isUploadUrlForUser } from "@/lib/upload-paths";
 
 function serializeProfile(user: { email: string; name: string | null; avatar: string | null }) {
   return {
@@ -52,8 +53,7 @@ export async function PATCH(request: NextRequest) {
       if (body.avatar === null || body.avatar === "") {
         data.avatar = null;
       } else if (typeof body.avatar === "string") {
-        const prefix = `/uploads/avatars/${session.userId}/`;
-        if (!body.avatar.startsWith(prefix)) {
+        if (!isUploadUrlForUser(body.avatar, session.userId)) {
           return jsonError("头像地址无效", 400);
         }
         data.avatar = body.avatar;

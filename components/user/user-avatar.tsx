@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { profileInitial } from "@/components/user/user-profile-provider";
+import { toUploadApiUrl } from "@/lib/upload-paths";
 import { cn } from "@/lib/utils";
 
 export function UserAvatar({
@@ -30,7 +31,7 @@ export function UserAvatar({
           className,
         )}
       >
-        <Image src={avatar} alt="" fill className="object-cover" sizes="80px" unoptimized />
+        <Image src={toUploadApiUrl(avatar)} alt="" fill className="object-cover" sizes="80px" unoptimized />
       </span>
     );
   }

@@ -1,11 +1,11 @@
 import { stat } from "fs/promises";
-import path from "path";
 import { prisma } from "@/lib/db";
 import { ensureUserStorage } from "@/lib/services/billing";
+import { resolveUploadFilePath } from "@/lib/upload-paths";
 
 export async function bytesForUploadUrl(url: string): Promise<number> {
-  if (!url.startsWith("/uploads/")) return 0;
-  const filePath = path.join(process.cwd(), "public", url.replace(/^\//, ""));
+  const filePath = resolveUploadFilePath(url);
+  if (!filePath) return 0;
   try {
     const info = await stat(filePath);
     return info.size;

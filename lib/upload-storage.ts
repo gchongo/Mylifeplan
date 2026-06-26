@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { assertCanUpload } from "@/lib/entitlements";
 import { addUserStorageBytes } from "@/lib/services/billing";
 import { EntitlementError } from "@/lib/entitlements";
+import { buildUploadUrl } from "@/lib/upload-paths";
 
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 
@@ -36,7 +37,7 @@ export async function saveUserImageUpload(params: {
   await addUserStorageBytes(userId, file.size);
 
   return {
-    url: `/uploads/${category}/${userId}/${filename}`,
+    url: buildUploadUrl(category, userId, filename),
     sizeBytes: file.size,
   };
 }

@@ -72,6 +72,7 @@ export function PlanContributionComposeForm({
   );
   const [contributionRelatedId, setContributionRelatedId] = useState<string | null>(null);
   const [contributionMarkerColor, setContributionMarkerColor] = useState<string | null>(null);
+  const [contributionUploading, setContributionUploading] = useState(false);
   const [planColor, setPlanColor] = useState(DEFAULT_PLAN_COLOR);
   const [planListRefreshKey, setPlanListRefreshKey] = useState(0);
   const resolvedSubmitLabel = submitLabel ?? t("common.save");
@@ -104,6 +105,7 @@ export function PlanContributionComposeForm({
 
   const canSubmit =
     !busy &&
+    !contributionUploading &&
     (mode === "plan"
       ? planValues.title.trim().length > 0
       : contributionValues.title.trim().length > 0 &&
@@ -250,6 +252,7 @@ export function PlanContributionComposeForm({
             titlePlaceholder={t("forms.contributionTitle")}
             bodyPlaceholder={t("forms.details")}
             showImages
+            onUploadingChange={setContributionUploading}
             relatedPlan={relatedPlanSelect("contribution")}
           />
           <ContributionMarkerColorField

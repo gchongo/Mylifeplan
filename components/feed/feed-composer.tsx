@@ -46,11 +46,13 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
   );
   const [contributionRelatedId, setContributionRelatedId] = useState<string | null>(null);
   const [contributionMarkerColor, setContributionMarkerColor] = useState<string | null>(null);
+  const [contributionUploading, setContributionUploading] = useState(false);
   const [planColor, setPlanColor] = useState(DEFAULT_PLAN_COLOR);
   const [planListRefreshKey, setPlanListRefreshKey] = useState(0);
 
   const canPublish =
     !busy &&
+    !contributionUploading &&
     (mode === "memo"
       ? memoText.trim().length > 0
       : mode === "plan"
@@ -227,6 +229,7 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
               titlePlaceholder={t("feed.composer.contributionTitlePlaceholder")}
               bodyPlaceholder={t("feed.composer.contributionBodyPlaceholder")}
               showImages
+              onUploadingChange={setContributionUploading}
               relatedPlan={relatedPlanSelect("contribution")}
             />
             <ContributionMarkerColorField

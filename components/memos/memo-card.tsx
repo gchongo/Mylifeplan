@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui";
 import { PlanDateTimeField } from "@/components/forms/plan-datetime-field";
 import { MemoMarkdown } from "@/components/memos/memo-markdown";
+import { UploadImage } from "@/components/ui/upload-image";
 import { formatMemoCardDate, memoDisplayBody } from "@/lib/memo-content";
 import { cn } from "@/lib/utils";
 
@@ -250,8 +251,7 @@ export function MemoCard({ memo, onChanged, onError }: MemoCardProps) {
                 )}
               >
                 {memo.images.map((img) => (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
+                  <UploadImage
                     key={img.id}
                     src={img.url}
                     alt=""

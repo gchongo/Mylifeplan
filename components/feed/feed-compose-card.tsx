@@ -3,6 +3,8 @@
 import { useRef, useState } from "react";
 import { PlanDateTimeField } from "@/components/forms/plan-datetime-field";
 import { useI18n } from "@/components/i18n/i18n-provider";
+import { UploadImage } from "@/components/ui/upload-image";
+import { apiJson } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
 
 export interface FeedComposeValues {
@@ -25,6 +27,7 @@ export function FeedComposeCard({
   imageUploadUrl = "/api/contributions/upload",
   relatedPlan,
   bodyRows = 8,
+  onUploadingChange,
 }: {
   values: FeedComposeValues;
   onChange: (patch: Partial<FeedComposeValues>) => void;
@@ -37,6 +40,7 @@ export function FeedComposeCard({
   imageUploadUrl?: string;
   relatedPlan?: React.ReactNode;
   bodyRows?: number;
+  onUploadingChange?: (uploading: boolean) => void;
 }) {
   const { t } = useI18n();
   const resolvedTitlePlaceholder = titlePlaceholder ?? t("feed.composeCard.titlePlaceholder");
@@ -49,16 +53,15 @@ export function FeedComposeCard({
   async function uploadFile(file: File) {
     const form = new FormData();
     form.append("file", file);
-    const res = await fetch(imageUploadUrl, { method: "POST", body: form });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? t("feed.composeCard.uploadFailed"));
-    return data.url as string;
+    const data = await apiJson<{ url: string }>(imageUploadUrl, { method: "POST", body: form });
+    return data.url;
   }
 
   async function handlePickImages(files: FileList | null) {
     if (!files?.length || !showImages) return;
     setUploadError("");
     setUploading(true);
+    onUploadingChange?.(true);
     try {
       const urls: string[] = [];
       for (const file of Array.from(files)) {
@@ -69,6 +72,7 @@ export function FeedComposeCard({
       setUploadError(e instanceof Error ? e.message : t("feed.composeCard.uploadFailed"));
     } finally {
       setUploading(false);
+      onUploadingChange?.(false);
       if (fileRef.current) fileRef.current.value = "";
     }
   }
@@ -197,8 +201,7 @@ export function FeedComposeCard({
         <div className="flex flex-wrap gap-2 border-t border-gray-100 px-4 py-2 dark:border-gray-800">
           {values.imageUrls.map((url) => (
             <div key={url} className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt="" className="h-16 w-16 rounded object-cover" />
+              <UploadImage src={url} alt="" className="h-16 w-16 rounded object-cover" />
               <button
                 type="button"
                 className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-gray-900 text-[10px] text-white"
