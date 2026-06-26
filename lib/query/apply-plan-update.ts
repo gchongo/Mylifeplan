@@ -36,6 +36,11 @@ function mergeKanbanPlan(existing: KanbanPlan, plan: SerializedPlanForGantt): Ka
   };
 }
 
+function listKindFromPlansKey(queryKey: readonly unknown[]): "active" | "archived" {
+  const filter = queryKey[1] as { status?: string } | undefined;
+  return filter?.status === "archived" ? "archived" : "active";
+}
+
 function patchPlansQuery(
   old: PlansQueryData | undefined,
   plan: SerializedPlanForGantt,
@@ -106,12 +111,25 @@ export function applyPlanUpdateToCache(rawPlan: Record<string, unknown>) {
   const qc = getQueryClient();
   const plan = toGanttPlanSnapshot(rawPlan);
 
-  qc.setQueriesData<PlansQueryData>({ queryKey: queryKeys.plans.list() }, (old) =>
-    patchPlansQuery(old, plan, "active"),
-  );
-  qc.setQueriesData<PlansQueryData>({ queryKey: queryKeys.plans.list("archived") }, (old) =>
-    patchPlansQuery(old, plan, "archived"),
-  );
+  for (const [queryKey, data] of qc.getQueriesData<PlansQueryData>({
+    queryKey: queryKeys.plans.all,
+  })) {
+    const listKind = listKindFromPlansKey(queryKey);
+    const next = patchPlansQuery(data, plan, listKind);
+    if (next && next !== data) {
+      qc.setQueryData(queryKey, next);
+    }
+  }
+
+  // 看板页常用 initialData，确保 active 列表 query 存在时也能命中
+  const activeKey = queryKeys.plans.list();
+  const activeData = qc.getQueryData<PlansQueryData>(activeKey);
+  if (activeData?.plans) {
+    const next = patchPlansQuery(activeData, plan, "active");
+    if (next && next !== activeData) {
+      qc.setQueryData(activeKey, next);
+    }
+  }
 
   for (const [queryKey, data] of qc.getQueriesData<GanttQueryData>({
     queryKey: queryKeys.gantt.all,
@@ -124,7 +142,12 @@ export function applyPlanUpdateToCache(rawPlan: Record<string, unknown>) {
     });
   }
 
-  qc.setQueriesData<CalendarQueryData>({ queryKey: queryKeys.calendar.all }, (old) =>
-    patchCalendarQuery(old, plan),
-  );
+  for (const [queryKey, data] of qc.getQueriesData<CalendarQueryData>({
+    queryKey: queryKeys.calendar.all,
+  })) {
+    const next = patchCalendarQuery(data, plan);
+    if (next && next !== data) {
+      qc.setQueryData(queryKey, next);
+    }
+  }
 }

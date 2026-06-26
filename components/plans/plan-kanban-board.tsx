@@ -10,6 +10,7 @@ import {
   kanbanColumnForPlan,
   kanbanPatchForColumn,
   kanbanRestorePatch,
+  kanbanVisualForPlan,
   kanbanVisualForZone,
   KANBAN_COLUMNS,
   UNSCHEDULED_BLOCKED_HINT,
@@ -44,7 +45,7 @@ function PlanKanbanCard({
   onOpenPlan: (planId: string) => void;
 }) {
   const draggable = kanbanCanDrag(plan);
-  const visual = kanbanVisualForZone(zoneId);
+  const visual = kanbanVisualForPlan(plan);
   const titleBar = getKanbanTitleBarStyle(visual);
 
   return (
@@ -278,17 +279,19 @@ export function PlanKanbanBoard({
   const archivedKey = queryKeys.plans.list("archived");
 
   const { data: activeData } = useQuery({
-    queryKey: queryKeys.plans.list(),
+    queryKey: activeKey,
     queryFn: () => apiJson<{ plans?: KanbanPlan[] }>("/api/plans"),
     initialData: { plans: initialPlans },
+    staleTime: 0,
   });
 
   const { data: archivedData } = useQuery({
     queryKey: archivedKey,
     queryFn: () => apiJson<{ plans?: KanbanPlan[] }>("/api/plans?status=archived"),
+    staleTime: 0,
   });
 
-  const plans = activeData?.plans ?? initialPlans;
+  const plans = activeData?.plans ?? [];
   const archivedPlans = archivedData?.plans ?? [];
 
   const grouped = useMemo(() => groupPlansByKanbanColumn(plans), [plans]);

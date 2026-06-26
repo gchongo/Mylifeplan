@@ -187,9 +187,12 @@ export function PlanStatusMenuButton({
         return;
       }
 
-      const nextStatus = (data.plan?.status ?? body.status) as PlanStatus;
-      dispatchPlanUpdated({ plan: data.plan });
-      onStatusChanged?.(nextStatus);
+      if (data.plan) {
+        dispatchPlanUpdated({ plan: data.plan });
+      } else {
+        dispatchPlanUpdated();
+      }
+      onStatusChanged?.((data.plan?.status ?? body.status) as PlanStatus);
       setOpen(false);
     } finally {
       setSaving(false);

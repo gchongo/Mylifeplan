@@ -429,8 +429,8 @@ export const GanttChart = forwardRef<
     placeholderData: keepPreviousData,
   });
 
-  const items = ganttData?.items ?? [];
-  const contributions = ganttData?.contributions ?? [];
+  const items = useMemo(() => ganttData?.items ?? [], [ganttData?.items]);
+  const contributions = useMemo(() => ganttData?.contributions ?? [], [ganttData?.contributions]);
 
   const updateGanttItems = useCallback(
     (updater: (prev: GanttItem[]) => GanttItem[]) => {

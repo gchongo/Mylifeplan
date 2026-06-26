@@ -6,12 +6,14 @@ export type PlanUpdatedDetail = {
   plan?: SerializedPlanForGantt | Record<string, unknown>;
 };
 
-/** 任意计划保存成功后调用：有 plan 快照则立刻写缓存，否则触发 refetch */
+/**
+ * 计划保存成功后：
+ * 1. 有 plan 快照 → 立刻写入甘特/看板/日历缓存（即时 UI）
+ * 2. 再 refetch 活跃 query（与信息流一致，后台校正）
+ */
 export function dispatchPlanUpdated(detail?: PlanUpdatedDetail) {
   if (detail?.plan) {
     applyPlanUpdateToCache(detail.plan as Record<string, unknown>);
-    invalidatePlanViews({ refetch: false });
-    return;
   }
   invalidatePlanViews();
 }
