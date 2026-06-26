@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { SettingsProvider } from "@/components/settings/settings-provider";
 import { I18nProvider, useI18n } from "@/components/i18n/i18n-provider";
@@ -10,6 +10,7 @@ import { SidebarNavMenu } from "@/components/layout/sidebar-nav";
 import { TopBar } from "@/components/layout/top-bar";
 import { UserProfileProvider, type UserProfile } from "@/components/user/user-profile-provider";
 import { isAppShellFullBleed } from "@/lib/app-shell-layout";
+import { APP_ROUTE_CHANGED_EVENT } from "@/lib/use-plan-data-sync";
 import { readStorageItem, writeStorageItem } from "@/lib/app-storage";
 import { cn } from "@/lib/utils";
 
@@ -87,7 +88,14 @@ function AppShellInner({
   }, []);
 
   const pathname = usePathname();
+  const prevPathRef = useRef(pathname);
   const fullBleed = isAppShellFullBleed(pathname);
+
+  useEffect(() => {
+    if (prevPathRef.current === pathname) return;
+    prevPathRef.current = pathname;
+    window.dispatchEvent(new CustomEvent(APP_ROUTE_CHANGED_EVENT));
+  }, [pathname]);
 
   useEffect(() => {
     if (!fullBleed) return;

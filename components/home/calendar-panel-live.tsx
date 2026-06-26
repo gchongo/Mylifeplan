@@ -38,7 +38,7 @@ import {
   rangeForMonths,
   type MonthKey,
 } from "@/lib/calendar-month-grid";
-import { PLAN_UPDATED_EVENT, planDataVersion } from "@/lib/plan-events";
+import { usePlanDataSync } from "@/lib/use-plan-data-sync";
 import { localDateStr } from "@/lib/dates";
 import type { CalendarItem } from "@/types";
 import { cn } from "@/lib/utils";
@@ -115,7 +115,6 @@ export function CalendarPanelLive({
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<CalendarScrollViewHandle>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
-  const planSyncedVersionRef = useRef(planDataVersion);
   const [layoutSize, setLayoutSize] = useState({ width: 0, height: 0 });
   const [drawerWidthPx, setDrawerWidthPx] = useState(CALENDAR_DRAWER_MIN_WIDTH_PX);
 
@@ -208,28 +207,7 @@ export function CalendarPanelLive({
     [from, to],
   );
 
-  useEffect(() => {
-    function onPlanUpdated(event: Event) {
-      const detail = (event as CustomEvent<{ version?: number }>).detail;
-      planSyncedVersionRef.current = detail?.version ?? planDataVersion;
-      reloadCalendar({ silent: true });
-    }
-
-    function syncIfStale() {
-      if (document.visibilityState !== "visible") return;
-      if (planDataVersion <= planSyncedVersionRef.current) return;
-      planSyncedVersionRef.current = planDataVersion;
-      reloadCalendar({ silent: true });
-    }
-
-    window.addEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
-    document.addEventListener("visibilitychange", syncIfStale);
-    syncIfStale();
-    return () => {
-      window.removeEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
-      document.removeEventListener("visibilitychange", syncIfStale);
-    };
-  }, [reloadCalendar]);
+  usePlanDataSync(() => reloadCalendar({ silent: true }));
 
   useEffect(() => {
     reloadCalendar();

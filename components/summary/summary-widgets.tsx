@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { PlanSummaryStats } from "@/lib/plan-summary";
 import { apiJson } from "@/lib/client-api";
+import { usePlanDataSync } from "@/lib/use-plan-data-sync";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
@@ -192,6 +193,8 @@ export function usePlanSummary() {
       .catch((e) => setError(e instanceof Error ? e.message : t("summary.loadFailed")))
       .finally(() => setLoading(false));
   }, [load, t]);
+
+  usePlanDataSync(() => reload());
 
   return { summary, loading, error, reload };
 }

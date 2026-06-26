@@ -99,6 +99,7 @@ import { deriveParentStatus } from "@/lib/services/plan-rollup";
 import type { GanttContribution, GanttItem, PlanStatus } from "@/types";
 import { apiJson } from "@/lib/client-api";
 import { dispatchPlanUpdated, PLAN_UPDATED_EVENT, planDataVersion, type PlanUpdatedDetail } from "@/lib/plan-events";
+import { APP_ROUTE_CHANGED_EVENT } from "@/lib/use-plan-data-sync";
 import type { PlanContributionComposeResult } from "@/components/forms/plan-contribution-compose-form";
 import {
   patchGanttItemFromPlan,
@@ -319,7 +320,7 @@ export const GanttChart = forwardRef<
   const pendingScrollLeft = useRef<number | null>(null);
   const ganttFetchSeq = useRef(0);
   const skipNextPlanSyncRef = useRef(false);
-  const planSyncedVersionRef = useRef(planDataVersion);
+  const planSyncedVersionRef = useRef(-1);
   const [isPanning, setIsPanning] = useState(false);
 
   const [planModal, setPlanModal] = useState<PlanModalState>({
@@ -712,11 +713,23 @@ export const GanttChart = forwardRef<
       void refetchGantt();
     }
 
+    function refetchIfStale() {
+      if (planDataVersion <= planSyncedVersionRef.current) return;
+      planSyncedVersionRef.current = planDataVersion;
+      void refetchGantt();
+    }
+
+    function onRouteChanged() {
+      refetchIfStale();
+    }
+
     window.addEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
+    window.addEventListener(APP_ROUTE_CHANGED_EVENT, onRouteChanged);
     document.addEventListener("visibilitychange", syncIfStale);
-    syncIfStale();
+    refetchIfStale();
     return () => {
       window.removeEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
+      window.removeEventListener(APP_ROUTE_CHANGED_EVENT, onRouteChanged);
       document.removeEventListener("visibilitychange", syncIfStale);
     };
   }, [refetchGantt, fetchRange.from, expandAncestorsForPlan]);

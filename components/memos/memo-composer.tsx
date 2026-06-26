@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { Button } from "@/components/ui/button";
+import { dispatchMemoUpdated } from "@/lib/memo-events";
 import { cn } from "@/lib/utils";
 
 export function MemoComposer({ onCreated }: { onCreated: () => void }) {
@@ -68,6 +69,7 @@ export function MemoComposer({ onCreated }: { onCreated: () => void }) {
       if (!res.ok) throw new Error(data.error ?? t("common.saveFailed"));
       setContent("");
       setPendingImages([]);
+      dispatchMemoUpdated();
       onCreated();
     } catch (e) {
       setError(e instanceof Error ? e.message : t("common.saveFailed"));

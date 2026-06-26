@@ -14,8 +14,8 @@ import type { FeedActionType, FeedItemType } from "@prisma/client";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 import { apiJson } from "@/lib/client-api";
-import { PLAN_UPDATED_EVENT, planDataVersion } from "@/lib/plan-events";
-import { MEMO_UPDATED_EVENT, memoDataVersion } from "@/lib/memo-events";
+import { usePlanDataSync } from "@/lib/use-plan-data-sync";
+import { useMemoDataSync } from "@/lib/use-memo-data-sync";
 
 interface FeedRow {
   id: string;
@@ -51,8 +51,6 @@ export function FeedPanelLive({
   const [typeFilter, setTypeFilter] = useState<FeedTypeFilterId>("all");
   const listRef = useRef<HTMLUListElement>(null);
   const loadMoreRef = useRef<HTMLLIElement>(null);
-  const planSyncedVersionRef = useRef(planDataVersion);
-  const memoSyncedVersionRef = useRef(memoDataVersion);
 
   const load = useCallback(
     async (
@@ -121,43 +119,8 @@ export function FeedPanelLive({
     [load, typeFilter],
   );
 
-  useEffect(() => {
-    function onPlanUpdated(event: Event) {
-      const detail = (event as CustomEvent<{ version?: number }>).detail;
-      planSyncedVersionRef.current = detail?.version ?? planDataVersion;
-      refreshFeed({ silent: true });
-    }
-
-    function onMemoUpdated(event: Event) {
-      const detail = (event as CustomEvent<{ version?: number }>).detail;
-      memoSyncedVersionRef.current = detail?.version ?? memoDataVersion;
-      refreshFeed({ silent: true });
-    }
-
-    function syncIfStale() {
-      if (document.visibilityState !== "visible") return;
-      let stale = false;
-      if (planDataVersion > planSyncedVersionRef.current) {
-        planSyncedVersionRef.current = planDataVersion;
-        stale = true;
-      }
-      if (memoDataVersion > memoSyncedVersionRef.current) {
-        memoSyncedVersionRef.current = memoDataVersion;
-        stale = true;
-      }
-      if (stale) refreshFeed({ silent: true });
-    }
-
-    window.addEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
-    window.addEventListener(MEMO_UPDATED_EVENT, onMemoUpdated);
-    document.addEventListener("visibilitychange", syncIfStale);
-    syncIfStale();
-    return () => {
-      window.removeEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
-      window.removeEventListener(MEMO_UPDATED_EVENT, onMemoUpdated);
-      document.removeEventListener("visibilitychange", syncIfStale);
-    };
-  }, [refreshFeed]);
+  usePlanDataSync(() => refreshFeed({ silent: true }));
+  useMemoDataSync(() => refreshFeed({ silent: true }));
 
   const emptyDescription =
     typeFilter === "all"

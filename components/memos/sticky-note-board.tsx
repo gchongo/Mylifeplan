@@ -21,7 +21,8 @@ import {
 } from "@/lib/memo-quadrant";
 import { effectiveStickyPosition, nextStickyColor } from "@/lib/memo-sticky";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
-import { MEMO_UPDATED_EVENT, memoDataVersion } from "@/lib/memo-events";
+import { dispatchMemoUpdated } from "@/lib/memo-events";
+import { useMemoDataSync } from "@/lib/use-memo-data-sync";
 import type { SerializedPlanForGantt } from "@/lib/gantt-plan-sync";
 
 type NoteState = StickyNoteData & { x: number; y: number };
@@ -91,6 +92,10 @@ export function StickyNoteBoard() {
   const boardRef = useRef<HTMLDivElement>(null);
   const creatingRef = useRef(false);
   const memoFetchSeq = useRef(0);
+
+  const notifyMemoUpdated = useCallback(() => {
+    dispatchMemoUpdated();
+  }, []);
 
   const persistNote = useCallback(async (id: string, body: Record<string, unknown>) => {
     const res = await fetch(`/api/memos/${id}`, {
@@ -201,33 +206,10 @@ export function StickyNoteBoard() {
     setNotes(reconciled);
   }, [batchPersistLayout]);
 
-  const memoSyncedVersionRef = useRef(memoDataVersion);
+  useMemoDataSync(() => load());
 
   useEffect(() => {
     load().finally(() => setLoading(false));
-  }, [load]);
-
-  useEffect(() => {
-    function onMemoUpdated(event: Event) {
-      const detail = (event as CustomEvent<{ version?: number }>).detail;
-      memoSyncedVersionRef.current = detail?.version ?? memoDataVersion;
-      void load();
-    }
-
-    function syncIfStale() {
-      if (document.visibilityState !== "visible") return;
-      if (memoDataVersion <= memoSyncedVersionRef.current) return;
-      memoSyncedVersionRef.current = memoDataVersion;
-      void load();
-    }
-
-    window.addEventListener(MEMO_UPDATED_EVENT, onMemoUpdated);
-    document.addEventListener("visibilitychange", syncIfStale);
-    syncIfStale();
-    return () => {
-      window.removeEventListener(MEMO_UPDATED_EVENT, onMemoUpdated);
-      document.removeEventListener("visibilitychange", syncIfStale);
-    };
   }, [load]);
 
   useEffect(() => {
@@ -286,7 +268,7 @@ export function StickyNoteBoard() {
     const { width, height } = note ? noteSize(note) : { width: DEFAULT_STICKY_WIDTH, height: DEFAULT_STICKY_HEIGHT };
     const quadrant = detectQuadrant(x, y, width, height);
     patchNote(id, { x, y, posX: x, posY: y, quadrant });
-    void persistNote(id, { posX: x, posY: y, quadrant }).catch((e) =>
+    void persistNote(id, { posX: x, posY: y, quadrant }).then(() => notifyMemoUpdated()).catch((e) =>
       setError(e instanceof Error ? e.message : t("memos.errors.savePosition")),
     );
   }
@@ -297,7 +279,7 @@ export function StickyNoteBoard() {
     const y = note?.y ?? 0;
     const quadrant = detectQuadrant(x, y, width, height);
     patchNote(id, { width, height, quadrant });
-    void persistNote(id, { width, height, quadrant }).catch((e) =>
+    void persistNote(id, { width, height, quadrant }).then(() => notifyMemoUpdated()).catch((e) =>
       setError(e instanceof Error ? e.message : t("memos.errors.saveSize")),
     );
   }
@@ -341,6 +323,7 @@ export function StickyNoteBoard() {
     if (patch.color) patchNote(id, { color: patch.color });
     try {
       await persistNote(id, persistBody);
+      notifyMemoUpdated();
       if (patch.content !== undefined) {
         setEditingId(null);
         patchNote(id, {
@@ -362,6 +345,7 @@ export function StickyNoteBoard() {
         throw new Error(data.error ?? t("common.deleteFailed"));
       }
       setNotes((prev) => prev.filter((n) => n.id !== id));
+      notifyMemoUpdated();
       if (editingId === id) setEditingId(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : t("common.deleteFailed"));
