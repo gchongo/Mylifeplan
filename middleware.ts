@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { PRIVATE_NO_STORE } from "@/lib/api-response";
 import { SESSION_COOKIE_NAMES } from "@/lib/auth/session";
 
 const PUBLIC_PAGES = ["/login", "/register", "/admin/login"];
+
+function applyNoStoreHeaders(response: NextResponse) {
+  for (const [key, value] of Object.entries(PRIVATE_NO_STORE)) {
+    response.headers.set(key, value);
+  }
+  return response;
+}
 
 function hasSessionCookie(request: NextRequest): boolean {
   return SESSION_COOKIE_NAMES.some((name) => Boolean(request.cookies.get(name)?.value));
@@ -11,10 +19,8 @@ function hasSessionCookie(request: NextRequest): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // API auth runs in Node route handlers (runtime AUTH_SECRET). Edge middleware
-  // only sees build-time env and can reject valid cookies after deploy.
   if (pathname.startsWith("/api/")) {
-    return NextResponse.next();
+    return applyNoStoreHeaders(NextResponse.next());
   }
 
   const loggedIn = hasSessionCookie(request);
@@ -31,10 +37,10 @@ export async function middleware(request: NextRequest) {
 
   if (!loggedIn) {
     const login = pathname.startsWith("/admin") ? "/admin/login" : "/login";
-    return NextResponse.redirect(new URL(login, request.url));
+    return applyNoStoreHeaders(NextResponse.redirect(new URL(login, request.url)));
   }
 
-  return NextResponse.next();
+  return applyNoStoreHeaders(NextResponse.next());
 }
 
 export const config = {

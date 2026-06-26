@@ -8,6 +8,7 @@ import { prisma } from "@/lib/db";
 import { formatPlanDateTime } from "@/lib/dates";
 import { collectPlanAncestors } from "@/lib/plan-relationship";
 import { deletePlan, serializePlan, updatePlan } from "@/lib/services/plan";
+import { revalidatePlanAppViews } from "@/lib/revalidate-app-views";
 import { updatePlanSchema } from "@/lib/validations/plan";
 
 type Params = { params: Promise<{ id: string }> };
@@ -70,6 +71,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     };
 
     const plan = await updatePlan(session.userId, id, input);
+    revalidatePlanAppViews();
     return jsonOk({ plan: serializePlan(plan) });
   } catch (e) {
     if (e instanceof Error && e.message === "NOT_FOUND") {
@@ -87,6 +89,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     const session = await requireSession(request);
     const { id } = await params;
     await deletePlan(session.userId, id);
+    revalidatePlanAppViews();
     return jsonOk({ ok: true });
   } catch (error) {
     return handleProtectedRouteError(error, "api/plans/[id] DELETE");

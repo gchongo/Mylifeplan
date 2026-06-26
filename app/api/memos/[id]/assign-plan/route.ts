@@ -8,6 +8,7 @@ import { handleProtectedRouteError } from "@/lib/api/route-auth";
 import { validateDateFields } from "@/lib/content-router";
 import { assignMemoToPlan } from "@/lib/services/memo";
 import { serializePlan } from "@/lib/services/plan";
+import { revalidateMemoAppViews, revalidatePlanAppViews } from "@/lib/revalidate-app-views";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -41,6 +42,8 @@ export async function POST(request: NextRequest, { params }: Params) {
     }
 
     const plan = await assignMemoToPlan(session.userId, id, parsed.data);
+    revalidateMemoAppViews();
+    revalidatePlanAppViews();
     return jsonOk({ plan: serializePlan(plan) });
   } catch (e) {
     if (e instanceof Error && e.message === "NOT_FOUND") {

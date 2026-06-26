@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   groupPlansByKanbanColumn,
   kanbanArchivePatch,
@@ -21,10 +21,8 @@ import {
 import { getKanbanColumnAccentClass, getKanbanTitleBarStyle } from "@/lib/task-status-style";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import { applyOptimisticKanbanPatch, patchKanbanPlan } from "@/lib/kanban-plan-mutation";
-import type { ScheduleTransitionPatch } from "@/lib/plan-schedule-transition";
+import { fetchActiveKanbanPlans, fetchArchivedKanbanPlans } from "@/lib/fetch-kanban-plans";
 import { upsertKanbanPlanInList } from "@/lib/query/merge-kanban-plan";
-import { queryKeys } from "@/lib/query/keys";
-import { apiJson } from "@/lib/client-api";
 import { ROLLUP_STATUS_HINT } from "@/lib/services/plan-rollup";
 import { PlanDetailModal } from "@/components/plans/plan-detail-modal";
 import { PlanContributionComposeModal } from "@/components/forms/plan-contribution-compose-modal";
@@ -273,123 +271,41 @@ export function PlanKanbanBoard({
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<KanbanDropZoneId | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [moving, setMoving] = useState(false);
   const [planModalId, setPlanModalId] = useState<string | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
+  const [plans, setPlans] = useState<KanbanPlan[]>(initialPlans);
+  const [archivedPlans, setArchivedPlans] = useState<KanbanPlan[]>([]);
   const { t } = useI18n();
-  const qc = useQueryClient();
-  const activeKey = queryKeys.plans.list();
-  const archivedKey = queryKeys.plans.list("archived");
+  const router = useRouter();
 
-  const { data: activeData } = useQuery({
-    queryKey: activeKey,
-    queryFn: () => apiJson<{ plans?: KanbanPlan[] }>("/api/plans"),
-    placeholderData: (previous) => previous ?? { plans: initialPlans },
-    staleTime: 0,
-    refetchOnMount: true,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  });
+  useEffect(() => {
+    setPlans(initialPlans);
+  }, [initialPlans]);
 
-  const { data: archivedData } = useQuery({
-    queryKey: archivedKey,
-    queryFn: () => apiJson<{ plans?: KanbanPlan[] }>("/api/plans?status=archived"),
-    placeholderData: (previous) => previous ?? { plans: [] },
-    staleTime: 0,
-    refetchOnMount: true,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  });
-
-  const plans = activeData?.plans ?? initialPlans;
-  const archivedPlans = archivedData?.plans ?? [];
-
-  const grouped = useMemo(() => groupPlansByKanbanColumn(plans), [plans]);
-
-  const syncKanbanPlanViews = useCallback((plan?: Record<string, unknown>) => {
-    if (plan) {
-      dispatchPlanUpdated({ plan });
-    }
+  const reloadPlans = useCallback(async () => {
+    const [active, archived] = await Promise.all([
+      fetchActiveKanbanPlans(),
+      fetchArchivedKanbanPlans(),
+    ]);
+    setPlans(active);
+    setArchivedPlans(archived);
   }, []);
 
-  type MoveMutationVars = {
-    planId: string;
-    patch: ScheduleTransitionPatch;
-    fromArchived: boolean;
-    plan: KanbanPlan;
-  };
+  useEffect(() => {
+    void reloadPlans();
+  }, [reloadPlans]);
 
-  const moveMutation = useMutation({
-    mutationFn: async ({ planId, patch }: MoveMutationVars) => {
-      const { plan: updated, error: apiError } = await patchKanbanPlan(planId, patch);
-      if (apiError) throw new Error(apiError);
-      return updated;
+  const commitPlanChange = useCallback(
+    async (updated: Record<string, unknown>) => {
+      setPlans((prev) => upsertKanbanPlanInList(prev, updated));
+      dispatchPlanUpdated({ plan: updated });
+      router.refresh();
     },
-    onMutate: async ({ planId, patch, fromArchived, plan }: MoveMutationVars) => {
-      await qc.cancelQueries({ queryKey: queryKeys.plans.all });
-      const prevActive = qc.getQueryData<{ plans?: KanbanPlan[] }>(activeKey);
-      const prevArchived = qc.getQueryData<{ plans?: KanbanPlan[] }>(archivedKey);
+    [router],
+  );
 
-      if (fromArchived) {
-        qc.setQueryData(archivedKey, {
-          plans: (prevArchived?.plans ?? []).filter((p) => p.id !== planId),
-        });
-        qc.setQueryData(activeKey, {
-          plans: applyOptimisticKanbanPatch([plan, ...(prevActive?.plans ?? [])], planId, patch),
-        });
-      } else {
-        qc.setQueryData(activeKey, {
-          plans: applyOptimisticKanbanPatch(prevActive?.plans ?? [], planId, patch),
-        });
-      }
-
-      return { prevActive, prevArchived };
-    },
-    onError: (err, _vars, ctx) => {
-      if (ctx?.prevActive !== undefined) qc.setQueryData(activeKey, ctx.prevActive);
-      if (ctx?.prevArchived !== undefined) qc.setQueryData(archivedKey, ctx.prevArchived);
-      setError(err instanceof Error ? err.message : t("common.updateFailed"));
-    },
-    onSuccess: (updated, vars) => {
-      if (updated) {
-        qc.setQueryData<{ plans?: KanbanPlan[] }>(activeKey, (old) => ({
-          plans: upsertKanbanPlanInList(old?.plans ?? [], updated),
-        }));
-        syncKanbanPlanViews(updated);
-      }
-    },
-  });
-
-  const archiveMutation = useMutation({
-    mutationFn: async (planId: string) => {
-      const { plan: updated, error: apiError } = await patchKanbanPlan(planId, kanbanArchivePatch());
-      if (apiError) throw new Error(apiError);
-      return updated;
-    },
-    onMutate: async (planId: string) => {
-      await qc.cancelQueries({ queryKey: queryKeys.plans.all });
-      const prevActive = qc.getQueryData<{ plans?: KanbanPlan[] }>(activeKey);
-      const prevArchived = qc.getQueryData<{ plans?: KanbanPlan[] }>(archivedKey);
-      qc.setQueryData(activeKey, {
-        plans: (prevActive?.plans ?? []).filter((p) => p.id !== planId),
-      });
-      return { prevActive, prevArchived };
-    },
-    onError: (err, _planId, ctx) => {
-      if (ctx?.prevActive !== undefined) qc.setQueryData(activeKey, ctx.prevActive);
-      if (ctx?.prevArchived !== undefined) qc.setQueryData(archivedKey, ctx.prevArchived);
-      setError(err instanceof Error ? err.message : t("common.archiveFailed"));
-    },
-    onSuccess: (updated) => {
-      if (updated) {
-        qc.setQueryData<{ plans?: KanbanPlan[] }>(archivedKey, (old) => ({
-          plans: upsertKanbanPlanInList(old?.plans ?? [], updated),
-        }));
-        syncKanbanPlanViews(updated);
-      }
-    },
-  });
-
-  const moving = moveMutation.isPending || archiveMutation.isPending;
+  const grouped = useMemo(() => groupPlansByKanbanColumn(plans), [plans]);
 
   const movePlan = useCallback(
     async (planId: string, targetColumn: KanbanColumnId, fromArchived: boolean) => {
@@ -412,11 +328,23 @@ export function PlanKanbanBoard({
           return;
         }
 
+        setMoving(true);
         setError(null);
+        const prevActive = plans;
+        const prevArchived = archivedPlans;
+        setArchivedPlans((prev) => prev.filter((p) => p.id !== planId));
+        setPlans((prev) => applyOptimisticKanbanPatch([plan, ...prev], planId, patch));
+
         try {
-          await moveMutation.mutateAsync({ planId, patch, fromArchived: true, plan });
-        } catch {
-          // onError handles UI
+          const { plan: updated, error: apiError } = await patchKanbanPlan(planId, patch);
+          if (apiError) throw new Error(apiError);
+          if (updated) await commitPlanChange(updated);
+        } catch (e) {
+          setPlans(prevActive);
+          setArchivedPlans(prevArchived);
+          setError(e instanceof Error ? e.message : t("common.restoreFailed"));
+        } finally {
+          setMoving(false);
         }
         return;
       }
@@ -437,14 +365,23 @@ export function PlanKanbanBoard({
         return;
       }
 
+      setMoving(true);
       setError(null);
+      const prevPlans = plans;
+      setPlans((prev) => applyOptimisticKanbanPatch(prev, planId, patch));
+
       try {
-        await moveMutation.mutateAsync({ planId, patch, fromArchived: false, plan });
-      } catch {
-        // onError handles UI
+        const { plan: updated, error: apiError } = await patchKanbanPlan(planId, patch);
+        if (apiError) throw new Error(apiError ?? t("common.updateFailed"));
+        if (updated) await commitPlanChange(updated);
+      } catch (e) {
+        setPlans(prevPlans);
+        setError(e instanceof Error ? e.message : t("common.updateFailed"));
+      } finally {
+        setMoving(false);
       }
     },
-    [archivedPlans, moveMutation, plans],
+    [archivedPlans, commitPlanChange, plans, t],
   );
 
   const archivePlan = useCallback(
@@ -457,14 +394,29 @@ export function PlanKanbanBoard({
         return;
       }
 
+      setMoving(true);
       setError(null);
+      const prevPlans = plans;
+      const prevArchived = archivedPlans;
+      setPlans((prev) => prev.filter((p) => p.id !== planId));
+
       try {
-        await archiveMutation.mutateAsync(planId);
-      } catch {
-        // onError handles UI
+        const { plan: updated, error: apiError } = await patchKanbanPlan(planId, kanbanArchivePatch());
+        if (apiError) throw new Error(apiError ?? t("common.archiveFailed"));
+        if (updated) {
+          setArchivedPlans((prev) => upsertKanbanPlanInList(prev, updated));
+          dispatchPlanUpdated({ plan: updated });
+          router.refresh();
+        }
+      } catch (e) {
+        setPlans(prevPlans);
+        setArchivedPlans(prevArchived);
+        setError(e instanceof Error ? e.message : t("common.archiveFailed"));
+      } finally {
+        setMoving(false);
       }
     },
-    [archiveMutation, plans],
+    [archivedPlans, plans, router, t],
   );
 
   const archivedAccent = getKanbanColumnAccentClass("archived");

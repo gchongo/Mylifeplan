@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   experimental: {
     optimizePackageImports: ["react-markdown", "remark-gfm"],
+    /** 避免客户端 Router Cache 保留旧 RSC 数分钟 */
+    staleTimes: {
+      dynamic: 0,
+      static: 0,
+    },
   },
 };
 

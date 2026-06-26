@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { ErrorMessage, Loading } from "@/components/ui/feedback";
 import { StickyNote, type StickyNoteData } from "@/components/memos/sticky-note";
@@ -23,7 +23,7 @@ import {
 import { effectiveStickyPosition, nextStickyColor } from "@/lib/memo-sticky";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import { dispatchMemoUpdated } from "@/lib/memo-events";
-import { queryKeys } from "@/lib/query/keys";
+import { apiJson } from "@/lib/client-api";
 import type { SerializedPlanForGantt } from "@/lib/gantt-plan-sync";
 
 type NoteState = StickyNoteData & { x: number; y: number };
@@ -80,7 +80,9 @@ function MemoBoardSearch({
 
 export function StickyNoteBoard() {
   const { t } = useI18n();
+  const router = useRouter();
   const [notes, setNotes] = useState<NoteState[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -91,26 +93,6 @@ export function StickyNoteBoard() {
   const maxZRef = useRef(1);
   const boardRef = useRef<HTMLDivElement>(null);
   const creatingRef = useRef(false);
-
-  const { data: rawMemos, isLoading: loading, error: queryError } = useQuery({
-    queryKey: queryKeys.memos.standalone,
-    queryFn: async () => {
-      const res = await fetch("/api/memos?standaloneOnly=true", { cache: "no-store" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? t("common.loadFailed"));
-      return (data.memos ?? []) as StickyNoteData[];
-    },
-  });
-
-  useEffect(() => {
-    if (queryError instanceof Error) {
-      setError(queryError.message);
-    } else if (queryError) {
-      setError(t("common.loadFailed"));
-    } else {
-      setError("");
-    }
-  }, [queryError, t]);
 
   const notifyMemoUpdated = useCallback(
     (detail?: { memo?: StickyNoteData; removeId?: string }) => {
@@ -226,14 +208,28 @@ export function StickyNoteBoard() {
     [batchPersistLayout],
   );
 
+  const loadMemos = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await apiJson<{ memos?: StickyNoteData[] }>(
+        `/api/memos?standaloneOnly=true&_=${Date.now()}`,
+      );
+      await reconcileMemos(data.memos ?? []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("common.loadFailed"));
+    } finally {
+      setLoading(false);
+    }
+  }, [reconcileMemos, t]);
+
   useEffect(() => {
-    if (!rawMemos) return;
-    void reconcileMemos(rawMemos);
-  }, [rawMemos, reconcileMemos]);
+    void loadMemos();
+  }, [loadMemos]);
 
   useEffect(() => {
     const board = boardRef.current;
-    if (!board) return;
+    if (!board || loading) return;
 
     const updateViewport = () => {
       setViewportSize({ width: board.clientWidth, height: board.clientHeight });
@@ -411,10 +407,9 @@ export function StickyNoteBoard() {
     setEditingId(tempId);
 
     try {
-      const res = await fetch("/api/memos", {
+      const data = await apiJson<{ memo?: StickyNoteData; error?: string }>("/api/memos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        cache: "no-store",
         body: JSON.stringify({
           empty: true,
           color,
@@ -423,17 +418,17 @@ export function StickyNoteBoard() {
           quadrant,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? t("common.createFailed"));
 
-      const memo = data.memo as StickyNoteData;
+      const memo = data.memo;
+      if (!memo) throw new Error(t("common.createFailed"));
       const pos = effectiveStickyPosition(memo.posX, memo.posY, notes.length);
       const saved: NoteState = { ...memo, x: pos.x, y: pos.y };
 
       setNotes((prev) => prev.map((n) => (n.id === tempId ? saved : n)));
       setActiveId(saved.id);
       setEditingId(saved.id);
-      notifyMemoUpdated({ memo });
+      dispatchMemoUpdated({ memo });
+      router.refresh();
     } catch (e) {
       setNotes((prev) => prev.filter((n) => n.id !== tempId));
       setActiveId((current) => (current === tempId ? null : current));
@@ -461,6 +456,8 @@ export function StickyNoteBoard() {
     dispatchPlanUpdated({ plan: body.plan as SerializedPlanForGantt });
     setNotes((prev) => prev.filter((n) => n.id !== assignNoteId));
     notifyMemoUpdated({ removeId: assignNoteId });
+    router.refresh();
+    await loadMemos();
     setAssignNoteId(null);
     if (activeId === assignNoteId) setActiveId(null);
   }

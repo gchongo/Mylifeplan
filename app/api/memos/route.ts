@@ -12,6 +12,7 @@ import {
   createStandaloneMemo,
   serializeMemo,
 } from "@/lib/services/memo";
+import { revalidateMemoAppViews } from "@/lib/revalidate-app-views";
 
 const createMemoSchema = z.object({
   content: z.string().max(20000).optional(),
@@ -86,6 +87,7 @@ export async function POST(request: NextRequest) {
           comments: { orderBy: { createdAt: "asc" } },
         },
       });
+      revalidateMemoAppViews();
       return jsonOk({ memo: serializeMemo(full) }, 201);
     }
 

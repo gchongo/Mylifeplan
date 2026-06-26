@@ -6,6 +6,7 @@ import { requireSession } from "@/lib/auth/get-session";
 import { handleProtectedRouteError } from "@/lib/api/route-auth";
 import { prisma } from "@/lib/db";
 import { createPlan, serializePlan } from "@/lib/services/plan";
+import { revalidatePlanAppViews } from "@/lib/revalidate-app-views";
 import { createPlanSchema } from "@/lib/validations/plan";
 import { assertCanCreatePlan, EntitlementError } from "@/lib/entitlements";
 
@@ -66,6 +67,7 @@ export async function POST(request: NextRequest) {
     };
 
     const plan = await createPlan(session.userId, input);
+    revalidatePlanAppViews();
     return jsonOk({ plan: serializePlan(plan) }, 201);
   } catch (error) {
     if (error instanceof EntitlementError) {

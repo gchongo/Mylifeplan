@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { localizeVisualStatusLabel } from "@/lib/i18n/gantt-helpers";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
+import { apiJson } from "@/lib/client-api";
 import {
   kanbanCanMoveToUnscheduled,
   UNSCHEDULED_BLOCKED_HINT,
@@ -67,6 +69,7 @@ export function PlanStatusMenuButton({
   onStatusChanged?: (apiStatus: PlanStatus) => void;
 }) {
   const { t } = useI18n();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [menuError, setMenuError] = useState<string | null>(null);
@@ -176,24 +179,23 @@ export function PlanStatusMenuButton({
         return;
       }
 
-      const res = await fetch(`/api/plans/${planId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setMenuError(typeof data.error === "string" ? data.error : t("common.updateFailed"));
-        return;
-      }
+      const data = await apiJson<{ plan?: Record<string, unknown>; error?: string }>(
+        `/api/plans/${planId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
 
       if (data.plan) {
         dispatchPlanUpdated({ plan: data.plan });
-      } else {
-        dispatchPlanUpdated();
       }
+      router.refresh();
       onStatusChanged?.((data.plan?.status ?? body.status) as PlanStatus);
       setOpen(false);
+    } catch (e) {
+      setMenuError(e instanceof Error ? e.message : t("common.updateFailed"));
     } finally {
       setSaving(false);
     }

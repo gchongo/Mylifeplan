@@ -6,6 +6,7 @@ export const runtime = "nodejs";
 import { requireSession } from "@/lib/auth/get-session";
 import { handleProtectedRouteError } from "@/lib/api/route-auth";
 import { deleteMemoById, updateMemoById, archiveMemoById, addMemoImages } from "@/lib/services/memo";
+import { revalidateMemoAppViews } from "@/lib/revalidate-app-views";
 import { validateDateFields } from "@/lib/content-router";
 
 type Params = { params: Promise<{ id: string }> };
@@ -46,6 +47,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
     if (body?.archive === true) {
       await archiveMemoById(session.userId, id);
+      revalidateMemoAppViews();
       return jsonOk({ ok: true });
     }
 
@@ -58,6 +60,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (parsed.data.imageUrls?.length) {
       await addMemoImages(session.userId, id, parsed.data.imageUrls);
     }
+    revalidateMemoAppViews();
     return jsonOk({ result });
   } catch (e) {
     if (e instanceof Error && e.message === "NOT_FOUND") {
@@ -75,6 +78,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     const session = await requireSession(request);
     const { id } = await params;
     await deleteMemoById(session.userId, id);
+    revalidateMemoAppViews();
     return jsonOk({ ok: true });
   } catch (error) {
     return handleProtectedRouteError(error, "api/memos/[id] DELETE");
