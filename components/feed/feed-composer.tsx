@@ -14,6 +14,7 @@ import { useI18n } from "@/components/i18n/i18n-provider";
 import { apiJson } from "@/lib/client-api";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import { dispatchMemoUpdated } from "@/lib/memo-events";
+import type { StickyNoteData } from "@/components/memos/sticky-note";
 import type { SerializedPlanForGantt } from "@/lib/gantt-plan-sync";
 import { cn } from "@/lib/utils";
 import { nowDatetimeLocal } from "@/lib/dates";
@@ -130,12 +131,16 @@ export function FeedComposer({ onPublished }: { onPublished: () => void }) {
       } else {
         const content = memoText.trim();
         if (!content) return;
-        await apiJson("/api/memos", {
+        const created = await apiJson<{ memo?: StickyNoteData }>("/api/memos", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ content, quadrant: memoQuadrant }),
         });
-        dispatchMemoUpdated();
+        if (created.memo) {
+          dispatchMemoUpdated({ memo: created.memo });
+        } else {
+          dispatchMemoUpdated();
+        }
       }
 
       resetForm();

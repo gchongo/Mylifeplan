@@ -1,3 +1,5 @@
+import { defaultStickyPosition } from "@/lib/memo-sticky";
+
 export const MEMO_QUADRANT_BOARD_WIDTH = 960;
 export const MEMO_QUADRANT_BOARD_HEIGHT = 720;
 
@@ -165,6 +167,97 @@ export function defaultPositionForQuadrant(
   const offsetX = (stagger % 3) * 32;
   const offsetY = Math.floor(stagger / 3) * 28;
   return { x: bounds.left + pad + offsetX, y: bounds.top + pad + offsetY };
+}
+
+export function stickyNoteFitsQuadrant(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  quadrant: MemoQuadrantId,
+  boardWidth: number,
+  boardHeight: number,
+  axis: MemoBoardAxis = DEFAULT_MEMO_BOARD_AXIS,
+): boolean {
+  return detectMemoQuadrant(x, y, width, height, boardWidth, boardHeight, axis) === quadrant;
+}
+
+/**
+ * 便签板加载/远程创建：若已指定象限，则优先落入该象限（信息流 Q1–Q4 创建）。
+ * 仅当无象限或用户拖动后，才由坐标反推象限。
+ */
+export function resolveStickyNotePlacement(args: {
+  quadrant?: string | null;
+  posX?: number | null;
+  posY?: number | null;
+  width?: number | null;
+  height?: number | null;
+  boardWidth: number;
+  boardHeight: number;
+  indexInQuadrant: number;
+  axis?: MemoBoardAxis;
+}): { x: number; y: number; quadrant: MemoQuadrantId | null } {
+  const width = args.width ?? DEFAULT_STICKY_WIDTH;
+  const height = args.height ?? DEFAULT_STICKY_HEIGHT;
+  const axis = args.axis ?? DEFAULT_MEMO_BOARD_AXIS;
+
+  if (isMemoQuadrantId(args.quadrant)) {
+    const hasPos = args.posX != null && args.posY != null;
+    if (
+      hasPos &&
+      stickyNoteFitsQuadrant(
+        args.posX!,
+        args.posY!,
+        width,
+        height,
+        args.quadrant,
+        args.boardWidth,
+        args.boardHeight,
+        axis,
+      )
+    ) {
+      return { x: args.posX!, y: args.posY!, quadrant: args.quadrant };
+    }
+    const pos = defaultPositionForQuadrant(
+      args.quadrant,
+      args.boardWidth,
+      args.boardHeight,
+      args.indexInQuadrant,
+      axis,
+    );
+    return { x: pos.x, y: pos.y, quadrant: args.quadrant };
+  }
+
+  if (args.posX != null && args.posY != null) {
+    return {
+      x: args.posX,
+      y: args.posY,
+      quadrant: detectMemoQuadrant(
+        args.posX,
+        args.posY,
+        width,
+        height,
+        args.boardWidth,
+        args.boardHeight,
+        axis,
+      ),
+    };
+  }
+
+  const fallback = defaultStickyPosition(args.indexInQuadrant);
+  return {
+    x: fallback.x,
+    y: fallback.y,
+    quadrant: detectMemoQuadrant(
+      fallback.x,
+      fallback.y,
+      width,
+      height,
+      args.boardWidth,
+      args.boardHeight,
+      axis,
+    ),
+  };
 }
 
 export function quadrantLabel(id: string | null | undefined): string | null {

@@ -18,6 +18,7 @@ import {
   defaultPositionForQuadrant,
   detectMemoQuadrant,
   isMemoQuadrantId,
+  resolveStickyNotePlacement,
   type MemoQuadrantId,
 } from "@/lib/memo-quadrant";
 import { effectiveStickyPosition, nextStickyColor } from "@/lib/memo-sticky";
@@ -173,34 +174,57 @@ export function StickyNoteBoard() {
 
       const board = computeMemoBoardSize(viewW, viewH, mapped);
 
-      const quadrantFixes: Array<{ id: string; quadrant: string }> = [];
+      const quadrantCounts = new Map<MemoQuadrantId, number>();
+      const layoutFixes: Array<{
+        id: string;
+        posX: number;
+        posY: number;
+        quadrant: string | null;
+      }> = [];
       const reconciled: NoteState[] = [];
+
       for (const note of mapped) {
-        const { width, height } = {
-          width: note.width ?? DEFAULT_STICKY_WIDTH,
-          height: note.height ?? DEFAULT_STICKY_HEIGHT,
+        const qId = isMemoQuadrantId(note.quadrant) ? note.quadrant : null;
+        const indexInQuadrant = qId ? (quadrantCounts.get(qId) ?? 0) : 0;
+        if (qId) quadrantCounts.set(qId, indexInQuadrant + 1);
+
+        const placement = resolveStickyNotePlacement({
+          quadrant: note.quadrant,
+          posX: note.posX,
+          posY: note.posY,
+          width: note.width,
+          height: note.height,
+          boardWidth: board.width,
+          boardHeight: board.height,
+          indexInQuadrant,
+        });
+
+        const next: NoteState = {
+          ...note,
+          x: placement.x,
+          y: placement.y,
+          posX: placement.x,
+          posY: placement.y,
+          quadrant: placement.quadrant,
         };
-        const expected = detectMemoQuadrant(
-          note.x,
-          note.y,
-          width,
-          height,
-          board.width,
-          board.height,
-          DEFAULT_MEMO_BOARD_AXIS,
-        );
-        if (note.quadrant !== expected) {
-          reconciled.push({ ...note, quadrant: expected });
-          quadrantFixes.push({ id: note.id, quadrant: expected });
-        } else {
-          reconciled.push(note);
+
+        if (
+          note.posX !== placement.x ||
+          note.posY !== placement.y ||
+          note.quadrant !== placement.quadrant
+        ) {
+          layoutFixes.push({
+            id: note.id,
+            posX: placement.x,
+            posY: placement.y,
+            quadrant: placement.quadrant,
+          });
         }
+        reconciled.push(next);
       }
 
-      if (quadrantFixes.length > 0) {
-        void batchPersistLayout(
-          quadrantFixes.map((item) => ({ id: item.id, quadrant: item.quadrant })),
-        ).catch(() => {});
+      if (layoutFixes.length > 0) {
+        void batchPersistLayout(layoutFixes).catch(() => {});
       }
 
       setNotes(reconciled);

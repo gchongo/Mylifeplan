@@ -39,6 +39,18 @@ export async function createStandaloneMemo(
     throw new Error("内容不能为空");
   }
 
+  let placementIndex = noteIndex;
+  if (
+    data.quadrant &&
+    isMemoQuadrantId(data.quadrant) &&
+    data.posX == null &&
+    data.posY == null
+  ) {
+    placementIndex = await prisma.memo.count({
+      where: { userId, linkedPlanId: null, quadrant: data.quadrant },
+    });
+  }
+
   const pos =
     data.posX != null && data.posY != null
       ? { x: data.posX, y: data.posY }
@@ -47,7 +59,7 @@ export async function createStandaloneMemo(
             data.quadrant,
             MEMO_QUADRANT_BOARD_WIDTH,
             MEMO_QUADRANT_BOARD_HEIGHT,
-            noteIndex,
+            placementIndex,
           )
         : defaultStickyPosition(noteIndex);
 

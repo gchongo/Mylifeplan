@@ -4,7 +4,9 @@ import {
   DEFAULT_STICKY_WIDTH,
   detectMemoQuadrant,
   defaultPositionForQuadrant,
+  detectMemoQuadrant,
   quadrantFeedLabel,
+  resolveStickyNotePlacement,
   MEMO_QUADRANT_BOARD_HEIGHT,
   MEMO_QUADRANT_BOARD_WIDTH,
 } from "@/lib/memo-quadrant";
@@ -59,6 +61,46 @@ describe("defaultPositionForQuadrant", () => {
     expect(detectMemoQuadrant(pos.x, pos.y, w, h, boardW, boardH, axis)).toBe(
       "not_urgent_important",
     );
+  });
+});
+
+describe("resolveStickyNotePlacement", () => {
+  it("places feed-created Q4 memo into bottom-right on actual board size", () => {
+    const boardW = 1200;
+    const boardH = 900;
+    const placement = resolveStickyNotePlacement({
+      quadrant: "urgent_not_important",
+      posX: 508,
+      posY: 388,
+      boardWidth: boardW,
+      boardHeight: boardH,
+      indexInQuadrant: 0,
+    });
+    expect(placement.quadrant).toBe("urgent_not_important");
+    expect(
+      detectMemoQuadrant(
+        placement.x,
+        placement.y,
+        w,
+        h,
+        boardW,
+        boardH,
+      ),
+    ).toBe("urgent_not_important");
+  });
+
+  it("keeps position when already inside declared quadrant", () => {
+    const pos = defaultPositionForQuadrant("not_urgent_important", boardW, boardH, 0);
+    const placement = resolveStickyNotePlacement({
+      quadrant: "not_urgent_important",
+      posX: pos.x,
+      posY: pos.y,
+      boardWidth: boardW,
+      boardHeight: boardH,
+      indexInQuadrant: 0,
+    });
+    expect(placement.x).toBe(pos.x);
+    expect(placement.y).toBe(pos.y);
   });
 });
 
