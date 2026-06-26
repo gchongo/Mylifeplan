@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   groupPlansByKanbanColumn,
@@ -22,6 +22,7 @@ import { getKanbanColumnAccentClass, getKanbanTitleBarStyle } from "@/lib/task-s
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import { applyOptimisticKanbanPatch, patchKanbanPlan } from "@/lib/kanban-plan-mutation";
 import type { ScheduleTransitionPatch } from "@/lib/plan-schedule-transition";
+import { upsertKanbanPlanInList } from "@/lib/query/merge-kanban-plan";
 import { queryKeys } from "@/lib/query/keys";
 import { apiJson } from "@/lib/client-api";
 import { ROLLUP_STATUS_HINT } from "@/lib/services/plan-rollup";
@@ -279,32 +280,27 @@ export function PlanKanbanBoard({
   const activeKey = queryKeys.plans.list();
   const archivedKey = queryKeys.plans.list("archived");
 
-  const kanbanQueryOptions = {
-    staleTime: Infinity,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  } as const;
-
   const { data: activeData } = useQuery({
     queryKey: activeKey,
     queryFn: () => apiJson<{ plans?: KanbanPlan[] }>("/api/plans"),
-    initialData: { plans: initialPlans },
-    ...kanbanQueryOptions,
+    placeholderData: (previous) => previous ?? { plans: initialPlans },
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   const { data: archivedData } = useQuery({
     queryKey: archivedKey,
     queryFn: () => apiJson<{ plans?: KanbanPlan[] }>("/api/plans?status=archived"),
-    initialData: { plans: [] },
-    ...kanbanQueryOptions,
+    placeholderData: (previous) => previous ?? { plans: [] },
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
-  useLayoutEffect(() => {
-    qc.setQueryData(activeKey, { plans: initialPlans });
-  }, [activeKey, initialPlans, qc]);
-
-  const plans = activeData?.plans ?? [];
+  const plans = activeData?.plans ?? initialPlans;
   const archivedPlans = archivedData?.plans ?? [];
 
   const grouped = useMemo(() => groupPlansByKanbanColumn(plans), [plans]);
@@ -353,8 +349,13 @@ export function PlanKanbanBoard({
       if (ctx?.prevArchived !== undefined) qc.setQueryData(archivedKey, ctx.prevArchived);
       setError(err instanceof Error ? err.message : t("common.updateFailed"));
     },
-    onSuccess: (updated) => {
-      syncKanbanPlanViews(updated);
+    onSuccess: (updated, vars) => {
+      if (updated) {
+        qc.setQueryData<{ plans?: KanbanPlan[] }>(activeKey, (old) => ({
+          plans: upsertKanbanPlanInList(old?.plans ?? [], updated),
+        }));
+        syncKanbanPlanViews(updated);
+      }
     },
   });
 
@@ -379,7 +380,12 @@ export function PlanKanbanBoard({
       setError(err instanceof Error ? err.message : t("common.archiveFailed"));
     },
     onSuccess: (updated) => {
-      syncKanbanPlanViews(updated);
+      if (updated) {
+        qc.setQueryData<{ plans?: KanbanPlan[] }>(archivedKey, (old) => ({
+          plans: upsertKanbanPlanInList(old?.plans ?? [], updated),
+        }));
+        syncKanbanPlanViews(updated);
+      }
     },
   });
 

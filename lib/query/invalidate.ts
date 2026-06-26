@@ -18,7 +18,13 @@ export function invalidateAuxiliaryPlanViews() {
   void qc.invalidateQueries({ queryKey: queryKeys.summary.all });
 }
 
-/** 便签变更后：便签板 + 信息流自动 refetch */
+/** 便签变更后：只刷新 feed（便签列表由 applyMemoUpsertToCache 写入） */
+export function invalidateAuxiliaryMemoViews() {
+  const qc = getQueryClient();
+  void qc.invalidateQueries({ queryKey: queryKeys.feed.all });
+}
+
+/** 便签变更后：便签板 + 信息流 refetch（无 memo 快照时的兜底） */
 export function invalidateMemoViews() {
   const qc = getQueryClient();
   void qc.invalidateQueries({ queryKey: queryKeys.memos.all });

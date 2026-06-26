@@ -1,6 +1,27 @@
-import { invalidateMemoViews } from "@/lib/query/invalidate";
+import { applyMemoRemoveFromCache, applyMemoUpsertToCache } from "@/lib/query/apply-memo-update";
+import { invalidateAuxiliaryMemoViews, invalidateMemoViews } from "@/lib/query/invalidate";
+import type { StickyNoteData } from "@/components/memos/sticky-note";
 
-/** 任意便签保存成功后调用，触发便签板与信息流自动刷新 */
-export function dispatchMemoUpdated() {
+export type MemoUpdatedDetail = {
+  memo?: StickyNoteData;
+  removeId?: string;
+};
+
+/**
+ * 便签变更后：
+ * - 有 memo / removeId → 直接写缓存（便签板即时更新），只刷新 feed
+ * - 无快照 → 兜底 refetch 便签列表 + feed
+ */
+export function dispatchMemoUpdated(detail?: MemoUpdatedDetail) {
+  if (detail?.memo) {
+    applyMemoUpsertToCache({ ...detail.memo });
+    invalidateAuxiliaryMemoViews();
+    return;
+  }
+  if (detail?.removeId) {
+    applyMemoRemoveFromCache(detail.removeId);
+    invalidateAuxiliaryMemoViews();
+    return;
+  }
   invalidateMemoViews();
 }

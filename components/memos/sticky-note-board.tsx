@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { ErrorMessage, Loading } from "@/components/ui/feedback";
 import { StickyNote, type StickyNoteData } from "@/components/memos/sticky-note";
@@ -81,7 +80,6 @@ function MemoBoardSearch({
 
 export function StickyNoteBoard() {
   const { t } = useI18n();
-  const qc = useQueryClient();
   const [notes, setNotes] = useState<NoteState[]>([]);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -114,9 +112,12 @@ export function StickyNoteBoard() {
     }
   }, [queryError, t]);
 
-  const notifyMemoUpdated = useCallback(() => {
-    dispatchMemoUpdated();
-  }, []);
+  const notifyMemoUpdated = useCallback(
+    (detail?: { memo?: StickyNoteData; removeId?: string }) => {
+      dispatchMemoUpdated(detail);
+    },
+    [],
+  );
 
   const persistNote = useCallback(async (id: string, body: Record<string, unknown>) => {
     const res = await fetch(`/api/memos/${id}`, {
@@ -363,10 +364,7 @@ export function StickyNoteBoard() {
         throw new Error(data.error ?? t("common.deleteFailed"));
       }
       setNotes((prev) => prev.filter((n) => n.id !== id));
-      qc.setQueryData<StickyNoteData[]>(queryKeys.memos.standalone, (prev = []) =>
-        prev.filter((m) => m.id !== id),
-      );
-      notifyMemoUpdated();
+      notifyMemoUpdated({ removeId: id });
       if (editingId === id) setEditingId(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : t("common.deleteFailed"));
@@ -433,14 +431,9 @@ export function StickyNoteBoard() {
       const saved: NoteState = { ...memo, x: pos.x, y: pos.y };
 
       setNotes((prev) => prev.map((n) => (n.id === tempId ? saved : n)));
-      qc.setQueryData<StickyNoteData[]>(queryKeys.memos.standalone, (prev = []) => {
-        const withoutTemp = prev.filter((m) => m.id !== tempId);
-        if (withoutTemp.some((m) => m.id === saved.id)) return withoutTemp;
-        return [memo, ...withoutTemp];
-      });
       setActiveId(saved.id);
       setEditingId(saved.id);
-      notifyMemoUpdated();
+      notifyMemoUpdated({ memo });
     } catch (e) {
       setNotes((prev) => prev.filter((n) => n.id !== tempId));
       setActiveId((current) => (current === tempId ? null : current));
@@ -467,6 +460,7 @@ export function StickyNoteBoard() {
     if (!res.ok) throw new Error(body.error ?? t("memos.assignModal.assignFailed"));
     dispatchPlanUpdated({ plan: body.plan as SerializedPlanForGantt });
     setNotes((prev) => prev.filter((n) => n.id !== assignNoteId));
+    notifyMemoUpdated({ removeId: assignNoteId });
     setAssignNoteId(null);
     if (activeId === assignNoteId) setActiveId(null);
   }

@@ -8,8 +8,8 @@ function makeQueryClient() {
       queries: {
         staleTime: 0,
         gcTime: 5 * 60 * 1000,
-        refetchOnWindowFocus: true,
-        refetchOnReconnect: true,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
         retry: 1,
       },
     },

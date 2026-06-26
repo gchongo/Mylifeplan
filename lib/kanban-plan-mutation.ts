@@ -1,4 +1,5 @@
 import type { KanbanPlan } from "@/lib/kanban-board";
+import { apiJson } from "@/lib/client-api";
 import {
   normalizeSchedulePatchForApi,
   type ScheduleTransitionPatch,
@@ -28,14 +29,17 @@ export async function patchKanbanPlan(
   patch: ScheduleTransitionPatch,
 ): Promise<{ plan?: Record<string, unknown>; error?: string }> {
   const body = normalizeSchedulePatchForApi(patch);
-  const res = await fetch(`/api/plans/${planId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    return { error: typeof data.error === "string" ? data.error : undefined };
+  try {
+    const data = await apiJson<{ plan?: Record<string, unknown>; error?: string }>(
+      `/api/plans/${planId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+    return { plan: data.plan };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : undefined };
   }
-  return { plan: data.plan as Record<string, unknown> | undefined };
 }
