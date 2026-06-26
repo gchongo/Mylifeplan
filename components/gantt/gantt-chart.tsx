@@ -98,8 +98,8 @@ import { GRID_BORDER, GRID_ROW_BORDER } from "@/lib/gantt-grid-colors";
 import { deriveParentStatus } from "@/lib/services/plan-rollup";
 import type { GanttContribution, GanttItem, PlanStatus } from "@/types";
 import { apiJson } from "@/lib/client-api";
-import { dispatchPlanUpdated, PLAN_UPDATED_EVENT, planDataVersion, type PlanUpdatedDetail } from "@/lib/plan-events";
-import { APP_ROUTE_CHANGED_EVENT } from "@/lib/use-plan-data-sync";
+import { dispatchPlanUpdated, type PlanUpdatedDetail } from "@/lib/plan-events";
+import { usePlanDataSync } from "@/lib/use-plan-data-sync";
 import type { PlanContributionComposeResult } from "@/components/forms/plan-contribution-compose-form";
 import {
   patchGanttItemFromPlan,
@@ -320,7 +320,6 @@ export const GanttChart = forwardRef<
   const pendingScrollLeft = useRef<number | null>(null);
   const ganttFetchSeq = useRef(0);
   const skipNextPlanSyncRef = useRef(false);
-  const planSyncedVersionRef = useRef(-1);
   const [isPanning, setIsPanning] = useState(false);
 
   const [planModal, setPlanModal] = useState<PlanModalState>({
@@ -448,27 +447,34 @@ export const GanttChart = forwardRef<
     : dateToX(today, layout);
   const todayVisible = today >= layout.from && today <= layout.to;
 
-  useEffect(() => {
-    const seq = ++ganttFetchSeq.current;
-    setIsLoading(true);
-    apiJson<{ items?: GanttItem[]; contributions?: GanttContribution[] }>(
-      `/api/gantt?from=${fetchRange.from}&to=${fetchRange.to}`,
-    )
-      .then((data) => {
+  const loadGantt = useCallback(
+    async (options?: { showLoading?: boolean }) => {
+      const seq = ++ganttFetchSeq.current;
+      const showLoading = options?.showLoading ?? false;
+      if (showLoading) setIsLoading(true);
+
+      try {
+        const data = await apiJson<{ items?: GanttItem[]; contributions?: GanttContribution[] }>(
+          `/api/gantt?from=${fetchRange.from}&to=${fetchRange.to}`,
+        );
         if (seq !== ganttFetchSeq.current) return;
         setItems(data.items ?? []);
         setContributions(data.contributions ?? []);
-      })
-      .catch(() => {
+      } catch {
         if (seq !== ganttFetchSeq.current) return;
         setItems([]);
         setContributions([]);
-      })
-      .finally(() => {
+      } finally {
         if (seq !== ganttFetchSeq.current) return;
-        setIsLoading(false);
-      });
-  }, [fetchRange.from, fetchRange.to]);
+        if (showLoading) setIsLoading(false);
+      }
+    },
+    [fetchRange.from, fetchRange.to],
+  );
+
+  useEffect(() => {
+    void loadGantt({ showLoading: true });
+  }, [loadGantt]);
 
   const applyPlanPatch = useCallback((plan: GanttPlanPatch) => {
     setItems((prev) =>
@@ -476,17 +482,16 @@ export const GanttChart = forwardRef<
     );
   }, []);
 
+  /** 后台同步：不占用主加载序号，避免把首屏 loading 卡住 */
   const refetchGantt = useCallback(async () => {
-    const seq = ++ganttFetchSeq.current;
     try {
       const data = await apiJson<{ items?: GanttItem[]; contributions?: GanttContribution[] }>(
         `/api/gantt?from=${fetchRange.from}&to=${fetchRange.to}`,
       );
-      if (seq !== ganttFetchSeq.current) return;
       setItems(data.items ?? []);
       setContributions(data.contributions ?? []);
     } catch {
-      // Keep optimistic local state when background refresh fails.
+      // 保留当前视图，避免后台刷新失败时清空
     }
   }, [fetchRange.from, fetchRange.to]);
 
@@ -680,59 +685,28 @@ export const GanttChart = forwardRef<
     });
   }, []);
 
-  useEffect(() => {
-    function applyPlanDetail(detail: PlanUpdatedDetail | undefined) {
-      if (detail?.plan) {
-        setItems((prev) => {
-          const next = syncGanttItemsFromPlanUpdate(prev, detail.plan!, fetchRange.from);
-          if (detail.plan?.parentPlanId) {
-            expandAncestorsForPlan(detail.plan.parentPlanId, next);
-          }
-          return next;
-        });
-        return true;
-      }
-      return false;
-    }
+  const applyPlanDetail = useCallback(
+    (detail: PlanUpdatedDetail | undefined) => {
+      if (!detail?.plan) return false;
+      setItems((prev) => {
+        const next = syncGanttItemsFromPlanUpdate(prev, detail.plan!, fetchRange.from);
+        if (detail.plan?.parentPlanId) {
+          expandAncestorsForPlan(detail.plan.parentPlanId, next);
+        }
+        return next;
+      });
+      return true;
+    },
+    [fetchRange.from, expandAncestorsForPlan],
+  );
 
-    function onPlanUpdated(event: Event) {
-      const detail = (event as CustomEvent<PlanUpdatedDetail>).detail;
-      const skipped = skipNextPlanSyncRef.current;
-      skipNextPlanSyncRef.current = false;
-      planSyncedVersionRef.current = detail?.version ?? planDataVersion;
-
-      if (applyPlanDetail(detail)) return;
-      if (skipped) return;
-      void refetchGantt();
-    }
-
-    function syncIfStale() {
-      if (document.visibilityState !== "visible") return;
-      if (planDataVersion <= planSyncedVersionRef.current) return;
-      planSyncedVersionRef.current = planDataVersion;
-      void refetchGantt();
-    }
-
-    function refetchIfStale() {
-      if (planDataVersion <= planSyncedVersionRef.current) return;
-      planSyncedVersionRef.current = planDataVersion;
-      void refetchGantt();
-    }
-
-    function onRouteChanged() {
-      refetchIfStale();
-    }
-
-    window.addEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
-    window.addEventListener(APP_ROUTE_CHANGED_EVENT, onRouteChanged);
-    document.addEventListener("visibilitychange", syncIfStale);
-    refetchIfStale();
-    return () => {
-      window.removeEventListener(PLAN_UPDATED_EVENT, onPlanUpdated);
-      window.removeEventListener(APP_ROUTE_CHANGED_EVENT, onRouteChanged);
-      document.removeEventListener("visibilitychange", syncIfStale);
-    };
-  }, [refetchGantt, fetchRange.from, expandAncestorsForPlan]);
+  usePlanDataSync((detail) => {
+    const skipped = skipNextPlanSyncRef.current;
+    skipNextPlanSyncRef.current = false;
+    if (applyPlanDetail(detail)) return;
+    if (skipped) return;
+    void refetchGantt();
+  });
 
   useEffect(() => {
     if (!isPanning) return;
