@@ -665,6 +665,7 @@ const zhCN = {
     closeNav: "关闭导航",
     settings: "设置",
     refresh: "刷新数据",
+    refreshPage: "刷新当前页",
     openProfileSettings: "个人资料与设置",
   },
   panel: {

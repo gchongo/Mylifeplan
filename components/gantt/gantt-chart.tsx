@@ -291,6 +291,7 @@ export interface GanttChartHandle {
   navigatePrev: () => void;
   navigateNext: () => void;
   goToday: () => void;
+  refresh: () => void;
 }
 
 export interface GanttTitleColumnLayout {
@@ -883,8 +884,9 @@ export const GanttChart = forwardRef<
       navigatePrev,
       navigateNext,
       goToday,
+      refresh: refetchGanttStable,
     }),
-    [navigatePrev, navigateNext, goToday],
+    [navigatePrev, navigateNext, goToday, refetchGanttStable],
   );
 
   function handleItemUpdated(
