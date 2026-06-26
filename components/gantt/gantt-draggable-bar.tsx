@@ -356,7 +356,7 @@ export function GanttDraggableBar({
           </span>
         </div>
         <div
-          className="absolute inset-0 cursor-grab active:cursor-grabbing"
+          className="absolute inset-0 gantt-grab-cursor"
           onMouseDown={(e) => startDrag(e, "move")}
         >
           <span

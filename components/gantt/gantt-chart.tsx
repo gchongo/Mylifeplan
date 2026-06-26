@@ -335,6 +335,7 @@ export const GanttChart = forwardRef<
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [selectedContributionId, setSelectedContributionId] = useState<string | null>(null);
   const [scrollViewportHeight, setScrollViewportHeight] = useState(480);
+  const [horizontalScrollGutter, setHorizontalScrollGutter] = useState(0);
   const [timelineViewportWidth, setTimelineViewportWidth] = useState(0);
   const [titleWidth, setTitleWidth] = useState(DEFAULT_TITLE_WIDTH);
   const [scheduleViewportCols, setScheduleViewportCols] = useState(DEFAULT_SCHEDULE_VIEWPORT_COLS);
@@ -703,14 +704,22 @@ export const GanttChart = forwardRef<
 
     const update = () => {
       setScrollViewportHeight(scroll.clientHeight);
+      const hasHorizontalScroll = scroll.scrollWidth > scroll.clientWidth;
+      const scrollbarHeight = scroll.offsetHeight - scroll.clientHeight;
+      setHorizontalScrollGutter(
+        hasHorizontalScroll ? Math.max(scrollbarHeight, 16) : 0,
+      );
       const w = Math.floor(container.clientWidth - effectiveLeftWidth);
       setTimelineViewportWidth((prev) => (Math.abs(prev - w) > 4 ? w : prev));
     };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(container);
+    ro.observe(scroll);
+    const inner = scroll.firstElementChild;
+    if (inner) ro.observe(inner);
     return () => ro.disconnect();
-  }, [isLoading, fullPage, effectiveLeftWidth]);
+  }, [isLoading, fullPage, effectiveLeftWidth, rowsBodyHeight, timelineWidth]);
 
   const syncTimelineHeaderScroll = useCallback(() => {
     const left = scrollRef.current?.scrollLeft ?? 0;
@@ -1797,10 +1806,13 @@ export const GanttChart = forwardRef<
           className={cn(
             "h-full min-h-0 w-full max-w-full min-w-0 overflow-x-auto overflow-y-auto",
             isResizingPanels && "cursor-col-resize select-none",
-            isPanning ? "cursor-grabbing select-none" : !isResizingPanels && "cursor-grab",
+            isPanning ? "gantt-grabbing-cursor select-none" : !isResizingPanels && "gantt-grab-cursor",
           )}
         >
-          <div className="relative flex min-h-0 w-max">
+          <div
+            className="relative flex min-h-0 w-max"
+            style={{ paddingBottom: horizontalScrollGutter }}
+          >
             <div
               className={cn(
                 "sticky left-0 z-20 shrink-0 overflow-hidden",
