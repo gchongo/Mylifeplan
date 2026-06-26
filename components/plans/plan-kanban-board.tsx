@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   groupPlansByKanbanColumn,
@@ -280,7 +280,7 @@ export function PlanKanbanBoard({
   const archivedKey = queryKeys.plans.list("archived");
 
   const kanbanQueryOptions = {
-    staleTime: 60_000,
+    staleTime: Infinity,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
@@ -289,30 +289,31 @@ export function PlanKanbanBoard({
   const { data: activeData } = useQuery({
     queryKey: activeKey,
     queryFn: () => apiJson<{ plans?: KanbanPlan[] }>("/api/plans"),
-    placeholderData: (previous) => previous ?? { plans: initialPlans },
+    initialData: { plans: initialPlans },
     ...kanbanQueryOptions,
   });
 
   const { data: archivedData } = useQuery({
     queryKey: archivedKey,
     queryFn: () => apiJson<{ plans?: KanbanPlan[] }>("/api/plans?status=archived"),
-    placeholderData: (previous) => previous ?? { plans: [] },
+    initialData: { plans: [] },
     ...kanbanQueryOptions,
   });
+
+  useLayoutEffect(() => {
+    qc.setQueryData(activeKey, { plans: initialPlans });
+  }, [activeKey, initialPlans, qc]);
 
   const plans = activeData?.plans ?? [];
   const archivedPlans = archivedData?.plans ?? [];
 
   const grouped = useMemo(() => groupPlansByKanbanColumn(plans), [plans]);
 
-  const syncKanbanPlanViews = useCallback(
-    (plan?: Record<string, unknown>) => {
-      if (plan) {
-        dispatchPlanUpdated({ plan }, { skipPlansRefetch: true });
-      }
-    },
-    [],
-  );
+  const syncKanbanPlanViews = useCallback((plan?: Record<string, unknown>) => {
+    if (plan) {
+      dispatchPlanUpdated({ plan });
+    }
+  }, []);
 
   type MoveMutationVars = {
     planId: string;

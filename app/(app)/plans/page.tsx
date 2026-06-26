@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { getSession } from "@/lib/auth/get-session";
 import { prisma } from "@/lib/db";
 import { formatPlanDateTime } from "@/lib/dates";

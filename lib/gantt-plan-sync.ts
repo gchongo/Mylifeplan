@@ -11,6 +11,7 @@ export type GanttPlanPatch = {
   endDate?: string | null;
   actualStartDate?: string | null;
   actualEndDate?: string | null;
+  status?: string;
 };
 
 export type SerializedPlanForGantt = {
@@ -69,6 +70,7 @@ export function patchGanttItemFromPlan(item: GanttItem, plan: GanttPlanPatch): G
     endDate: plan.endDate ?? null,
     ...(plan.actualStartDate !== undefined && { actualStartDate: plan.actualStartDate }),
     ...(plan.actualEndDate !== undefined && { actualEndDate: plan.actualEndDate }),
+    ...(plan.status !== undefined && { status: plan.status }),
     effectiveEnd: effectiveEnd ?? plan.startDate,
     isVirtualEnd,
   };

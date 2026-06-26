@@ -98,6 +98,25 @@ describe("buildPlanScheduleTransitionPatch", () => {
     expect(patch).toEqual({ status: "done" });
   });
 
+  it("scheduled in_progress to not_started clears actual dates", () => {
+    expect(
+      buildPlanScheduleTransitionPatch(
+        plan({
+          id: "1",
+          title: "A",
+          status: "in_progress",
+          startDate: "2026-06-01T09:00:00.000Z",
+        }),
+        "not_started",
+        now,
+      ),
+    ).toEqual({
+      status: "not_started",
+      actualStartDate: null,
+      actualEndDate: null,
+    });
+  });
+
   it("archive only changes status", () => {
     expect(
       buildPlanScheduleTransitionPatch(

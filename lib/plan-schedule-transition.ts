@@ -67,6 +67,14 @@ export function buildPlanScheduleTransitionPatch(
           startDate: nowStr,
         };
       }
+      // 进行中/已完成 → 未开始：须清空实际时间，否则服务端会按 actualStart 推回进行中
+      if (plan.status === "in_progress" || plan.status === "done") {
+        return {
+          status: "not_started",
+          actualStartDate: null,
+          actualEndDate: null,
+        };
+      }
       return { status: "not_started" };
     }
 

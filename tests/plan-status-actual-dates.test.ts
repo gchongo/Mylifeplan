@@ -96,6 +96,20 @@ describe("applyStatusChangeToActualDates", () => {
     ).toEqual({ actualStart: start, actualEnd: customEnd });
   });
 
+  it("clears actual dates when reverting in progress to not started", () => {
+    expect(
+      applyStatusChangeToActualDates({
+        previousStatus: "in_progress",
+        nextStatus: "not_started",
+        actualStart: start,
+        actualEnd: null,
+        explicitActualStart: false,
+        explicitActualEnd: false,
+        now,
+      }),
+    ).toEqual({ actualStart: null, actualEnd: null });
+  });
+
   it("clears actual dates when reverting to not started", () => {
     expect(
       applyStatusChangeToActualDates({

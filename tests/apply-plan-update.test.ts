@@ -41,6 +41,50 @@ describe("applyPlanUpdateToCache", () => {
     testClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   });
 
+  it("updates gantt status when reverting in_progress to not_started", () => {
+    const planId = "p1";
+    testClient.setQueryData(queryKeys.plans.list(), {
+      plans: [
+        kanbanPlan({
+          id: planId,
+          title: "Task",
+          status: "in_progress",
+          startDate: "2026-06-01T09:00:00.000Z",
+        }),
+      ],
+    });
+
+    const ganttKey = queryKeys.gantt.range("2026-01-01", "2026-12-31");
+    testClient.setQueryData(ganttKey, {
+      items: [
+        ganttItem({
+          id: planId,
+          title: "Task",
+          startDate: "2026-06-01T09:00:00.000Z",
+          status: "in_progress",
+          actualStartDate: "2026-06-05T10:00:00.000Z",
+        }),
+      ],
+      contributions: [],
+    });
+
+    applyPlanUpdateToCache({
+      id: planId,
+      title: "Task",
+      status: "not_started",
+      startDate: "2026-06-01T09:00:00.000Z",
+      endDate: null,
+      actualStartDate: null,
+      actualEndDate: null,
+      parentPlanId: null,
+      color: null,
+    });
+
+    const gantt = testClient.getQueryData<{ items: GanttItem[] }>(ganttKey);
+    expect(gantt?.items[0].status).toBe("not_started");
+    expect(gantt?.items[0].actualStartDate).toBeNull();
+  });
+
   it("updates kanban and gantt immediately when reverting in_progress to not_started", () => {
     const planId = "p1";
     testClient.setQueryData(queryKeys.plans.list(), {
