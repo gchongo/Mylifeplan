@@ -69,6 +69,7 @@ export function GanttToolbarControls({
           variant="traffic-light"
           statusFilter={statusFilter}
           onStatusFilterChange={onStatusFilterChange}
+          className="flex items-center"
         />
       ) : null}
     </>

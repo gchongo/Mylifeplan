@@ -10,6 +10,17 @@ import {
 import { localizeVisualStatusLabel } from "@/lib/i18n/gantt-helpers";
 import { cn } from "@/lib/utils";
 
+/** 移动端工具栏：红黄绿三灯，仅作状态筛选入口图标 */
+const TRAFFIC_LIGHT_DOTS = [
+  "bg-red-500",
+  "bg-yellow-400",
+  "bg-emerald-500",
+] as const;
+
+/** 与 GanttLayerToggleButton 一致的外框尺寸，保证与「实际」按钮等高对齐 */
+const TRAFFIC_LIGHT_TRIGGER_CLASS =
+  "inline-flex shrink-0 items-center justify-center gap-1 rounded-full border px-2 py-1 text-sm font-medium leading-none transition-colors";
+
 function StatusFilterDropdown({
   open,
   statusFilter,
@@ -115,9 +126,10 @@ export function GanttStatusFilterMenu({
   const triggerClass =
     variant === "traffic-light"
       ? cn(
-          "inline-flex shrink-0 items-center gap-[3px] rounded-full border px-1.5 py-1",
-          "border-gray-400 bg-neutral-700 hover:bg-neutral-600 dark:border-gray-500 dark:bg-neutral-800 dark:hover:bg-neutral-700",
-          filterActive && "ring-1 ring-blue-400 dark:ring-blue-500",
+          TRAFFIC_LIGHT_TRIGGER_CLASS,
+          filterActive
+            ? "border-brand-300 bg-brand-50 hover:bg-brand-100/80 dark:border-brand-700 dark:bg-brand-950/50 dark:hover:bg-brand-950/70"
+            : "border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800",
           buttonClassName,
         )
       : cn(
@@ -141,21 +153,17 @@ export function GanttStatusFilterMenu({
         aria-expanded={open}
       >
         {variant === "traffic-light" ? (
-          STATUS_LEGEND.map((key) => {
-            const style = STATUS_STYLES[key];
-            const selected = statusFilter.has(key);
-            return (
-              <span
-                key={key}
-                className={cn(
-                  "h-2 w-2 shrink-0 rounded-full",
-                  style.dot.split(" ")[0],
-                  selected ? "opacity-100" : "opacity-30",
-                )}
-                aria-hidden
-              />
-            );
-          })
+          TRAFFIC_LIGHT_DOTS.map((color, index) => (
+            <span
+              key={index}
+              className={cn(
+                "h-2 w-2 shrink-0 rounded-full",
+                color,
+                filterActive ? "opacity-70" : "opacity-100",
+              )}
+              aria-hidden
+            />
+          ))
         ) : (
           <>
             <span className="truncate whitespace-nowrap">
