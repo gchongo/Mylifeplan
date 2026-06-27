@@ -89,19 +89,14 @@ export const CalendarScrollView = forwardRef<
   const weekColClass = weekPrefs.format === "week-label" ? "w-11 shrink-0" : "w-7 shrink-0";
   const weekdayLabels = Array.from({ length: 7 }, (_, i) => localizeSettingsWeekdayMonStart(t, i));
   const visibleMonthRef = useRef<MonthKey>(todayKey);
-
-  useEffect(() => {
-    if (pinToMonth) {
-      setMonths([pinToMonth]);
-      visibleMonthRef.current = pinToMonth;
-      onVisibleMonthChange(pinToMonth);
-      requestAnimationFrame(() => {
-        if (scrollRef.current) scrollRef.current.scrollTop = 0;
-      });
-      return;
-    }
-    setMonths(initialMonthWindow(visibleMonthRef.current));
-  }, [pinToMonth, onVisibleMonthChange]);
+  const scrollSnapshotRef = useRef<number | null>(null);
+  const wasPinnedRef = useRef(false);
+  const displayMonths =
+    isPinned && pinToMonth
+      ? months.some((m) => monthKeyId(m) === monthKeyId(pinToMonth))
+        ? [pinToMonth]
+        : months
+      : months;
 
   function formatMonthSectionTitle(key: MonthKey, showYear: boolean): string {
     if (showYear) {
@@ -122,6 +117,7 @@ export const CalendarScrollView = forwardRef<
   }, []);
 
   const updateVisibleMonth = useCallback(() => {
+    if (isPinned) return;
     const root = scrollRef.current;
     if (!root) return;
     const rootTop = root.getBoundingClientRect().top;
@@ -137,7 +133,28 @@ export const CalendarScrollView = forwardRef<
       visibleMonthRef.current = best.key;
       onVisibleMonthChange(best.key);
     }
-  }, [months, onVisibleMonthChange]);
+  }, [isPinned, months, onVisibleMonthChange]);
+
+  useLayoutEffect(() => {
+    const root = scrollRef.current;
+    if (pinToMonth) {
+      if (!wasPinnedRef.current && root) {
+        scrollSnapshotRef.current = root.scrollTop;
+      }
+      wasPinnedRef.current = true;
+      const el = monthRefs.current.get(monthKeyId(pinToMonth));
+      if (root && el) root.scrollTop = el.offsetTop;
+      return;
+    }
+    if (wasPinnedRef.current && root && scrollSnapshotRef.current != null) {
+      root.scrollTop = scrollSnapshotRef.current;
+      scrollSnapshotRef.current = null;
+      wasPinnedRef.current = false;
+      updateVisibleMonth();
+    } else {
+      wasPinnedRef.current = false;
+    }
+  }, [pinToMonth, displayMonths, updateVisibleMonth]);
 
   const prependMonths = useCallback(() => {
     const root = scrollRef.current;
@@ -188,15 +205,13 @@ export const CalendarScrollView = forwardRef<
   useLayoutEffect(() => {
     if (didInitialScroll.current || isPinned) return;
     const root = scrollRef.current;
-    const todayEl = root?.querySelector(`[data-date="${todayStr}"]`);
-    if (root && todayEl instanceof HTMLElement) {
-      const rootRect = root.getBoundingClientRect();
-      const elRect = todayEl.getBoundingClientRect();
-      root.scrollTop += elRect.top - rootRect.top - root.clientHeight * 0.35;
+    const monthEl = monthRefs.current.get(monthKeyId(todayKey));
+    if (root && monthEl) {
+      root.scrollTop = monthEl.offsetTop;
       didInitialScroll.current = true;
       updateVisibleMonth();
     }
-  }, [months, todayStr, updateVisibleMonth, isPinned]);
+  }, [months, todayKey, updateVisibleMonth, isPinned]);
 
   useImperativeHandle(ref, () => ({
     scrollToToday() {
@@ -208,10 +223,11 @@ export const CalendarScrollView = forwardRef<
       }
     },
     scrollToDate(dateStr: string) {
+      if (isPinned) return;
       const root = scrollRef.current;
       const el = root?.querySelector(`[data-date="${dateStr}"]`);
       if (root && el instanceof HTMLElement) {
-        el.scrollIntoView({ block: "center", behavior: "smooth" });
+        el.scrollIntoView({ block: "center", behavior: "auto" });
         updateVisibleMonth();
       }
     },
@@ -291,9 +307,9 @@ export const CalendarScrollView = forwardRef<
         )}
         tabIndex={0}
       >
-        {months.map((key, index) => {
+        {displayMonths.map((key, index) => {
           const id = monthKeyId(key);
-          const showYear = index === 0 || months[index - 1]!.year !== key.year;
+          const showYear = index === 0 || displayMonths[index - 1]!.year !== key.year;
           const weekRows = buildMonthWeekRows(key.year, key.month);
           const title = formatMonthSectionTitle(key, showYear);
           const isCurrentMonth = key.year === todayKey.year && key.month === todayKey.month;

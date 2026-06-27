@@ -121,6 +121,7 @@ export function CalendarPanelLive({
   const [weekAnchor, setWeekAnchor] = useState(today);
   const scrollRef = useRef<CalendarScrollViewHandle>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
+  const lastSheetDateRef = useRef<string | null>(null);
   const [layoutSize, setLayoutSize] = useState({ width: 0, height: 0 });
   const [drawerWidthPx, setDrawerWidthPx] = useState(CALENDAR_DRAWER_MIN_WIDTH_PX);
 
@@ -298,10 +299,8 @@ export function CalendarPanelLive({
       ? monthKeyFromDate(parseDate(drawerDate))
       : null;
 
-  useEffect(() => {
-    if (!useMobileFullLayout || !drawerDate) return;
-    requestAnimationFrame(() => scrollRef.current?.scrollToDate(drawerDate));
-  }, [drawerDate, useMobileFullLayout]);
+  if (drawerDate) lastSheetDateRef.current = drawerDate;
+  const sheetDate = drawerDate ?? lastSheetDateRef.current;
 
   const shellClassName = cn(
     "flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden",
@@ -471,9 +470,9 @@ export function CalendarPanelLive({
               open={drawerDate !== null}
               calendar={calendarViews}
               sheet={
-                drawerDate ? (
+                sheetDate ? (
                   <CalendarMobileDaySheet
-                    dateStr={drawerDate}
+                    dateStr={sheetDate}
                     items={items}
                     onClose={closeDayDrawer}
                     detailExpandable={fullPage}
