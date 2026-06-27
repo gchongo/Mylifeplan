@@ -37,8 +37,10 @@ describe("task-status-style", () => {
   });
 
   it("maps mobile plan header status cell backgrounds", () => {
+    expect(getMobilePlanHeaderStatusCellClass("todo")).toContain("amber-500");
     expect(getMobilePlanHeaderStatusCellClass("in_progress")).toContain("blue");
-    expect(getMobilePlanHeaderStatusCellClass("overdue")).toContain("red");
+    expect(getMobilePlanHeaderStatusCellClass("done")).toContain("emerald");
     expect(getMobilePlanHeaderStatusCellClass("unscheduled")).toContain("dashed");
+    expect(getMobilePlanHeaderStatusCellClass("in_progress")).toContain("rounded-md");
   });
 });

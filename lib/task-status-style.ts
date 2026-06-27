@@ -1,4 +1,5 @@
 import type { TaskStatus } from "@/types";
+import { cn } from "@/lib/utils";
 
 /** 全局任务/计划状态视觉语义（颜色优先，文字仅作辅助说明） */
 export type VisualStatusKey = "todo" | "in_progress" | "done" | "archived" | "overdue" | "unscheduled";
@@ -337,22 +338,14 @@ export function getKanbanColumnAccentClass(visual: VisualStatusKey): string {
   return STATUS_STYLES[visual].dot.split(" ")[0] ?? "bg-gray-400";
 }
 
-/** 移动端甘特表头：计划列单元格只读状态底色（与看板标题栏同色系） */
+/** 移动端甘特表头：与状态菜单圆点同色（STATUS_STYLES.bar）的圆角色块 */
 export function getMobilePlanHeaderStatusCellClass(visual: VisualStatusKey): string {
-  switch (visual) {
-    case "in_progress":
-      return "bg-blue-50 dark:bg-blue-950/50";
-    case "done":
-      return "bg-emerald-50 dark:bg-emerald-950/40";
-    case "archived":
-      return "bg-gray-50/90 dark:bg-gray-900/50";
-    case "overdue":
-      return "bg-red-50 dark:bg-red-950/40";
-    case "unscheduled":
-      return "border border-dashed border-violet-300/80 bg-violet-50/60 dark:border-violet-500/50 dark:bg-violet-950/30";
-    default:
-      return "bg-amber-50 dark:bg-amber-950/45";
+  const { bar } = STATUS_STYLES[visual];
+  const base = "rounded-md shadow-sm";
+  if (visual === "unscheduled") {
+    return cn(base, bar, "border border-dashed border-violet-200/90 dark:border-violet-300/50");
   }
+  return cn(base, bar);
 }
 
 export function asTaskStatusForRollup(status: string | undefined | null): TaskStatus {
