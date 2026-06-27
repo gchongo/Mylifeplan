@@ -728,20 +728,22 @@ export function GanttMobileChart({ className }: { className?: string }) {
                     style={{ width: columnWidth, minHeight: timelineHeight }}
                   >
                     {!item.isUnscheduled && !item.contributionOnly && (
-                      <div
-                        className="relative z-[22]"
-                        style={{ marginLeft: barLeft, width: barWidth }}
-                      >
-                        <GanttMobileBarTitleTrack
-                          barTop={barTop}
-                          barHeight={barHeight}
-                          barWidthPx={barWidth}
-                          timelineHeight={timelineHeight}
-                          title={item.title}
-                          depth={row.depth}
-                          planColor={groupColor}
-                          onTitleClick={() => openPlan(item.id)}
-                        />
+                      <div className="pointer-events-none absolute inset-0 z-[22] overflow-visible">
+                        <div
+                          className="pointer-events-none absolute top-0 overflow-visible"
+                          style={{ left: barLeft, width: barWidth, height: timelineHeight }}
+                        >
+                          <GanttMobileBarTitleTrack
+                            barTop={barTop}
+                            barHeight={barHeight}
+                            barWidthPx={barWidth}
+                            timelineHeight={timelineHeight}
+                            title={item.title}
+                            depth={row.depth}
+                            planColor={groupColor}
+                            onTitleClick={() => openPlan(item.id)}
+                          />
+                        </div>
                       </div>
                     )}
 

@@ -11,11 +11,12 @@ export function mobileBarTitleTopPadPx(barWidthPx: number): number {
   return Math.ceil(barWidthPx / 2) + 12;
 }
 
-/** 移动端甘特条标题：竖排、居中叠在计划条上；sticky 时悬挂在可视区顶缘 */
+/** 移动端甘特条标题：竖排、在条宽内水平居中；sticky 时悬挂在可视区顶缘 */
 export function GanttMobileBarTitle({
   title,
   depth = 0,
   planColor,
+  barWidthPx,
   onClick,
   sticky = false,
   maxHeight,
@@ -24,6 +25,7 @@ export function GanttMobileBarTitle({
   title: string;
   depth?: number;
   planColor: string;
+  barWidthPx: number;
   onClick?: () => void;
   sticky?: boolean;
   maxHeight?: number;
@@ -36,16 +38,16 @@ export function GanttMobileBarTitle({
     <Tag
       type={onClick ? "button" : undefined}
       className={cn(
-        "pointer-events-auto bg-transparent px-0 py-0",
+        "pointer-events-auto block w-max max-w-full bg-transparent px-0 py-0",
         "border-0 shadow-none",
         onClick && "cursor-pointer active:opacity-80",
-        sticky
-          ? "sticky z-[22] mx-auto block w-fit"
-          : "absolute left-1/2 z-[22] -translate-x-1/2",
+        "left-1/2 z-[22] -translate-x-1/2",
+        sticky ? "sticky" : "absolute",
         className,
       )}
       style={{
         ...labelStyle,
+        maxWidth: barWidthPx,
         ...(sticky ? { top: MOBILE_BAR_TITLE_STICKY_TOP } : undefined),
       }}
       onClick={onClick}
@@ -54,7 +56,7 @@ export function GanttMobileBarTitle({
     >
       <span
         className={cn(
-          "block overflow-hidden whitespace-nowrap text-center",
+          "mx-auto block overflow-hidden whitespace-nowrap text-center",
           "leading-[1.25] tracking-tight",
           "[writing-mode:vertical-lr] [text-orientation:upright]",
           depth === 0 ? "text-[13px] font-bold" : "text-[12px] font-semibold",
@@ -67,7 +69,7 @@ export function GanttMobileBarTitle({
   );
 }
 
-/** 与进度条同高的文档流区，供 sticky 标题在条可见期间悬挂（水平与条对齐） */
+/** 与计划条同宽同位的文档流区，供 sticky 标题在条可见期间悬挂 */
 export function GanttMobileBarTitleTrack({
   barTop,
   barHeight,
@@ -92,21 +94,24 @@ export function GanttMobileBarTitleTrack({
   const titleMaxHeight = Math.max(0, barHeight - topPadPx);
 
   return (
-    <div className="pointer-events-none relative z-[22]" style={{ minHeight: timelineHeight }}>
+    <div
+      className="pointer-events-none relative z-[22] h-full w-full overflow-visible"
+      style={{ minHeight: timelineHeight }}
+    >
       <div aria-hidden style={{ height: barTop }} />
-      <div
-        className="relative flex flex-col items-center overflow-visible"
-        style={{ height: barHeight }}
-      >
+      <div className="relative overflow-visible" style={{ height: barHeight, width: barWidthPx }}>
         <div aria-hidden className="w-full shrink-0" style={{ height: topPadPx }} />
-        <GanttMobileBarTitle
-          title={title}
-          depth={depth}
-          planColor={planColor}
-          sticky
-          maxHeight={titleMaxHeight}
-          onClick={onTitleClick}
-        />
+        <div className="relative w-full overflow-visible" style={{ height: barHeight - topPadPx }}>
+          <GanttMobileBarTitle
+            title={title}
+            depth={depth}
+            planColor={planColor}
+            barWidthPx={barWidthPx}
+            sticky
+            maxHeight={titleMaxHeight}
+            onClick={onTitleClick}
+          />
+        </div>
       </div>
       <div aria-hidden style={{ height: tailHeight }} />
     </div>
