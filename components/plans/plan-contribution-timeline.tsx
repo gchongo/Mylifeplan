@@ -35,32 +35,47 @@ export function PlanContributionTimeline({
   contributions,
   currentPlanId,
   onChanged,
+  flat = false,
 }: {
   contributions: PlanContributionItem[];
   currentPlanId: string;
   onChanged?: () => void;
+  flat?: boolean;
 }) {
   const { t } = useI18n();
 
   if (contributions.length === 0) return null;
+
+  const list = (
+    <ol className="relative space-y-0 border-l border-gray-200 pl-4 dark:border-gray-700">
+      {contributions.map((entry) => (
+        <TimelineContributionEntry
+          key={entry.id}
+          entry={entry}
+          currentPlanId={currentPlanId}
+          onChanged={onChanged}
+        />
+      ))}
+    </ol>
+  );
+
+  if (flat) {
+    return (
+      <section className="px-4 py-3">
+        <h3 className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+          {t("plansExt.executionTimeline")}
+        </h3>
+        {list}
+      </section>
+    );
+  }
 
   return (
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base">{t("plansExt.executionTimeline")}</CardTitle>
       </CardHeader>
-      <CardContent>
-        <ol className="relative space-y-0 border-l border-gray-200 pl-4 dark:border-gray-700">
-          {contributions.map((entry) => (
-            <TimelineContributionEntry
-              key={entry.id}
-              entry={entry}
-              currentPlanId={currentPlanId}
-              onChanged={onChanged}
-            />
-          ))}
-        </ol>
-      </CardContent>
+      <CardContent>{list}</CardContent>
     </Card>
   );
 }

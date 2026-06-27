@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { CalendarMobileSplitLayout } from "@/components/calendar/calendar-mobile-split-layout";
+import { DrawerLayout } from "@/components/ui/drawer";
 import { GanttRowExpandIcon } from "@/components/gantt/gantt-row-expand-icon";
 import { GanttToolbarControls } from "@/components/gantt/gantt-toolbar-controls";
 import { GanttMobileBarTitleTrack } from "@/components/gantt/gantt-mobile-bar-title";
@@ -612,7 +612,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
                       onClick={() => toggleExpand(item.id)}
                       aria-label={isExpanded ? t("gantt.collapseRow") : t("gantt.expandRow")}
                     >
-                      <GanttRowExpandIcon expanded={isExpanded} />
+                      <GanttRowExpandIcon expanded={isExpanded} size="sm" />
                     </button>
                   ) : (
                     <div
@@ -894,17 +894,19 @@ export function GanttMobileChart({ className }: { className?: string }) {
         />
       )}
 
-      <CalendarMobileSplitLayout
-        open={detailDrawerOpen}
-        className="min-h-0 flex-1"
-        calendar={
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <DrawerLayout
+          open={detailDrawerOpen}
+          onClose={closeDetailDrawer}
+          placement="bottom"
+          panel={detailPanel}
+        >
           <div className="flex h-full min-h-0 flex-col overflow-hidden">
             {renderPlanHeader()}
             {renderGanttBody()}
           </div>
-        }
-        sheet={detailPanel}
-      />
+        </DrawerLayout>
+      </div>
     </div>
   );
 }

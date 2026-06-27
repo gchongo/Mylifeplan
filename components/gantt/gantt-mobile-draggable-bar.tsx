@@ -267,7 +267,7 @@ export function GanttMobileDraggableBar({
       rootRef.current?.releasePointerCapture(e.pointerId);
 
       const moved = Math.abs(e.clientY - state.startY) > 3;
-      if (!moved && state.mode === "move") {
+      if (!moved) {
         setPreview(null);
         onPreviewDates?.(item.id, null, state.mode);
         onDragEnd?.();
@@ -320,7 +320,7 @@ export function GanttMobileDraggableBar({
       ref={rootRef}
       data-gantt-bar
       data-no-pan
-      className="absolute z-[5]"
+      className="pointer-events-auto absolute z-[5]"
       style={{
         top: metrics.left,
         height: barHeight,

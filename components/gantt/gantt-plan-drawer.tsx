@@ -98,25 +98,23 @@ export function GanttPlanDrawerPanel({
       {loading && <Loading label={t("plans.loadingPlan")} />}
       {!loading && error && <p className="px-4 py-3 text-sm text-red-600">{error}</p>}
       {!loading && plan && (
-        <div className="p-4">
-          <PlanDetailClient
-            plan={plan}
-            ancestors={ancestors}
-            subPlans={subPlans}
-            contributions={contributions}
-            overdue={overdue}
-            embedded
-            onChanged={() => {
-              loadPlan(activePlanId);
-              onPlanSaved?.();
-            }}
-            onClose={onClose}
-            onNavigatePlan={(id) => {
-              setActivePlanId(id);
-              onPlanChange?.(id);
-            }}
-          />
-        </div>
+        <PlanDetailClient
+          plan={plan}
+          ancestors={ancestors}
+          subPlans={subPlans}
+          contributions={contributions}
+          overdue={overdue}
+          embedded
+          onChanged={() => {
+            loadPlan(activePlanId);
+            onPlanSaved?.();
+          }}
+          onClose={onClose}
+          onNavigatePlan={(id) => {
+            setActivePlanId(id);
+            onPlanChange?.(id);
+          }}
+        />
       )}
     </DrawerPanel>
   );

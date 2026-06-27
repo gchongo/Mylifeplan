@@ -197,6 +197,28 @@ export function PlanDetailClient({
     : null;
 
   if (showEdit) {
+    if (embedded) {
+      return (
+        <div className="px-4 py-3">
+          <h2 className="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">
+            {t("planDetail.editPlan")}
+          </h2>
+          <PlanForm
+            plan={{ ...plan, status }}
+            hasSubPlans={hasSubPlans}
+            contributionCount={contributions.length}
+            redirectTo={undefined}
+            submitLabel={t("common.save")}
+            onCancel={() => setShowEdit(false)}
+            onSuccess={() => {
+              setShowEdit(false);
+              afterChange({ skipDispatch: true });
+            }}
+          />
+        </div>
+      );
+    }
+
     return (
       <Card>
         <CardHeader>
@@ -224,82 +246,130 @@ export function PlanDetailClient({
     .filter((v) => v !== "—")
     .join(" — ");
 
+  const headerBlock = (
+    <>
+      <PlanStatusMenuButton
+        planId={plan.id}
+        status={status}
+        dueDate={plan.endDate}
+        startDate={plan.startDate}
+        endDate={plan.endDate}
+        overdue={overdue}
+        isUnscheduled={isPlanUnscheduled({ startDate: plan.startDate, endDate: plan.endDate })}
+        onStatusChanged={(next: PlanStatus) => {
+          setStatus(next);
+          afterChange({ skipDispatch: true });
+          if (next === "archived") leaveAfterDelete();
+        }}
+      />
+      <div className="min-w-0 flex-1">
+        <h2 className="truncate text-base font-semibold leading-6 text-gray-900 dark:text-gray-100">
+          {plan.title}
+        </h2>
+        {scheduleLine && (
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{scheduleLine}</p>
+        )}
+      </div>
+      <PlanDetailActionsMenu items={menuItems} disabled={deleting} />
+      {embedded && onClose && (
+        <Button variant="ghost" size="sm" onClick={onClose} aria-label={t("common.close")} className="shrink-0 px-2">
+          ✕
+        </Button>
+      )}
+    </>
+  );
+
+  const descriptionBlock = plan.description ? (
+    <p className="text-base leading-relaxed text-gray-800 dark:text-gray-200">{plan.description}</p>
+  ) : null;
+
+  const detailFieldsBlock = !embedded ? (
+    <dl className="grid grid-cols-2 gap-2 text-sm text-gray-700 dark:text-gray-300">
+      <dt className="text-gray-500">{t("planDetail.planStart")}</dt>
+      <dd>{formatPlanDateTimeDisplay(plan.startDate)}</dd>
+      <dt className="text-gray-500">{t("planDetail.planEnd")}</dt>
+      <dd>{formatPlanDateTimeDisplay(plan.endDate)}</dd>
+      <dt className="text-gray-500">{t("planDetail.actualStart")}</dt>
+      <dd>
+        {hasSubPlans
+          ? aggregatedActual?.start
+            ? formatPlanDateTimeDisplay(aggregatedActual.start)
+            : "—"
+          : formatPlanDateTimeDisplay(plan.actualStartDate)}
+        {hasSubPlans && (
+          <span className="ml-1 text-xs text-gray-400">{t("planDetail.childRollup")}</span>
+        )}
+      </dd>
+      <dt className="text-gray-500">{t("planDetail.actualEnd")}</dt>
+      <dd>
+        {hasSubPlans ? (
+          aggregatedActual?.end ? (
+            <>
+              {formatPlanDateTimeDisplay(aggregatedActual.end)}
+              {aggregatedActual.endOpen && (
+                <span className="ml-1 text-xs text-gray-400">{t("planDetail.untilNow")}</span>
+              )}
+              <span className="ml-1 text-xs text-gray-400">{t("planDetail.childRollup")}</span>
+            </>
+          ) : (
+            "—"
+          )
+        ) : (
+          formatPlanDateTimeDisplay(plan.actualEndDate)
+        )}
+      </dd>
+    </dl>
+  ) : null;
+
+  if (embedded) {
+    return (
+      <div className="divide-y divide-gray-100 dark:divide-gray-800">
+        <header className="flex items-start gap-2 px-4 py-3">{headerBlock}</header>
+        {descriptionBlock ? <div className="px-4 py-3">{descriptionBlock}</div> : null}
+
+        <PlanContributionComposeModal
+          open={composeOpen}
+          onClose={() => setComposeOpen(false)}
+          title={t("planDetail.addPlanOrContribution")}
+          defaultMode={composeMode}
+          fixedParentPlanId={plan.id}
+          fixedPlanId={plan.id}
+          onSuccess={() => {
+            afterChange();
+          }}
+        />
+
+        <PlanRelationshipCard
+          flat
+          currentPlan={currentRelation}
+          ancestors={ancestors}
+          childPlans={subPlans}
+          onNavigatePlan={onNavigatePlan}
+        />
+
+        <PlanContributionTimeline
+          flat
+          contributions={contributions}
+          currentPlanId={plan.id}
+          onChanged={() => {
+            afterChange();
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader className="flex flex-row items-start gap-2 border-b-0 pb-0 pt-4">
-          <PlanStatusMenuButton
-            planId={plan.id}
-            status={status}
-            dueDate={plan.endDate}
-            startDate={plan.startDate}
-            endDate={plan.endDate}
-            overdue={overdue}
-            isUnscheduled={isPlanUnscheduled({ startDate: plan.startDate, endDate: plan.endDate })}
-            onStatusChanged={(next: PlanStatus) => {
-              setStatus(next);
-              afterChange({ skipDispatch: true });
-              if (next === "archived") leaveAfterDelete();
-            }}
-          />
-          <div className="min-w-0 flex-1">
-            <CardTitle className="truncate text-base font-semibold leading-6">
-              {plan.title}
-            </CardTitle>
-            {scheduleLine && (
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{scheduleLine}</p>
-            )}
-          </div>
-          <PlanDetailActionsMenu items={menuItems} disabled={deleting} />
-          {embedded && onClose && (
-            <Button variant="ghost" size="sm" onClick={onClose} aria-label={t("common.close")} className="shrink-0 px-2">
-              ✕
-            </Button>
-          )}
+          {headerBlock}
         </CardHeader>
 
         <CardContent className="space-y-3 pt-2">
-          {plan.description && (
-            <p className="text-base leading-relaxed text-gray-800 dark:text-gray-200">{plan.description}</p>
-          )}
+          {descriptionBlock}
 
-          {!embedded && (
-            <dl className="grid grid-cols-2 gap-2 text-sm text-gray-700 dark:text-gray-300">
-              <dt className="text-gray-500">{t("planDetail.planStart")}</dt>
-              <dd>{formatPlanDateTimeDisplay(plan.startDate)}</dd>
-              <dt className="text-gray-500">{t("planDetail.planEnd")}</dt>
-              <dd>{formatPlanDateTimeDisplay(plan.endDate)}</dd>
-              <dt className="text-gray-500">{t("planDetail.actualStart")}</dt>
-              <dd>
-                {hasSubPlans
-                  ? aggregatedActual?.start
-                    ? formatPlanDateTimeDisplay(aggregatedActual.start)
-                    : "—"
-                  : formatPlanDateTimeDisplay(plan.actualStartDate)}
-                {hasSubPlans && (
-                  <span className="ml-1 text-xs text-gray-400">{t("planDetail.childRollup")}</span>
-                )}
-              </dd>
-              <dt className="text-gray-500">{t("planDetail.actualEnd")}</dt>
-              <dd>
-                {hasSubPlans ? (
-                  aggregatedActual?.end ? (
-                    <>
-                      {formatPlanDateTimeDisplay(aggregatedActual.end)}
-                      {aggregatedActual.endOpen && (
-                        <span className="ml-1 text-xs text-gray-400">{t("planDetail.untilNow")}</span>
-                      )}
-                      <span className="ml-1 text-xs text-gray-400">{t("planDetail.childRollup")}</span>
-                    </>
-                  ) : (
-                    "—"
-                  )
-                ) : (
-                  formatPlanDateTimeDisplay(plan.actualEndDate)
-                )}
-              </dd>
-            </dl>
-          )}
+          {detailFieldsBlock}
         </CardContent>
       </Card>
 

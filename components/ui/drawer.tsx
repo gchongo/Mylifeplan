@@ -27,7 +27,7 @@ export function DrawerPanel({
   const showHeader = Boolean(title || onBack);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div className="flex min-h-0 max-h-[inherit] flex-1 flex-col overflow-hidden">
       {showHeader && (
         <div className="flex shrink-0 items-center gap-2 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
           {onBack ? (
@@ -128,7 +128,7 @@ export function DrawerLayout({
             <aside
               role="complementary"
               aria-labelledby="drawer-title"
-              className="absolute bottom-0 left-0 right-0 z-50 flex max-h-[min(85dvh,640px)] flex-col rounded-t-2xl border-t border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-950"
+              className="absolute bottom-0 left-0 right-0 z-50 flex max-h-[min(85dvh,640px)] min-h-0 flex-col rounded-t-2xl border-t border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-950"
             >
               {panel}
             </aside>

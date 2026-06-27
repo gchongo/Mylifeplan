@@ -80,43 +80,60 @@ export function PlanRelationshipCard({
   ancestors,
   childPlans,
   onNavigatePlan,
+  flat = false,
 }: {
   currentPlan: PlanRelationNode;
   ancestors: PlanRelationNode[];
   childPlans: PlanRelationNode[];
   onNavigatePlan?: (planId: string) => void;
+  flat?: boolean;
 }) {
   const { t } = useI18n();
   if (ancestors.length === 0 && childPlans.length === 0) return null;
+
+  const body = (
+    <>
+      {ancestors.map((node) => (
+        <div key={node.id}>
+          <RelationNodeRow node={node} variant="ancestor" onNavigate={onNavigatePlan} />
+          <RelationArrow />
+        </div>
+      ))}
+
+      <div key={currentPlan.id} className="transition-opacity duration-200">
+        <RelationNodeRow node={currentPlan} variant="current" />
+      </div>
+
+      {childPlans.length > 0 && (
+        <>
+          <RelationArrow />
+          <div className="space-y-2">
+            {childPlans.map((node) => (
+              <RelationNodeRow key={node.id} node={node} variant="child" onNavigate={onNavigatePlan} />
+            ))}
+          </div>
+        </>
+      )}
+    </>
+  );
+
+  if (flat) {
+    return (
+      <section className="px-4 py-3">
+        <h3 className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+          {t("planDetail.relationship")}
+        </h3>
+        <div className="space-y-0">{body}</div>
+      </section>
+    );
+  }
 
   return (
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base">{t("planDetail.relationship")}</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-0">
-        {ancestors.map((node) => (
-          <div key={node.id}>
-            <RelationNodeRow node={node} variant="ancestor" onNavigate={onNavigatePlan} />
-            <RelationArrow />
-          </div>
-        ))}
-
-        <div key={currentPlan.id} className="transition-opacity duration-200">
-          <RelationNodeRow node={currentPlan} variant="current" />
-        </div>
-
-        {childPlans.length > 0 && (
-          <>
-            <RelationArrow />
-            <div className="space-y-2">
-              {childPlans.map((node) => (
-                <RelationNodeRow key={node.id} node={node} variant="child" onNavigate={onNavigatePlan} />
-              ))}
-            </div>
-          </>
-        )}
-      </CardContent>
+      <CardContent className="space-y-0">{body}</CardContent>
     </Card>
   );
 }
