@@ -1,5 +1,5 @@
 import { readStorageItem, writeStorageItem } from "@/lib/app-storage";
-import { parsePlanDateTime, formatPlanLocalDateSlash } from "@/lib/dates";
+import { parsePlanDateTime, formatPlanLocalDateSlash, formatPlanLocalDateCompactSlash } from "@/lib/dates";
 import { formatCompletionPercent, planCompletionPercent } from "@/lib/gantt-plan-completion";
 import type { GanttItem } from "@/types";
 
@@ -239,4 +239,32 @@ export function getScheduleCellValue(
     default:
       return { text: "—" };
   }
+}
+
+const MOBILE_COMPACT_DATE_COLUMNS = new Set<GanttScheduleColumnId>([
+  "planStart",
+  "planEnd",
+  "actualStart",
+  "actualEnd",
+]);
+
+/** 移动端时间抽屉：短日期 YY/M/D，其余与 PC 相同 */
+export function getMobileScheduleCellValue(
+  columnId: GanttScheduleColumnId,
+  item: GanttItem,
+  allPlans: GanttItem[],
+): ScheduleCellValue {
+  const cell = getScheduleCellValue(columnId, item, allPlans);
+  if (!MOBILE_COMPACT_DATE_COLUMNS.has(columnId) || cell.text === "—") {
+    return cell;
+  }
+  const raw =
+    columnId === "planStart"
+      ? item.startDate
+      : columnId === "planEnd"
+        ? item.endDate
+        : columnId === "actualStart"
+          ? item.actualStartDate
+          : item.actualEndDate;
+  return { ...cell, text: formatPlanLocalDateCompactSlash(raw) };
 }

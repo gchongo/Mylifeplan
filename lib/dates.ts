@@ -163,6 +163,14 @@ export function formatPlanLocalDateSlash(value: string | Date | null | undefined
   return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}`;
 }
 
+/** 移动端时间抽屉：YY/M/D，如 26/4/12 */
+export function formatPlanLocalDateCompactSlash(value: string | Date | null | undefined): string {
+  if (!value) return "—";
+  const d = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(d.getTime())) return "—";
+  return `${d.getFullYear() % 100}/${d.getMonth() + 1}/${d.getDate()}`;
+}
+
 /** 供 `<input type="datetime-local" />` 使用的值 */
 export function toDatetimeLocalInput(value: string | Date | null | undefined): string {
   if (!value) return "";

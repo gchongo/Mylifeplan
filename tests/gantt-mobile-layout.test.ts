@@ -5,23 +5,32 @@ import {
   mobilePlanBarWidthPx,
   mobilePlanColumnWidth,
   mobilePlanGridWidth,
+  MOBILE_ROW_GROUP_GAP,
 } from "@/lib/gantt-mobile-layout";
 import { buildMobileColumnForkLines } from "@/lib/gantt-mobile-tree-lines";
 import { mobileWeekAxisWidthPx } from "@/lib/gantt-mobile-week-axis";
+import { formatPlanLocalDateCompactSlash } from "@/lib/dates";
 
 describe("mobilePlanColumnWidth", () => {
-  it("matches PC bar height plus padding", () => {
-    expect(mobilePlanBarWidthPx(0)).toBe(30);
-    expect(mobilePlanColumnWidth(0)).toBe(38);
-    expect(mobilePlanBarLeftPx(0)).toBe(4);
-    expect(mobilePlanBarCenterPx(0)).toBe(19);
-    expect(mobilePlanGridWidth([{ gapBefore: 0, depth: 0 }, { gapBefore: 8, depth: 0 }])).toBe(
-      38 + 8 + 38,
+  it("matches tier-B bar height plus padding", () => {
+    expect(mobilePlanBarWidthPx(0)).toBe(40);
+    expect(mobilePlanColumnWidth(0)).toBe(44);
+    expect(mobilePlanBarLeftPx(0)).toBe(2);
+    expect(mobilePlanBarCenterPx(0)).toBe(22);
+    expect(MOBILE_ROW_GROUP_GAP).toBe(1);
+    expect(mobilePlanGridWidth([{ gapBefore: 0, depth: 0 }, { gapBefore: MOBILE_ROW_GROUP_GAP, depth: 0 }])).toBe(
+      44 + MOBILE_ROW_GROUP_GAP + 44,
     );
   });
 
   it("uses compact week axis width", () => {
     expect(mobileWeekAxisWidthPx()).toBe(14);
+  });
+});
+
+describe("formatPlanLocalDateCompactSlash", () => {
+  it("formats as YY/M/D", () => {
+    expect(formatPlanLocalDateCompactSlash("2026-04-12T10:00:00.000Z")).toMatch(/^26\/\d+\/\d+$/);
   });
 });
 

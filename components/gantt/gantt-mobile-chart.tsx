@@ -32,6 +32,9 @@ import {
   mobilePlanBarWidthPx,
   mobilePlanColumnWidth,
   mobilePlanGridWidth,
+  MOBILE_PLAN_COLUMN_BORDER_CLASS,
+  MOBILE_PLAN_GROUP_GAP_CLASS,
+  MOBILE_ROW_GROUP_GAP,
 } from "@/lib/gantt-mobile-layout";
 import { buildMobileSecondaryAxisSpans, mobileWeekAxisWidthPx } from "@/lib/gantt-mobile-week-axis";
 import { defaultGanttStatusFilter, filterGanttTasksByStatus } from "@/lib/gantt-task-filter";
@@ -66,7 +69,6 @@ const DAY_AXIS_WIDTH = 26;
 const WEEK_AXIS_WIDTH = mobileWeekAxisWidthPx();
 const TIME_AXIS_WIDTH = DAY_AXIS_WIDTH + WEEK_AXIS_WIDTH;
 const HEADER_HEIGHT = 28;
-const ROW_GROUP_GAP = 8;
 
 type GanttRow = {
   item: GanttItem;
@@ -117,7 +119,7 @@ function buildPlanTreeRows(plans: GanttItem[], expanded: Set<string>): GanttRow[
       rows.push({
         item,
         depth,
-        gapBefore: depth === 0 && rows.length > 0 ? ROW_GROUP_GAP : 0,
+        gapBefore: depth === 0 && rows.length > 0 ? MOBILE_ROW_GROUP_GAP : 0,
         rootId: currentRoot,
       });
       if (willExpand) walk(item.id, depth + 1, currentRoot);
@@ -286,7 +288,13 @@ export function GanttMobileChart({ className }: { className?: string }) {
     const nodes: ReactNode[] = [];
     for (const row of rows) {
       if (row.gapBefore > 0) {
-        nodes.push(<div key={`gap-${row.item.id}`} className="shrink-0" style={{ width: row.gapBefore }} />);
+        nodes.push(
+          <div
+            key={`gap-${row.item.id}`}
+            className={MOBILE_PLAN_GROUP_GAP_CLASS}
+            style={{ width: row.gapBefore }}
+          />,
+        );
       }
       nodes.push(renderCell(row));
     }
@@ -561,7 +569,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
               return (
                 <div
                   key={row.item.id}
-                  className="flex shrink-0 items-center justify-center border-r border-gray-100 dark:border-gray-800"
+                  className={cn("flex shrink-0 items-center justify-center", MOBILE_PLAN_COLUMN_BORDER_CLASS)}
                   style={{ width: columnWidth, height: HEADER_HEIGHT }}
                 >
                   {hasChildren ? (
@@ -703,7 +711,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
                 return (
                   <div
                     key={item.id}
-                    className="relative shrink-0 border-r border-gray-100 dark:border-gray-800"
+                    className={cn("relative shrink-0", MOBILE_PLAN_COLUMN_BORDER_CLASS)}
                     style={{ width: columnWidth, minHeight: timelineHeight }}
                   >
                     {!item.isUnscheduled && !item.contributionOnly && (
