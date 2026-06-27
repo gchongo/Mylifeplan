@@ -112,14 +112,7 @@ export function FeedPanelLive({
           ? t("feed.emptyMemo")
           : t("feed.emptyContribution");
 
-  const listSpacingClass =
-    fullPage
-      ? typeFilter === "contribution"
-        ? "space-y-0 px-1"
-        : "space-y-4"
-      : typeFilter === "contribution"
-        ? "space-y-0 px-1"
-        : "space-y-3";
+  const listSpacingClass = fullPage ? "space-y-4" : "space-y-3";
 
   const feedBody = (
     <>
@@ -137,7 +130,7 @@ export function FeedPanelLive({
             <li key={item.id}>
               <FeedItemCard
                 item={item}
-                logStyle={!fullPage || item.itemType === "contribution"}
+                logStyle={!fullPage}
                 onContributionChanged={() => void refetch()}
               />
             </li>

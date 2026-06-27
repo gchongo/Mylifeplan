@@ -33,7 +33,7 @@ function SettingsSection({
   );
 }
 
-export function SettingsPageClient() {
+export function SettingsPageClient({ userRole }: { userRole?: "user" | "admin" }) {
   const { t } = useI18n();
   const { preferences, ready, setTimezone, setTheme, setLanguage, setGanttActualLine, setGanttTodayColumn, setCalendarWeekNumbers } =
     useSettings();
@@ -121,11 +121,22 @@ export function SettingsPageClient() {
       </SettingsSection>
 
       <SettingsSection title={t("settings.account")}>
-        <div className="flex flex-wrap items-center gap-3">
-          <Link href="/plans" className="text-sm text-brand-600 hover:underline dark:text-brand-400">
-            {t("common.backToPlans")}
-          </Link>
-          <LogoutButton />
+        <div className="flex flex-col gap-3">
+          {userRole === "admin" && (
+            <Link
+              href="/admin"
+              className="inline-flex w-fit items-center gap-2 text-sm text-brand-600 hover:underline dark:text-brand-400"
+            >
+              <span aria-hidden>◈</span>
+              {t("nav.admin")}
+            </Link>
+          )}
+          <div className="flex flex-wrap items-center gap-3">
+            <Link href="/plans" className="text-sm text-brand-600 hover:underline dark:text-brand-400">
+              {t("common.backToPlans")}
+            </Link>
+            <LogoutButton />
+          </div>
         </div>
       </SettingsSection>
     </div>

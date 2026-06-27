@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { LogoutButton } from "@/components/auth/logout-button";
 import { SidebarBrand } from "@/components/layout/sidebar-brand";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { UserAvatar } from "@/components/user/user-avatar";
@@ -44,7 +43,6 @@ export function TopBar({
             size="sm"
           />
         </Link>
-        <LogoutButton />
       </div>
     </header>
   );

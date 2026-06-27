@@ -17,7 +17,6 @@ const sidebarNavItems = [
 
 export function SidebarNavMenu({
   onNavigate,
-  userRole,
 }: {
   onNavigate?: () => void;
   userRole?: "user" | "admin";
@@ -56,27 +55,6 @@ export function SidebarNavMenu({
           );
         })}
       </div>
-
-      {userRole === "admin" && (
-        <Link
-          href="/admin"
-          onClick={onNavigate}
-          className={cn(
-            "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
-            pathname.startsWith("/admin")
-              ? "bg-brand-50 font-medium text-brand-700 dark:bg-brand-950 dark:text-brand-300"
-              : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100",
-          )}
-        >
-          <span
-            className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-base leading-none"
-            aria-hidden
-          >
-            ◈
-          </span>
-          <span className="min-w-0 truncate">{t("nav.admin")}</span>
-        </Link>
-      )}
 
       <Link
         href="/settings"

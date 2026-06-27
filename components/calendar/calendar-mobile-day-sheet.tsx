@@ -2,7 +2,6 @@
 
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { CalendarDrawerItemList } from "@/components/calendar/calendar-drawer-item-list";
-import { CalendarDayCreateActions } from "@/components/calendar/calendar-day-create-actions";
 import { itemsOnDate } from "@/lib/calendar-display";
 import { formatCalendarDayDrawerTitle } from "@/lib/i18n/calendar-helpers";
 import type { CalendarItem } from "@/types";
@@ -47,9 +46,6 @@ export function CalendarMobileDaySheet({
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <CalendarDrawerItemList items={dayItems} expandable={detailExpandable} />
-        {onDataChange && (
-          <CalendarDayCreateActions dateStr={dateStr} dayItems={dayItems} onSuccess={onDataChange} />
-        )}
       </div>
     </section>
   );

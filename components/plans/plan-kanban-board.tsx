@@ -109,8 +109,6 @@ function KanbanColumn({
   onDragLeave,
   onDrop,
   onOpenPlan,
-  onCreatePlan,
-  newPlanLabel,
 }: {
   columnId: KanbanColumnId;
   label: string;
@@ -123,8 +121,6 @@ function KanbanColumn({
   onDragLeave: () => void;
   onDrop: (columnId: KanbanColumnId, planId: string, fromArchived: boolean) => void;
   onOpenPlan: (planId: string) => void;
-  onCreatePlan: () => void;
-  newPlanLabel: string;
 }) {
   const isTarget = dropTarget === columnId && draggingId !== null;
   const visual = kanbanVisualForZone(columnId);
@@ -173,14 +169,6 @@ function KanbanColumn({
           ))}
         </div>
       </div>
-
-      <button
-        type="button"
-        onClick={onCreatePlan}
-        className="mt-2 block w-full shrink-0 rounded-lg px-2 py-2 text-center text-sm text-gray-500 hover:bg-gray-200/60 hover:text-gray-800 dark:hover:bg-gray-800/60 dark:hover:text-gray-200"
-      >
-        {newPlanLabel}
-      </button>
     </div>
   );
 }
@@ -265,9 +253,13 @@ function KanbanArchivedDrawerPanel({
 export function PlanKanbanBoard({
   initialPlans,
   className,
+  composeOpen,
+  onComposeOpenChange,
 }: {
   initialPlans: KanbanPlan[];
   className?: string;
+  composeOpen: boolean;
+  onComposeOpenChange: (open: boolean) => void;
 }) {
   const [archivedOpen, setArchivedOpen] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -275,7 +267,6 @@ export function PlanKanbanBoard({
   const [error, setError] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
   const [planModalId, setPlanModalId] = useState<string | null>(null);
-  const [composeOpen, setComposeOpen] = useState(false);
   const [plans, setPlans] = useState<KanbanPlan[]>(initialPlans);
   const [archivedPlans, setArchivedPlans] = useState<KanbanPlan[]>([]);
   const { t } = useI18n();
@@ -560,8 +551,6 @@ export function PlanKanbanBoard({
                 void movePlan(planId, columnId, fromArchived);
               }}
               onOpenPlan={setPlanModalId}
-              onCreatePlan={() => setComposeOpen(true)}
-              newPlanLabel={t("kanban.newPlanOrContribution")}
             />
           </div>
         ) : (
@@ -590,8 +579,6 @@ export function PlanKanbanBoard({
                 void movePlan(planId, columnId, fromArchived);
               }}
               onOpenPlan={setPlanModalId}
-              onCreatePlan={() => setComposeOpen(true)}
-              newPlanLabel={t("kanban.newPlanOrContribution")}
             />
           ))}
         </div>
@@ -605,7 +592,7 @@ export function PlanKanbanBoard({
 
         <PlanContributionComposeModal
           open={composeOpen}
-          onClose={() => setComposeOpen(false)}
+          onClose={() => onComposeOpenChange(false)}
         />
 
         <PlanDetailModal

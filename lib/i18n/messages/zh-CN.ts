@@ -86,7 +86,7 @@ const zhCN = {
     kanbanPage: "第 {current} / {total} 列",
   },
   plans: {
-    boardTitle: "计划看板",
+    boardTitle: "看板·看计划",
     loadingPlan: "加载计划…",
   },
   kanban: {

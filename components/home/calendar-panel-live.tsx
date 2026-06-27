@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { apiJson } from "@/lib/client-api";
-import { CalendarDayCreateActions } from "@/components/calendar/calendar-day-create-actions";
 import { CalendarDayDrawer } from "@/components/calendar/calendar-day-drawer";
 import { CalendarMobileDaySheet } from "@/components/calendar/calendar-mobile-day-sheet";
 import { CalendarMobileMonthView } from "@/components/calendar/calendar-mobile-month-view";
@@ -489,7 +488,6 @@ export function CalendarPanelLive({
               })
             )}
           </ul>
-          <CalendarDayCreateActions dateStr={dayStr} dayItems={dayItems} />
         </div>
       )}
     </>

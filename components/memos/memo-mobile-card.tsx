@@ -1,12 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { MemoMarkdown } from "@/components/memos/memo-markdown";
 import type { StickyNoteData } from "@/components/memos/sticky-note";
+import {
+  MenuIconDelete,
+  PlanDetailActionsMenu,
+  type PlanDetailMenuItem,
+} from "@/components/plans/plan-detail-actions-menu";
 import { localizeStickyColorLabel } from "@/lib/i18n/memo-helpers";
 import { memoDisplayBody } from "@/lib/memo-content";
-import { STICKY_NOTE_COLORS, stickyNoteColor, type StickyNoteColorId } from "@/lib/memo-sticky";
+import { STICKY_NOTE_COLORS, stickyNoteColor } from "@/lib/memo-sticky";
 import { cn } from "@/lib/utils";
 
 export function MemoMobileCard({
@@ -30,7 +35,6 @@ export function MemoMobileCard({
   const palette = stickyNoteColor(note.color);
   const displayBody = memoDisplayBody(note);
   const [draft, setDraft] = useState(displayBody);
-  const [showColors, setShowColors] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -48,7 +52,40 @@ export function MemoMobileCard({
     }
   }, [draft, displayBody, note.id, onUpdate, onEndEdit]);
 
-  const title = note.title.trim() || displayBody.split("\n")[0]?.slice(0, 80) || t("memos.note.defaultTitle");
+  const menuItems = useMemo((): PlanDetailMenuItem[] => {
+    const colorItems: PlanDetailMenuItem[] = STICKY_NOTE_COLORS.map((color) => ({
+      id: `color-${color.id}`,
+      label: localizeStickyColorLabel(t, color.id),
+      icon: (
+        <span
+          className="h-3.5 w-3.5 rounded border border-black/10"
+          style={{ backgroundColor: color.bg }}
+        />
+      ),
+      onClick: () => onUpdate(note.id, { color: color.id }),
+    }));
+
+    const items: PlanDetailMenuItem[] = [...colorItems];
+
+    if (onAssign) {
+      items.push({
+        id: "assign",
+        label: t("memos.note.assignPlan"),
+        icon: <span className="text-xs">↗</span>,
+        onClick: () => onAssign(note.id),
+      });
+    }
+
+    items.push({
+      id: "delete",
+      label: t("common.delete"),
+      icon: <MenuIconDelete />,
+      destructive: true,
+      onClick: () => onDelete(note.id),
+    });
+
+    return items;
+  }, [note.id, onAssign, onDelete, onUpdate, t]);
 
   return (
     <div
@@ -57,23 +94,22 @@ export function MemoMobileCard({
         isEditing && "ring-2 ring-brand-400 ring-offset-1 dark:ring-offset-gray-950",
       )}
     >
-      <div className="px-3 py-2" style={{ backgroundColor: palette.bg, borderTop: `3px solid ${palette.border}` }}>
-        <div className="flex items-start justify-between gap-2">
-          <button
-            type="button"
-            className="min-w-0 flex-1 text-left text-sm font-semibold"
-            style={{ color: palette.text }}
-            onClick={() => (isEditing ? saveEdit() : onStartEdit())}
-          >
-            {title}
-          </button>
-          <span className="shrink-0 text-[10px] opacity-60" style={{ color: palette.text }}>
-            {new Date(note.updatedAt).toLocaleDateString(locale === "en-US" ? "en-US" : "zh-CN", {
-              month: "numeric",
-              day: "numeric",
-            })}
-          </span>
-        </div>
+      <div
+        className="flex items-center justify-between gap-2 px-3 py-1.5"
+        style={{ backgroundColor: palette.bg, borderTop: `3px solid ${palette.border}` }}
+      >
+        <span className="text-[10px] opacity-60" style={{ color: palette.text }}>
+          {new Date(note.updatedAt).toLocaleDateString(locale === "en-US" ? "en-US" : "zh-CN", {
+            month: "numeric",
+            day: "numeric",
+          })}
+        </span>
+        {!isEditing && (
+          <PlanDetailActionsMenu
+            items={menuItems}
+            menuClassName="rounded-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900"
+          />
+        )}
       </div>
 
       <div className="px-3 pb-3 pt-2">
@@ -88,11 +124,7 @@ export function MemoMobileCard({
             placeholder={t("memos.note.placeholder")}
           />
         ) : (
-          <button
-            type="button"
-            className="block w-full text-left"
-            onClick={onStartEdit}
-          >
+          <button type="button" className="block w-full text-left" onClick={onStartEdit}>
             {displayBody ? (
               <div className="line-clamp-4 text-sm text-gray-600 dark:text-gray-300">
                 <MemoMarkdown content={displayBody} />
@@ -102,51 +134,6 @@ export function MemoMobileCard({
             )}
           </button>
         )}
-
-        <div className="mt-2 flex flex-wrap items-center gap-1">
-          <div className="relative">
-            <button
-              type="button"
-              className="rounded-lg px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
-              onClick={() => setShowColors((v) => !v)}
-            >
-              {localizeStickyColorLabel(t, note.color as StickyNoteColorId)}
-            </button>
-            {showColors && (
-              <div className="absolute left-0 top-full z-10 mt-1 flex gap-1 rounded-lg border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-900">
-                {STICKY_NOTE_COLORS.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    title={localizeStickyColorLabel(t, c.id)}
-                    className="h-6 w-6 rounded-md border border-black/10"
-                    style={{ backgroundColor: c.bg }}
-                    onClick={() => {
-                      onUpdate(note.id, { color: c.id });
-                      setShowColors(false);
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-          {onAssign && (
-            <button
-              type="button"
-              className="rounded-lg px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
-              onClick={() => onAssign(note.id)}
-            >
-              {t("memos.note.assignPlan")}
-            </button>
-          )}
-          <button
-            type="button"
-            className="rounded-lg px-2 py-1 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40"
-            onClick={() => onDelete(note.id)}
-          >
-            {t("common.delete")}
-          </button>
-        </div>
       </div>
     </div>
   );

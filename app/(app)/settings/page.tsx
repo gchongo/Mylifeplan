@@ -1,5 +1,7 @@
+import { getSession } from "@/lib/auth/get-session";
 import { SettingsPageClient } from "@/components/settings/settings-page-client";
 
-export default function SettingsPage() {
-  return <SettingsPageClient />;
+export default async function SettingsPage() {
+  const session = await getSession();
+  return <SettingsPageClient userRole={session?.role} />;
 }

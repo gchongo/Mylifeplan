@@ -6,7 +6,6 @@ import { DrawerLayout, DrawerPanel, type DrawerPlacement } from "@/components/ui
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { useMobileShell } from "@/hooks/use-mobile-shell";
 import { CalendarDrawerItemList } from "@/components/calendar/calendar-drawer-item-list";
-import { CalendarDayCreateActions } from "@/components/calendar/calendar-day-create-actions";
 import { itemsOnDate } from "@/lib/calendar-display";
 import { formatCalendarDayDrawerTitle } from "@/lib/i18n/calendar-helpers";
 import type { CalendarItem } from "@/types";
@@ -38,9 +37,6 @@ function CalendarDayDrawerPanel({
       className="p-0"
     >
       <CalendarDrawerItemList items={dayItems} expandable={detailExpandable} />
-      {dateStr && onDataChange && (
-        <CalendarDayCreateActions dateStr={dateStr} dayItems={dayItems} onSuccess={onDataChange} />
-      )}
     </DrawerPanel>
   );
 }

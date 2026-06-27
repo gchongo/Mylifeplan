@@ -7,6 +7,7 @@ import { dispatchPlanUpdated } from "@/lib/plan-events";
 import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/ui/feedback";
 import { ContributionMarkdown } from "@/components/contributions/contribution-markdown";
+import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { UploadImage } from "@/components/ui/upload-image";
 import { ContributionPlanSelect } from "@/components/forms/contribution-plan-select";
 import {
@@ -76,6 +77,7 @@ export function ContributionInlinePanel({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [planId, setPlanId] = useState(entry.planId);
   const [editorValues, setEditorValues] = useState<ContributionEditorValues>(() =>
     editorValuesFromEntry(entry),
@@ -245,13 +247,26 @@ export function ContributionInlinePanel({
       {editMode === null && entry.imageUrls && entry.imageUrls.length > 0 && (
         <div className="flex flex-wrap gap-1 pt-1">
           {entry.imageUrls.slice(0, expanded ? undefined : 3).map((url) => (
-            <UploadImage key={url} src={url} alt="" className="h-16 w-16 rounded object-cover" />
+            <button
+              key={url}
+              type="button"
+              className="overflow-hidden rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+              onClick={() => setLightboxUrl(url)}
+            >
+              <UploadImage src={url} alt="" className="h-16 w-16 object-cover" />
+            </button>
           ))}
           {!expanded && entry.imageUrls.length > 3 && (
             <span className="self-center text-xs text-gray-400">+{entry.imageUrls.length - 3}</span>
           )}
         </div>
       )}
+
+      <ImageLightbox
+        src={lightboxUrl}
+        open={lightboxUrl !== null}
+        onClose={() => setLightboxUrl(null)}
+      />
 
       {editMode === null && needsExpand && (
         <Button

@@ -86,7 +86,7 @@ const enUS = {
     kanbanPage: "Column {current} / {total}",
   },
   plans: {
-    boardTitle: "Kanban",
+    boardTitle: "Kanban · Plans",
     loadingPlan: "Loading plan…",
   },
   kanban: {
