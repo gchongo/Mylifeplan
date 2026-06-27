@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * 甘特行展开：与 PC 相同，始终用 ▶，收起时 rotate-90 指向下方。
- * ▶ 向右 = 已展开，▼ 向下 = 已收起（同一字形，尺寸一致）
+ * ▶ 向右 = 已展开，▼ 向下 = 已收起
  */
 export function GanttRowExpandIcon({ expanded }: { expanded: boolean }) {
   return (
@@ -22,7 +22,7 @@ export function GanttRowExpandIcon({ expanded }: { expanded: boolean }) {
   );
 }
 
-/** 工具栏时间导航：PC 用 ‹ ›，移动端竖向时间轴用 ▴ ▾（同为单三角） */
+/** 工具栏时间导航：与 PC 相同用 ‹ ›，竖向时间轴仅旋转方向 */
 export function GanttToolbarNavArrow({
   direction,
   orientation = "horizontal",
@@ -30,8 +30,16 @@ export function GanttToolbarNavArrow({
   direction: "prev" | "next";
   orientation?: "horizontal" | "vertical";
 }) {
-  if (orientation === "vertical") {
-    return <span aria-hidden>{direction === "prev" ? "▴" : "▾"}</span>;
-  }
-  return <span aria-hidden>{direction === "prev" ? "‹" : "›"}</span>;
+  const glyph = direction === "prev" ? "‹" : "›";
+  return (
+    <span
+      className={cn(
+        "inline-block text-sm leading-none",
+        orientation === "vertical" && (direction === "prev" ? "-rotate-90" : "rotate-90"),
+      )}
+      aria-hidden
+    >
+      {glyph}
+    </span>
+  );
 }

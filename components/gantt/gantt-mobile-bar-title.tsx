@@ -3,6 +3,9 @@
 import { getMobilePlanBarLabelStyle } from "@/lib/plan-color";
 import { cn } from "@/lib/utils";
 
+/** 吸顶时标题离屏幕顶边的距离 */
+export const MOBILE_BAR_TITLE_STICKY_TOP = 12;
+
 /** 标题起点：胶囊顶圆角半径 ≈ 条宽/2，再加描边与留白 */
 export function mobileBarTitleTopPadPx(barWidthPx: number): number {
   return Math.ceil(barWidthPx / 2) + 12;
@@ -37,11 +40,14 @@ export function GanttMobileBarTitle({
         "border-0 shadow-none",
         onClick && "cursor-pointer active:opacity-80",
         sticky
-          ? "sticky top-0 z-[22] mx-auto block w-fit"
+          ? "sticky z-[22] mx-auto block w-fit"
           : "absolute left-1/2 z-[22] -translate-x-1/2",
         className,
       )}
-      style={labelStyle}
+      style={{
+        ...labelStyle,
+        ...(sticky ? { top: MOBILE_BAR_TITLE_STICKY_TOP } : undefined),
+      }}
       onClick={onClick}
       onPointerDown={onClick ? (e) => e.stopPropagation() : undefined}
       title={title}

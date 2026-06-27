@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { CalendarMobileSplitLayout } from "@/components/calendar/calendar-mobile-split-layout";
 import { GanttRowExpandIcon } from "@/components/gantt/gantt-row-expand-icon";
@@ -35,6 +35,7 @@ import {
 } from "@/lib/gantt-mobile-layout";
 import { buildMobileSecondaryAxisSpans, mobileWeekAxisWidthPx } from "@/lib/gantt-mobile-week-axis";
 import { defaultGanttStatusFilter, filterGanttTasksByStatus } from "@/lib/gantt-task-filter";
+import type { VisualStatusKey } from "@/lib/task-status-style";
 import {
   buildBoundGroupPreview,
   getPlanContributionBounds,
@@ -55,7 +56,6 @@ import {
   type GanttScaleId,
   type TimelineLayout,
 } from "@/lib/gantt-scale";
-import { ganttTodayColumnBackground } from "@/lib/gantt-today-column-style";
 import type { PlanDragMode } from "@/lib/gantt-plan-drag";
 import { resolveEffectivePlanColor, resolvePlanTreeGroupColor } from "@/lib/plan-color";
 import { queryKeys } from "@/lib/query/keys";
@@ -157,11 +157,13 @@ export function GanttMobileChart({ className }: { className?: string }) {
   const { preferences } = useSettings();
   const scrollRef = useRef<HTMLDivElement>(null);
   const savedScrollRef = useRef<{ top: number; left: number } | null>(null);
+  const scrollTarget = useRef<"today" | "anchor">("today");
+  const scrolledToTarget = useRef(false);
   const [scale, setScale] = useState<GanttScaleId>("month");
   const [anchor, setAnchor] = useState(todayStr);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [schedulePanelOpen, setSchedulePanelOpen] = useState(false);
-  const [statusFilter] = useState(defaultGanttStatusFilter);
+  const [statusFilter, setStatusFilter] = useState<Set<VisualStatusKey>>(defaultGanttStatusFilter);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [selectedContributionId, setSelectedContributionId] = useState<string | null>(null);
   const [headerScrollLeft, setHeaderScrollLeft] = useState(0);
@@ -172,11 +174,6 @@ export function GanttMobileChart({ className }: { className?: string }) {
   const showContributionMarkers = preferences.ganttContributionMarkers.enabled;
   const actualLinePrefs = preferences.ganttActualLine;
   const showActualTimeline = actualLinePrefs.enabled;
-  const todayColumnPrefs = preferences.ganttTodayColumn;
-  const todayColumnBg = useMemo(
-    () => ganttTodayColumnBackground(todayColumnPrefs),
-    [todayColumnPrefs],
-  );
 
   const fetchRange = useMemo(() => {
     const { from, to } = buildTimelineLayout(scale, anchor, null);
@@ -298,25 +295,56 @@ export function GanttMobileChart({ className }: { className?: string }) {
 
   const scrollToToday = useCallback(() => {
     const el = scrollRef.current;
-    if (!el) return;
+    if (!el) return false;
     el.scrollTop = Math.max(0, todayY - el.clientHeight / 2);
+    return true;
   }, [todayY]);
 
+  const scrollToAnchor = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return false;
+    const anchorY = dateToX(anchor, layout);
+    el.scrollTop = Math.max(0, anchorY - el.clientHeight / 2);
+    return true;
+  }, [anchor, layout]);
+
   useEffect(() => {
-    if (isLoading) return;
-    requestAnimationFrame(scrollToToday);
-  }, [isLoading, scale, anchor, scrollToToday]);
+    scrolledToTarget.current = false;
+  }, [layout.from, layout.to, scale, anchor]);
+
+  useLayoutEffect(() => {
+    if (isLoading || scrolledToTarget.current) return;
+
+    const tryScroll = () => {
+      const ok =
+        scrollTarget.current === "today" ? scrollToToday() : scrollToAnchor();
+      if (ok) scrolledToTarget.current = true;
+    };
+
+    tryScroll();
+    const raf = requestAnimationFrame(tryScroll);
+    const timer = window.setTimeout(tryScroll, 150);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(timer);
+    };
+  }, [isLoading, scrollToToday, scrollToAnchor, layout.from, layout.to, scale, anchor]);
 
   const goToday = useCallback(() => {
+    scrollTarget.current = "today";
+    scrolledToTarget.current = false;
     setAnchor(todayStr());
-    requestAnimationFrame(scrollToToday);
-  }, [scrollToToday]);
+  }, []);
 
   const navigatePrev = useCallback(() => {
+    scrollTarget.current = "anchor";
+    scrolledToTarget.current = false;
     setAnchor((a) => shiftAnchor(scale, a, -1));
   }, [scale]);
 
   const navigateNext = useCallback(() => {
+    scrollTarget.current = "anchor";
+    scrolledToTarget.current = false;
     setAnchor((a) => shiftAnchor(scale, a, 1));
   }, [scale]);
 
@@ -516,11 +544,10 @@ export function GanttMobileChart({ className }: { className?: string }) {
     return (
       <div className="relative flex min-h-0 shrink-0 border-b border-gray-100 dark:border-gray-800">
         <div
-          className="flex shrink-0 items-center justify-center border-r border-gray-100 bg-blue-50/50 text-[10px] font-medium text-gray-500 dark:border-gray-800 dark:bg-blue-950/20 dark:text-gray-400"
+          className="flex shrink-0 border-r border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-950"
           style={{ width: TIME_AXIS_WIDTH, height: HEADER_HEIGHT }}
-        >
-          {t("gantt.tasksHeader")}
-        </div>
+          aria-hidden
+        />
         <div className="relative min-w-0 flex-1 overflow-hidden">
           <div
             className="relative flex will-change-transform"
@@ -575,8 +602,8 @@ export function GanttMobileChart({ className }: { className?: string }) {
               {layout.columns.map((col) => (
                 <div
                   key={`day-${col.key}`}
-                  className="flex items-center justify-center border-b border-dashed border-gray-200 text-[9px] tabular-nums text-gray-600 dark:border-gray-700 dark:text-gray-400"
-                  style={{ height: col.width, ...todayColumnBg }}
+                  className="flex items-center justify-center border-b border-dashed border-gray-200 bg-white text-[9px] tabular-nums text-gray-600 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-400"
+                  style={{ height: col.width }}
                 >
                   {col.headerBottom}
                 </div>
@@ -799,6 +826,8 @@ export function GanttMobileChart({ className }: { className?: string }) {
           onPrev={navigatePrev}
           onNext={navigateNext}
           onToday={goToday}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
           className="min-w-0 flex-1"
         />
       </div>

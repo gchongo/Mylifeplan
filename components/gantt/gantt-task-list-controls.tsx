@@ -1,14 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { GanttPanelCollapseChevron } from "@/components/gantt/gantt-panel-chevron";
+import { GanttStatusFilterMenu } from "@/components/gantt/gantt-status-filter-menu";
 import { useI18n } from "@/components/i18n/i18n-provider";
-import {
-  STATUS_LEGEND,
-  STATUS_STYLES,
-  type VisualStatusKey,
-} from "@/lib/task-status-style";
-import { localizeVisualStatusLabel } from "@/lib/i18n/gantt-helpers";
+import type { VisualStatusKey } from "@/lib/task-status-style";
 import { cn } from "@/lib/utils";
 
 export function GanttTaskListControls({
@@ -31,31 +26,6 @@ export function GanttTaskListControls({
   drawerTheme?: boolean;
 }) {
   const { t } = useI18n();
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const filterActive =
-    statusFilter.size > 0 && statusFilter.size < STATUS_LEGEND.length;
-
-  useEffect(() => {
-    if (!open) return;
-    function onDocClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("click", onDocClick);
-    return () => document.removeEventListener("click", onDocClick);
-  }, [open]);
-
-  function toggleStatus(key: VisualStatusKey) {
-    const next = new Set(statusFilter);
-    if (next.has(key)) next.delete(key);
-    else next.add(key);
-    onStatusFilterChange(next);
-  }
-
-  function selectAll() {
-    onStatusFilterChange(new Set(STATUS_LEGEND));
-  }
-
   const compact = drawerTheme;
 
   return (
@@ -99,79 +69,12 @@ export function GanttTaskListControls({
         </button>
       )}
 
-      <div ref={ref} className="relative z-50 min-w-0 flex-1">
-        <button
-          type="button"
-          data-no-pan
-          onClick={(e) => {
-            e.stopPropagation();
-            setOpen((v) => !v);
-          }}
-          className={cn(
-            "flex w-full items-center justify-between gap-1 rounded-md border text-xs",
-            compact ? "h-6 px-1.5 py-0" : "px-2 py-1",
-            filterActive
-              ? "border-blue-400 bg-blue-100 text-blue-800 dark:border-blue-600 dark:bg-blue-900/50 dark:text-blue-100"
-              : drawerTheme
-                ? "border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
-                : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50",
-          )}
-          aria-label={t("gantt.taskList.statusFilter")}
-        >
-          <span className="truncate">
-            {t("gantt.taskList.status")}
-            {filterActive && ` (${statusFilter.size})`}
-          </span>
-          <span className="shrink-0 text-[10px] text-gray-400">▼</span>
-        </button>
-
-        {open && (
-          <div className="absolute left-0 top-full z-[100] mt-1 w-36 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900">
-            {STATUS_LEGEND.map((key) => {
-              const style = STATUS_STYLES[key];
-              const checked = statusFilter.has(key);
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  data-no-pan
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleStatus(key);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-gray-50"
-                >
-                  <span
-                    className={cn(
-                      "flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border",
-                      checked
-                        ? "border-brand-500 bg-brand-500 text-white"
-                        : "border-gray-300 bg-white",
-                    )}
-                  >
-                    {checked && <span className="text-[9px] leading-none">✓</span>}
-                  </span>
-                  <span className={cn("rounded-full", style.dot, "h-2 w-2 shrink-0")} />
-                  <span className="text-gray-700">{localizeVisualStatusLabel(t, key)}</span>
-                </button>
-              );
-            })}
-            <div className="mt-1 border-t border-gray-100 px-2 pt-1">
-              <button
-                type="button"
-                data-no-pan
-                onClick={(e) => {
-                  e.stopPropagation();
-                  selectAll();
-                }}
-                className="w-full rounded px-2 py-1 text-left text-xs text-brand-600 hover:bg-gray-50"
-              >
-                {t("gantt.taskList.showAll")}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      <GanttStatusFilterMenu
+        statusFilter={statusFilter}
+        onStatusFilterChange={onStatusFilterChange}
+        className="min-w-0 flex-1"
+        buttonClassName={cn("w-full text-xs", compact ? "h-6 px-1.5 py-0" : "px-2 py-1")}
+      />
 
       {onCreatePlan && (
         <button

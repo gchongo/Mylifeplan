@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { GanttLayerToggleButton } from "@/components/gantt/gantt-layer-toggle-button";
 import { GanttRowExpandIcon, GanttToolbarNavArrow } from "@/components/gantt/gantt-row-expand-icon";
+import { GanttStatusFilterMenu } from "@/components/gantt/gantt-status-filter-menu";
 import { useSettings } from "@/components/settings/settings-provider";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { GANTT_SCALES, type GanttScaleId } from "@/lib/gantt-scale";
 import { localizeGanttScaleLabel } from "@/lib/i18n/gantt-helpers";
+import type { VisualStatusKey } from "@/lib/task-status-style";
 import { cn } from "@/lib/utils";
 
 export function GanttToolbarControls({
@@ -17,6 +19,8 @@ export function GanttToolbarControls({
   onToday,
   className,
   variant = "default",
+  statusFilter,
+  onStatusFilterChange,
 }: {
   scale: GanttScaleId;
   onScaleChange: (scale: GanttScaleId) => void;
@@ -24,8 +28,9 @@ export function GanttToolbarControls({
   onNext: () => void;
   onToday: () => void;
   className?: string;
-  /** mobile：贡献/实际居左，今天与粒度选择居右 */
   variant?: "default" | "mobile";
+  statusFilter?: Set<VisualStatusKey>;
+  onStatusFilterChange?: (next: Set<VisualStatusKey>) => void;
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -33,6 +38,7 @@ export function GanttToolbarControls({
   const { preferences, setGanttActualLine, setGanttContributionMarkers } = useSettings();
   const showActualTimeline = preferences.ganttActualLine.enabled;
   const showContributionMarkers = preferences.ganttContributionMarkers.enabled;
+  const isMobile = variant === "mobile";
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -58,7 +64,19 @@ export function GanttToolbarControls({
         onToggle={() => setGanttActualLine({ enabled: !showActualTimeline })}
         title={showActualTimeline ? t("gantt.toolbar.hideActual") : t("gantt.toolbar.showActual")}
       />
+      {isMobile && statusFilter && onStatusFilterChange ? (
+        <GanttStatusFilterMenu
+          statusFilter={statusFilter}
+          onStatusFilterChange={onStatusFilterChange}
+          className="min-w-[6.5rem]"
+        />
+      ) : null}
     </>
+  );
+
+  const navButtonClass = cn(
+    "flex items-center justify-center text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800",
+    isMobile ? "h-8 min-w-8 px-2 text-sm" : "px-2 py-1 text-sm",
   );
 
   const navAndScale = (
@@ -67,25 +85,28 @@ export function GanttToolbarControls({
         <button
           type="button"
           onClick={onPrev}
-          className="px-2 py-1 text-sm text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+          className={navButtonClass}
           aria-label={t("gantt.toolbar.prev")}
         >
-          <GanttToolbarNavArrow direction="prev" orientation={variant === "mobile" ? "vertical" : "horizontal"} />
+          <GanttToolbarNavArrow direction="prev" orientation={isMobile ? "vertical" : "horizontal"} />
         </button>
         <button
           type="button"
           onClick={onToday}
-          className="border-x border-gray-200 px-2.5 py-1 text-sm text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800"
+          className={cn(
+            "border-x border-gray-200 text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800",
+            isMobile ? "h-8 px-2.5 text-sm" : "px-2.5 py-1 text-sm",
+          )}
         >
           {t("gantt.toolbar.today")}
         </button>
         <button
           type="button"
           onClick={onNext}
-          className="px-2 py-1 text-sm text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+          className={navButtonClass}
           aria-label={t("gantt.toolbar.next")}
         >
-          <GanttToolbarNavArrow direction="next" orientation={variant === "mobile" ? "vertical" : "horizontal"} />
+          <GanttToolbarNavArrow direction="next" orientation={isMobile ? "vertical" : "horizontal"} />
         </button>
       </div>
 
@@ -122,10 +143,10 @@ export function GanttToolbarControls({
     </>
   );
 
-  if (variant === "mobile") {
+  if (isMobile) {
     return (
       <div className={cn("flex w-full min-w-0 items-center justify-between gap-2", className)}>
-        <div className="flex shrink-0 items-center gap-1.5">{layerToggles}</div>
+        <div className="flex min-w-0 shrink items-center gap-1.5">{layerToggles}</div>
         <div className="flex shrink-0 items-center gap-1.5">{navAndScale}</div>
       </div>
     );
