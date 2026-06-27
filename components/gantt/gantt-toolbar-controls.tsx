@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { GanttLayerToggleButton } from "@/components/gantt/gantt-layer-toggle-button";
+import { GanttStatusFilterMenu } from "@/components/gantt/gantt-status-filter-menu";
 import { GanttToolbarNavArrow } from "@/components/gantt/gantt-row-expand-icon";
 import { useSettings } from "@/components/settings/settings-provider";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { GANTT_SCALES, type GanttScaleId } from "@/lib/gantt-scale";
 import { localizeGanttScaleLabel } from "@/lib/i18n/gantt-helpers";
+import type { VisualStatusKey } from "@/lib/task-status-style";
 import { cn } from "@/lib/utils";
 
 export function GanttToolbarControls({
@@ -17,6 +19,8 @@ export function GanttToolbarControls({
   onToday,
   className,
   variant = "default",
+  statusFilter,
+  onStatusFilterChange,
 }: {
   scale: GanttScaleId;
   onScaleChange: (scale: GanttScaleId) => void;
@@ -25,6 +29,8 @@ export function GanttToolbarControls({
   onToday: () => void;
   className?: string;
   variant?: "default" | "mobile";
+  statusFilter?: Set<VisualStatusKey>;
+  onStatusFilterChange?: (next: Set<VisualStatusKey>) => void;
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -58,6 +64,13 @@ export function GanttToolbarControls({
         onToggle={() => setGanttActualLine({ enabled: !showActualTimeline })}
         title={showActualTimeline ? t("gantt.toolbar.hideActual") : t("gantt.toolbar.showActual")}
       />
+      {isMobile && statusFilter && onStatusFilterChange ? (
+        <GanttStatusFilterMenu
+          variant="traffic-light"
+          statusFilter={statusFilter}
+          onStatusFilterChange={onStatusFilterChange}
+        />
+      ) : null}
     </>
   );
 
