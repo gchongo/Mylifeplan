@@ -16,6 +16,7 @@ import {
   constrainPlanResizeStart,
   type PlanDragConstraints,
 } from "@/lib/gantt-plan-bind";
+import { getMobilePlanBarFillStyle } from "@/lib/plan-color";
 import type { GanttItem } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +47,8 @@ export function GanttMobileDraggableBar({
   top,
   height,
   barWidthPx,
+  barLeftPx,
+  depth = 0,
   color,
   previewOverride,
   minStartDate,
@@ -63,6 +66,8 @@ export function GanttMobileDraggableBar({
   top: number;
   height: number;
   barWidthPx: number;
+  barLeftPx: number;
+  depth?: number;
   color: string;
   previewOverride?: { start: string; end: string } | null;
   minStartDate?: string;
@@ -320,19 +325,18 @@ export function GanttMobileDraggableBar({
         top: metrics.left,
         height: barHeight,
         width: barWidthPx,
-        left: "50%",
-        transform: "translateX(-50%)",
+        left: barLeftPx,
         touchAction: dragEnabled ? "none" : "auto",
       }}
     >
       <div
         className={cn(
-          "absolute inset-0 overflow-hidden rounded-full shadow-sm transition-[box-shadow] duration-200",
+          "absolute inset-0 overflow-hidden rounded-full transition-[box-shadow] duration-200",
           saving && "opacity-60",
           (dragging || commitPreview) && "ring-2 ring-brand-400 ring-offset-1",
         )}
         style={{
-          backgroundColor: color,
+          ...getMobilePlanBarFillStyle(color, depth),
           touchAction: dragEnabled ? "none" : "auto",
         }}
       >

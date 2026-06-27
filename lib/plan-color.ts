@@ -48,6 +48,29 @@ export function planColorRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+/** 移动端竖排标题：与计划色同 hue，白描边保证在条/网格上都可读 */
+export function getMobilePlanBarLabelStyle(planColor: string): CSSProperties {
+  const hex = normalizePlanColor(planColor);
+  const { r, g, b } = hexToRgb(hex);
+  const shade = 0.72;
+  return {
+    color: `rgb(${Math.round(r * shade)}, ${Math.round(g * shade)}, ${Math.round(b * shade)})`,
+    textShadow:
+      "0 0 4px rgba(255,255,255,0.98), 0 0 1px rgba(255,255,255,0.9), 0 1px 2px rgba(15,23,42,0.18)",
+  };
+}
+
+/** 移动端计划条：半透明填充 + 同色描边，接近 PC 甘特观感 */
+export function getMobilePlanBarFillStyle(planColor: string, depth: number): CSSProperties {
+  const hex = normalizePlanColor(planColor);
+  const isRoot = depth === 0;
+  return {
+    backgroundColor: planColorRgba(hex, isRoot ? 0.38 : 0.28),
+    border: `${isRoot ? 1.5 : 1}px solid ${planColorRgba(hex, 0.82)}`,
+    boxShadow: `inset 0 1px 0 ${planColorRgba(hex, 0.22)}`,
+  };
+}
+
 export interface PlanBarAppearance {
   shellClass: string;
   shellStyle?: CSSProperties;

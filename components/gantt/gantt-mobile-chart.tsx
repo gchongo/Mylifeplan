@@ -25,6 +25,7 @@ import { getPlanActualExecutionSpan, nowPlanIso } from "@/lib/gantt-actual-timel
 import { contributionsForGanttRow } from "@/lib/gantt-contribution-display";
 import { buildMobileColumnForkLines } from "@/lib/gantt-mobile-tree-lines";
 import {
+  mobilePlanBarLeftPx,
   mobilePlanBarWidthPx,
   mobilePlanColumnWidth,
   mobilePlanGridWidth,
@@ -384,6 +385,8 @@ export function GanttMobileChart({ className }: { className?: string }) {
     spanStart: string,
     spanEnd: string,
     rowPlanId: string,
+    barLeft: number,
+    barWidth: number,
   ) {
     const visible = rowContributions.filter((c) => {
       if (!isDateWithinPlanSpan(c.occurredOn, spanStart, spanEnd)) return false;
@@ -411,8 +414,8 @@ export function GanttMobileChart({ className }: { className?: string }) {
                 style={{
                   top: Math.max(0, top),
                   height: Math.max(height, 4),
-                  left: "50%",
-                  width: Math.max(4, CONTRIBUTION_POINT_WIDTH_PX - 4),
+                  left: barLeft + barWidth / 2,
+                  width: Math.max(4, barWidth - 6),
                   transform: "translateX(-50%)",
                   ...contributionIntervalFillStyle(color),
                 }}
@@ -434,7 +437,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
                 top: Math.max(0, y - CONTRIBUTION_POINT_WIDTH_PX / 2),
                 height: CONTRIBUTION_POINT_WIDTH_PX,
                 width: CONTRIBUTION_POINT_WIDTH_PX,
-                left: "50%",
+                left: barLeft + barWidth / 2,
                 transform: "translateX(-50%)",
                 backgroundColor: color,
               }}
@@ -452,6 +455,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
     displayStart: string,
     displayEnd: string,
     barWidth: number,
+    barLeft: number,
   ) {
     if (!showActualTimeline || item.contributionOnly || item.isUnscheduled) return null;
     const span = getPlanActualExecutionSpan(item, items, nowPlanIso());
@@ -467,11 +471,11 @@ export function GanttMobileChart({ className }: { className?: string }) {
 
     return (
       <div
-        className="pointer-events-none absolute left-1/2 z-[6] w-0.5 -translate-x-1/2 rounded-full bg-orange-500 dark:bg-orange-400"
+        className="pointer-events-none absolute z-[6] w-px rounded-full bg-amber-600/75 dark:bg-amber-400/80"
         style={{
           top: Math.max(0, top),
           height: Math.max(height, 4),
-          maxWidth: barWidth,
+          left: barLeft + barWidth - 1,
         }}
         aria-hidden
       />
@@ -608,6 +612,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
                 const item = row.item;
                 const columnWidth = mobilePlanColumnWidth(row.depth);
                 const barWidth = mobilePlanBarWidthPx(row.depth);
+                const barLeft = mobilePlanBarLeftPx(row.depth);
                 const previewDates = barPreview.get(item.id);
                 const displayStart = previewDates?.start ?? item.startDate;
                 const displayEnd = previewDates?.end ?? item.effectiveEnd;
@@ -644,6 +649,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
                         timelineHeight={timelineHeight}
                         title={item.title}
                         depth={row.depth}
+                        planColor={color}
                         onTitleClick={() => openPlan(item.id)}
                       />
                     )}
@@ -657,6 +663,8 @@ export function GanttMobileChart({ className }: { className?: string }) {
                             top={barTop}
                             height={barHeight}
                             barWidthPx={barWidth}
+                            barLeftPx={barLeft}
+                            depth={row.depth}
                             color={color}
                             previewOverride={previewDates ?? null}
                             minStartDate={row.depth > 0 ? minStartDate : undefined}
@@ -669,7 +677,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
                             onTaskClick={() => openPlan(item.id)}
                             dragEnabled={dragEnabled}
                           />
-                          {renderActualLine(item, displayStart, displayEnd, barWidth)}
+                          {renderActualLine(item, displayStart, displayEnd, barWidth, barLeft)}
                         </>
                       )}
                       {showContributionMarkers &&
@@ -680,6 +688,8 @@ export function GanttMobileChart({ className }: { className?: string }) {
                           displayStart,
                           displayEnd,
                           item.id,
+                          barLeft,
+                          barWidth,
                         )}
                     </div>
                   </div>
