@@ -70,10 +70,11 @@ export function GanttTaskListControls({
       )}
 
       <GanttStatusFilterMenu
+        variant="traffic-light"
         statusFilter={statusFilter}
         onStatusFilterChange={onStatusFilterChange}
-        className="min-w-0 flex-1"
-        buttonClassName={cn("w-full text-xs", compact ? "h-6 px-1.5 py-0" : "px-2 py-1")}
+        className="flex shrink-0 items-center"
+        buttonClassName={compact ? "h-6 rounded-full px-1.5" : "h-7 rounded-full px-2"}
       />
 
       {onCreatePlan && (

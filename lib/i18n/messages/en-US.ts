@@ -322,7 +322,6 @@ const enUS = {
       collapseAll: "Collapse all sub-tasks",
       statusFilter: "Filter by status",
       status: "Status",
-      showAll: "Show all",
     },
     columnPicker: {
       label: "Cols",

@@ -322,7 +322,6 @@ const zhCN = {
       collapseAll: "隐藏所有子任务",
       statusFilter: "按状态筛选",
       status: "状态",
-      showAll: "显示全部",
     },
     columnPicker: {
       label: "列",

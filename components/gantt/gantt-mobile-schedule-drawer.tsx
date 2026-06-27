@@ -65,7 +65,7 @@ export function GanttMobileScheduleDrawer({
             return (
               <div
                 key={id}
-                className="flex items-center justify-end border-b border-blue-100/90 px-1 text-[9px] font-medium text-gray-500 last:border-b-0 dark:border-blue-900/45 dark:text-gray-400"
+                className="flex items-center justify-center border-b border-blue-100/90 px-1 text-center text-[9px] font-medium text-gray-500 last:border-b-0 dark:border-blue-900/45 dark:text-gray-400"
                 style={{ height: METRIC_ROW_HEIGHT }}
                 title={def?.label}
               >

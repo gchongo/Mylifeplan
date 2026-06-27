@@ -343,9 +343,12 @@ export function GanttMobileChart({ className }: { className?: string }) {
 
   const goToday = useCallback(() => {
     scrollTarget.current = "today";
-    scrolledToTarget.current = false;
     setAnchor(todayStr());
-  }, []);
+    scrolledToTarget.current = false;
+    requestAnimationFrame(() => {
+      if (scrollToToday()) scrolledToTarget.current = true;
+    });
+  }, [scrollToToday]);
 
   const navigatePrev = useCallback(() => {
     scrollTarget.current = "anchor";

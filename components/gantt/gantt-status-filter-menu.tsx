@@ -26,13 +26,11 @@ function StatusFilterDropdown({
   open,
   statusFilter,
   onStatusFilterChange,
-  onSelectAll,
   t,
 }: {
   open: boolean;
   statusFilter: Set<VisualStatusKey>;
   onStatusFilterChange: (next: Set<VisualStatusKey>) => void;
-  onSelectAll: () => void;
   t: ReturnType<typeof useI18n>["t"];
 }) {
   if (!open) return null;
@@ -76,18 +74,6 @@ function StatusFilterDropdown({
           </button>
         );
       })}
-      <div className="mt-1 border-t border-gray-100 px-2 pt-1 dark:border-gray-800">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSelectAll();
-          }}
-          className="w-full rounded px-2 py-1 text-left text-xs text-brand-600 hover:bg-gray-50 dark:text-brand-400 dark:hover:bg-gray-800"
-        >
-          {t("gantt.taskList.showAll")}
-        </button>
-      </div>
     </div>
   );
 }
@@ -119,10 +105,6 @@ export function GanttStatusFilterMenu({
     document.addEventListener("click", onDocClick);
     return () => document.removeEventListener("click", onDocClick);
   }, [open]);
-
-  function selectAll() {
-    onStatusFilterChange(new Set(STATUS_LEGEND));
-  }
 
   const triggerClass =
     variant === "traffic-light"
@@ -179,7 +161,6 @@ export function GanttStatusFilterMenu({
         open={open}
         statusFilter={statusFilter}
         onStatusFilterChange={onStatusFilterChange}
-        onSelectAll={selectAll}
         t={t}
       />
     </div>
