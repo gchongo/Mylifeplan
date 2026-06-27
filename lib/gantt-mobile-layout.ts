@@ -1,11 +1,10 @@
+import { ganttPlanBarHeightPx } from "@/lib/plan-color";
+
 /** 列内计划条左右留白 */
 export const MOBILE_PLAN_COLUMN_PAD_X = 2;
 
 /** 一级计划组之间的水平间隙（px） */
 export const MOBILE_ROW_GROUP_GAP = 1;
-
-/** 移动端列内条宽（档 B，仅移动甘特；PC 仍用 plan-color 条高） */
-const MOBILE_PLAN_BAR_WIDTH_BY_DEPTH = [40, 36, 32] as const;
 
 /** 组间分割条样式（与 gap 宽度配套） */
 export const MOBILE_PLAN_GROUP_GAP_CLASS =
@@ -15,14 +14,14 @@ export const MOBILE_PLAN_GROUP_GAP_CLASS =
 export const MOBILE_PLAN_COLUMN_BORDER_CLASS =
   "border-r border-gray-300 dark:border-gray-600";
 
+/** 移动端竖条宽度 = PC 同级计划条高度（30 / 24 / 18） */
+export function mobilePlanBarWidthPx(depth: number): number {
+  return ganttPlanBarHeightPx(depth);
+}
+
 /** 移动端计划列宽：条宽 + 左右 padding */
 export function mobilePlanColumnWidth(depth: number): number {
   return mobilePlanBarWidthPx(depth) + MOBILE_PLAN_COLUMN_PAD_X * 2;
-}
-
-export function mobilePlanBarWidthPx(depth: number): number {
-  const idx = Math.min(Math.max(depth, 0), MOBILE_PLAN_BAR_WIDTH_BY_DEPTH.length - 1);
-  return MOBILE_PLAN_BAR_WIDTH_BY_DEPTH[idx]!;
 }
 
 /** 进度条左缘（列内居中） */
