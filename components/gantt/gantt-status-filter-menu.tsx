@@ -8,6 +8,11 @@ import {
   type VisualStatusKey,
 } from "@/lib/task-status-style";
 import { localizeVisualStatusLabel } from "@/lib/i18n/gantt-helpers";
+import {
+  GANTT_TOOLBAR_TOGGLE_SHELL,
+  ganttToolbarToggleActiveClass,
+  ganttToolbarToggleInactiveClass,
+} from "@/components/gantt/gantt-layer-toggle-button";
 import { cn } from "@/lib/utils";
 
 /** 移动端工具栏：红黄绿三灯，仅作状态筛选入口图标 */
@@ -16,10 +21,6 @@ const TRAFFIC_LIGHT_DOTS = [
   "bg-yellow-400",
   "bg-emerald-500",
 ] as const;
-
-/** 与 GanttLayerToggleButton 一致的外框尺寸，保证与「实际」按钮等高对齐 */
-const TRAFFIC_LIGHT_TRIGGER_CLASS =
-  "inline-flex shrink-0 items-center justify-center gap-1 rounded-full border px-2 py-1 text-sm font-medium leading-none transition-colors";
 
 function StatusFilterDropdown({
   open,
@@ -126,10 +127,9 @@ export function GanttStatusFilterMenu({
   const triggerClass =
     variant === "traffic-light"
       ? cn(
-          TRAFFIC_LIGHT_TRIGGER_CLASS,
-          filterActive
-            ? "border-brand-300 bg-brand-50 hover:bg-brand-100/80 dark:border-brand-700 dark:bg-brand-950/50 dark:hover:bg-brand-950/70"
-            : "border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800",
+          GANTT_TOOLBAR_TOGGLE_SHELL,
+          "gap-1 rounded-full px-2",
+          filterActive ? ganttToolbarToggleActiveClass : ganttToolbarToggleInactiveClass,
           buttonClassName,
         )
       : cn(
