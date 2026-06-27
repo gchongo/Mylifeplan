@@ -6,6 +6,7 @@ import { apiJson } from "@/lib/client-api";
 import { CalendarDayCreateActions } from "@/components/calendar/calendar-day-create-actions";
 import { CalendarDayDrawer } from "@/components/calendar/calendar-day-drawer";
 import { CalendarMobileDaySheet } from "@/components/calendar/calendar-mobile-day-sheet";
+import { CalendarMobileMonthView } from "@/components/calendar/calendar-mobile-month-view";
 import { CalendarMobileSplitLayout } from "@/components/calendar/calendar-mobile-split-layout";
 import { CalendarScrollView,
   type CalendarScrollViewHandle,
@@ -35,6 +36,7 @@ import {
   type CalendarViewMode,
 } from "@/lib/calendar-display";
 import {
+  addMonths,
   formatMonthTitle,
   initialMonthWindow,
   monthKeyFromDate,
@@ -121,7 +123,6 @@ export function CalendarPanelLive({
   const [weekAnchor, setWeekAnchor] = useState(today);
   const scrollRef = useRef<CalendarScrollViewHandle>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
-  const lastSheetDateRef = useRef<string | null>(null);
   const [layoutSize, setLayoutSize] = useState({ width: 0, height: 0 });
   const [drawerWidthPx, setDrawerWidthPx] = useState(CALENDAR_DRAWER_MIN_WIDTH_PX);
 
@@ -229,16 +230,26 @@ export function CalendarPanelLive({
 
   function goToday() {
     const now = new Date();
-    setViewYear(now.getUTCFullYear());
-    setViewMonth(now.getUTCMonth());
+    const key = monthKeyFromDate(now);
+    setViewYear(key.year);
+    setViewMonth(key.month);
     setViewDay(now.getUTCDate());
     setWeekAnchor(now);
     setSelectedDate(localDateStr(now));
-    setVisibleMonth(monthKeyFromDate(now));
+    setVisibleMonth(key);
     if (useMobileFullLayout) {
-      setLoadedMonths([monthKeyFromDate(now)]);
+      setDrawerDate(null);
+      return;
     }
     if (viewMode === "month") scrollRef.current?.scrollToToday();
+  }
+
+  function shiftMobileMonth(delta: number) {
+    const target = addMonths({ year: viewYear, month: viewMonth }, delta);
+    setDrawerDate(null);
+    setVisibleMonth(target);
+    setViewYear(target.year);
+    setViewMonth(target.month);
   }
 
   function selectYearMonth(month: number, year: number) {
@@ -246,8 +257,12 @@ export function CalendarPanelLive({
     setViewYear(year);
     setViewMonth(month);
     setVisibleMonth(key);
-    setLoadedMonths(useMobileFullLayout ? [key] : initialMonthWindow(key));
+    setLoadedMonths(initialMonthWindow(key));
     setViewMode("month");
+    if (useMobileFullLayout) {
+      setDrawerDate(null);
+      return;
+    }
     requestAnimationFrame(() => scrollRef.current?.scrollToMonth(key));
   }
 
@@ -258,11 +273,7 @@ export function CalendarPanelLive({
     }
     if (viewMode === "month") {
       if (useMobileFullLayout) {
-        const target = monthKeyFromDate(new Date(Date.UTC(viewYear, viewMonth - 1, 1)));
-        setVisibleMonth(target);
-        setViewYear(target.year);
-        setViewMonth(target.month);
-        setLoadedMonths([target]);
+        shiftMobileMonth(-1);
         return;
       }
       scrollRef.current?.scrollByMonth(-1);
@@ -289,11 +300,7 @@ export function CalendarPanelLive({
     }
     if (viewMode === "month") {
       if (useMobileFullLayout) {
-        const target = monthKeyFromDate(new Date(Date.UTC(viewYear, viewMonth + 1, 1)));
-        setVisibleMonth(target);
-        setViewYear(target.year);
-        setViewMonth(target.month);
-        setLoadedMonths([target]);
+        shiftMobileMonth(1);
         return;
       }
       scrollRef.current?.scrollByMonth(1);
@@ -322,13 +329,10 @@ export function CalendarPanelLive({
     setDrawerDate(null);
   }
 
-  const mobileSingleMonth = useMemo(
-    () => (useMobileFullLayout ? { year: viewYear, month: viewMonth } : null),
-    [useMobileFullLayout, viewYear, viewMonth],
+  const mobileMonth = useMemo(
+    () => ({ year: viewYear, month: viewMonth }),
+    [viewYear, viewMonth],
   );
-
-  if (drawerDate) lastSheetDateRef.current = drawerDate;
-  const sheetDate = drawerDate ?? lastSheetDateRef.current;
 
   const shellClassName = cn(
     "flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden",
@@ -379,19 +383,29 @@ export function CalendarPanelLive({
             !useMobileFullLayout && fullPage ? "" : useMobileFullLayout ? "" : "rounded-xl border border-gray-200 dark:border-gray-800",
           )}
         >
-          <CalendarScrollView
-            ref={scrollRef}
-            items={items}
-            displayMode={displayMode}
-            todayStr={todayStr}
-            selectedDate={selectedDate}
-            onSelectDate={openDayDrawer}
-            onVisibleMonthChange={handleVisibleMonthChange}
-            onMonthsChange={handleMonthsChange}
-            fullPage={fullPage}
-            singleMonth={mobileSingleMonth}
-            compactCells={useMobileFullLayout && drawerDate !== null}
-          />
+          {useMobileFullLayout ? (
+            <CalendarMobileMonthView
+              month={mobileMonth}
+              items={items}
+              displayMode={displayMode}
+              todayStr={todayStr}
+              selectedDate={selectedDate}
+              onSelectDate={openDayDrawer}
+              compact={drawerDate !== null}
+            />
+          ) : (
+            <CalendarScrollView
+              ref={scrollRef}
+              items={items}
+              displayMode={displayMode}
+              todayStr={todayStr}
+              selectedDate={selectedDate}
+              onSelectDate={openDayDrawer}
+              onVisibleMonthChange={handleVisibleMonthChange}
+              onMonthsChange={handleMonthsChange}
+              fullPage={fullPage}
+            />
+          )}
           {loading && items.length > 0 && (
             <div className="pointer-events-none absolute inset-x-0 top-10 z-20 flex justify-center">
               <span className="rounded-full bg-white/90 px-3 py-1 text-xs text-gray-500 shadow-sm dark:bg-gray-900/90 dark:text-gray-400">
@@ -499,17 +513,15 @@ export function CalendarPanelLive({
               open={drawerDate !== null}
               calendar={calendarViews}
               sheet={
-                sheetDate ? (
+                drawerDate ? (
                   <CalendarMobileDaySheet
-                    dateStr={sheetDate}
+                    dateStr={drawerDate}
                     items={items}
                     onClose={closeDayDrawer}
                     detailExpandable={fullPage}
                     onDataChange={() => void refetch()}
                   />
-                ) : (
-                  <div className="h-full" aria-hidden />
-                )
+                ) : null
               }
             />
           </div>

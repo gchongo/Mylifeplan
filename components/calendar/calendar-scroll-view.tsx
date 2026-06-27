@@ -55,10 +55,6 @@ export const CalendarScrollView = forwardRef<
     onVisibleMonthChange: (key: MonthKey) => void;
     onMonthsChange: (months: MonthKey[]) => void;
     fullPage: boolean;
-    /** 移动端：只显示指定月份，禁止无限滚动 */
-    singleMonth?: MonthKey | null;
-    /** 抽屉打开时缩小格子，配合上半屏分屏 */
-    compactCells?: boolean;
   }
 >(function CalendarScrollView(
   {
@@ -70,25 +66,18 @@ export const CalendarScrollView = forwardRef<
     onVisibleMonthChange,
     onMonthsChange,
     fullPage,
-    singleMonth = null,
-    compactCells = false,
   },
   ref,
 ) {
   const { t, locale } = useI18n();
   const todayKey = monthKeyFromDate(new Date(`${todayStr}T12:00:00Z`));
-  const isSingleMonth = singleMonth != null;
-  const [months, setMonths] = useState<MonthKey[]>(() =>
-    singleMonth ? [singleMonth] : initialMonthWindow(todayKey),
-  );
+  const [months, setMonths] = useState<MonthKey[]>(() => initialMonthWindow(todayKey));
   const scrollRef = useRef<HTMLDivElement>(null);
   const outerRef = useRef<HTMLDivElement>(null);
   const monthRefs = useRef<Map<string, HTMLElement>>(new Map());
   const prependingRef = useRef(false);
   const didInitialScroll = useRef(false);
   const cellMin = useCalendarCellMin(displayMode, fullPage);
-  const compactCellMin = "min-h-[2.75rem]";
-  const activeCellMin = compactCells ? compactCellMin : cellMin;
   const { preferences } = useSettings();
   const weekPrefs = preferences.calendarWeekNumbers;
   const showWeekNumbers = weekPrefs.enabled;
@@ -105,33 +94,9 @@ export const CalendarScrollView = forwardRef<
     return localizeCalendarMonthLabel(t, locale, key.month);
   }
 
-  const singleMonthKey = singleMonth ? monthKeyId(singleMonth) : null;
-
   useEffect(() => {
-    if (singleMonth) {
-      setMonths((prev) => {
-        if (prev.length === 1 && monthKeyId(prev[0]!) === singleMonthKey) return prev;
-        return [singleMonth];
-      });
-      visibleMonthRef.current = singleMonth;
-      return;
-    }
-    setMonths((prev) => {
-      const next = initialMonthWindow(visibleMonthRef.current);
-      if (
-        prev.length === next.length &&
-        prev.every((m, i) => monthKeyId(m) === monthKeyId(next[i]!))
-      ) {
-        return prev;
-      }
-      return next;
-    });
-  }, [singleMonth, singleMonthKey]);
-
-  useEffect(() => {
-    if (isSingleMonth) return;
     onMonthsChange(months);
-  }, [isSingleMonth, months, onMonthsChange]);
+  }, [months, onMonthsChange]);
 
   const setMonthRef = useCallback((id: string, el: HTMLElement | null) => {
     if (el) monthRefs.current.set(id, el);
@@ -139,7 +104,6 @@ export const CalendarScrollView = forwardRef<
   }, []);
 
   const updateVisibleMonth = useCallback(() => {
-    if (isSingleMonth) return;
     const root = scrollRef.current;
     if (!root) return;
     const rootTop = root.getBoundingClientRect().top;
@@ -155,7 +119,7 @@ export const CalendarScrollView = forwardRef<
       visibleMonthRef.current = best.key;
       onVisibleMonthChange(best.key);
     }
-  }, [isSingleMonth, months, onVisibleMonthChange]);
+  }, [months, onVisibleMonthChange]);
 
   const prependMonths = useCallback(() => {
     const root = scrollRef.current;
@@ -175,17 +139,16 @@ export const CalendarScrollView = forwardRef<
   }, []);
 
   const handleScroll = useCallback(() => {
-    if (isSingleMonth) return;
     const root = scrollRef.current;
     if (!root) return;
     updateVisibleMonth();
     if (root.scrollTop < EDGE_THRESHOLD_PX) prependMonths();
     if (root.scrollHeight - root.scrollTop - root.clientHeight < EDGE_THRESHOLD_PX) appendMonths();
-  }, [appendMonths, isSingleMonth, prependMonths, updateVisibleMonth]);
+  }, [appendMonths, prependMonths, updateVisibleMonth]);
 
   useEffect(() => {
     const outer = outerRef.current;
-    if (!outer || !scrollRef.current || isSingleMonth) return;
+    if (!outer || !scrollRef.current) return;
 
     function onWheel(e: WheelEvent) {
       const el = scrollRef.current;
@@ -201,10 +164,10 @@ export const CalendarScrollView = forwardRef<
 
     outer.addEventListener("wheel", onWheel, { passive: false });
     return () => outer.removeEventListener("wheel", onWheel);
-  }, [months, displayMode, fullPage, isSingleMonth]);
+  }, [months, displayMode, fullPage]);
 
   useLayoutEffect(() => {
-    if (didInitialScroll.current || isSingleMonth) return;
+    if (didInitialScroll.current) return;
     const root = scrollRef.current;
     const monthEl = monthRefs.current.get(monthKeyId(todayKey));
     if (root && monthEl) {
@@ -212,7 +175,7 @@ export const CalendarScrollView = forwardRef<
       didInitialScroll.current = true;
       updateVisibleMonth();
     }
-  }, [months, todayKey, updateVisibleMonth, isSingleMonth]);
+  }, [months, todayKey, updateVisibleMonth]);
 
   useImperativeHandle(ref, () => ({
     scrollToToday() {
@@ -232,7 +195,6 @@ export const CalendarScrollView = forwardRef<
       }
     },
     scrollByMonth(delta: number) {
-      if (isSingleMonth) return;
       const root = scrollRef.current;
       if (!root) return;
       const firstVisible = months.find((key) => {
@@ -257,7 +219,6 @@ export const CalendarScrollView = forwardRef<
       }
     },
     scrollToMonth(key: MonthKey) {
-      if (isSingleMonth) return;
       const targetId = monthKeyId(key);
       if (!months.some((m) => monthKeyId(m) === targetId)) {
         setMonths((prev) =>
@@ -299,10 +260,7 @@ export const CalendarScrollView = forwardRef<
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className={cn(
-          "scrollbar-hide h-0 min-h-0 flex-1 bg-gray-100 dark:bg-gray-950",
-          isSingleMonth ? "overflow-y-auto overscroll-contain" : "overflow-y-auto overscroll-contain",
-        )}
+        className="scrollbar-hide h-0 min-h-0 flex-1 overflow-y-auto overscroll-contain bg-gray-100 dark:bg-gray-950"
         tabIndex={0}
       >
         {months.map((key, index) => {
@@ -314,16 +272,14 @@ export const CalendarScrollView = forwardRef<
 
           return (
             <section key={id} ref={(el) => setMonthRef(id, el)} data-month-id={id} className="mb-1">
-              {!isSingleMonth ? (
-                <h3
-                  className={cn(
-                    "bg-gray-100 px-3 py-2 text-base font-semibold dark:bg-gray-900",
-                    isCurrentMonth ? "text-red-600" : "text-gray-900 dark:text-gray-100",
-                  )}
-                >
-                  {title}
-                </h3>
-              ) : null}
+              <h3
+                className={cn(
+                  "bg-gray-100 px-3 py-2 text-base font-semibold dark:bg-gray-900",
+                  isCurrentMonth ? "text-red-600" : "text-gray-900 dark:text-gray-100",
+                )}
+              >
+                {title}
+              </h3>
               {showWeekNumbers ? (
                 <div className="flex flex-col gap-px">
                   {weekRows.map((week, weekIndex) => (
@@ -332,7 +288,7 @@ export const CalendarScrollView = forwardRef<
                         className={cn(
                           weekColClass,
                           "flex items-start justify-center bg-gray-50 pt-1.5 text-[11px] font-medium text-gray-500 dark:bg-gray-900 dark:text-gray-400",
-                          activeCellMin,
+                          cellMin,
                         )}
                       >
                         {formatCalendarWeekNumber(
@@ -350,7 +306,7 @@ export const CalendarScrollView = forwardRef<
                             return (
                               <CalendarEmptyDayCell
                                 key={`e-${id}-${weekIndex}-${idx}`}
-                                cellMin={activeCellMin}
+                                cellMin={cellMin}
                               />
                             );
                           }
@@ -366,7 +322,6 @@ export const CalendarScrollView = forwardRef<
                               todayStr={todayStr}
                               selectedDate={selectedDate}
                               onSelectDate={onSelectDate}
-                              cellMinOverride={compactCells ? activeCellMin : undefined}
                             />
                           );
                         })}
@@ -378,7 +333,7 @@ export const CalendarScrollView = forwardRef<
                 <div className="grid grid-cols-7 gap-px">
                   {weekRows.flat().map((day, idx) => {
                     if (day === null) {
-                      return <CalendarEmptyDayCell key={`e-${id}-${idx}`} cellMin={activeCellMin} />;
+                      return <CalendarEmptyDayCell key={`e-${id}-${idx}`} cellMin={cellMin} />;
                     }
                     return (
                       <CalendarDayCell
@@ -392,7 +347,6 @@ export const CalendarScrollView = forwardRef<
                         todayStr={todayStr}
                         selectedDate={selectedDate}
                         onSelectDate={onSelectDate}
-                        cellMinOverride={compactCells ? activeCellMin : undefined}
                       />
                     );
                   })}
