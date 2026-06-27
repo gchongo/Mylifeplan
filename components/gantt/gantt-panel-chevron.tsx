@@ -1,5 +1,41 @@
 import { cn } from "@/lib/utils";
 
+/** 双箭头：向上展开日程抽屉 */
+export function GanttPanelChevronUp({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      aria-hidden
+      className={cn("h-4 w-4 text-gray-500 dark:text-gray-400", className)}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 10 L8 6 L12 10" />
+    </svg>
+  );
+}
+
+/** 双箭头：向下收起日程抽屉 */
+export function GanttPanelChevronDown({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      aria-hidden
+      className={cn("h-4 w-4 text-gray-500 dark:text-gray-400", className)}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 6 L8 10 L12 6" />
+    </svg>
+  );
+}
+
 /** 双箭头：向右展开计划列表 */
 export function GanttPanelExpandChevron({ className }: { className?: string }) {
   return (

@@ -1,5 +1,21 @@
 import { describe, expect, it } from "vitest";
+import {
+  mobilePlanBarWidthPx,
+  mobilePlanColumnWidth,
+  mobilePlanGridWidth,
+} from "@/lib/gantt-mobile-layout";
 import { buildMobileColumnForkLines } from "@/lib/gantt-mobile-tree-lines";
+
+describe("mobilePlanColumnWidth", () => {
+  it("matches PC bar height plus padding", () => {
+    expect(mobilePlanBarWidthPx(0)).toBe(30);
+    expect(mobilePlanBarWidthPx(1)).toBe(24);
+    expect(mobilePlanColumnWidth(0)).toBe(38);
+    expect(mobilePlanGridWidth([{ gapBefore: 0, depth: 0 }, { gapBefore: 8, depth: 0 }])).toBe(
+      38 + 8 + 38,
+    );
+  });
+});
 
 describe("buildMobileColumnForkLines", () => {
   it("draws fork lines from parent column to child columns", () => {

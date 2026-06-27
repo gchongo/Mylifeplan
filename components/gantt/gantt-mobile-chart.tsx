@@ -8,7 +8,7 @@ import { GanttMobileDraggableBar } from "@/components/gantt/gantt-mobile-draggab
 import { GanttMobileScheduleDrawer } from "@/components/gantt/gantt-mobile-schedule-drawer";
 import { GanttPlanDrawerPanel } from "@/components/gantt/gantt-plan-drawer";
 import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribution-drawer";
-import { GanttPanelCollapseChevron, GanttPanelExpandChevron } from "@/components/gantt/gantt-panel-chevron";
+import { GanttPanelChevronDown, GanttPanelChevronUp } from "@/components/gantt/gantt-panel-chevron";
 import { DrawerPanel } from "@/components/ui/drawer";
 import { EmptyState, Loading as LoadingView } from "@/components/ui";
 import { useI18n } from "@/components/i18n/i18n-provider";
@@ -23,6 +23,11 @@ import {
 import { getPlanActualExecutionSpan, nowPlanIso } from "@/lib/gantt-actual-timeline";
 import { contributionsForGanttRow } from "@/lib/gantt-contribution-display";
 import { buildMobileColumnForkLines } from "@/lib/gantt-mobile-tree-lines";
+import {
+  mobilePlanBarWidthPx,
+  mobilePlanColumnWidth,
+  mobilePlanGridWidth,
+} from "@/lib/gantt-mobile-layout";
 import { buildMobileWeekSpans } from "@/lib/gantt-mobile-week-axis";
 import { defaultGanttStatusFilter, filterGanttTasksByStatus } from "@/lib/gantt-task-filter";
 import {
@@ -55,8 +60,7 @@ import { cn } from "@/lib/utils";
 const DAY_AXIS_WIDTH = 26;
 const WEEK_AXIS_WIDTH = 36;
 const TIME_AXIS_WIDTH = DAY_AXIS_WIDTH + WEEK_AXIS_WIDTH;
-const PLAN_COLUMN_WIDTH = 108;
-const HEADER_HEIGHT = 52;
+const HEADER_HEIGHT = 48;
 const ROW_GROUP_GAP = 8;
 
 type GanttRow = {
@@ -224,10 +228,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
   );
   const weekSpans = useMemo(() => buildMobileWeekSpans(layout.columns), [layout.columns]);
   const timelineHeight = layout.totalWidth;
-  const gridWidth = useMemo(
-    () => rows.reduce((sum, row) => sum + row.gapBefore + PLAN_COLUMN_WIDTH, 0),
-    [rows],
-  );
+  const gridWidth = useMemo(() => mobilePlanGridWidth(rows), [rows]);
   const today = todayStr();
   const todayBounds = getDateColumnBounds(today, layout);
   const todayY = todayBounds ? todayBounds.left + todayBounds.width / 2 : dateToX(today, layout);
@@ -236,13 +237,14 @@ export function GanttMobileChart({ className }: { className?: string }) {
     let left = 0;
     const columns = rows.map((row) => {
       left += row.gapBefore;
+      const width = mobilePlanColumnWidth(row.depth);
       const col = {
         itemId: row.item.id,
         parentId: row.item.parentId ?? null,
         left,
-        width: PLAN_COLUMN_WIDTH,
+        width,
       };
-      left += PLAN_COLUMN_WIDTH;
+      left += width;
       return col;
     });
     return buildMobileColumnForkLines(columns, HEADER_HEIGHT);
@@ -404,10 +406,13 @@ export function GanttMobileChart({ className }: { className?: string }) {
                 type="button"
                 data-gantt-bar
                 onClick={() => openContribution(c.id)}
-                className="pointer-events-auto absolute inset-x-1 z-10 rounded-full ring-1 ring-white/80 hover:brightness-110 dark:ring-gray-900/80"
+                className="pointer-events-auto absolute z-10 rounded-full ring-1 ring-white/80 hover:brightness-110 dark:ring-gray-900/80"
                 style={{
                   top: Math.max(0, top),
                   height: Math.max(height, 4),
+                  left: "50%",
+                  width: Math.max(4, CONTRIBUTION_POINT_WIDTH_PX - 4),
+                  transform: "translateX(-50%)",
                   ...contributionIntervalFillStyle(color),
                 }}
                 title={title}
@@ -423,10 +428,13 @@ export function GanttMobileChart({ className }: { className?: string }) {
               type="button"
               data-gantt-bar
               onClick={() => openContribution(c.id)}
-              className="pointer-events-auto absolute inset-x-2 z-20 rounded-full hover:opacity-90"
+              className="pointer-events-auto absolute z-20 rounded-full hover:opacity-90"
               style={{
                 top: Math.max(0, y - CONTRIBUTION_POINT_WIDTH_PX / 2),
                 height: CONTRIBUTION_POINT_WIDTH_PX,
+                width: CONTRIBUTION_POINT_WIDTH_PX,
+                left: "50%",
+                transform: "translateX(-50%)",
                 backgroundColor: color,
               }}
               title={title}
@@ -442,6 +450,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
     item: GanttItem,
     displayStart: string,
     displayEnd: string,
+    barWidth: number,
   ) {
     if (!showActualTimeline || item.contributionOnly || item.isUnscheduled) return null;
     const span = getPlanActualExecutionSpan(item, items, nowPlanIso());
@@ -458,7 +467,11 @@ export function GanttMobileChart({ className }: { className?: string }) {
     return (
       <div
         className="pointer-events-none absolute left-1/2 z-[6] w-0.5 -translate-x-1/2 rounded-full bg-orange-500 dark:bg-orange-400"
-        style={{ top: Math.max(0, top), height: Math.max(height, 4) }}
+        style={{
+          top: Math.max(0, top),
+          height: Math.max(height, 4),
+          maxWidth: barWidth,
+        }}
         aria-hidden
       />
     );
@@ -503,28 +516,22 @@ export function GanttMobileChart({ className }: { className?: string }) {
               const hasChildren =
                 row.depth === 0 && filteredPlans.some((p) => p.parentId === row.item.id);
               const isExpanded = expanded.has(row.item.id);
+              const columnWidth = mobilePlanColumnWidth(row.depth);
               return (
                 <div
                   key={row.item.id}
-                  className="flex shrink-0 flex-col items-center justify-end gap-0.5 border-r border-gray-100 px-1 pb-1 dark:border-gray-800"
-                  style={{ width: PLAN_COLUMN_WIDTH, height: HEADER_HEIGHT }}
+                  className="flex shrink-0 flex-col items-center justify-end gap-0.5 border-r border-gray-100 px-0.5 pb-1 dark:border-gray-800"
+                  style={{ width: columnWidth, height: HEADER_HEIGHT }}
                 >
-                  <div className="flex w-full min-w-0 items-center gap-0.5">
+                  <div className="flex w-full min-w-0 items-center justify-center gap-0.5">
                     {hasChildren ? (
                       <button
                         type="button"
-                        className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-blue-500 hover:bg-blue-100/60 dark:text-blue-300 dark:hover:bg-blue-900/40"
+                        className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-blue-500 hover:bg-blue-100/60 dark:text-blue-400 dark:hover:bg-blue-900/40"
                         onClick={() => toggleExpand(row.item.id)}
                         aria-label={isExpanded ? t("gantt.collapseRow") : t("gantt.expandRow")}
                       >
-                        <span
-                          className={cn(
-                            "text-[9px] transition-transform",
-                            isExpanded && "rotate-90",
-                          )}
-                        >
-                          ▶
-                        </span>
+                        <span className="text-[10px] leading-none">{isExpanded ? "▼" : "▶"}</span>
                       </button>
                     ) : (
                       <span className="h-4 w-4 shrink-0" aria-hidden />
@@ -532,7 +539,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
                     <button
                       type="button"
                       className={cn(
-                        "min-w-0 flex-1 truncate text-center text-[10px] font-medium hover:text-blue-700 dark:hover:text-blue-200",
+                        "min-w-0 flex-1 truncate text-center text-[9px] font-medium leading-tight hover:text-blue-700 dark:hover:text-blue-200",
                         row.depth === 0
                           ? "text-gray-900 dark:text-gray-100"
                           : "text-gray-600 dark:text-gray-300",
@@ -557,9 +564,12 @@ export function GanttMobileChart({ className }: { className?: string }) {
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="scrollbar-hide min-h-0 flex-1 overflow-auto"
+        className="scrollbar-hide min-h-0 flex-1 overflow-x-auto overflow-y-auto overscroll-contain"
       >
-        <div className="flex" style={{ minHeight: timelineHeight }}>
+        <div
+          className="flex"
+          style={{ minHeight: timelineHeight, minWidth: TIME_AXIS_WIDTH + gridWidth }}
+        >
           <div
             className="sticky left-0 z-20 flex shrink-0 border-r border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-950"
             style={{ width: TIME_AXIS_WIDTH }}
@@ -610,6 +620,8 @@ export function GanttMobileChart({ className }: { className?: string }) {
             <div className="absolute inset-0 flex">
               {renderPlanColumns((row) => {
                 const item = row.item;
+                const columnWidth = mobilePlanColumnWidth(row.depth);
+                const barWidth = mobilePlanBarWidthPx(row.depth);
                 const previewDates = barPreview.get(item.id);
                 const displayStart = previewDates?.start ?? item.startDate;
                 const displayEnd = previewDates?.end ?? item.effectiveEnd;
@@ -635,7 +647,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
                   <div
                     key={item.id}
                     className="relative shrink-0 border-r border-gray-100 dark:border-gray-800"
-                    style={{ width: PLAN_COLUMN_WIDTH }}
+                    style={{ width: columnWidth }}
                   >
                     {!item.isUnscheduled && !item.contributionOnly && (
                       <>
@@ -644,6 +656,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
                           layout={layout}
                           top={metrics.top}
                           height={metrics.height}
+                          barWidthPx={barWidth}
                           color={color}
                           previewOverride={previewDates ?? null}
                           minStartDate={row.depth > 0 ? minStartDate : undefined}
@@ -656,7 +669,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
                           onTaskClick={() => openPlan(item.id)}
                           dragEnabled={dragEnabled}
                         />
-                        {renderActualLine(item, displayStart, displayEnd)}
+                        {renderActualLine(item, displayStart, displayEnd, barWidth)}
                       </>
                     )}
                     {showContributionMarkers &&
@@ -721,9 +734,9 @@ export function GanttMobileChart({ className }: { className?: string }) {
           aria-expanded={schedulePanelOpen}
         >
           {schedulePanelOpen ? (
-            <GanttPanelCollapseChevron className="text-blue-600 dark:text-blue-300" />
+            <GanttPanelChevronDown className="text-blue-600 dark:text-blue-300" />
           ) : (
-            <GanttPanelExpandChevron className="text-blue-600 dark:text-blue-300" />
+            <GanttPanelChevronUp className="text-blue-600 dark:text-blue-300" />
           )}
         </button>
         <GanttToolbarControls
@@ -742,7 +755,6 @@ export function GanttMobileChart({ className }: { className?: string }) {
           allPlans={items}
           scrollLeft={headerScrollLeft}
           timeAxisWidth={TIME_AXIS_WIDTH}
-          planColumnWidth={PLAN_COLUMN_WIDTH}
           gridWidth={gridWidth}
         />
       )}

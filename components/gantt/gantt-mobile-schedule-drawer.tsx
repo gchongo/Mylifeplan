@@ -9,6 +9,7 @@ import {
   type GanttScheduleColumnId,
 } from "@/lib/gantt-schedule-columns";
 import { localizedScheduleColumnDefs, localizeScheduleReadOnlyTitle } from "@/lib/i18n/gantt-helpers";
+import { mobilePlanColumnWidth } from "@/lib/gantt-mobile-layout";
 import { cn } from "@/lib/utils";
 import type { GanttItem } from "@/types";
 
@@ -25,7 +26,6 @@ export function GanttMobileScheduleDrawer({
   allPlans,
   scrollLeft,
   timeAxisWidth,
-  planColumnWidth,
   gridWidth,
   className,
 }: {
@@ -33,7 +33,6 @@ export function GanttMobileScheduleDrawer({
   allPlans: GanttItem[];
   scrollLeft: number;
   timeAxisWidth: number;
-  planColumnWidth: number;
   gridWidth: number;
   className?: string;
 }) {
@@ -85,7 +84,7 @@ export function GanttMobileScheduleDrawer({
                 ) : null}
                 <div
                   className="shrink-0 border-r border-blue-100/90 dark:border-blue-900/45"
-                  style={{ width: planColumnWidth }}
+                  style={{ width: mobilePlanColumnWidth(row.depth) }}
                 >
                 {metricIds.map((id) => {
                   const cell = getScheduleCellValue(id, row.item, allPlans);

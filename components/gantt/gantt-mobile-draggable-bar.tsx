@@ -46,6 +46,7 @@ export function GanttMobileDraggableBar({
   layout,
   top,
   height,
+  barWidthPx,
   color,
   previewOverride,
   minStartDate,
@@ -62,6 +63,7 @@ export function GanttMobileDraggableBar({
   layout: TimelineLayout;
   top: number;
   height: number;
+  barWidthPx: number;
   color: string;
   previewOverride?: { start: string; end: string } | null;
   minStartDate?: string;
@@ -307,29 +309,33 @@ export function GanttMobileDraggableBar({
       })
     : { left: top, width: height };
 
-  const barStyle: CSSProperties = {
-    top: metrics.left,
-    height: Math.max(metrics.width, 6),
-    backgroundColor: color,
-    minHeight: 22,
-    touchAction: "none",
-  };
+  const barHeight = Math.max(metrics.width, 6);
 
   return (
     <div
       ref={rootRef}
       data-gantt-bar
       data-no-pan
-      className="absolute inset-x-1 z-[5]"
-      style={{ top: 0, bottom: 0, touchAction: "none" }}
+      className="absolute z-[5]"
+      style={{
+        top: metrics.left,
+        height: barHeight,
+        width: barWidthPx,
+        left: "50%",
+        transform: "translateX(-50%)",
+        touchAction: dragEnabled ? "none" : "auto",
+      }}
     >
       <div
         className={cn(
-          "absolute left-0 right-0 overflow-hidden rounded-full shadow-sm transition-[box-shadow] duration-200",
+          "absolute inset-0 overflow-hidden rounded-full shadow-sm transition-[box-shadow] duration-200",
           saving && "opacity-60",
           (dragging || commitPreview) && "ring-2 ring-brand-400 ring-offset-1",
         )}
-        style={barStyle}
+        style={{
+          backgroundColor: color,
+          touchAction: dragEnabled ? "none" : "auto",
+        }}
       >
         <div
           className={cn(
