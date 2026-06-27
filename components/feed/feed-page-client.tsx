@@ -12,8 +12,8 @@ export function FeedPageClient() {
 
   if (!isMobileShell) {
     return (
-      <FullPanelPage title={t("feed.homeTitle")} centered>
-        <FeedPanelLive fullPage scrollable className="min-h-0 flex-1" />
+      <FullPanelPage title={t("feed.homeTitle")} centered scrollable>
+        <FeedPanelLive fullPage scrollable />
       </FullPanelPage>
     );
   }
@@ -32,8 +32,8 @@ export function FeedPageClient() {
           {t("mobile.summary")}
         </Link>
       </header>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-2 pt-2">
-        <FeedPanelLive fullPage scrollable className="min-h-0 flex-1" />
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-2 pt-2">
+        <FeedPanelLive fullPage scrollable />
       </div>
     </div>
   );

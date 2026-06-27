@@ -60,7 +60,6 @@ export function FeedPanelLive({
   const { t } = useI18n();
   const pageSize = fullPage ? 50 : 20;
   const [typeFilter, setTypeFilter] = useState<FeedTypeFilterId>("all");
-  const listRef = useRef<HTMLUListElement>(null);
   const loadMoreRef = useRef<HTMLLIElement>(null);
 
   const {
@@ -79,7 +78,9 @@ export function FeedPanelLive({
 
   const items = data?.pages.flatMap((page) => page.items ?? []) ?? [];
 
-  const internalListScroll = scrollable || !fullPage;
+  const pageLevelScroll = fullPage && scrollable;
+  const internalScroll = !pageLevelScroll && (scrollable || !fullPage);
+  const scrollRootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const sentinel = loadMoreRef.current;
@@ -92,7 +93,7 @@ export function FeedPanelLive({
         }
       },
       {
-        root: internalListScroll ? listRef.current : null,
+        root: internalScroll ? scrollRootRef.current : null,
         rootMargin: "120px",
         threshold: 0,
       },
@@ -100,7 +101,7 @@ export function FeedPanelLive({
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [internalListScroll, items.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [internalScroll, items.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const emptyDescription =
     typeFilter === "all"
@@ -111,10 +112,47 @@ export function FeedPanelLive({
           ? t("feed.emptyMemo")
           : t("feed.emptyContribution");
 
+  const listSpacingClass =
+    fullPage
+      ? typeFilter === "contribution"
+        ? "space-y-0 px-1"
+        : "space-y-4"
+      : typeFilter === "contribution"
+        ? "space-y-0 px-1"
+        : "space-y-3";
+
+  const feedBody = (
+    <>
+      <FeedComposer onPublished={() => void refetch()} />
+      <FeedTypeFilter value={typeFilter} onChange={setTypeFilter} />
+
+      {isLoading && <Loading label={t("feed.loading")} />}
+      {!isLoading && items.length === 0 && (
+        <EmptyState title={t("feed.emptyTitle")} description={emptyDescription} />
+      )}
+
+      {!isLoading && items.length > 0 && (
+        <ul className={cn("feed-item-list pr-0.5", listSpacingClass)}>
+          {items.map((item) => (
+            <li key={item.id}>
+              <FeedItemCard
+                item={item}
+                logStyle={!fullPage || item.itemType === "contribution"}
+                onContributionChanged={() => void refetch()}
+              />
+            </li>
+          ))}
+          {hasNextPage && <li ref={loadMoreRef} className="h-1 shrink-0" aria-hidden />}
+        </ul>
+      )}
+    </>
+  );
+
   return (
     <Card
       className={cn(
-        "flex h-full min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden border-0 bg-transparent shadow-none",
+        "flex min-w-0 max-w-full flex-col border-0 bg-transparent shadow-none",
+        pageLevelScroll ? "min-h-min" : "h-full min-h-0 flex-1 overflow-hidden",
         !fullPage && "rounded-none",
         className,
       )}
@@ -126,43 +164,21 @@ export function FeedPanelLive({
         </div>
       )}
 
-      <CardContent className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-0">
-        <FeedComposer onPublished={() => void refetch()} />
-        <FeedTypeFilter value={typeFilter} onChange={setTypeFilter} />
-
-        {isLoading && <Loading label={t("feed.loading")} />}
-        {!isLoading && items.length === 0 && (
-          <EmptyState title={t("feed.emptyTitle")} description={emptyDescription} />
+      <CardContent
+        className={cn(
+          "flex flex-col gap-3 p-0",
+          pageLevelScroll ? "min-h-min" : "min-h-0 flex-1 overflow-hidden",
         )}
-
-        {!isLoading && items.length > 0 && (
-          <>
-            <ul
-              ref={listRef}
-              className={cn(
-                "feed-item-list scrollbar-hide pr-0.5",
-                internalListScroll && "min-h-0 flex-1 overflow-y-auto overscroll-contain",
-                fullPage
-                  ? typeFilter === "contribution"
-                    ? "space-y-0 px-1"
-                    : "space-y-4"
-                  : typeFilter === "contribution"
-                    ? "space-y-0 px-1"
-                    : "space-y-3",
-              )}
-            >
-              {items.map((item) => (
-                <li key={item.id}>
-                  <FeedItemCard
-                    item={item}
-                    logStyle={!fullPage || item.itemType === "contribution"}
-                    onContributionChanged={() => void refetch()}
-                  />
-                </li>
-              ))}
-              {hasNextPage && <li ref={loadMoreRef} className="h-1 shrink-0" aria-hidden />}
-            </ul>
-          </>
+      >
+        {internalScroll ? (
+          <div
+            ref={scrollRootRef}
+            className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain scrollbar-hide"
+          >
+            {feedBody}
+          </div>
+        ) : (
+          feedBody
         )}
       </CardContent>
     </Card>
