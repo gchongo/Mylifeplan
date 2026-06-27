@@ -1,12 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import { CalendarMobileSplitLayout } from "@/components/calendar/calendar-mobile-split-layout";
 import { GanttToolbarControls } from "@/components/gantt/gantt-toolbar-controls";
 import { GanttMobileDraggableBar } from "@/components/gantt/gantt-mobile-draggable-bar";
+import { GanttMobileScheduleDrawer } from "@/components/gantt/gantt-mobile-schedule-drawer";
 import { GanttPlanDrawerPanel } from "@/components/gantt/gantt-plan-drawer";
 import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribution-drawer";
-import { DrawerLayout, DrawerPanel } from "@/components/ui/drawer";
+import { GanttPanelCollapseChevron, GanttPanelExpandChevron } from "@/components/gantt/gantt-panel-chevron";
+import { DrawerPanel } from "@/components/ui/drawer";
 import { EmptyState, Loading as LoadingView } from "@/components/ui";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { useSettings } from "@/components/settings/settings-provider";
@@ -17,7 +20,10 @@ import {
   isContributionInterval,
   resolveContributionMarkerColor,
 } from "@/lib/contribution-marker-style";
+import { getPlanActualExecutionSpan, nowPlanIso } from "@/lib/gantt-actual-timeline";
 import { contributionsForGanttRow } from "@/lib/gantt-contribution-display";
+import { buildMobileColumnForkLines } from "@/lib/gantt-mobile-tree-lines";
+import { buildMobileWeekSpans } from "@/lib/gantt-mobile-week-axis";
 import { defaultGanttStatusFilter, filterGanttTasksByStatus } from "@/lib/gantt-task-filter";
 import {
   buildBoundGroupPreview,
@@ -26,7 +32,6 @@ import {
 } from "@/lib/gantt-plan-bind";
 import {
   applyGanttPlanPatch,
-  patchGanttItemFromPlan,
   type GanttPlanPatch,
 } from "@/lib/gantt-plan-sync";
 import { deriveParentStatus } from "@/lib/services/plan-rollup";
@@ -40,18 +45,18 @@ import {
   type GanttScaleId,
   type TimelineLayout,
 } from "@/lib/gantt-scale";
-import {
-  ganttTodayColumnBackground,
-} from "@/lib/gantt-today-column-style";
+import { ganttTodayColumnBackground } from "@/lib/gantt-today-column-style";
 import type { PlanDragMode } from "@/lib/gantt-plan-drag";
 import { normalizePlanColor } from "@/lib/plan-color";
 import { queryKeys } from "@/lib/query/keys";
 import type { GanttContribution, GanttItem } from "@/types";
 import { cn } from "@/lib/utils";
 
-const TIME_AXIS_WIDTH = 52;
+const DAY_AXIS_WIDTH = 26;
+const WEEK_AXIS_WIDTH = 36;
+const TIME_AXIS_WIDTH = DAY_AXIS_WIDTH + WEEK_AXIS_WIDTH;
 const PLAN_COLUMN_WIDTH = 108;
-const HEADER_HEIGHT = 44;
+const HEADER_HEIGHT = 52;
 const ROW_GROUP_GAP = 8;
 
 type GanttRow = {
@@ -142,9 +147,11 @@ export function GanttMobileChart({ className }: { className?: string }) {
   const queryClient = useQueryClient();
   const { preferences } = useSettings();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const savedScrollRef = useRef<{ top: number; left: number } | null>(null);
   const [scale, setScale] = useState<GanttScaleId>("month");
   const [anchor, setAnchor] = useState(todayStr);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [schedulePanelOpen, setSchedulePanelOpen] = useState(false);
   const [statusFilter] = useState(defaultGanttStatusFilter);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [selectedContributionId, setSelectedContributionId] = useState<string | null>(null);
@@ -154,6 +161,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
   );
 
   const showContributionMarkers = preferences.ganttContributionMarkers.enabled;
+  const showActualTimeline = preferences.ganttActualLine.enabled;
   const todayColumnPrefs = preferences.ganttTodayColumn;
   const todayColumnBg = useMemo(
     () => ganttTodayColumnBackground(todayColumnPrefs),
@@ -214,11 +222,42 @@ export function GanttMobileChart({ className }: { className?: string }) {
     () => buildTimelineLayout(scale, anchor, dataBoundsFromItems(items)),
     [scale, anchor, items],
   );
+  const weekSpans = useMemo(() => buildMobileWeekSpans(layout.columns), [layout.columns]);
   const timelineHeight = layout.totalWidth;
-  const gridWidth = rows.length * PLAN_COLUMN_WIDTH;
+  const gridWidth = useMemo(
+    () => rows.reduce((sum, row) => sum + row.gapBefore + PLAN_COLUMN_WIDTH, 0),
+    [rows],
+  );
   const today = todayStr();
   const todayBounds = getDateColumnBounds(today, layout);
   const todayY = todayBounds ? todayBounds.left + todayBounds.width / 2 : dateToX(today, layout);
+
+  const headerForkLines = useMemo(() => {
+    let left = 0;
+    const columns = rows.map((row) => {
+      left += row.gapBefore;
+      const col = {
+        itemId: row.item.id,
+        parentId: row.item.parentId ?? null,
+        left,
+        width: PLAN_COLUMN_WIDTH,
+      };
+      left += PLAN_COLUMN_WIDTH;
+      return col;
+    });
+    return buildMobileColumnForkLines(columns, HEADER_HEIGHT);
+  }, [rows]);
+
+  function renderPlanColumns(renderCell: (row: GanttRow) => ReactNode) {
+    const nodes: ReactNode[] = [];
+    for (const row of rows) {
+      if (row.gapBefore > 0) {
+        nodes.push(<div key={`gap-${row.item.id}`} className="shrink-0" style={{ width: row.gapBefore }} />);
+      }
+      nodes.push(renderCell(row));
+    }
+    return nodes;
+  }
 
   const scrollToToday = useCallback(() => {
     const el = scrollRef.current;
@@ -259,19 +298,38 @@ export function GanttMobileChart({ className }: { className?: string }) {
     setHeaderScrollLeft(el.scrollLeft);
   }
 
-  const drawerOpen = selectedPlanId !== null || selectedContributionId !== null;
+  const detailDrawerOpen = selectedPlanId !== null || selectedContributionId !== null;
 
-  function closeDrawer() {
+  function closeDetailDrawer() {
     setSelectedPlanId(null);
     setSelectedContributionId(null);
+    const saved = savedScrollRef.current;
+    if (saved && scrollRef.current) {
+      requestAnimationFrame(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = saved.top;
+          scrollRef.current.scrollLeft = saved.left;
+          setHeaderScrollLeft(saved.left);
+        }
+      });
+    }
+    savedScrollRef.current = null;
   }
 
   function openPlan(planId: string) {
+    const el = scrollRef.current;
+    if (el) {
+      savedScrollRef.current = { top: el.scrollTop, left: el.scrollLeft };
+    }
     setSelectedContributionId(null);
     setSelectedPlanId(planId);
   }
 
   function openContribution(contributionId: string) {
+    const el = scrollRef.current;
+    if (el) {
+      savedScrollRef.current = { top: el.scrollTop, left: el.scrollLeft };
+    }
     setSelectedPlanId(null);
     setSelectedContributionId(contributionId);
   }
@@ -315,6 +373,8 @@ export function GanttMobileChart({ className }: { className?: string }) {
   );
 
   const clearBarPreview = useCallback(() => setBarPreview(new Map()), []);
+
+  const dragEnabled = !detailDrawerOpen;
 
   function renderContributionMarkers(
     rowContributions: GanttContribution[],
@@ -378,168 +438,207 @@ export function GanttMobileChart({ className }: { className?: string }) {
     );
   }
 
-  if (isLoading && items.length === 0) {
-    return <LoadingView label={t("gantt.loading")} />;
+  function renderActualLine(
+    item: GanttItem,
+    displayStart: string,
+    displayEnd: string,
+  ) {
+    if (!showActualTimeline || item.contributionOnly || item.isUnscheduled) return null;
+    const span = getPlanActualExecutionSpan(item, items, nowPlanIso());
+    if (!span) return null;
+
+    const clipStart = span.from < displayStart ? displayStart : span.from;
+    const clipEnd = span.to > displayEnd ? displayEnd : span.to;
+    if (clipStart > clipEnd) return null;
+
+    const { top, height } = planBarVerticalMetrics(clipStart, clipEnd, layout, {
+      isVirtualEnd: item.isVirtualEnd,
+    });
+
+    return (
+      <div
+        className="pointer-events-none absolute left-1/2 z-[6] w-0.5 -translate-x-1/2 rounded-full bg-orange-500 dark:bg-orange-400"
+        style={{ top: Math.max(0, top), height: Math.max(height, 4) }}
+        aria-hidden
+      />
+    );
   }
 
-  if (!isLoading && items.length === 0) {
-    return <EmptyState title={t("gantt.emptyTitle")} description={t("gantt.emptyDescription")} />;
-  }
-
-  return (
-    <DrawerLayout
-      open={drawerOpen}
-      onClose={closeDrawer}
-      placement="bottom"
-      panel={
-        selectedContributionId ? (
-          <DrawerPanel onClose={closeDrawer}>
-            <GanttContributionDrawerPanel
-              contributionId={selectedContributionId}
-              onClose={closeDrawer}
-              onDeleted={closeDrawer}
-              onUpdated={closeDrawer}
-            />
-          </DrawerPanel>
-        ) : (
-          <DrawerPanel onClose={closeDrawer}>
-            <GanttPlanDrawerPanel
-              planId={selectedPlanId!}
-              onClose={closeDrawer}
-              onPlanSaved={closeDrawer}
-            />
-          </DrawerPanel>
-        )
-      }
-    >
-      <div className={cn("flex h-full min-h-0 flex-col overflow-hidden bg-white dark:bg-gray-950", className)}>
-        <div className="shrink-0 border-b border-gray-100 px-2 py-2 dark:border-gray-800">
-          <GanttToolbarControls
-            scale={scale}
-            onScaleChange={setScale}
-            onPrev={navigatePrev}
-            onNext={navigateNext}
-            onToday={goToday}
-            className="flex-wrap gap-1"
-          />
+  function renderPlanHeader() {
+    return (
+      <div className="relative flex min-h-0 shrink-0 border-b border-gray-100 dark:border-gray-800">
+        <div
+          className="flex shrink-0 items-end justify-center border-r border-gray-100 bg-blue-50/50 pb-1 text-[10px] font-medium text-gray-500 dark:border-gray-800 dark:bg-blue-950/20 dark:text-gray-400"
+          style={{ width: TIME_AXIS_WIDTH, height: HEADER_HEIGHT }}
+        >
+          {t("gantt.tasksHeader")}
         </div>
-
-        <div className="flex min-h-0 shrink-0 border-b border-gray-100 dark:border-gray-800">
-          <div
-            className="shrink-0 border-r border-gray-100 bg-blue-50/50 dark:border-gray-800 dark:bg-blue-950/20"
-            style={{ width: TIME_AXIS_WIDTH, height: HEADER_HEIGHT }}
-          />
-          <div className="min-w-0 flex-1 overflow-hidden">
-            <div
-              className="flex will-change-transform"
-              style={{ transform: `translateX(-${headerScrollLeft}px)`, width: gridWidth }}
+        <div className="relative min-w-0 flex-1 overflow-hidden">
+          {headerForkLines.length > 0 && (
+            <svg
+              className="pointer-events-none absolute left-0 top-0 z-[1]"
+              width={gridWidth}
+              height={HEADER_HEIGHT}
+              aria-hidden
             >
-              {rows.map((row) => {
-                const hasChildren = items.some((p) => p.parentId === row.item.id);
-                return (
-                  <div
-                    key={row.item.id}
-                    className="flex shrink-0 items-center gap-0.5 border-r border-gray-100 px-1 dark:border-gray-800"
-                    style={{ width: PLAN_COLUMN_WIDTH, height: HEADER_HEIGHT }}
-                  >
-                    {hasChildren && (
+              {headerForkLines.map((line, i) => (
+                <line
+                  key={`fork-${i}`}
+                  x1={line.x1}
+                  y1={line.y1}
+                  x2={line.x2}
+                  y2={line.y2}
+                  stroke="currentColor"
+                  strokeWidth={1.25}
+                  className="text-blue-300 dark:text-blue-700"
+                />
+              ))}
+            </svg>
+          )}
+          <div
+            className="relative flex will-change-transform"
+            style={{ transform: `translateX(-${headerScrollLeft}px)`, width: gridWidth }}
+          >
+            {renderPlanColumns((row) => {
+              const hasChildren =
+                row.depth === 0 && filteredPlans.some((p) => p.parentId === row.item.id);
+              const isExpanded = expanded.has(row.item.id);
+              return (
+                <div
+                  key={row.item.id}
+                  className="flex shrink-0 flex-col items-center justify-end gap-0.5 border-r border-gray-100 px-1 pb-1 dark:border-gray-800"
+                  style={{ width: PLAN_COLUMN_WIDTH, height: HEADER_HEIGHT }}
+                >
+                  <div className="flex w-full min-w-0 items-center gap-0.5">
+                    {hasChildren ? (
                       <button
                         type="button"
-                        className="shrink-0 text-[10px] text-gray-500"
+                        className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-blue-500 hover:bg-blue-100/60 dark:text-blue-300 dark:hover:bg-blue-900/40"
                         onClick={() => toggleExpand(row.item.id)}
-                        aria-label={expanded.has(row.item.id) ? "collapse" : "expand"}
+                        aria-label={isExpanded ? t("gantt.collapseRow") : t("gantt.expandRow")}
                       >
-                        {expanded.has(row.item.id) ? "▼" : "▶"}
+                        <span
+                          className={cn(
+                            "text-[9px] transition-transform",
+                            isExpanded && "rotate-90",
+                          )}
+                        >
+                          ▶
+                        </span>
                       </button>
+                    ) : (
+                      <span className="h-4 w-4 shrink-0" aria-hidden />
                     )}
                     <button
                       type="button"
-                      className="min-w-0 flex-1 truncate text-left text-[11px] font-medium text-gray-800 dark:text-gray-100"
-                      style={{ paddingLeft: row.depth * 6 }}
-                      onClick={() => setSelectedPlanId(row.item.id)}
+                      className={cn(
+                        "min-w-0 flex-1 truncate text-center text-[10px] font-medium hover:text-blue-700 dark:hover:text-blue-200",
+                        row.depth === 0
+                          ? "text-gray-900 dark:text-gray-100"
+                          : "text-gray-600 dark:text-gray-300",
+                      )}
+                      onClick={() => openPlan(row.item.id)}
+                      title={row.item.title}
                     >
                       {row.item.title}
                     </button>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
           </div>
         </div>
+      </div>
+    );
+  }
 
-        <div
-          ref={scrollRef}
-          onScroll={handleScroll}
-          className="scrollbar-hide min-h-0 flex-1 overflow-auto"
-        >
-          <div className="flex" style={{ minHeight: timelineHeight }}>
-            <div
-              className="sticky left-0 z-20 shrink-0 border-r border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-950"
-              style={{ width: TIME_AXIS_WIDTH }}
-            >
+  function renderGanttBody() {
+    return (
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="scrollbar-hide min-h-0 flex-1 overflow-auto"
+      >
+        <div className="flex" style={{ minHeight: timelineHeight }}>
+          <div
+            className="sticky left-0 z-20 flex shrink-0 border-r border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-950"
+            style={{ width: TIME_AXIS_WIDTH }}
+          >
+            <div className="shrink-0 border-r border-gray-100 dark:border-gray-800" style={{ width: DAY_AXIS_WIDTH }}>
               {layout.columns.map((col) => (
                 <div
-                  key={col.key}
-                  className="border-b border-dashed border-gray-200 px-1 text-[9px] leading-tight text-gray-500 dark:border-gray-700 dark:text-gray-400"
+                  key={`day-${col.key}`}
+                  className="flex items-center justify-center border-b border-dashed border-gray-200 text-[9px] tabular-nums text-gray-600 dark:border-gray-700 dark:text-gray-400"
                   style={{ height: col.width, ...todayColumnBg }}
                 >
                   {col.headerBottom}
                 </div>
               ))}
             </div>
+            <div className="shrink-0" style={{ width: WEEK_AXIS_WIDTH }}>
+              {weekSpans.map((span) => (
+                <div
+                  key={span.key}
+                  className="flex items-center justify-center border-b border-dashed border-gray-200 px-0.5 text-[8px] leading-tight text-gray-500 dark:border-gray-700 dark:text-gray-400"
+                  style={{ height: span.height }}
+                >
+                  <span className="text-center [writing-mode:vertical-rl]">{span.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
 
-            <div className="relative shrink-0" style={{ width: gridWidth, height: timelineHeight }}>
-              {layout.columns.map((col, idx) => {
-                const top = layout.columns
-                  .slice(0, idx)
-                  .reduce((sum, c) => sum + c.width, 0);
+          <div className="relative shrink-0" style={{ width: gridWidth, height: timelineHeight }}>
+            {layout.columns.map((col, idx) => {
+              const top = layout.columns.slice(0, idx).reduce((sum, c) => sum + c.width, 0);
+              return (
+                <div
+                  key={`grid-${col.key}`}
+                  className="pointer-events-none absolute left-0 right-0 border-b border-dashed border-gray-200 dark:border-gray-700"
+                  style={{ top, height: col.width }}
+                />
+              );
+            })}
+
+            {today >= layout.from && today <= layout.to && (
+              <div
+                className="pointer-events-none absolute left-0 right-0 z-10 border-t-2 border-red-500/70"
+                style={{ top: todayY }}
+              />
+            )}
+
+            <div className="absolute inset-0 flex">
+              {renderPlanColumns((row) => {
+                const item = row.item;
+                const previewDates = barPreview.get(item.id);
+                const displayStart = previewDates?.start ?? item.startDate;
+                const displayEnd = previewDates?.end ?? item.effectiveEnd;
+                const metrics = planBarVerticalMetrics(displayStart, displayEnd, layout, {
+                  isVirtualEnd: item.isVirtualEnd,
+                });
+                const color = normalizePlanColor(item.color);
+                const parentPlan = item.parentId ? planById.get(item.parentId) : null;
+                const parentPreview = parentPlan ? barPreview.get(parentPlan.id) : undefined;
+                const minStartDate = parentPreview?.start ?? parentPlan?.startDate;
+                const contribBounds = contributionBoundsByPlan.get(item.id);
+                const rowContributions = showContributionMarkers
+                  ? contributionsForGanttRow(
+                      item.id,
+                      contributions,
+                      planById,
+                      expanded,
+                      visibleRowIds,
+                    )
+                  : [];
+
                 return (
                   <div
-                    key={`grid-${col.key}`}
-                    className="pointer-events-none absolute left-0 right-0 border-b border-dashed border-gray-200 dark:border-gray-700"
-                    style={{ top, height: col.width }}
-                  />
-                );
-              })}
-
-              {today >= layout.from && today <= layout.to && (
-                <div
-                  className="pointer-events-none absolute left-0 right-0 z-10 border-t-2 border-red-500/70"
-                  style={{ top: todayY }}
-                />
-              )}
-
-              <div className="absolute inset-0 flex">
-                {rows.map((row) => {
-                  const item = row.item;
-                  const previewDates = barPreview.get(item.id);
-                  const displayStart = previewDates?.start ?? item.startDate;
-                  const displayEnd = previewDates?.end ?? item.effectiveEnd;
-                  const metrics = planBarVerticalMetrics(displayStart, displayEnd, layout, {
-                    isVirtualEnd: item.isVirtualEnd,
-                  });
-                  const color = normalizePlanColor(item.color);
-                  const parentPlan = item.parentId ? planById.get(item.parentId) : null;
-                  const parentPreview = parentPlan ? barPreview.get(parentPlan.id) : undefined;
-                  const minStartDate = parentPreview?.start ?? parentPlan?.startDate;
-                  const contribBounds = contributionBoundsByPlan.get(item.id);
-                  const rowContributions = showContributionMarkers
-                    ? contributionsForGanttRow(
-                        item.id,
-                        contributions,
-                        planById,
-                        expanded,
-                        visibleRowIds,
-                      )
-                    : [];
-
-                  return (
-                    <div
-                      key={item.id}
-                      className="relative shrink-0 border-r border-gray-100 dark:border-gray-800"
-                      style={{ width: PLAN_COLUMN_WIDTH }}
-                    >
-                      {!item.isUnscheduled && !item.contributionOnly && (
+                    key={item.id}
+                    className="relative shrink-0 border-r border-gray-100 dark:border-gray-800"
+                    style={{ width: PLAN_COLUMN_WIDTH }}
+                  >
+                    {!item.isUnscheduled && !item.contributionOnly && (
+                      <>
                         <GanttMobileDraggableBar
                           item={item}
                           layout={layout}
@@ -555,25 +654,110 @@ export function GanttMobileChart({ className }: { className?: string }) {
                           onDragEnd={clearBarPreview}
                           onDragFailed={() => void refetchGanttQuery()}
                           onTaskClick={() => openPlan(item.id)}
+                          dragEnabled={dragEnabled}
                         />
+                        {renderActualLine(item, displayStart, displayEnd)}
+                      </>
+                    )}
+                    {showContributionMarkers &&
+                      !item.isUnscheduled &&
+                      !item.contributionOnly &&
+                      renderContributionMarkers(
+                        rowContributions,
+                        displayStart,
+                        displayEnd,
+                        item.id,
                       )}
-                      {showContributionMarkers &&
-                        !item.isUnscheduled &&
-                        !item.contributionOnly &&
-                        renderContributionMarkers(
-                          rowContributions,
-                          displayStart,
-                          displayEnd,
-                          item.id,
-                        )}
-                    </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
       </div>
-    </DrawerLayout>
+    );
+  }
+
+  const detailPanel = selectedContributionId ? (
+    <DrawerPanel onClose={closeDetailDrawer}>
+      <GanttContributionDrawerPanel
+        contributionId={selectedContributionId}
+        onClose={closeDetailDrawer}
+        onDeleted={closeDetailDrawer}
+        onUpdated={closeDetailDrawer}
+      />
+    </DrawerPanel>
+  ) : selectedPlanId ? (
+    <DrawerPanel onClose={closeDetailDrawer}>
+      <GanttPlanDrawerPanel
+        planId={selectedPlanId}
+        onClose={closeDetailDrawer}
+        onPlanSaved={closeDetailDrawer}
+      />
+    </DrawerPanel>
+  ) : null;
+
+  if (isLoading && items.length === 0) {
+    return <LoadingView label={t("gantt.loading")} />;
+  }
+
+  if (!isLoading && items.length === 0) {
+    return <EmptyState title={t("gantt.emptyTitle")} description={t("gantt.emptyDescription")} />;
+  }
+
+  return (
+    <div className={cn("flex h-full min-h-0 flex-col overflow-hidden bg-white dark:bg-gray-950", className)}>
+      <div className="flex shrink-0 items-center gap-1 border-b border-gray-100 px-2 py-2 dark:border-gray-800">
+        <button
+          type="button"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-blue-600 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-950/50"
+          onClick={() => setSchedulePanelOpen((v) => !v)}
+          title={
+            schedulePanelOpen ? t("gantt.schedule.hideColumns") : t("gantt.columnPicker.aria")
+          }
+          aria-label={
+            schedulePanelOpen ? t("gantt.schedule.hideColumns") : t("gantt.columnPicker.aria")
+          }
+          aria-expanded={schedulePanelOpen}
+        >
+          {schedulePanelOpen ? (
+            <GanttPanelCollapseChevron className="text-blue-600 dark:text-blue-300" />
+          ) : (
+            <GanttPanelExpandChevron className="text-blue-600 dark:text-blue-300" />
+          )}
+        </button>
+        <GanttToolbarControls
+          scale={scale}
+          onScaleChange={setScale}
+          onPrev={navigatePrev}
+          onNext={navigateNext}
+          onToday={goToday}
+          className="min-w-0 flex-1 flex-wrap gap-1"
+        />
+      </div>
+
+      {schedulePanelOpen && (
+        <GanttMobileScheduleDrawer
+          rows={rows}
+          allPlans={items}
+          scrollLeft={headerScrollLeft}
+          timeAxisWidth={TIME_AXIS_WIDTH}
+          planColumnWidth={PLAN_COLUMN_WIDTH}
+          gridWidth={gridWidth}
+        />
+      )}
+
+      <CalendarMobileSplitLayout
+        open={detailDrawerOpen}
+        className="min-h-0 flex-1"
+        calendar={
+          <div className="flex h-full min-h-0 flex-col overflow-hidden">
+            {renderPlanHeader()}
+            {renderGanttBody()}
+          </div>
+        }
+        sheet={detailPanel}
+      />
+    </div>
   );
 }

@@ -56,6 +56,7 @@ export function GanttMobileDraggableBar({
   onDragEnd,
   onDragFailed,
   onTaskClick,
+  dragEnabled = true,
 }: {
   item: GanttItem;
   layout: TimelineLayout;
@@ -78,6 +79,7 @@ export function GanttMobileDraggableBar({
   onDragEnd?: () => void;
   onDragFailed?: () => void;
   onTaskClick?: () => void;
+  dragEnabled?: boolean;
 }) {
   const [dragging, setDragging] = useState<DragState | null>(null);
   const [preview, setPreview] = useState<{ start: string; end: string } | null>(null);
@@ -281,6 +283,7 @@ export function GanttMobileDraggableBar({
   }, [dragging, applyDrag, commitDrag, onTaskClick, item.id, onPreviewDates, onDragEnd]);
 
   function startDrag(e: React.PointerEvent, mode: DragMode) {
+    if (!dragEnabled) return;
     e.preventDefault();
     e.stopPropagation();
     const state: DragState = {
@@ -329,7 +332,10 @@ export function GanttMobileDraggableBar({
         style={barStyle}
       >
         <div
-          className="absolute inset-x-0 top-0 z-10 flex h-4 cursor-ns-resize items-start justify-center"
+          className={cn(
+            "absolute inset-x-0 top-0 z-10 flex h-4 items-start justify-center",
+            dragEnabled && "cursor-ns-resize",
+          )}
           onPointerDown={(e) => startDrag(e, "resize-start")}
         >
           <span className="mt-0.5 flex w-3 flex-col items-center gap-px" aria-hidden>
@@ -338,11 +344,24 @@ export function GanttMobileDraggableBar({
           </span>
         </div>
         <div
-          className="absolute inset-x-0 bottom-0 top-4 cursor-grab active:cursor-grabbing"
-          onPointerDown={(e) => startDrag(e, "move")}
+          className={cn(
+            "absolute inset-x-0 bottom-0 top-4",
+            dragEnabled ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
+          )}
+          onPointerDown={(e) => {
+            if (!dragEnabled) {
+              e.stopPropagation();
+              onTaskClick?.();
+              return;
+            }
+            startDrag(e, "move");
+          }}
         />
         <div
-          className="absolute inset-x-0 bottom-0 z-10 flex h-4 cursor-ns-resize items-end justify-center"
+          className={cn(
+            "absolute inset-x-0 bottom-0 z-10 flex h-4 items-end justify-center",
+            dragEnabled && "cursor-ns-resize",
+          )}
           onPointerDown={(e) => startDrag(e, "resize-end")}
         >
           <span className="mb-0.5 flex w-3 flex-col items-center gap-px" aria-hidden>
