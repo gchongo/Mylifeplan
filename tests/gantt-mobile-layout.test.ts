@@ -7,6 +7,7 @@ import {
   mobilePlanGridWidth,
 } from "@/lib/gantt-mobile-layout";
 import { buildMobileColumnForkLines } from "@/lib/gantt-mobile-tree-lines";
+import { mobileWeekAxisWidthPx } from "@/lib/gantt-mobile-week-axis";
 
 describe("mobilePlanColumnWidth", () => {
   it("matches PC bar height plus padding", () => {
@@ -17,6 +18,10 @@ describe("mobilePlanColumnWidth", () => {
     expect(mobilePlanGridWidth([{ gapBefore: 0, depth: 0 }, { gapBefore: 8, depth: 0 }])).toBe(
       38 + 8 + 38,
     );
+  });
+
+  it("uses compact week axis width", () => {
+    expect(mobileWeekAxisWidthPx()).toBe(14);
   });
 });
 

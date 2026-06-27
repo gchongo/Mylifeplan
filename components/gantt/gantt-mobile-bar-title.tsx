@@ -3,6 +3,9 @@
 import { getMobilePlanBarLabelStyle } from "@/lib/plan-color";
 import { cn } from "@/lib/utils";
 
+/** 标题与计划条顶部的内边距 */
+export const MOBILE_BAR_TITLE_TOP_PAD = 8;
+
 /** 移动端甘特条标题：竖排、居中叠在计划条上；sticky 时悬挂在可视区顶缘 */
 export function GanttMobileBarTitle({
   title,
@@ -10,6 +13,7 @@ export function GanttMobileBarTitle({
   planColor,
   onClick,
   sticky = false,
+  maxHeight,
   className,
 }: {
   title: string;
@@ -17,10 +21,13 @@ export function GanttMobileBarTitle({
   planColor: string;
   onClick?: () => void;
   sticky?: boolean;
+  maxHeight?: number;
   className?: string;
 }) {
   const Tag = onClick ? "button" : "span";
   const labelStyle = getMobilePlanBarLabelStyle(planColor);
+  const titleMaxHeight =
+    maxHeight != null ? Math.max(0, maxHeight - MOBILE_BAR_TITLE_TOP_PAD) : undefined;
 
   return (
     <Tag
@@ -30,22 +37,26 @@ export function GanttMobileBarTitle({
         "border-0 shadow-none",
         onClick && "cursor-pointer active:opacity-80",
         sticky
-          ? "sticky top-0 z-30 mx-auto block w-fit"
-          : "absolute left-1/2 top-1 z-20 -translate-x-1/2",
+          ? "sticky z-30 mx-auto block w-fit"
+          : "absolute left-1/2 z-20 -translate-x-1/2",
         className,
       )}
-      style={labelStyle}
+      style={{
+        ...labelStyle,
+        ...(sticky ? { top: MOBILE_BAR_TITLE_TOP_PAD } : { top: MOBILE_BAR_TITLE_TOP_PAD }),
+      }}
       onClick={onClick}
       onPointerDown={onClick ? (e) => e.stopPropagation() : undefined}
       title={title}
     >
       <span
         className={cn(
-          "block max-h-[7rem] overflow-hidden whitespace-nowrap text-center",
+          "block overflow-hidden whitespace-nowrap text-center",
           "leading-[1.25] tracking-tight",
           "[writing-mode:vertical-lr] [text-orientation:upright]",
           depth === 0 ? "text-[13px] font-bold" : "text-[12px] font-semibold",
         )}
+        style={titleMaxHeight != null ? { maxHeight: titleMaxHeight } : undefined}
       >
         {title}
       </span>
@@ -85,6 +96,7 @@ export function GanttMobileBarTitleTrack({
           depth={depth}
           planColor={planColor}
           sticky
+          maxHeight={barHeight}
           onClick={onTitleClick}
         />
       </div>

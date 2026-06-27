@@ -7,6 +7,13 @@ export type MobileWeekSpan = {
   height: number;
 };
 
+/** 竖排「第N周」列宽：单字宽度 + 极小左右留白 */
+export const MOBILE_WEEK_AXIS_WIDTH = 14;
+
+export function mobileWeekAxisWidthPx(): number {
+  return MOBILE_WEEK_AXIS_WIDTH;
+}
+
 function startOfWeekMonday(date: string): string {
   const [y, m, d] = date.slice(0, 10).split("-").map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d));

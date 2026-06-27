@@ -65,7 +65,7 @@ import {
   getPlanContributionBounds,
   isDateWithinPlanSpan,
 } from "@/lib/gantt-plan-bind";
-import { buildParentChildForkLines } from "@/lib/gantt-tree-lines";
+import { buildParentChildForkLineGroups } from "@/lib/gantt-tree-lines";
 import { contributionsForGanttRow } from "@/lib/gantt-contribution-display";
 import { datePartOf, planLocalDatePart } from "@/lib/dates";
 import { ganttGrabCursor, ganttGrabbingCursor } from "@/lib/gantt-cursors";
@@ -503,7 +503,7 @@ export const GanttChart = forwardRef<
 
   const visibleRowIds = useMemo(() => new Set(rows.map((r) => r.item.id)), [rows]);
 
-  const forkLines = useMemo(() => {
+  const forkLineGroups = useMemo(() => {
     const layouts = rows.map((row, idx) => {
       const preview = barPreview.get(row.item.id);
       const start = preview?.start ?? row.item.startDate;
@@ -520,7 +520,7 @@ export const GanttChart = forwardRef<
         barLeft: left,
       };
     });
-    return buildParentChildForkLines(layouts);
+    return buildParentChildForkLineGroups(layouts);
   }, [rows, layout, barPreview]);
 
   const contributionBoundsByPlan = useMemo(() => {
@@ -1371,7 +1371,7 @@ export const GanttChart = forwardRef<
   const clearBarPreview = useCallback(() => setBarPreview(new Map()), []);
 
   function renderTreeForkLines() {
-    if (forkLines.length === 0) return null;
+    if (forkLineGroups.length === 0) return null;
     return (
       <svg
         className="pointer-events-none absolute left-0 top-0 z-[1]"
@@ -1379,18 +1379,25 @@ export const GanttChart = forwardRef<
         height={bodyAreaHeight}
         aria-hidden
       >
-        {forkLines.map((line, i) => (
-          <line
-            key={`fork-${i}`}
-            x1={line.x1}
-            y1={line.y1}
-            x2={line.x2}
-            y2={line.y2}
-            stroke="currentColor"
-            strokeWidth={1.5}
-            className="text-slate-300 dark:text-slate-600"
-          />
-        ))}
+        {forkLineGroups.map((group) => {
+          const parent = planById.get(group.parentId);
+          const rootRow = rows.find((r) => r.item.id === group.parentId);
+          const root = rootRow ? planById.get(rootRow.rootId) ?? parent : parent;
+          const stroke =
+            parent != null ? resolveEffectivePlanColor(parent, root ?? parent) : "#94a3b8";
+          return group.lines.map((line, i) => (
+            <line
+              key={`fork-${group.parentId}-${i}`}
+              x1={line.x1}
+              y1={line.y1}
+              x2={line.x2}
+              y2={line.y2}
+              stroke={stroke}
+              strokeWidth={1.5}
+              strokeLinecap="round"
+            />
+          ));
+        })}
       </svg>
     );
   }

@@ -24,7 +24,7 @@ import {
 } from "@/lib/contribution-marker-style";
 import { getPlanActualExecutionSpan, nowPlanIso } from "@/lib/gantt-actual-timeline";
 import { contributionsForGanttRow } from "@/lib/gantt-contribution-display";
-import { buildMobileColumnForkLines } from "@/lib/gantt-mobile-tree-lines";
+import { buildMobilePlanBarForkLineGroups } from "@/lib/gantt-mobile-tree-lines";
 import {
   mobilePlanBarCenterPx,
   mobilePlanBarLeftPx,
@@ -32,7 +32,7 @@ import {
   mobilePlanColumnWidth,
   mobilePlanGridWidth,
 } from "@/lib/gantt-mobile-layout";
-import { buildMobileWeekSpans } from "@/lib/gantt-mobile-week-axis";
+import { buildMobileWeekSpans, mobileWeekAxisWidthPx } from "@/lib/gantt-mobile-week-axis";
 import { defaultGanttStatusFilter, filterGanttTasksByStatus } from "@/lib/gantt-task-filter";
 import {
   buildBoundGroupPreview,
@@ -56,13 +56,13 @@ import {
 } from "@/lib/gantt-scale";
 import { ganttTodayColumnBackground } from "@/lib/gantt-today-column-style";
 import type { PlanDragMode } from "@/lib/gantt-plan-drag";
-import { normalizePlanColor } from "@/lib/plan-color";
+import { normalizePlanColor, resolveEffectivePlanColor } from "@/lib/plan-color";
 import { queryKeys } from "@/lib/query/keys";
 import type { GanttContribution, GanttItem } from "@/types";
 import { cn } from "@/lib/utils";
 
 const DAY_AXIS_WIDTH = 26;
-const WEEK_AXIS_WIDTH = 36;
+const WEEK_AXIS_WIDTH = mobileWeekAxisWidthPx();
 const TIME_AXIS_WIDTH = DAY_AXIS_WIDTH + WEEK_AXIS_WIDTH;
 const HEADER_HEIGHT = 28;
 const ROW_GROUP_GAP = 8;
@@ -238,22 +238,50 @@ export function GanttMobileChart({ className }: { className?: string }) {
   const todayBounds = getDateColumnBounds(today, layout);
   const todayY = todayBounds ? todayBounds.left + todayBounds.width / 2 : dateToX(today, layout);
 
-  const headerForkLines = useMemo(() => {
+  const bodyForkLineGroups = useMemo(() => {
     let left = 0;
-    const columns = rows.map((row) => {
+    const columns: {
+      itemId: string;
+      parentId: string | null;
+      left: number;
+      width: number;
+      barTop: number;
+    }[] = [];
+
+    for (const row of rows) {
       left += row.gapBefore;
       const width = mobilePlanColumnWidth(row.depth);
-      const col = {
-        itemId: row.item.id,
-        parentId: row.item.parentId ?? null,
-        left,
-        width,
-      };
+      if (!row.item.isUnscheduled && !row.item.contributionOnly) {
+        const preview = barPreview.get(row.item.id);
+        const start = preview?.start ?? row.item.startDate;
+        const end = preview?.end ?? row.item.effectiveEnd;
+        const { top: barTop } = planBarVerticalMetrics(start, end, layout, {
+          isVirtualEnd: row.item.isVirtualEnd,
+        });
+        columns.push({
+          itemId: row.item.id,
+          parentId: row.item.parentId ?? null,
+          left,
+          width,
+          barTop,
+        });
+      }
       left += width;
-      return col;
-    });
-    return buildMobileColumnForkLines(columns, HEADER_HEIGHT);
-  }, [rows]);
+    }
+
+    return buildMobilePlanBarForkLineGroups(columns);
+  }, [rows, layout, barPreview]);
+
+  const forkLineColorForParent = useCallback(
+    (parentId: string) => {
+      const parent = planById.get(parentId);
+      if (!parent) return "#94a3b8";
+      const rootRow = rows.find((r) => r.item.id === parentId);
+      const root = rootRow ? planById.get(rootRow.rootId) ?? parent : parent;
+      return resolveEffectivePlanColor(parent, root);
+    },
+    [planById, rows],
+  );
 
   function renderPlanColumns(renderCell: (row: GanttRow) => ReactNode) {
     const nodes: ReactNode[] = [];
@@ -492,27 +520,6 @@ export function GanttMobileChart({ className }: { className?: string }) {
           {t("gantt.tasksHeader")}
         </div>
         <div className="relative min-w-0 flex-1 overflow-hidden">
-          {headerForkLines.length > 0 && (
-            <svg
-              className="pointer-events-none absolute left-0 top-0 z-[1]"
-              width={gridWidth}
-              height={HEADER_HEIGHT}
-              aria-hidden
-            >
-              {headerForkLines.map((line, i) => (
-                <line
-                  key={`fork-${i}`}
-                  x1={line.x1}
-                  y1={line.y1}
-                  x2={line.x2}
-                  y2={line.y2}
-                  stroke="currentColor"
-                  strokeWidth={1.25}
-                  className="text-blue-300 dark:text-blue-700"
-                />
-              ))}
-            </svg>
-          )}
           <div
             className="relative flex will-change-transform"
             style={{ transform: `translateX(-${headerScrollLeft}px)`, width: gridWidth }}
@@ -531,11 +538,18 @@ export function GanttMobileChart({ className }: { className?: string }) {
                   {hasChildren ? (
                     <button
                       type="button"
-                      className="flex h-6 w-6 items-center justify-center rounded text-blue-500 hover:bg-blue-100/60 dark:text-blue-400 dark:hover:bg-blue-900/40"
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-blue-500 hover:bg-blue-100/60 dark:text-blue-400 dark:hover:bg-blue-900/40"
                       onClick={() => toggleExpand(row.item.id)}
                       aria-label={isExpanded ? t("gantt.collapseRow") : t("gantt.expandRow")}
                     >
-                      <span className="text-[11px] leading-none">{isExpanded ? "▼" : "▶"}</span>
+                      <span
+                        className={cn(
+                          "text-[10px] leading-none transition-transform",
+                          isExpanded && "rotate-90",
+                        )}
+                      >
+                        ▶
+                      </span>
                     </button>
                   ) : null}
                 </div>
@@ -577,10 +591,12 @@ export function GanttMobileChart({ className }: { className?: string }) {
               {weekSpans.map((span) => (
                 <div
                   key={span.key}
-                  className="flex items-center justify-center border-b border-dashed border-gray-200 px-0.5 text-[8px] leading-tight text-gray-500 dark:border-gray-700 dark:text-gray-400"
+                  className="flex items-center justify-center border-b border-dashed border-gray-200 text-[8px] leading-none text-gray-500 dark:border-gray-700 dark:text-gray-400"
                   style={{ height: span.height }}
                 >
-                  <span className="text-center [writing-mode:vertical-rl]">{span.label}</span>
+                  <span className="[writing-mode:vertical-lr] [text-orientation:upright]">
+                    {span.label}
+                  </span>
                 </div>
               ))}
             </div>
@@ -606,6 +622,30 @@ export function GanttMobileChart({ className }: { className?: string }) {
                 className="pointer-events-none absolute left-0 right-0 z-10 border-t-2 border-red-500/70"
                 style={{ top: todayY }}
               />
+            )}
+
+            {bodyForkLineGroups.length > 0 && (
+              <svg
+                className="pointer-events-none absolute left-0 top-0 z-[4]"
+                width={gridWidth}
+                height={timelineHeight}
+                aria-hidden
+              >
+                {bodyForkLineGroups.map((group) =>
+                  group.lines.map((line, i) => (
+                    <line
+                      key={`fork-${group.parentId}-${i}`}
+                      x1={line.x1}
+                      y1={line.y1}
+                      x2={line.x2}
+                      y2={line.y2}
+                      stroke={forkLineColorForParent(group.parentId)}
+                      strokeWidth={1.5}
+                      strokeLinecap="round"
+                    />
+                  )),
+                )}
+              </svg>
             )}
 
             {renderPlanColumns((row) => {
