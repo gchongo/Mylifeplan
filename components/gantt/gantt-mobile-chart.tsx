@@ -527,8 +527,8 @@ export function GanttMobileChart({ className }: { className?: string }) {
             style={{ transform: `translateX(-${headerScrollLeft}px)`, width: gridWidth }}
           >
             {renderPlanColumns((row) => {
-              const hasChildren =
-                row.depth === 0 && filteredPlans.some((p) => p.parentId === row.item.id);
+              const childCount = filteredPlans.filter((p) => p.parentId === row.item.id).length;
+              const hasChildren = childCount > 0 && row.depth < 2;
               const isExpanded = expanded.has(row.item.id);
               const columnWidth = mobilePlanColumnWidth(row.depth);
               return (
@@ -687,6 +687,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
                         <GanttMobileBarTitleTrack
                           barTop={barTop}
                           barHeight={barHeight}
+                          barWidthPx={barWidth}
                           timelineHeight={timelineHeight}
                           title={item.title}
                           depth={row.depth}

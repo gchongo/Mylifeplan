@@ -69,7 +69,7 @@ export function GanttToolbarControls({
           className="px-2 py-1 text-sm text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
           aria-label={t("gantt.toolbar.prev")}
         >
-          ‹
+          {variant === "mobile" ? "↑" : "‹"}
         </button>
         <button
           type="button"
@@ -84,7 +84,7 @@ export function GanttToolbarControls({
           className="px-2 py-1 text-sm text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
           aria-label={t("gantt.toolbar.next")}
         >
-          ›
+          {variant === "mobile" ? "↓" : "›"}
         </button>
       </div>
 

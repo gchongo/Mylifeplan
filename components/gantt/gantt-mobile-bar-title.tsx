@@ -3,8 +3,10 @@
 import { getMobilePlanBarLabelStyle } from "@/lib/plan-color";
 import { cn } from "@/lib/utils";
 
-/** 标题与计划条顶部的内边距（避开圆角） */
-export const MOBILE_BAR_TITLE_TOP_PAD = 14;
+/** 标题与计划条顶部的内边距：避开 rounded-full 胶囊顶圆角 */
+export function mobileBarTitleTopPadPx(barWidthPx: number): number {
+  return Math.max(16, Math.ceil(barWidthPx / 2) + 6);
+}
 
 /** 移动端甘特条标题：竖排、居中叠在计划条上；sticky 时悬挂在可视区顶缘 */
 export function GanttMobileBarTitle({
@@ -14,6 +16,7 @@ export function GanttMobileBarTitle({
   onClick,
   sticky = false,
   maxHeight,
+  topPadPx,
   className,
 }: {
   title: string;
@@ -22,12 +25,13 @@ export function GanttMobileBarTitle({
   onClick?: () => void;
   sticky?: boolean;
   maxHeight?: number;
+  topPadPx: number;
   className?: string;
 }) {
   const Tag = onClick ? "button" : "span";
   const labelStyle = getMobilePlanBarLabelStyle(planColor);
   const titleMaxHeight =
-    maxHeight != null ? Math.max(0, maxHeight - MOBILE_BAR_TITLE_TOP_PAD) : undefined;
+    maxHeight != null ? Math.max(0, maxHeight - topPadPx) : undefined;
 
   return (
     <Tag
@@ -43,7 +47,7 @@ export function GanttMobileBarTitle({
       )}
       style={{
         ...labelStyle,
-        ...(sticky ? { top: MOBILE_BAR_TITLE_TOP_PAD } : { top: MOBILE_BAR_TITLE_TOP_PAD }),
+        top: topPadPx,
       }}
       onClick={onClick}
       onPointerDown={onClick ? (e) => e.stopPropagation() : undefined}
@@ -68,6 +72,7 @@ export function GanttMobileBarTitle({
 export function GanttMobileBarTitleTrack({
   barTop,
   barHeight,
+  barWidthPx,
   timelineHeight,
   title,
   depth = 0,
@@ -76,6 +81,7 @@ export function GanttMobileBarTitleTrack({
 }: {
   barTop: number;
   barHeight: number;
+  barWidthPx: number;
   timelineHeight: number;
   title: string;
   depth?: number;
@@ -83,6 +89,7 @@ export function GanttMobileBarTitleTrack({
   onTitleClick?: () => void;
 }) {
   const tailHeight = Math.max(0, timelineHeight - barTop - barHeight);
+  const topPadPx = mobileBarTitleTopPadPx(barWidthPx);
 
   return (
     <div className="pointer-events-none relative z-[22]" style={{ minHeight: timelineHeight }}>
@@ -97,6 +104,7 @@ export function GanttMobileBarTitleTrack({
           planColor={planColor}
           sticky
           maxHeight={barHeight}
+          topPadPx={topPadPx}
           onClick={onTitleClick}
         />
       </div>
