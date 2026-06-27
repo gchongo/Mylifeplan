@@ -3,9 +3,9 @@
 import { getMobilePlanBarLabelStyle } from "@/lib/plan-color";
 import { cn } from "@/lib/utils";
 
-/** 标题与计划条顶部的内边距：避开 rounded-full 胶囊顶圆角 */
+/** 标题起点：胶囊顶圆角半径 ≈ 条宽/2，再加描边与留白 */
 export function mobileBarTitleTopPadPx(barWidthPx: number): number {
-  return Math.max(16, Math.ceil(barWidthPx / 2) + 6);
+  return Math.ceil(barWidthPx / 2) + 12;
 }
 
 /** 移动端甘特条标题：竖排、居中叠在计划条上；sticky 时悬挂在可视区顶缘 */
@@ -16,7 +16,6 @@ export function GanttMobileBarTitle({
   onClick,
   sticky = false,
   maxHeight,
-  topPadPx,
   className,
 }: {
   title: string;
@@ -25,13 +24,10 @@ export function GanttMobileBarTitle({
   onClick?: () => void;
   sticky?: boolean;
   maxHeight?: number;
-  topPadPx: number;
   className?: string;
 }) {
   const Tag = onClick ? "button" : "span";
   const labelStyle = getMobilePlanBarLabelStyle(planColor);
-  const titleMaxHeight =
-    maxHeight != null ? Math.max(0, maxHeight - topPadPx) : undefined;
 
   return (
     <Tag
@@ -45,10 +41,7 @@ export function GanttMobileBarTitle({
           : "absolute left-1/2 z-[22] -translate-x-1/2",
         className,
       )}
-      style={{
-        ...labelStyle,
-        top: topPadPx,
-      }}
+      style={labelStyle}
       onClick={onClick}
       onPointerDown={onClick ? (e) => e.stopPropagation() : undefined}
       title={title}
@@ -60,7 +53,7 @@ export function GanttMobileBarTitle({
           "[writing-mode:vertical-lr] [text-orientation:upright]",
           depth === 0 ? "text-[13px] font-bold" : "text-[12px] font-semibold",
         )}
-        style={titleMaxHeight != null ? { maxHeight: titleMaxHeight } : undefined}
+        style={maxHeight != null ? { maxHeight } : undefined}
       >
         {title}
       </span>
@@ -90,21 +83,22 @@ export function GanttMobileBarTitleTrack({
 }) {
   const tailHeight = Math.max(0, timelineHeight - barTop - barHeight);
   const topPadPx = mobileBarTitleTopPadPx(barWidthPx);
+  const titleMaxHeight = Math.max(0, barHeight - topPadPx);
 
   return (
     <div className="pointer-events-none relative z-[22]" style={{ minHeight: timelineHeight }}>
       <div aria-hidden style={{ height: barTop }} />
       <div
-        className="relative flex items-start justify-center overflow-visible"
+        className="relative flex flex-col items-center overflow-visible"
         style={{ height: barHeight }}
       >
+        <div aria-hidden className="w-full shrink-0" style={{ height: topPadPx }} />
         <GanttMobileBarTitle
           title={title}
           depth={depth}
           planColor={planColor}
           sticky
-          maxHeight={barHeight}
-          topPadPx={topPadPx}
+          maxHeight={titleMaxHeight}
           onClick={onTitleClick}
         />
       </div>

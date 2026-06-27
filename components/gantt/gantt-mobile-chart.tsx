@@ -528,7 +528,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
           >
             {renderPlanColumns((row) => {
               const childCount = filteredPlans.filter((p) => p.parentId === row.item.id).length;
-              const hasChildren = childCount > 0 && row.depth < 2;
+              const hasChildren = childCount > 0;
               const isExpanded = expanded.has(row.item.id);
               const columnWidth = mobilePlanColumnWidth(row.depth);
               return (

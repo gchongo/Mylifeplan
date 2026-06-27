@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { GanttLayerToggleButton } from "@/components/gantt/gantt-layer-toggle-button";
+import { GanttRowExpandIcon, GanttToolbarNavArrow } from "@/components/gantt/gantt-row-expand-icon";
 import { useSettings } from "@/components/settings/settings-provider";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { GANTT_SCALES, type GanttScaleId } from "@/lib/gantt-scale";
@@ -69,7 +70,7 @@ export function GanttToolbarControls({
           className="px-2 py-1 text-sm text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
           aria-label={t("gantt.toolbar.prev")}
         >
-          {variant === "mobile" ? "↑" : "‹"}
+          <GanttToolbarNavArrow direction="prev" orientation={variant === "mobile" ? "vertical" : "horizontal"} />
         </button>
         <button
           type="button"
@@ -84,7 +85,7 @@ export function GanttToolbarControls({
           className="px-2 py-1 text-sm text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
           aria-label={t("gantt.toolbar.next")}
         >
-          {variant === "mobile" ? "↓" : "›"}
+          <GanttToolbarNavArrow direction="next" orientation={variant === "mobile" ? "vertical" : "horizontal"} />
         </button>
       </div>
 

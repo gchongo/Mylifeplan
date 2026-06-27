@@ -10,6 +10,7 @@ import {
   resolveEffectivePlanColor,
   resolvePlanTreeGroupColor,
 } from "@/lib/plan-color";
+import { mobileBarTitleTopPadPx } from "@/components/gantt/gantt-mobile-bar-title";
 
 describe("plan-color", () => {
   it("normalizes invalid color to default", () => {
@@ -66,6 +67,11 @@ describe("plan-color", () => {
       ["leaf", { color: "#EC4899", parentId: "mid" }],
     ]);
     expect(resolvePlanTreeGroupColor(planById.get("leaf")!, planById)).toBe("#10B981");
+  });
+
+  it("mobile bar title top pad clears capsule radius", () => {
+    expect(mobileBarTitleTopPadPx(30)).toBe(27);
+    expect(mobileBarTitleTopPadPx(24)).toBe(24);
   });
 
   it("mobile bar fill matches PC group bar alpha by depth", () => {
