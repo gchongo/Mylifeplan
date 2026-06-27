@@ -91,12 +91,7 @@ export const CalendarScrollView = forwardRef<
   const visibleMonthRef = useRef<MonthKey>(todayKey);
   const scrollSnapshotRef = useRef<number | null>(null);
   const wasPinnedRef = useRef(false);
-  const displayMonths =
-    isPinned && pinToMonth
-      ? months.some((m) => monthKeyId(m) === monthKeyId(pinToMonth))
-        ? [pinToMonth]
-        : months
-      : months;
+  const restoringScrollRef = useRef(false);
 
   function formatMonthSectionTitle(key: MonthKey, showYear: boolean): string {
     if (showYear) {
@@ -117,7 +112,7 @@ export const CalendarScrollView = forwardRef<
   }, []);
 
   const updateVisibleMonth = useCallback(() => {
-    if (isPinned) return;
+    if (isPinned || restoringScrollRef.current) return;
     const root = scrollRef.current;
     if (!root) return;
     const rootTop = root.getBoundingClientRect().top;
@@ -143,18 +138,25 @@ export const CalendarScrollView = forwardRef<
       }
       wasPinnedRef.current = true;
       const el = monthRefs.current.get(monthKeyId(pinToMonth));
-      if (root && el) root.scrollTop = el.offsetTop;
+      if (root && el) {
+        restoringScrollRef.current = true;
+        root.scrollTop = el.offsetTop;
+        restoringScrollRef.current = false;
+      }
       return;
     }
     if (wasPinnedRef.current && root && scrollSnapshotRef.current != null) {
+      restoringScrollRef.current = true;
       root.scrollTop = scrollSnapshotRef.current;
       scrollSnapshotRef.current = null;
       wasPinnedRef.current = false;
-      updateVisibleMonth();
+      requestAnimationFrame(() => {
+        restoringScrollRef.current = false;
+      });
     } else {
       wasPinnedRef.current = false;
     }
-  }, [pinToMonth, displayMonths, updateVisibleMonth]);
+  }, [pinToMonth]);
 
   const prependMonths = useCallback(() => {
     const root = scrollRef.current;
@@ -307,9 +309,9 @@ export const CalendarScrollView = forwardRef<
         )}
         tabIndex={0}
       >
-        {displayMonths.map((key, index) => {
+        {months.map((key, index) => {
           const id = monthKeyId(key);
-          const showYear = index === 0 || displayMonths[index - 1]!.year !== key.year;
+          const showYear = index === 0 || months[index - 1]!.year !== key.year;
           const weekRows = buildMonthWeekRows(key.year, key.month);
           const title = formatMonthSectionTitle(key, showYear);
           const isCurrentMonth = key.year === todayKey.year && key.month === todayKey.month;

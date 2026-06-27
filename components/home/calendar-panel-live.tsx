@@ -113,6 +113,8 @@ export function CalendarPanelLive({
   const [viewMonth, setViewMonth] = useState(today.getUTCMonth());
   const [viewDay, setViewDay] = useState(today.getUTCDate());
   const [visibleMonth, setVisibleMonth] = useState<MonthKey>(todayMonth);
+  const visibleMonthRef = useRef(visibleMonth);
+  visibleMonthRef.current = visibleMonth;
   const [loadedMonths, setLoadedMonths] = useState<MonthKey[]>(() =>
     initialMonthWindow(todayMonth),
   );
@@ -122,6 +124,8 @@ export function CalendarPanelLive({
   const scrollRef = useRef<CalendarScrollViewHandle>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
   const lastSheetDateRef = useRef<string | null>(null);
+  const drawerVisibleMonthRef = useRef<MonthKey | null>(null);
+  const suppressVisibleMonthSyncRef = useRef(false);
   const [layoutSize, setLayoutSize] = useState({ width: 0, height: 0 });
   const [drawerWidthPx, setDrawerWidthPx] = useState(CALENDAR_DRAWER_MIN_WIDTH_PX);
 
@@ -176,6 +180,7 @@ export function CalendarPanelLive({
   }, []);
 
   const handleVisibleMonthChange = useCallback((key: MonthKey) => {
+    if (suppressVisibleMonthSyncRef.current) return;
     setVisibleMonth(key);
     setViewYear(key.year);
     setViewMonth(key.month);
@@ -283,15 +288,30 @@ export function CalendarPanelLive({
 
   function openDayDrawer(ds: string) {
     setSelectedDate(ds);
-    const d = parseDate(ds);
-    setViewYear(d.getUTCFullYear());
-    setViewMonth(d.getUTCMonth());
-    setViewDay(d.getUTCDate());
+    if (useMobileFullLayout) {
+      drawerVisibleMonthRef.current = visibleMonthRef.current;
+      suppressVisibleMonthSyncRef.current = true;
+    } else {
+      const d = parseDate(ds);
+      setViewYear(d.getUTCFullYear());
+      setViewMonth(d.getUTCMonth());
+      setViewDay(d.getUTCDate());
+    }
     setDrawerDate(ds);
   }
 
   function closeDayDrawer() {
     setDrawerDate(null);
+    if (useMobileFullLayout && drawerVisibleMonthRef.current) {
+      const snap = drawerVisibleMonthRef.current;
+      drawerVisibleMonthRef.current = null;
+      setVisibleMonth(snap);
+      setViewYear(snap.year);
+      setViewMonth(snap.month);
+    }
+    requestAnimationFrame(() => {
+      suppressVisibleMonthSyncRef.current = false;
+    });
   }
 
   const mobilePinnedMonth =
