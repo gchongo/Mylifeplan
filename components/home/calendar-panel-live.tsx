@@ -92,9 +92,11 @@ function itemHref(item: CalendarItem) {
 
 export function CalendarPanelLive({
   fullPage = false,
+  showMobileTitle = false,
   className,
 }: {
   fullPage?: boolean;
+  showMobileTitle?: boolean;
   className?: string;
 }) {
   const { t, locale } = useI18n();
@@ -286,34 +288,24 @@ export function CalendarPanelLive({
     setDrawerDate(null);
   }
 
-  return (
-    <Card className={cn("flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden", className, isMobileShell && fullPage && "rounded-none border-0 shadow-none")}>
-      {!fullPage && (
-        <CardHeader className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 space-y-0 pb-2">
-          <CardTitle className="min-w-0 truncate">{t("calendar.homeTitle")}</CardTitle>
-          <div className="flex items-center gap-2">
-            <CalendarToolbarControls
-              viewMode={viewMode}
-              onViewModeChange={setViewMode}
-              onPrev={prev}
-              onNext={next}
-              onToday={goToday}
-            />
-            {(viewMode === "month") && (
-              <CalendarDisplayPicker value={displayMode} onChange={setDisplayMode} />
-            )}
-          </div>
-          <PanelExpandButton href="/calendar" label={t("calendar.panelExpand")} />
-        </CardHeader>
+  const useMobileFullLayout = isMobileShell && fullPage;
+  const shellClassName = cn(
+    "flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden",
+    className,
+    useMobileFullLayout && "flex-1",
+  );
+
+  const calendarBody = (
+    <>
+      {showMobileTitle && useMobileFullLayout && (
+        <header className="flex shrink-0 items-center border-b border-gray-100 px-3 py-2.5 dark:border-gray-800">
+          <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            {t("calendar.homeTitle")}
+          </h1>
+        </header>
       )}
 
-      <CardContent
-        className={cn(
-          "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
-          fullPage ? "p-0" : "px-3 pb-3 pt-0",
-        )}
-      >
-        <div ref={layoutRef} className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div ref={layoutRef} className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <CalendarDayDrawer
           dateStr={drawerDate}
           items={items}
@@ -323,14 +315,13 @@ export function CalendarPanelLive({
           onDataChange={() => void refetch()}
           placement={isMobileShell ? "bottom" : "end"}
           push={isMobileShell}
-          panelHeightClass="h-[50dvh]"
           panelWidthPx={isMobileShell ? undefined : drawerWidthPx}
           onPanelWidthPxChange={isMobileShell ? undefined : handleDrawerWidthChange}
           panelMinWidthPx={CALENDAR_DRAWER_MIN_WIDTH_PX}
           panelMaxWidthPx={maxDrawerWidthPx}
           resizable={!isMobileShell && drawerDate !== null}
         >
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             {fullPage && (
               <CalendarToolbar
                 periodLabel={label}
@@ -472,7 +463,42 @@ export function CalendarPanelLive({
             )}
           </div>
         </CalendarDayDrawer>
-        </div>
+      </div>
+    </>
+  );
+
+  if (useMobileFullLayout) {
+    return <div className={shellClassName}>{calendarBody}</div>;
+  }
+
+  return (
+    <Card className={shellClassName}>
+      {!fullPage && (
+        <CardHeader className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 space-y-0 pb-2">
+          <CardTitle className="min-w-0 truncate">{t("calendar.homeTitle")}</CardTitle>
+          <div className="flex items-center gap-2">
+            <CalendarToolbarControls
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              onPrev={prev}
+              onNext={next}
+              onToday={goToday}
+            />
+            {viewMode === "month" && (
+              <CalendarDisplayPicker value={displayMode} onChange={setDisplayMode} />
+            )}
+          </div>
+          <PanelExpandButton href="/calendar" label={t("calendar.panelExpand")} />
+        </CardHeader>
+      )}
+
+      <CardContent
+        className={cn(
+          "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
+          fullPage ? "p-0" : "px-3 pb-3 pt-0",
+        )}
+      >
+        {calendarBody}
       </CardContent>
     </Card>
   );

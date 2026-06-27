@@ -1,6 +1,7 @@
 "use client";
 
 import { CalendarMobileDaySheet } from "@/components/calendar/calendar-mobile-day-sheet";
+import { CalendarMobileSplitLayout } from "@/components/calendar/calendar-mobile-split-layout";
 import { DrawerLayout, DrawerPanel, type DrawerPlacement } from "@/components/ui/drawer";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { useMobileShell } from "@/hooks/use-mobile-shell";
@@ -84,18 +85,23 @@ export function CalendarDayDrawer({
 
   if (useMobileSplit) {
     return (
-      <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <div className="min-h-0 min-w-0 flex-1 overflow-hidden">{children}</div>
-        {open && dateStr ? (
-          <CalendarMobileDaySheet
-            dateStr={dateStr}
-            items={items}
-            onClose={onClose}
-            detailExpandable={detailExpandable}
-            onDataChange={onDataChange}
-          />
-        ) : null}
-      </div>
+      <CalendarMobileSplitLayout
+        open={open && dateStr !== null}
+        calendar={children}
+        sheet={
+          dateStr ? (
+            <CalendarMobileDaySheet
+              dateStr={dateStr}
+              items={items}
+              onClose={onClose}
+              detailExpandable={detailExpandable}
+              onDataChange={onDataChange}
+            />
+          ) : (
+            <div className="h-full" aria-hidden />
+          )
+        }
+      />
     );
   }
 

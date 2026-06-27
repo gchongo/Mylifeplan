@@ -7,7 +7,7 @@ import { itemsOnDate } from "@/lib/calendar-display";
 import { formatCalendarDayDrawerTitle } from "@/lib/i18n/calendar-helpers";
 import type { CalendarItem } from "@/types";
 
-/** 移动端日历底部详情区：占半屏、推挤上方日历，内容可竖向滚动 */
+/** 移动端日历底部详情抽屉：填满分屏下半区，内部竖向滚动 */
 export function CalendarMobileDaySheet({
   dateStr,
   items,
@@ -26,7 +26,7 @@ export function CalendarMobileDaySheet({
 
   return (
     <section
-      className="flex h-[50dvh] max-h-[50dvh] shrink-0 flex-col overflow-hidden border-t border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950"
+      className="flex h-full min-h-0 flex-col overflow-hidden"
       aria-labelledby="calendar-mobile-day-title"
     >
       <div className="flex shrink-0 items-center gap-2 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
