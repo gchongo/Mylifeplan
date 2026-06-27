@@ -12,16 +12,18 @@ import { mobileWeekAxisWidthPx } from "@/lib/gantt-mobile-week-axis";
 import { formatPlanLocalDateCompactSlash } from "@/lib/dates";
 
 describe("mobilePlanColumnWidth", () => {
-  it("uses PC bar height as mobile bar width plus padding", () => {
+  it("uses PC bar height as mobile bar width; column width adds padding only", () => {
     expect(mobilePlanBarWidthPx(0)).toBe(30);
     expect(mobilePlanBarWidthPx(1)).toBe(24);
     expect(mobilePlanBarWidthPx(2)).toBe(18);
-    expect(mobilePlanColumnWidth(0)).toBe(34);
-    expect(mobilePlanBarLeftPx(0)).toBe(2);
-    expect(mobilePlanBarCenterPx(0)).toBe(17);
+    expect(mobilePlanColumnWidth(0)).toBe(38);
+    expect(mobilePlanColumnWidth(1)).toBe(32);
+    expect(mobilePlanColumnWidth(2)).toBe(26);
+    expect(mobilePlanBarLeftPx(0)).toBe(4);
+    expect(mobilePlanBarCenterPx(0)).toBe(19);
     expect(MOBILE_ROW_GROUP_GAP).toBe(1);
     expect(mobilePlanGridWidth([{ gapBefore: 0, depth: 0 }, { gapBefore: MOBILE_ROW_GROUP_GAP, depth: 0 }])).toBe(
-      34 + MOBILE_ROW_GROUP_GAP + 34,
+      38 + MOBILE_ROW_GROUP_GAP + 38,
     );
   });
 

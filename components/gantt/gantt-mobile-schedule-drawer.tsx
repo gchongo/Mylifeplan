@@ -112,14 +112,14 @@ export function GanttMobileScheduleDrawer({
                     <div
                       key={id}
                       className={cn(
-                        "flex items-center justify-center border-b px-0.5 text-center text-[9px] tabular-nums leading-none text-gray-700 last:border-b-0 dark:text-gray-200",
+                        "flex items-center justify-center overflow-hidden border-b px-0.5 text-center text-[9px] tabular-nums leading-none text-gray-700 last:border-b-0 dark:text-gray-200",
                         DRAWER_ROW_BORDER_CLASS,
                         cell.muted && "text-gray-400 dark:text-gray-500",
                       )}
                       style={{ height: METRIC_ROW_HEIGHT }}
                       title={readOnlyTitle}
                     >
-                      <span className="whitespace-nowrap">{cell.text}</span>
+                      <span className="block max-w-full truncate">{cell.text}</span>
                     </div>
                   );
                 })}

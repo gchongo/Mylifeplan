@@ -1,7 +1,7 @@
 import { ganttPlanBarHeightPx } from "@/lib/plan-color";
 
-/** 列内计划条左右留白 */
-export const MOBILE_PLAN_COLUMN_PAD_X = 2;
+/** 列内计划条左右留白（列宽 = 条宽 + 此值×2；只改条宽时不改此值） */
+export const MOBILE_PLAN_COLUMN_PAD_X = 4;
 
 /** 一级计划组之间的水平间隙（px） */
 export const MOBILE_ROW_GROUP_GAP = 1;
