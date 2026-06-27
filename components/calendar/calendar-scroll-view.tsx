@@ -56,6 +56,7 @@ export const CalendarScrollView = forwardRef<
     onMonthsChange: (months: MonthKey[]) => void;
     fullPage: boolean;
     pinToMonth?: MonthKey | null;
+    compressed?: boolean;
   }
 >(function CalendarScrollView(
   {
@@ -68,6 +69,7 @@ export const CalendarScrollView = forwardRef<
     onMonthsChange,
     fullPage,
     pinToMonth = null,
+    compressed = false,
   },
   ref,
 ) {
@@ -80,9 +82,10 @@ export const CalendarScrollView = forwardRef<
   const prependingRef = useRef(false);
   const didInitialScroll = useRef(false);
   const cellMin = useCalendarCellMin(displayMode, fullPage);
+  const compressedCellMin = "min-h-[2.5rem]";
   const isPinned = pinToMonth != null;
   const pinnedCellMin = "min-h-0 h-full";
-  const activeCellMin = isPinned ? pinnedCellMin : cellMin;
+  const activeCellMin = isPinned ? pinnedCellMin : compressed ? compressedCellMin : cellMin;
   const { preferences } = useSettings();
   const weekPrefs = preferences.calendarWeekNumbers;
   const showWeekNumbers = weekPrefs.enabled;
@@ -321,9 +324,9 @@ export const CalendarScrollView = forwardRef<
               key={id}
               ref={(el) => setMonthRef(id, el)}
               data-month-id={id}
-              className={cn("mb-1", isPinned && "flex min-h-0 flex-1 flex-col")}
+              className={cn("mb-1", compressed && "mb-0", isPinned && "flex min-h-0 flex-1 flex-col")}
             >
-              {!isPinned ? (
+              {!isPinned && !compressed ? (
                 <h3
                   className={cn(
                     "bg-gray-100 px-3 py-2 text-base font-semibold dark:bg-gray-900",

@@ -377,6 +377,7 @@ export function CalendarPanelLive({
             onVisibleMonthChange={handleVisibleMonthChange}
             onMonthsChange={handleMonthsChange}
             fullPage={fullPage}
+            compressed={useMobileFullLayout && drawerDate !== null}
           />
           {loading && items.length > 0 && (
             <div className="pointer-events-none absolute inset-x-0 top-10 z-20 flex justify-center">
