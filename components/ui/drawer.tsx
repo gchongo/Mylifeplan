@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
 const DEFAULT_DRAWER_WIDTH = "w-80 sm:w-96";
+/** 与 MobileTabBar 高度一致：py-2 + 图标 + 文案 */
+const MOBILE_TAB_BAR_INSET = "calc(3.5rem + env(safe-area-inset-bottom))";
 
 export type DrawerPlacement = "end" | "bottom";
 
@@ -27,7 +29,7 @@ export function DrawerPanel({
   const showHeader = Boolean(title || onBack);
 
   return (
-    <div className="flex min-h-0 max-h-[inherit] flex-1 flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {showHeader && (
         <div className="flex shrink-0 items-center gap-2 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
           {onBack ? (
@@ -47,7 +49,15 @@ export function DrawerPanel({
           </Button>
         </div>
       )}
-      <div className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain p-4", className)}>{children}</div>
+      <div
+        className={cn(
+          "min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y",
+          showHeader ? "p-4" : "p-0",
+          className,
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -121,14 +131,19 @@ export function DrawerLayout({
           <>
             <button
               type="button"
-              className="absolute inset-0 z-40 bg-black/40"
+              className="fixed inset-0 z-[55] bg-black/40"
               aria-label="close"
               onClick={onClose}
             />
             <aside
               role="complementary"
               aria-labelledby="drawer-title"
-              className="absolute bottom-0 left-0 right-0 z-50 flex max-h-[min(85dvh,640px)] min-h-0 flex-col rounded-t-2xl border-t border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-950"
+              className="fixed left-0 right-0 z-[60] flex flex-col overflow-hidden rounded-t-2xl border-t border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-950"
+              style={{
+                bottom: MOBILE_TAB_BAR_INSET,
+                height: `min(75dvh, calc(100dvh - ${MOBILE_TAB_BAR_INSET} - 3.5rem))`,
+                maxHeight: `calc(100dvh - ${MOBILE_TAB_BAR_INSET} - 3.5rem)`,
+              }}
             >
               {panel}
             </aside>

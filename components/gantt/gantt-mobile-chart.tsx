@@ -769,13 +769,12 @@ export function GanttMobileChart({ className }: { className?: string }) {
                             title={item.title}
                             depth={row.depth}
                             planColor={groupColor}
-                            onTitleClick={() => openPlan(item.id)}
                           />
                         </div>
                       </div>
                     )}
 
-                    <div className="pointer-events-none absolute inset-0 z-[5]">
+                    <div className="absolute inset-0 z-[5]">
                       {!item.isUnscheduled && !item.contributionOnly && (
                         <>
                           <GanttMobileDraggableBar

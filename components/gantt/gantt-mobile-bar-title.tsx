@@ -11,13 +11,12 @@ export function mobileBarTitleTopPadPx(barWidthPx: number): number {
   return Math.ceil(barWidthPx / 2) + 12;
 }
 
-/** 竖排标题：writing-mode 保证阅读方向；sticky 时悬挂在可视区顶缘 */
+/** 竖排标题：仅展示，不拦截点击（点击由计划条处理） */
 export function GanttMobileBarTitle({
   title,
   depth = 0,
   planColor,
   barWidthPx,
-  onClick,
   sticky = false,
   maxHeight,
   className,
@@ -26,21 +25,16 @@ export function GanttMobileBarTitle({
   depth?: number;
   planColor: string;
   barWidthPx: number;
-  onClick?: () => void;
   sticky?: boolean;
   maxHeight?: number;
   className?: string;
 }) {
-  const Tag = onClick ? "button" : "span";
   const labelStyle = getMobilePlanBarLabelStyle(planColor);
 
   return (
-    <Tag
-      type={onClick ? "button" : undefined}
+    <span
       className={cn(
-        "pointer-events-auto box-border w-full max-w-full bg-transparent px-0 py-0",
-        "border-0 shadow-none",
-        onClick && "cursor-pointer active:opacity-80",
+        "pointer-events-none box-border w-full max-w-full bg-transparent px-0 py-0",
         sticky ? "sticky z-[22] grid justify-items-center" : "absolute left-0 right-0 z-[22] grid justify-items-center",
         className,
       )}
@@ -50,8 +44,6 @@ export function GanttMobileBarTitle({
         maxWidth: barWidthPx,
         ...(sticky ? { top: MOBILE_BAR_TITLE_STICKY_TOP } : undefined),
       }}
-      onClick={onClick}
-      onPointerDown={onClick ? (e) => e.stopPropagation() : undefined}
       title={title}
     >
       <span
@@ -65,7 +57,7 @@ export function GanttMobileBarTitle({
       >
         {title}
       </span>
-    </Tag>
+    </span>
   );
 }
 
@@ -78,7 +70,6 @@ export function GanttMobileBarTitleTrack({
   title,
   depth = 0,
   planColor,
-  onTitleClick,
 }: {
   barTop: number;
   barHeight: number;
@@ -87,7 +78,6 @@ export function GanttMobileBarTitleTrack({
   title: string;
   depth?: number;
   planColor: string;
-  onTitleClick?: () => void;
 }) {
   const tailHeight = Math.max(0, timelineHeight - barTop - barHeight);
   const topPadPx = mobileBarTitleTopPadPx(barWidthPx);
@@ -112,7 +102,6 @@ export function GanttMobileBarTitleTrack({
             barWidthPx={barWidthPx}
             sticky
             maxHeight={titleMaxHeight}
-            onClick={onTitleClick}
           />
         </div>
       </div>

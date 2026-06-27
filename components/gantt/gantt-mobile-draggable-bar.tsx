@@ -266,7 +266,7 @@ export function GanttMobileDraggableBar({
       setDragging(null);
       rootRef.current?.releasePointerCapture(e.pointerId);
 
-      const moved = Math.abs(e.clientY - state.startY) > 3;
+      const moved = Math.abs(e.clientY - state.startY) > 8;
       if (!moved) {
         setPreview(null);
         onPreviewDates?.(item.id, null, state.mode);
@@ -334,10 +334,14 @@ export function GanttMobileDraggableBar({
           "absolute inset-0 overflow-hidden rounded-full transition-[box-shadow] duration-200",
           saving && "opacity-60",
           (dragging || commitPreview) && "ring-2 ring-brand-400 ring-offset-1",
+          !dragEnabled && "cursor-pointer",
         )}
         style={{
           ...getMobilePlanBarFillStyle(color, depth),
           touchAction: dragEnabled ? "none" : "auto",
+        }}
+        onClick={() => {
+          if (!dragEnabled && !dragging && !saving) onTaskClick?.();
         }}
       >
         <div

@@ -323,7 +323,7 @@ export function PlanDetailClient({
 
   if (embedded) {
     return (
-      <div className="divide-y divide-gray-100 dark:divide-gray-800">
+      <div className="divide-y divide-gray-100 pb-6 dark:divide-gray-800">
         <header className="flex items-start gap-2 px-4 py-3">{headerBlock}</header>
         {descriptionBlock ? <div className="px-4 py-3">{descriptionBlock}</div> : null}
 
