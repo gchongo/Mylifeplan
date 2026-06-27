@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { GanttMobileBarTitle } from "@/components/gantt/gantt-mobile-bar-title";
 import { dispatchPlanUpdated } from "@/lib/plan-events";
 import { patchGanttItemFromPlan, type GanttPlanPatch, type SerializedPlanForGantt } from "@/lib/gantt-plan-sync";
 import { ganttPlanBarMetrics, type TimelineLayout } from "@/lib/gantt-scale";
@@ -47,6 +48,8 @@ export function GanttMobileDraggableBar({
   top,
   height,
   barWidthPx,
+  title,
+  titleDepth = 0,
   color,
   previewOverride,
   minStartDate,
@@ -64,6 +67,8 @@ export function GanttMobileDraggableBar({
   top: number;
   height: number;
   barWidthPx: number;
+  title: string;
+  titleDepth?: number;
   color: string;
   previewOverride?: { start: string; end: string } | null;
   minStartDate?: string;
@@ -316,7 +321,7 @@ export function GanttMobileDraggableBar({
       ref={rootRef}
       data-gantt-bar
       data-no-pan
-      className="absolute z-[5]"
+      className="absolute z-[5] overflow-visible"
       style={{
         top: metrics.left,
         height: barHeight,
@@ -326,6 +331,11 @@ export function GanttMobileDraggableBar({
         touchAction: dragEnabled ? "none" : "auto",
       }}
     >
+      <GanttMobileBarTitle
+        title={title}
+        depth={titleDepth}
+        onClick={onTaskClick}
+      />
       <div
         className={cn(
           "absolute inset-0 overflow-hidden rounded-full shadow-sm transition-[box-shadow] duration-200",
@@ -339,7 +349,7 @@ export function GanttMobileDraggableBar({
       >
         <div
           className={cn(
-            "absolute inset-x-0 top-0 z-10 flex h-4 items-start justify-center",
+            "absolute inset-x-0 top-0 z-10 flex h-5 items-start justify-center",
             dragEnabled && "cursor-ns-resize",
           )}
           onPointerDown={(e) => startDrag(e, "resize-start")}
@@ -351,7 +361,7 @@ export function GanttMobileDraggableBar({
         </div>
         <div
           className={cn(
-            "absolute inset-x-0 bottom-0 top-4",
+            "absolute inset-x-0 bottom-0 top-5",
             dragEnabled ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
           )}
           onPointerDown={(e) => {

@@ -5,6 +5,7 @@ import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-quer
 import { CalendarMobileSplitLayout } from "@/components/calendar/calendar-mobile-split-layout";
 import { GanttToolbarControls } from "@/components/gantt/gantt-toolbar-controls";
 import { GanttMobileDraggableBar } from "@/components/gantt/gantt-mobile-draggable-bar";
+import { GanttMobileBarTitle } from "@/components/gantt/gantt-mobile-bar-title";
 import { GanttMobileScheduleDrawer } from "@/components/gantt/gantt-mobile-schedule-drawer";
 import { GanttPlanDrawerPanel } from "@/components/gantt/gantt-plan-drawer";
 import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribution-drawer";
@@ -60,7 +61,7 @@ import { cn } from "@/lib/utils";
 const DAY_AXIS_WIDTH = 26;
 const WEEK_AXIS_WIDTH = 36;
 const TIME_AXIS_WIDTH = DAY_AXIS_WIDTH + WEEK_AXIS_WIDTH;
-const HEADER_HEIGHT = 48;
+const HEADER_HEIGHT = 28;
 const ROW_GROUP_GAP = 8;
 
 type GanttRow = {
@@ -481,7 +482,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
     return (
       <div className="relative flex min-h-0 shrink-0 border-b border-gray-100 dark:border-gray-800">
         <div
-          className="flex shrink-0 items-end justify-center border-r border-gray-100 bg-blue-50/50 pb-1 text-[10px] font-medium text-gray-500 dark:border-gray-800 dark:bg-blue-950/20 dark:text-gray-400"
+          className="flex shrink-0 items-center justify-center border-r border-gray-100 bg-blue-50/50 text-[10px] font-medium text-gray-500 dark:border-gray-800 dark:bg-blue-950/20 dark:text-gray-400"
           style={{ width: TIME_AXIS_WIDTH, height: HEADER_HEIGHT }}
         >
           {t("gantt.tasksHeader")}
@@ -520,36 +521,19 @@ export function GanttMobileChart({ className }: { className?: string }) {
               return (
                 <div
                   key={row.item.id}
-                  className="flex shrink-0 flex-col items-center justify-end gap-0.5 border-r border-gray-100 px-0.5 pb-1 dark:border-gray-800"
+                  className="flex shrink-0 items-center justify-center border-r border-gray-100 dark:border-gray-800"
                   style={{ width: columnWidth, height: HEADER_HEIGHT }}
                 >
-                  <div className="flex w-full min-w-0 items-center justify-center gap-0.5">
-                    {hasChildren ? (
-                      <button
-                        type="button"
-                        className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-blue-500 hover:bg-blue-100/60 dark:text-blue-400 dark:hover:bg-blue-900/40"
-                        onClick={() => toggleExpand(row.item.id)}
-                        aria-label={isExpanded ? t("gantt.collapseRow") : t("gantt.expandRow")}
-                      >
-                        <span className="text-[10px] leading-none">{isExpanded ? "▼" : "▶"}</span>
-                      </button>
-                    ) : (
-                      <span className="h-4 w-4 shrink-0" aria-hidden />
-                    )}
+                  {hasChildren ? (
                     <button
                       type="button"
-                      className={cn(
-                        "min-w-0 flex-1 truncate text-center text-[9px] font-medium leading-tight hover:text-blue-700 dark:hover:text-blue-200",
-                        row.depth === 0
-                          ? "text-gray-900 dark:text-gray-100"
-                          : "text-gray-600 dark:text-gray-300",
-                      )}
-                      onClick={() => openPlan(row.item.id)}
-                      title={row.item.title}
+                      className="flex h-6 w-6 items-center justify-center rounded text-blue-500 hover:bg-blue-100/60 dark:text-blue-400 dark:hover:bg-blue-900/40"
+                      onClick={() => toggleExpand(row.item.id)}
+                      aria-label={isExpanded ? t("gantt.collapseRow") : t("gantt.expandRow")}
                     >
-                      {row.item.title}
+                      <span className="text-[11px] leading-none">{isExpanded ? "▼" : "▶"}</span>
                     </button>
-                  </div>
+                  ) : null}
                 </div>
               );
             })}
@@ -657,6 +641,8 @@ export function GanttMobileChart({ className }: { className?: string }) {
                           top={metrics.top}
                           height={metrics.height}
                           barWidthPx={barWidth}
+                          title={item.title}
+                          titleDepth={row.depth}
                           color={color}
                           previewOverride={previewDates ?? null}
                           minStartDate={row.depth > 0 ? minStartDate : undefined}
