@@ -341,7 +341,7 @@ export function getKanbanColumnAccentClass(visual: VisualStatusKey): string {
 /** 移动端甘特表头：与状态菜单圆点同色（STATUS_STYLES.bar）的圆角色块 */
 export function getMobilePlanHeaderStatusCellClass(visual: VisualStatusKey): string {
   const { bar } = STATUS_STYLES[visual];
-  const base = "rounded-md shadow-sm";
+  const base = "rounded-full shadow-sm";
   if (visual === "unscheduled") {
     return cn(base, bar, "border border-dashed border-violet-200/90 dark:border-violet-300/50");
   }

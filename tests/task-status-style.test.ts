@@ -41,6 +41,6 @@ describe("task-status-style", () => {
     expect(getMobilePlanHeaderStatusCellClass("in_progress")).toContain("blue");
     expect(getMobilePlanHeaderStatusCellClass("done")).toContain("emerald");
     expect(getMobilePlanHeaderStatusCellClass("unscheduled")).toContain("dashed");
-    expect(getMobilePlanHeaderStatusCellClass("in_progress")).toContain("rounded-md");
+    expect(getMobilePlanHeaderStatusCellClass("in_progress")).toContain("rounded-full");
   });
 });

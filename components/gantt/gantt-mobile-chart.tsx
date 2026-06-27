@@ -604,7 +604,8 @@ export function GanttMobileChart({ className }: { className?: string }) {
                 >
                   <div
                     className={cn(
-                      "flex h-[22px] w-full items-center justify-center",
+                      "flex shrink-0 items-center justify-center",
+                      hasChildren ? "h-[22px] w-full" : "h-[22px] w-[22px]",
                       getMobilePlanHeaderStatusCellClass(visual),
                     )}
                   >
