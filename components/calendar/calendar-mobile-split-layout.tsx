@@ -23,7 +23,7 @@ export function CalendarMobileSplitLayout({
         "grid h-full min-h-0 w-full flex-1 overflow-hidden transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none",
         className,
       )}
-      style={{ gridTemplateRows: open ? "minmax(0, 1fr) minmax(0, 1fr)" : "minmax(0, 1fr) 0fr" }}
+      style={{ gridTemplateRows: open ? "minmax(0, 3fr) minmax(0, 2fr)" : "minmax(0, 1fr) 0fr" }}
     >
       <div className="min-h-0 overflow-hidden">{calendar}</div>
       <div
