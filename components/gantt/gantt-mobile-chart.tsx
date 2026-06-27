@@ -46,8 +46,11 @@ import {
 } from "@/lib/gantt-plan-bind";
 import {
   applyGanttPlanPatch,
+  syncGanttItemsFromPlanUpdate,
   type GanttPlanPatch,
+  type SerializedPlanForGantt,
 } from "@/lib/gantt-plan-sync";
+import { dispatchPlanUpdated } from "@/lib/plan-events";
 import { deriveParentStatus } from "@/lib/services/plan-rollup";
 import {
   buildTimelineLayout,
@@ -419,6 +422,13 @@ export function GanttMobileChart({ className }: { className?: string }) {
       actualEndDate: updated.actualEndDate,
     };
     updateGanttItems((prev) => applyGanttPlanPatch(prev, planPatch, meta));
+  }
+
+  function handleScheduleFieldSaved(plan?: SerializedPlanForGantt) {
+    if (plan) {
+      updateGanttItems((prev) => syncGanttItemsFromPlanUpdate(prev, plan, layout.from));
+    }
+    dispatchPlanUpdated(plan ? { plan } : undefined);
   }
 
   const handlePreviewDates = useCallback(
@@ -847,6 +857,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
           scrollLeft={headerScrollLeft}
           timeAxisWidth={TIME_AXIS_WIDTH}
           gridWidth={gridWidth}
+          onPlanFieldUpdated={handleScheduleFieldSaved}
         />
       )}
 

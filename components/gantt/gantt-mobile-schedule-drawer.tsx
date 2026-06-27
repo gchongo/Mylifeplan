@@ -1,15 +1,19 @@
 "use client";
 
 import { Fragment } from "react";
+import { GanttScheduleEditableCell } from "@/components/gantt/gantt-schedule-editable-cell";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import {
   GANTT_SCHEDULE_COLUMN_IDS,
   getMobileScheduleCellValue,
+  getScheduleEditRawValue,
   isScheduleCellEditable,
+  isScheduleColumnEditable,
   type GanttScheduleColumnId,
 } from "@/lib/gantt-schedule-columns";
 import { localizedScheduleColumnDefs, localizeScheduleReadOnlyTitle } from "@/lib/i18n/gantt-helpers";
 import { mobilePlanColumnWidth, MOBILE_PLAN_GROUP_GAP_CLASS } from "@/lib/gantt-mobile-layout";
+import type { SerializedPlanForGantt } from "@/lib/gantt-plan-sync";
 import { cn } from "@/lib/utils";
 import type { GanttItem } from "@/types";
 
@@ -27,6 +31,7 @@ export function GanttMobileScheduleDrawer({
   scrollLeft,
   timeAxisWidth,
   gridWidth,
+  onPlanFieldUpdated,
   className,
 }: {
   rows: MobileGanttRow[];
@@ -34,6 +39,7 @@ export function GanttMobileScheduleDrawer({
   scrollLeft: number;
   timeAxisWidth: number;
   gridWidth: number;
+  onPlanFieldUpdated?: (plan?: SerializedPlanForGantt) => void;
   className?: string;
 }) {
   const { t } = useI18n();
@@ -88,7 +94,10 @@ export function GanttMobileScheduleDrawer({
                 >
                   {metricIds.map((id) => {
                     const cell = getMobileScheduleCellValue(id, row.item, allPlans);
-                    const editable = isScheduleCellEditable(id, row.item, allPlans);
+                    const editable =
+                      Boolean(onPlanFieldUpdated) &&
+                      isScheduleCellEditable(id, row.item, allPlans) &&
+                      isScheduleColumnEditable(id);
                     const readOnlyTitle = localizeScheduleReadOnlyTitle(t, {
                       rollupActuals:
                         (id === "actualStart" || id === "actualEnd") &&
@@ -97,6 +106,24 @@ export function GanttMobileScheduleDrawer({
                       virtual: Boolean(cell.virtual),
                       cellText: cell.text,
                     });
+
+                    if (editable) {
+                      return (
+                        <div key={id} style={{ height: METRIC_ROW_HEIGHT }}>
+                          <GanttScheduleEditableCell
+                            variant="mobile"
+                            trigger="click"
+                            columnId={id}
+                            planId={row.item.id}
+                            rawValue={getScheduleEditRawValue(id, row.item)}
+                            cell={cell}
+                            width={mobilePlanColumnWidth(row.depth)}
+                            onSaved={onPlanFieldUpdated!}
+                          />
+                        </div>
+                      );
+                    }
+
                     return (
                       <div
                         key={id}

@@ -28,6 +28,8 @@ export function GanttScheduleEditableCell({
   cell,
   width,
   onSaved,
+  trigger,
+  variant = "panel",
 }: {
   columnId: GanttScheduleEditableColumnId;
   planId: string;
@@ -35,6 +37,8 @@ export function GanttScheduleEditableCell({
   cell: ScheduleCellValue;
   width: number;
   onSaved: (plan?: SerializedPlanForGantt) => void;
+  trigger?: "click" | "doubleClick";
+  variant?: "panel" | "mobile";
 }) {
   const { t } = useI18n();
   const edge = scheduleFieldEdge(scheduleColumnPlanField(columnId));
@@ -47,26 +51,35 @@ export function GanttScheduleEditableCell({
   });
 
   const localValue = rawValue?.trim() ? toDatetimeLocalInput(rawValue) : "";
+  const isMobile = variant === "mobile";
+  const openTrigger = trigger ?? (isMobile ? "click" : "doubleClick");
 
   return (
     <PlanDateTimeField
       value={localValue}
       edge={edge}
-      trigger="doubleClick"
+      trigger={openTrigger}
       size="cell"
       panelTitle={columnTitle}
-      cellDisplay={cell.text}
+      cellDisplay={<span className="whitespace-nowrap">{cell.text}</span>}
       cellTitle={cellTitle}
       cellAriaLabel={label}
       triggerClassName={cn(
-        "relative flex h-full w-full shrink-0 items-center justify-center border-l border-blue-100/80 px-0.5 text-center text-[10px] tabular-nums leading-tight transition-colors dark:border-blue-900/35",
-        "cursor-pointer hover:bg-blue-100/70 dark:hover:bg-blue-900/35",
-        cell.muted && "text-gray-400",
+        "relative flex h-full w-full shrink-0 items-center justify-center px-0.5 text-center tabular-nums leading-none transition-colors",
+        isMobile
+          ? "border-b border-blue-100/90 hover:bg-blue-100/70 dark:border-blue-900/45 dark:hover:bg-blue-900/35"
+          : "border-l border-blue-100/80 text-[10px] leading-tight hover:bg-blue-100/70 dark:border-blue-900/35 dark:hover:bg-blue-900/35",
+        "cursor-pointer",
+        cell.muted && "text-gray-400 dark:text-gray-500",
         cell.virtual && "italic text-gray-500",
         cell.highlight && "bg-amber-50 font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-200",
-        !cell.muted && !cell.virtual && !cell.highlight && "text-gray-600 dark:text-gray-300",
+        !cell.muted &&
+          !cell.virtual &&
+          !cell.highlight &&
+          (isMobile ? "text-gray-700 dark:text-gray-200" : "text-gray-600 dark:text-gray-300"),
+        isMobile && "text-[9px]",
       )}
-      style={{ width }}
+      style={isMobile ? undefined : { width }}
       onConfirm={async (draft) => {
         const field = scheduleColumnPlanField(columnId);
         const nextIso = draft.trim() ? datetimeLocalToIso(draft) : null;
