@@ -37,8 +37,8 @@ export function GanttMobileBarTitle({
         "border-0 shadow-none",
         onClick && "cursor-pointer active:opacity-80",
         sticky
-          ? "sticky z-[15] mx-auto block w-fit"
-          : "absolute left-1/2 z-[15] -translate-x-1/2",
+          ? "sticky top-0 z-[22] mx-auto block w-fit"
+          : "absolute left-1/2 z-[22] -translate-x-1/2",
         className,
       )}
       style={{
@@ -85,7 +85,7 @@ export function GanttMobileBarTitleTrack({
   const tailHeight = Math.max(0, timelineHeight - barTop - barHeight);
 
   return (
-    <div className="pointer-events-none relative z-[15]" style={{ minHeight: timelineHeight }}>
+    <div className="pointer-events-none relative z-[22]" style={{ minHeight: timelineHeight }}>
       <div aria-hidden style={{ height: barTop }} />
       <div
         className="relative flex items-start justify-center overflow-visible"

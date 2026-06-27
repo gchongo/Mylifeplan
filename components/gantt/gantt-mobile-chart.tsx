@@ -676,18 +676,13 @@ export function GanttMobileChart({ className }: { className?: string }) {
                 return (
                   <div
                     key={item.id}
-                    className="relative shrink-0 overflow-hidden border-r border-gray-100 dark:border-gray-800"
+                    className="relative shrink-0 border-r border-gray-100 dark:border-gray-800"
                     style={{ width: columnWidth, minHeight: timelineHeight }}
                   >
                     {!item.isUnscheduled && !item.contributionOnly && (
                       <div
-                        className="pointer-events-none absolute z-[15]"
-                        style={{
-                          left: barLeft,
-                          width: barWidth,
-                          top: 0,
-                          height: timelineHeight,
-                        }}
+                        className="relative z-[22]"
+                        style={{ marginLeft: barLeft, width: barWidth }}
                       >
                         <GanttMobileBarTitleTrack
                           barTop={barTop}
