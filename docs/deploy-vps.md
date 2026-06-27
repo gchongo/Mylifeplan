@@ -1,6 +1,6 @@
 # VPS 部署指南（Linux，无需 Docker）
 
-适用于 Ubuntu/Debian。产品名：**Meridian Plan**。仓库：<https://github.com/gchongo/Mylifeplan>
+适用于 Ubuntu/Debian。产品名：**Meridian Plan**。
 
 ## 1. 安装环境
 
@@ -28,19 +28,14 @@ GRANT ALL PRIVILEGES ON DATABASE meridian TO meridian;
 
 密码含 `@` 时，`.env` 里要写成 `%40`。
 
-> 若你已有旧库 `mylifeplan`，可继续使用；新部署建议用 `meridian`。
+## 3. 部署代码
 
-## 3. 拉代码
+将项目代码放到服务器（例如 `/www/wwwroot/Meridian` 或 `~/Mylifeplan`），然后：
 
 ```bash
-cd ~
-git clone https://github.com/gchongo/Mylifeplan.git
-cd Mylifeplan
-git pull   # 已有目录时更新到最新
+cd /path/to/Mylifeplan
 npm install
 ```
-
-生产目录示例：`/www/wwwroot/Meridian`
 
 ## 4. 配置 .env
 
@@ -51,12 +46,12 @@ nano .env
 
 ```env
 DATABASE_URL="postgresql://meridian:你的密码URL编码@localhost:5432/meridian?schema=public"
-AUTH_SECRET="openssl rand -base64 32 生成的字符串"
+AUTH_SECRET="使用 openssl rand -base64 32 生成的随机字符串"
 COOKIE_SECURE="false"
 NODE_ENV="production"
 ```
 
-> **重要**：用 `http://IP:3000` 访问时，`COOKIE_SECURE` 必须为 `false`。上 HTTPS 后改为 `true`。
+> **重要**：用 `http://IP:3000` 访问时，`COOKIE_SECURE` 必须为 `false`。启用 HTTPS 后改为 `true`。
 
 验证数据库：
 
@@ -88,45 +83,33 @@ pm2 save
 pm2 startup
 ```
 
-## 7. 防火墙
+## 7. 防火墙与域名
 
-云厂商安全组放行 **TCP 3000**（或 80 若用 Nginx）。
+云厂商安全组放行 **TCP 3000**（或 80/443 若使用 Nginx 反代）。
 
 ```bash
 sudo ufw allow 3000/tcp
 ```
 
-访问：`http://你的VPS公网IP:3000`（或你的域名，如 `meridian.gcoxy.com`）
+建议通过 Nginx 配置 HTTPS 与域名反代，详见你的主机商文档。
 
-## 8. 更新代码
+## 8. 更新
 
 ```bash
-cd /www/wwwroot/Meridian   # 或 ~/Mylifeplan
-git pull
+cd /path/to/Mylifeplan
+# 同步最新代码后
 npm install
 npm run db:generate
 npm run build
 pm2 restart meridian
 ```
 
-一键更新：
-
-```bash
-cd /www/wwwroot/Meridian && git pull && npm run build && pm2 restart meridian
-```
-
-## 种子账号
-
-| 角色 | 邮箱 | 密码 |
-|------|------|------|
-| 演示用户 | demo@meridian.local | password123 |
-| 管理员 | admin@meridian.local | password123 |
-
 ## 常见问题
 
 | 错误 | 处理 |
 |------|------|
-| `P1000 Authentication failed` | `.env` 改用 `meridian` 用户，不是 `postgres` |
-| `Cannot find module '../../lib/auth/password'` | `git pull` 或 `sed -i 's|../../lib/auth/password|../lib/auth/password|' prisma/seed.ts` |
+| `P1000 Authentication failed` | 检查 `.env` 中 `DATABASE_URL` 用户名、密码与库名 |
 | 外网 502 | `pm2 logs meridian`，确认 build 成功且进程在跑 |
 | `CREATE: command not found` | SQL 要在 `sudo -u postgres psql` 里执行 |
+
+演示账号与 seed 数据见 `prisma/seed.ts`，生产环境请修改默认密码或跳过 seed。

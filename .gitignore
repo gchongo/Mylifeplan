@@ -41,3 +41,6 @@ prisma/*.db-journal
 # IDE
 .idea
 .vscode
+
+# 本地宣传站点（gcoxy.com，不纳入仓库）
+/website/

@@ -7,12 +7,77 @@ import { useMobileShell } from "@/hooks/use-mobile-shell";
 import { shouldShowMobileTabBar, type MobileTabPath } from "@/lib/mobile-shell";
 import { cn } from "@/lib/utils";
 
-const tabs: { href: MobileTabPath; labelKey: "mobile.feed" | "mobile.gantt" | "mobile.calendar" | "mobile.kanban" | "mobile.memos"; icon: string }[] = [
-  { href: "/feed", labelKey: "mobile.feed", icon: "≡" },
-  { href: "/gantt", labelKey: "mobile.gantt", icon: "▬" },
-  { href: "/calendar", labelKey: "mobile.calendar", icon: "▦" },
-  { href: "/plans", labelKey: "mobile.kanban", icon: "◎" },
-  { href: "/memos", labelKey: "mobile.memos", icon: "▤" },
+const iconClass = "h-5 w-5 shrink-0";
+
+function TabIconFeed({ className }: { className?: string }) {
+  return (
+    <svg className={cn(iconClass, className)} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M4 7h16M4 12h16M4 17h10"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function TabIconGantt({ className }: { className?: string }) {
+  return (
+    <svg className={cn(iconClass, className)} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <rect x="3" y="10" width="14" height="4" rx="1" fill="currentColor" />
+      <rect x="8" y="16" width="10" height="4" rx="1" fill="currentColor" opacity="0.55" />
+    </svg>
+  );
+}
+
+function TabIconCalendar({ className }: { className?: string }) {
+  return (
+    <svg className={cn(iconClass, className)} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <rect x="4" y="5" width="16" height="15" rx="2" stroke="currentColor" strokeWidth="1.75" />
+      <path d="M4 9h16M8 3v4M16 3v4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+      <path
+        d="M8 13h2v2H8v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2z"
+        fill="currentColor"
+        opacity="0.7"
+      />
+    </svg>
+  );
+}
+
+function TabIconKanban({ className }: { className?: string }) {
+  return (
+    <svg className={cn(iconClass, className)} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="7.25" stroke="currentColor" strokeWidth="1.75" />
+      <circle cx="12" cy="12" r="2.25" fill="currentColor" />
+    </svg>
+  );
+}
+
+function TabIconMemos({ className }: { className?: string }) {
+  return (
+    <svg className={cn(iconClass, className)} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <rect x="6" y="4" width="12" height="16" rx="2" stroke="currentColor" strokeWidth="1.75" />
+      <path
+        d="M9 9h6M9 12h6M9 15h4"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+const tabs: {
+  href: MobileTabPath;
+  labelKey: "mobile.feed" | "mobile.gantt" | "mobile.calendar" | "mobile.kanban" | "mobile.memos";
+  Icon: typeof TabIconFeed;
+}[] = [
+  { href: "/feed", labelKey: "mobile.feed", Icon: TabIconFeed },
+  { href: "/gantt", labelKey: "mobile.gantt", Icon: TabIconGantt },
+  { href: "/calendar", labelKey: "mobile.calendar", Icon: TabIconCalendar },
+  { href: "/plans", labelKey: "mobile.kanban", Icon: TabIconKanban },
+  { href: "/memos", labelKey: "mobile.memos", Icon: TabIconMemos },
 ];
 
 export function MobileTabBar() {
@@ -30,6 +95,7 @@ export function MobileTabBar() {
       <div className="grid grid-cols-5">
         {tabs.map((tab) => {
           const active = pathname === tab.href;
+          const { Icon } = tab;
           return (
             <Link
               key={tab.href}
@@ -41,9 +107,7 @@ export function MobileTabBar() {
                   : "text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200",
               )}
             >
-              <span className="text-base leading-none" aria-hidden>
-                {tab.icon}
-              </span>
+              <Icon />
               {t(tab.labelKey)}
             </Link>
           );

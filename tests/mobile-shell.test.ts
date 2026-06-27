@@ -10,6 +10,7 @@ describe("mobile-shell", () => {
   it("shows tab bar only on mobile shell main routes", () => {
     expect(shouldShowMobileTabBar("/feed", true)).toBe(true);
     expect(shouldShowMobileTabBar("/feed", false)).toBe(false);
-    expect(shouldShowMobileTabBar("/settings", true)).toBe(false);
+    expect(shouldShowMobileTabBar("/settings", true)).toBe(true);
+    expect(shouldShowMobileTabBar("/summary", true)).toBe(true);
   });
 });

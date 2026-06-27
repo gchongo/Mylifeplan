@@ -17,41 +17,22 @@
 
 - Node.js 20+
 - npm 10+
-- PostgreSQL 15+（本机安装或 VPS，**不必 Docker**）
+- PostgreSQL 15+
 
-详细 VPS 步骤见 **[docs/deploy-vps.md](docs/deploy-vps.md)**。
+生产部署步骤见 **[docs/deploy-vps.md](docs/deploy-vps.md)**。
 
-## 快速开始（本地 Windows）
+## 快速开始（本地）
 
 ```bash
 npm install
-copy .env.example .env
+copy .env.example .env   # Windows；Linux/macOS 使用 cp
 npm run db:generate
 npm run db:push
 npm run db:seed
 npm run dev
 ```
 
-## 快速开始（Linux VPS）
-
-```bash
-git clone https://github.com/gchongo/Mylifeplan.git
-cd Mylifeplan
-npm install
-cp .env.example .env   # 编辑 DATABASE_URL 与 AUTH_SECRET
-npm run db:generate && npm run db:push && npm run db:seed
-npm run build
-pm2 start npm --name meridian -- start
-```
-
-完整说明见 [docs/deploy-vps.md](docs/deploy-vps.md)。
-
-### 种子账号
-
-| 角色 | 邮箱 | 密码 |
-|------|------|------|
-| 管理员 | admin@meridian.local | password123 |
-| 演示用户 | demo@meridian.local | password123 |
+浏览器访问 http://localhost:3000 。首次使用请在注册页创建账号，或通过 seed 脚本初始化演示数据（详见 `.env.example` 与 `prisma/seed.ts`）。
 
 ## 当前进度
 
@@ -59,39 +40,38 @@ pm2 start npm --name meridian -- start
 - Next.js 骨架、路由、Layout、UI 组件、首页三区域
 
 ### M1 ✅
-- [x] Prisma 六表 schema
-- [x] 注册 / 登录 / 登出 / Session API
-- [x] JWT Cookie 会话 + Middleware 守卫
-- [x] Zod 校验（auth + task/plan 日期）
-- [x] Seed 脚本（admin + demo）
-- [x] Docker Compose PostgreSQL
+- Prisma 六表 schema
+- 注册 / 登录 / 登出 / Session API
+- JWT Cookie 会话 + Middleware 守卫
+- Zod 校验（auth + task/plan 日期）
+- Seed 脚本
 
 ### M2 ✅
-- [x] Task / Plan CRUD API
-- [x] 分流 + Feed 写入与首页信息流
-- [x] 便签与计划分离（B 模型，见 [docs/content-flows.md](docs/content-flows.md)）
-- [x] 新建任务 / 计划表单
-- [x] 备忘录列表与补日期回流
+- Task / Plan CRUD API
+- 分流 + Feed 写入与首页信息流
+- 便签与计划分离（B 模型，见 [docs/content-flows.md](docs/content-flows.md)）
+- 新建任务 / 计划表单
+- 备忘录列表与补日期回流
 
 ### M3 ✅
-- [x] `/api/gantt` 甘特图数据（含 virtual effective_end）
-- [x] `/api/calendar` 日历数据
-- [x] 首页甘特图时间条（虚线 = 预估截止）
-- [x] 首页日历月视图
-- [x] 任务详情页
+- `/api/gantt` 甘特图数据（含 virtual effective_end）
+- `/api/calendar` 日历数据
+- 首页甘特图时间条（虚线 = 预估截止）
+- 首页日历月视图
+- 任务详情页
 
 ### M4 ✅
-- [x] 长期规划 goal → phase 树形展示
-- [x] 计划详情页（子计划、关联任务、内嵌新建任务）
-- [x] 任务详情编辑 / 删除 / 状态快捷操作
-- [x] 父计划 / 父任务 / 关联计划下拉选择器
-- [x] 父任务汇总状态展示（展示层推导）
+- 长期规划 goal → phase 树形展示
+- 计划详情页（子计划、关联任务、内嵌新建任务）
+- 任务详情编辑 / 删除 / 状态快捷操作
+- 父计划 / 父任务 / 关联计划下拉选择器
+- 父任务汇总状态展示（展示层推导）
 
 ### M5 ✅
-- [x] Admin 用户列表 / 详情 / 启用禁用（`is_active`）
-- [x] Admin 订阅列表 / 手动 PATCH
-- [x] 禁用用户无法登录
-- [x] Vitest：memo-sync 集成 + task-rollup + admin 校验
+- Admin 用户列表 / 详情 / 启用禁用（`is_active`）
+- Admin 订阅列表 / 手动 PATCH
+- 禁用用户无法登录
+- Vitest：memo-sync 集成 + task-rollup + admin 校验
 
 ### MVP 完成 + 需求补全
 

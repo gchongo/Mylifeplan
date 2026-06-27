@@ -20,11 +20,13 @@ import {
   IconStatus,
   IconType,
 } from "@/components/summary/summary-icons";
+import { useMobileShell } from "@/hooks/use-mobile-shell";
 import { localizeSummarySegments } from "@/lib/i18n/summary-segments";
 import { cn } from "@/lib/utils";
 
 export function SummaryDashboard({ className }: { className?: string }) {
   const { t } = useI18n();
+  const isMobileShell = useMobileShell();
   const { summary, loading, error, reload } = usePlanSummary();
 
   if (loading) return <Loading label={t("summary.loading")} />;
@@ -50,12 +52,12 @@ export function SummaryDashboard({ className }: { className?: string }) {
   const executionSegments = localizeSummarySegments(summary.executionSegments, "executionLabel", t);
 
   return (
-    <div className={cn("flex h-full min-h-0 flex-col gap-3", className)}>
+    <div className={cn("flex min-h-min flex-col gap-3 pb-2 lg:h-full lg:min-h-0", className)}>
       <section className="shrink-0 rounded-xl border border-gray-100 bg-gradient-to-r from-indigo-50/80 via-white to-cyan-50/50 p-3 shadow-sm dark:border-gray-800 dark:from-indigo-950/25 dark:via-gray-900 dark:to-cyan-950/15">
         <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
           {t("summary.coreMetrics")}
         </h2>
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-3">
           <div className="flex shrink-0 flex-col items-center justify-center lg:w-36">
             <p className="mb-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
               {t("summary.completionRate")}
@@ -63,17 +65,17 @@ export function SummaryDashboard({ className }: { className?: string }) {
             <CompletionRateDonut
               statusSegments={statusSegments}
               completionRate={summary.completionRate}
-              size={96}
+              size={isMobileShell ? 112 : 96}
               centerValueClassName="text-lg"
             />
           </div>
           <div className="min-w-0 flex-1">
-            <PrimaryPlanStats summary={summary} singleRow />
+            <PrimaryPlanStats summary={summary} singleRow={!isMobileShell} />
           </div>
         </div>
       </section>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-2">
+      <div className="grid min-h-min grid-cols-1 gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-2">
         <SectionShell icon={<IconStatus className="h-3.5 w-3.5" />} title={t("summary.statusDistribution")}>
           <VerticalBarChart segments={statusSegments} renderIcon={renderStatusIcon} barAreaHeight={88} />
         </SectionShell>
@@ -89,7 +91,7 @@ export function SummaryDashboard({ className }: { className?: string }) {
           contentClassName="p-2.5"
         >
           <p className="mb-2 text-[11px] text-gray-400">{t("summary.executionHint")}</p>
-          <ExecutionBreakdown segments={executionSegments} columns={2} />
+          <ExecutionBreakdown segments={executionSegments} columns={isMobileShell ? 1 : 2} />
         </SectionShell>
       </div>
     </div>

@@ -99,8 +99,7 @@ function AppShellInner({
 
   const pathname = usePathname();
   const fullBleed = isAppShellFullBleed(pathname);
-  const hideMobileNav = isMobileShell && pathname.startsWith("/settings");
-  const mobileNavOpen = navOpen && !hideMobileNav;
+  const mobileNavOpen = navOpen && !isMobileShell;
 
   useEffect(() => {
     if (!fullBleed) return;
@@ -138,12 +137,12 @@ function AppShellInner({
             <SidebarNavMenu userRole={userRole} />
           </SidebarNavDrawer>
         ) : (
+          !isMobileShell &&
           navOpen && (
             <aside
               className={cn(
                 "sidebar-nav-drawer fixed left-0 top-14 z-50 h-[calc(100vh-3.5rem)] w-56",
                 "border-r border-gray-200 bg-white shadow-xl dark:border-gray-800 dark:bg-gray-900 lg:hidden",
-                hideMobileNav && "hidden",
               )}
             >
               <SidebarNavMenu onNavigate={closeNav} userRole={userRole} />

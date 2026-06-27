@@ -12,5 +12,6 @@ export function isMobileTabPath(pathname: string): pathname is MobileTabPath {
 export function shouldShowMobileTabBar(pathname: string, isMobileShell: boolean): boolean {
   if (!isMobileShell) return false;
   if (pathname === "/settings" || pathname.startsWith("/settings/")) return true;
+  if (pathname === "/summary") return true;
   return isMobileTabPath(pathname);
 }

@@ -528,7 +528,12 @@ export function PrimaryPlanStats({
   const { t } = useI18n();
 
   return (
-    <div className={cn("grid gap-1.5", singleRow ? "grid-cols-6" : "grid-cols-3")}>
+    <div
+      className={cn(
+        "grid gap-1.5",
+        singleRow ? "grid-cols-6" : "grid-cols-2 sm:grid-cols-3",
+      )}
+    >
       {PRIMARY_PLAN_STAT_ITEMS.map((item) => (
         <MiniStat
           key={item.key}

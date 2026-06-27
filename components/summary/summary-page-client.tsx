@@ -8,8 +8,8 @@ export function SummaryPageClient() {
   const { t } = useI18n();
 
   return (
-    <FullPanelPage title={t("summary.title")}>
-      <SummaryDashboard className="min-h-0 flex-1" />
+    <FullPanelPage title={t("summary.title")} scrollable>
+      <SummaryDashboard />
     </FullPanelPage>
   );
 }
