@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { CalendarMobileSplitLayout } from "@/components/calendar/calendar-mobile-split-layout";
 import { GanttToolbarControls } from "@/components/gantt/gantt-toolbar-controls";
+import { GanttMobileBarTitleTrack } from "@/components/gantt/gantt-mobile-bar-title";
 import { GanttMobileDraggableBar } from "@/components/gantt/gantt-mobile-draggable-bar";
-import { GanttMobileBarTitle } from "@/components/gantt/gantt-mobile-bar-title";
 import { GanttMobileScheduleDrawer } from "@/components/gantt/gantt-mobile-schedule-drawer";
 import { GanttPlanDrawerPanel } from "@/components/gantt/gantt-plan-drawer";
 import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribution-drawer";
@@ -582,13 +582,16 @@ export function GanttMobileChart({ className }: { className?: string }) {
             </div>
           </div>
 
-          <div className="relative shrink-0" style={{ width: gridWidth, height: timelineHeight }}>
+          <div
+            className="relative flex shrink-0 flex-row"
+            style={{ width: gridWidth, minHeight: timelineHeight }}
+          >
             {layout.columns.map((col, idx) => {
               const top = layout.columns.slice(0, idx).reduce((sum, c) => sum + c.width, 0);
               return (
                 <div
                   key={`grid-${col.key}`}
-                  className="pointer-events-none absolute left-0 right-0 border-b border-dashed border-gray-200 dark:border-gray-700"
+                  className="pointer-events-none absolute left-0 right-0 z-0 border-b border-dashed border-gray-200 dark:border-gray-700"
                   style={{ top, height: col.width }}
                 />
               );
@@ -601,8 +604,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
               />
             )}
 
-            <div className="absolute inset-0 flex">
-              {renderPlanColumns((row) => {
+            {renderPlanColumns((row) => {
                 const item = row.item;
                 const columnWidth = mobilePlanColumnWidth(row.depth);
                 const barWidth = mobilePlanBarWidthPx(row.depth);
@@ -612,6 +614,8 @@ export function GanttMobileChart({ className }: { className?: string }) {
                 const metrics = planBarVerticalMetrics(displayStart, displayEnd, layout, {
                   isVirtualEnd: item.isVirtualEnd,
                 });
+                const barTop = metrics.top;
+                const barHeight = metrics.height;
                 const color = normalizePlanColor(item.color);
                 const parentPlan = item.parentId ? planById.get(item.parentId) : null;
                 const parentPreview = parentPlan ? barPreview.get(parentPlan.id) : undefined;
@@ -631,46 +635,56 @@ export function GanttMobileChart({ className }: { className?: string }) {
                   <div
                     key={item.id}
                     className="relative shrink-0 border-r border-gray-100 dark:border-gray-800"
-                    style={{ width: columnWidth }}
+                    style={{ width: columnWidth, minHeight: timelineHeight }}
                   >
                     {!item.isUnscheduled && !item.contributionOnly && (
-                      <>
-                        <GanttMobileDraggableBar
-                          item={item}
-                          layout={layout}
-                          top={metrics.top}
-                          height={metrics.height}
-                          barWidthPx={barWidth}
-                          title={item.title}
-                          titleDepth={row.depth}
-                          color={color}
-                          previewOverride={previewDates ?? null}
-                          minStartDate={row.depth > 0 ? minStartDate : undefined}
-                          minContributionDate={contribBounds?.min}
-                          maxContributionDate={contribBounds?.max}
-                          onUpdated={handleItemUpdated}
-                          onPreviewDates={handlePreviewDates}
-                          onDragEnd={clearBarPreview}
-                          onDragFailed={() => void refetchGanttQuery()}
-                          onTaskClick={() => openPlan(item.id)}
-                          dragEnabled={dragEnabled}
-                        />
-                        {renderActualLine(item, displayStart, displayEnd, barWidth)}
-                      </>
+                      <GanttMobileBarTitleTrack
+                        barTop={barTop}
+                        barHeight={barHeight}
+                        timelineHeight={timelineHeight}
+                        title={item.title}
+                        depth={row.depth}
+                        onTitleClick={() => openPlan(item.id)}
+                      />
                     )}
-                    {showContributionMarkers &&
-                      !item.isUnscheduled &&
-                      !item.contributionOnly &&
-                      renderContributionMarkers(
-                        rowContributions,
-                        displayStart,
-                        displayEnd,
-                        item.id,
+
+                    <div className="pointer-events-none absolute inset-0 z-[5]">
+                      {!item.isUnscheduled && !item.contributionOnly && (
+                        <>
+                          <GanttMobileDraggableBar
+                            item={item}
+                            layout={layout}
+                            top={barTop}
+                            height={barHeight}
+                            barWidthPx={barWidth}
+                            color={color}
+                            previewOverride={previewDates ?? null}
+                            minStartDate={row.depth > 0 ? minStartDate : undefined}
+                            minContributionDate={contribBounds?.min}
+                            maxContributionDate={contribBounds?.max}
+                            onUpdated={handleItemUpdated}
+                            onPreviewDates={handlePreviewDates}
+                            onDragEnd={clearBarPreview}
+                            onDragFailed={() => void refetchGanttQuery()}
+                            onTaskClick={() => openPlan(item.id)}
+                            dragEnabled={dragEnabled}
+                          />
+                          {renderActualLine(item, displayStart, displayEnd, barWidth)}
+                        </>
                       )}
+                      {showContributionMarkers &&
+                        !item.isUnscheduled &&
+                        !item.contributionOnly &&
+                        renderContributionMarkers(
+                          rowContributions,
+                          displayStart,
+                          displayEnd,
+                          item.id,
+                        )}
+                    </div>
                   </div>
                 );
               })}
-            </div>
           </div>
         </div>
       </div>
