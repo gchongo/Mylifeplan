@@ -16,12 +16,20 @@ export function CalendarMobileSplitLayout({
 }) {
   return (
     <div className={cn("flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden", className)}>
-      <div className="min-h-0 flex-1 overflow-hidden">{calendar}</div>
       <div
         className={cn(
-          "min-h-0 overflow-hidden border-t border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950",
-          open ? "flex-1" : "max-h-0 flex-[0] border-t-transparent",
+          "min-h-0 shrink-0 overflow-hidden transition-[height] duration-300 ease-out motion-reduce:transition-none",
         )}
+        style={{ height: open ? "50%" : "100%" }}
+      >
+        {calendar}
+      </div>
+      <div
+        className={cn(
+          "min-h-0 shrink-0 overflow-hidden border-t border-gray-200 bg-white transition-[height,transform,opacity] duration-300 ease-out dark:border-gray-800 dark:bg-gray-950 motion-reduce:transition-none",
+          open ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0 border-t-transparent",
+        )}
+        style={{ height: open ? "50%" : "0%" }}
         aria-hidden={!open}
       >
         {sheet}
