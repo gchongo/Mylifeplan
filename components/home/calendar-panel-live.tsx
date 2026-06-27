@@ -113,8 +113,6 @@ export function CalendarPanelLive({
   const [viewMonth, setViewMonth] = useState(today.getUTCMonth());
   const [viewDay, setViewDay] = useState(today.getUTCDate());
   const [visibleMonth, setVisibleMonth] = useState<MonthKey>(todayMonth);
-  const visibleMonthRef = useRef(visibleMonth);
-  visibleMonthRef.current = visibleMonth;
   const [loadedMonths, setLoadedMonths] = useState<MonthKey[]>(() =>
     initialMonthWindow(todayMonth),
   );
@@ -124,8 +122,6 @@ export function CalendarPanelLive({
   const scrollRef = useRef<CalendarScrollViewHandle>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
   const lastSheetDateRef = useRef<string | null>(null);
-  const drawerVisibleMonthRef = useRef<MonthKey | null>(null);
-  const suppressVisibleMonthSyncRef = useRef(false);
   const [layoutSize, setLayoutSize] = useState({ width: 0, height: 0 });
   const [drawerWidthPx, setDrawerWidthPx] = useState(CALENDAR_DRAWER_MIN_WIDTH_PX);
 
@@ -180,7 +176,6 @@ export function CalendarPanelLive({
   }, []);
 
   const handleVisibleMonthChange = useCallback((key: MonthKey) => {
-    if (suppressVisibleMonthSyncRef.current) return;
     setVisibleMonth(key);
     setViewYear(key.year);
     setViewMonth(key.month);
@@ -195,6 +190,10 @@ export function CalendarPanelLive({
       };
     }
     if (viewMode === "month") {
+      if (useMobileFullLayout) {
+        const r = monthRange(viewYear, viewMonth);
+        return { ...r, label: formatMonthTitle({ year: viewYear, month: viewMonth }, true) };
+      }
       const r = rangeForMonths(loadedMonths);
       return { ...r, label: formatMonthTitle(visibleMonth, true) };
     }
@@ -204,7 +203,18 @@ export function CalendarPanelLive({
     }
     const ds = toDateStr(viewYear, viewMonth, viewDay);
     return { from: ds, to: ds, label: ds };
-  }, [viewMode, loadedMonths, visibleMonth, viewYear, viewMonth, viewDay, weekAnchor, locale, t]);
+  }, [
+    viewMode,
+    loadedMonths,
+    visibleMonth,
+    viewYear,
+    viewMonth,
+    viewDay,
+    weekAnchor,
+    locale,
+    t,
+    useMobileFullLayout,
+  ]);
 
   const { data, isLoading: loading, refetch } = useQuery({
     queryKey: queryKeys.calendar.range(from, to),
@@ -225,6 +235,9 @@ export function CalendarPanelLive({
     setWeekAnchor(now);
     setSelectedDate(localDateStr(now));
     setVisibleMonth(monthKeyFromDate(now));
+    if (useMobileFullLayout) {
+      setLoadedMonths([monthKeyFromDate(now)]);
+    }
     if (viewMode === "month") scrollRef.current?.scrollToToday();
   }
 
@@ -233,7 +246,7 @@ export function CalendarPanelLive({
     setViewYear(year);
     setViewMonth(month);
     setVisibleMonth(key);
-    setLoadedMonths(initialMonthWindow(key));
+    setLoadedMonths(useMobileFullLayout ? [key] : initialMonthWindow(key));
     setViewMode("month");
     requestAnimationFrame(() => scrollRef.current?.scrollToMonth(key));
   }
@@ -244,7 +257,14 @@ export function CalendarPanelLive({
       return;
     }
     if (viewMode === "month") {
-      if (useMobileFullLayout && drawerDate) closeDayDrawer();
+      if (useMobileFullLayout) {
+        const target = monthKeyFromDate(new Date(Date.UTC(viewYear, viewMonth - 1, 1)));
+        setVisibleMonth(target);
+        setViewYear(target.year);
+        setViewMonth(target.month);
+        setLoadedMonths([target]);
+        return;
+      }
       scrollRef.current?.scrollByMonth(-1);
       return;
     }
@@ -268,7 +288,14 @@ export function CalendarPanelLive({
       return;
     }
     if (viewMode === "month") {
-      if (useMobileFullLayout && drawerDate) closeDayDrawer();
+      if (useMobileFullLayout) {
+        const target = monthKeyFromDate(new Date(Date.UTC(viewYear, viewMonth + 1, 1)));
+        setVisibleMonth(target);
+        setViewYear(target.year);
+        setViewMonth(target.month);
+        setLoadedMonths([target]);
+        return;
+      }
       scrollRef.current?.scrollByMonth(1);
       return;
     }
@@ -288,32 +315,20 @@ export function CalendarPanelLive({
 
   function openDayDrawer(ds: string) {
     setSelectedDate(ds);
-    if (useMobileFullLayout) {
-      drawerVisibleMonthRef.current = visibleMonthRef.current;
-      suppressVisibleMonthSyncRef.current = true;
-    } else {
-      const d = parseDate(ds);
-      setViewYear(d.getUTCFullYear());
-      setViewMonth(d.getUTCMonth());
-      setViewDay(d.getUTCDate());
-    }
+    const d = parseDate(ds);
+    setViewYear(d.getUTCFullYear());
+    setViewMonth(d.getUTCMonth());
+    setViewDay(d.getUTCDate());
     setDrawerDate(ds);
   }
 
   function closeDayDrawer() {
     setDrawerDate(null);
-    if (useMobileFullLayout && drawerVisibleMonthRef.current) {
-      const snap = drawerVisibleMonthRef.current;
-      drawerVisibleMonthRef.current = null;
-      setVisibleMonth(snap);
-      setViewYear(snap.year);
-      setViewMonth(snap.month);
-    }
-    // Defer month-sync re-enable until layout settles after split collapse.
-    window.setTimeout(() => {
-      suppressVisibleMonthSyncRef.current = false;
-    }, 220);
   }
+
+  const mobilePinnedMonth = useMobileFullLayout
+    ? { year: viewYear, month: viewMonth }
+    : null;
 
   if (drawerDate) lastSheetDateRef.current = drawerDate;
   const sheetDate = drawerDate ?? lastSheetDateRef.current;
@@ -377,6 +392,7 @@ export function CalendarPanelLive({
             onVisibleMonthChange={handleVisibleMonthChange}
             onMonthsChange={handleMonthsChange}
             fullPage={fullPage}
+            pinToMonth={mobilePinnedMonth}
             compressed={useMobileFullLayout && drawerDate !== null}
           />
           {loading && items.length > 0 && (
