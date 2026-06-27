@@ -41,6 +41,7 @@ export type CalendarScrollViewHandle = {
   scrollToToday: () => void;
   scrollByMonth: (delta: number) => void;
   scrollToMonth: (key: MonthKey) => void;
+  scrollToDate: (dateStr: string) => void;
 };
 
 export const CalendarScrollView = forwardRef<
@@ -54,6 +55,7 @@ export const CalendarScrollView = forwardRef<
     onVisibleMonthChange: (key: MonthKey) => void;
     onMonthsChange: (months: MonthKey[]) => void;
     fullPage: boolean;
+    pinToMonth?: MonthKey | null;
   }
 >(function CalendarScrollView(
   {
@@ -65,6 +67,7 @@ export const CalendarScrollView = forwardRef<
     onVisibleMonthChange,
     onMonthsChange,
     fullPage,
+    pinToMonth = null,
   },
   ref,
 ) {
@@ -77,11 +80,28 @@ export const CalendarScrollView = forwardRef<
   const prependingRef = useRef(false);
   const didInitialScroll = useRef(false);
   const cellMin = useCalendarCellMin(displayMode, fullPage);
+  const isPinned = pinToMonth != null;
+  const pinnedCellMin = "min-h-0 h-full";
+  const activeCellMin = isPinned ? pinnedCellMin : cellMin;
   const { preferences } = useSettings();
   const weekPrefs = preferences.calendarWeekNumbers;
   const showWeekNumbers = weekPrefs.enabled;
   const weekColClass = weekPrefs.format === "week-label" ? "w-11 shrink-0" : "w-7 shrink-0";
   const weekdayLabels = Array.from({ length: 7 }, (_, i) => localizeSettingsWeekdayMonStart(t, i));
+  const visibleMonthRef = useRef<MonthKey>(todayKey);
+
+  useEffect(() => {
+    if (pinToMonth) {
+      setMonths([pinToMonth]);
+      visibleMonthRef.current = pinToMonth;
+      onVisibleMonthChange(pinToMonth);
+      requestAnimationFrame(() => {
+        if (scrollRef.current) scrollRef.current.scrollTop = 0;
+      });
+      return;
+    }
+    setMonths(initialMonthWindow(visibleMonthRef.current));
+  }, [pinToMonth, onVisibleMonthChange]);
 
   function formatMonthSectionTitle(key: MonthKey, showYear: boolean): string {
     if (showYear) {
@@ -113,7 +133,10 @@ export const CalendarScrollView = forwardRef<
       const dist = Math.abs(el.getBoundingClientRect().top - rootTop);
       if (!best || dist < best.dist) best = { key, dist };
     }
-    if (best) onVisibleMonthChange(best.key);
+    if (best) {
+      visibleMonthRef.current = best.key;
+      onVisibleMonthChange(best.key);
+    }
   }, [months, onVisibleMonthChange]);
 
   const prependMonths = useCallback(() => {
@@ -137,9 +160,10 @@ export const CalendarScrollView = forwardRef<
     const root = scrollRef.current;
     if (!root) return;
     updateVisibleMonth();
+    if (isPinned) return;
     if (root.scrollTop < EDGE_THRESHOLD_PX) prependMonths();
     if (root.scrollHeight - root.scrollTop - root.clientHeight < EDGE_THRESHOLD_PX) appendMonths();
-  }, [appendMonths, prependMonths, updateVisibleMonth]);
+  }, [appendMonths, isPinned, prependMonths, updateVisibleMonth]);
 
   useEffect(() => {
     const outer = outerRef.current;
@@ -162,7 +186,7 @@ export const CalendarScrollView = forwardRef<
   }, [months, displayMode, fullPage]);
 
   useLayoutEffect(() => {
-    if (didInitialScroll.current) return;
+    if (didInitialScroll.current || isPinned) return;
     const root = scrollRef.current;
     const todayEl = root?.querySelector(`[data-date="${todayStr}"]`);
     if (root && todayEl instanceof HTMLElement) {
@@ -172,7 +196,7 @@ export const CalendarScrollView = forwardRef<
       didInitialScroll.current = true;
       updateVisibleMonth();
     }
-  }, [months, todayStr, updateVisibleMonth]);
+  }, [months, todayStr, updateVisibleMonth, isPinned]);
 
   useImperativeHandle(ref, () => ({
     scrollToToday() {
@@ -183,7 +207,16 @@ export const CalendarScrollView = forwardRef<
         updateVisibleMonth();
       }
     },
+    scrollToDate(dateStr: string) {
+      const root = scrollRef.current;
+      const el = root?.querySelector(`[data-date="${dateStr}"]`);
+      if (root && el instanceof HTMLElement) {
+        el.scrollIntoView({ block: "center", behavior: "smooth" });
+        updateVisibleMonth();
+      }
+    },
     scrollByMonth(delta: number) {
+      if (isPinned) return;
       const root = scrollRef.current;
       if (!root) return;
       const firstVisible = months.find((key) => {
@@ -208,6 +241,7 @@ export const CalendarScrollView = forwardRef<
       }
     },
     scrollToMonth(key: MonthKey) {
+      if (isPinned) return;
       const targetId = monthKeyId(key);
       if (!months.some((m) => monthKeyId(m) === targetId)) {
         setMonths((prev) =>
@@ -225,7 +259,7 @@ export const CalendarScrollView = forwardRef<
   }));
 
   return (
-    <div ref={outerRef} className="flex h-0 min-h-0 w-full flex-1 flex-col overflow-hidden">
+    <div ref={outerRef} className="flex h-full min-h-0 w-full flex-col overflow-hidden">
       {showWeekNumbers ? (
         <div className="flex shrink-0 border-b border-gray-200 bg-white text-center text-[11px] text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
           <div className={cn(weekColClass, "py-1.5 font-medium")}>{t("settings.weekNumber.weekHeader")}</div>
@@ -249,7 +283,12 @@ export const CalendarScrollView = forwardRef<
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="scrollbar-hide h-0 min-h-0 flex-1 overflow-y-auto overscroll-contain bg-gray-100 dark:bg-gray-950"
+        className={cn(
+          "scrollbar-hide min-h-0 flex-1 bg-gray-100 dark:bg-gray-950",
+          isPinned
+            ? "flex flex-col overflow-hidden"
+            : "h-0 overflow-y-auto overscroll-contain",
+        )}
         tabIndex={0}
       >
         {months.map((key, index) => {
@@ -260,24 +299,31 @@ export const CalendarScrollView = forwardRef<
           const isCurrentMonth = key.year === todayKey.year && key.month === todayKey.month;
 
           return (
-            <section key={id} ref={(el) => setMonthRef(id, el)} data-month-id={id} className="mb-1">
-              <h3
-                className={cn(
-                  "bg-gray-100 px-3 py-2 text-base font-semibold dark:bg-gray-900",
-                  isCurrentMonth ? "text-red-600" : "text-gray-900 dark:text-gray-100",
-                )}
-              >
-                {title}
-              </h3>
+            <section
+              key={id}
+              ref={(el) => setMonthRef(id, el)}
+              data-month-id={id}
+              className={cn("mb-1", isPinned && "flex min-h-0 flex-1 flex-col")}
+            >
+              {!isPinned ? (
+                <h3
+                  className={cn(
+                    "bg-gray-100 px-3 py-2 text-base font-semibold dark:bg-gray-900",
+                    isCurrentMonth ? "text-red-600" : "text-gray-900 dark:text-gray-100",
+                  )}
+                >
+                  {title}
+                </h3>
+              ) : null}
               {showWeekNumbers ? (
-                <div className="flex flex-col gap-px">
+                <div className={cn("flex flex-col gap-px", isPinned && "min-h-0 flex-1")}>
                   {weekRows.map((week, weekIndex) => (
-                    <div key={`${id}-w${weekIndex}`} className="flex gap-px">
+                    <div key={`${id}-w${weekIndex}`} className={cn("flex gap-px", isPinned && "min-h-0 flex-1")}>
                       <div
                         className={cn(
                           weekColClass,
                           "flex items-start justify-center bg-gray-50 pt-1.5 text-[11px] font-medium text-gray-500 dark:bg-gray-900 dark:text-gray-400",
-                          cellMin,
+                          activeCellMin,
                         )}
                       >
                         {formatCalendarWeekNumber(
@@ -292,7 +338,12 @@ export const CalendarScrollView = forwardRef<
                       <div className="grid min-w-0 flex-1 grid-cols-7 gap-px">
                         {week.map((day, idx) => {
                           if (day === null) {
-                            return <CalendarEmptyDayCell key={`e-${id}-${weekIndex}-${idx}`} cellMin={cellMin} />;
+                            return (
+                              <CalendarEmptyDayCell
+                                key={`e-${id}-${weekIndex}-${idx}`}
+                                cellMin={activeCellMin}
+                              />
+                            );
                           }
                           return (
                             <CalendarDayCell
@@ -306,6 +357,7 @@ export const CalendarScrollView = forwardRef<
                               todayStr={todayStr}
                               selectedDate={selectedDate}
                               onSelectDate={onSelectDate}
+                              cellMinOverride={isPinned ? activeCellMin : undefined}
                             />
                           );
                         })}
@@ -314,10 +366,10 @@ export const CalendarScrollView = forwardRef<
                   ))}
                 </div>
               ) : (
-                <div className="grid grid-cols-7 gap-px">
+                <div className={cn("grid grid-cols-7 gap-px", isPinned && "min-h-0 flex-1 grid-rows-6")}>
                   {weekRows.flat().map((day, idx) => {
                     if (day === null) {
-                      return <CalendarEmptyDayCell key={`e-${id}-${idx}`} cellMin={cellMin} />;
+                      return <CalendarEmptyDayCell key={`e-${id}-${idx}`} cellMin={activeCellMin} />;
                     }
                     return (
                       <CalendarDayCell
@@ -331,6 +383,7 @@ export const CalendarScrollView = forwardRef<
                         todayStr={todayStr}
                         selectedDate={selectedDate}
                         onSelectDate={onSelectDate}
+                        cellMinOverride={isPinned ? activeCellMin : undefined}
                       />
                     );
                   })}

@@ -107,6 +107,7 @@ export function CalendarDayCell({
   todayStr,
   selectedDate,
   onSelectDate,
+  cellMinOverride,
 }: {
   year: number;
   month: number;
@@ -117,8 +118,10 @@ export function CalendarDayCell({
   todayStr: string;
   selectedDate: string;
   onSelectDate: (dateStr: string) => void;
+  cellMinOverride?: string;
 }) {
-  const { show, cellMin } = displayLimits(displayMode, fullPage);
+  const { show, cellMin: defaultCellMin } = displayLimits(displayMode, fullPage);
+  const cellMin = cellMinOverride ?? defaultCellMin;
   const ds = toDateStr(year, month, day);
   const dayItems = itemsOnDate(items, ds);
   const isToday = ds === todayStr;

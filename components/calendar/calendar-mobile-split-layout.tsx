@@ -2,10 +2,7 @@
 
 import { cn } from "@/lib/utils";
 
-/**
- * 移动端日历分屏：抽屉从底部向上展开，日历区域同步收缩（各占可用高度 50%）。
- * 使用 grid 行高过渡，避免 50dvh 超出内容区导致“遮挡”感。
- */
+/** 移动端日历 + 详情抽屉：严格 50/50 分屏，抽屉向上展开时日历只占上半区 */
 export function CalendarMobileSplitLayout({
   open,
   calendar,
@@ -18,23 +15,24 @@ export function CalendarMobileSplitLayout({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "grid h-full min-h-0 w-full flex-1 overflow-hidden transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none",
-        className,
-      )}
-      style={{ gridTemplateRows: open ? "minmax(0, 3fr) minmax(0, 2fr)" : "minmax(0, 1fr) 0fr" }}
-    >
-      <div className="min-h-0 overflow-hidden">{calendar}</div>
+    <div className={cn("flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden", className)}>
       <div
         className={cn(
-          "min-h-0 overflow-hidden border-t border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950",
-          !open && "pointer-events-none border-t-transparent opacity-0",
-          open && "opacity-100",
+          "min-h-0 shrink-0 overflow-hidden transition-[height] duration-300 ease-out motion-reduce:transition-none",
         )}
+        style={{ height: open ? "50%" : "100%" }}
+      >
+        {calendar}
+      </div>
+      <div
+        className={cn(
+          "min-h-0 shrink-0 overflow-hidden border-t border-gray-200 bg-white transition-[height] duration-300 ease-out dark:border-gray-800 dark:bg-gray-950 motion-reduce:transition-none",
+          !open && "border-t-transparent",
+        )}
+        style={{ height: open ? "50%" : "0%" }}
         aria-hidden={!open}
       >
-        {sheet}
+        {open ? sheet : null}
       </div>
     </div>
   );

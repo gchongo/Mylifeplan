@@ -103,6 +103,7 @@ export function CalendarPanelLive({
 }) {
   const { t, locale } = useI18n();
   const isMobileShell = useMobileShell();
+  const useMobileFullLayout = isMobileShell && fullPage;
   const today = new Date();
   const todayStr = localDateStr(today);
   const todayMonth = monthKeyFromDate(today);
@@ -237,6 +238,7 @@ export function CalendarPanelLive({
       return;
     }
     if (viewMode === "month") {
+      if (useMobileFullLayout && drawerDate) closeDayDrawer();
       scrollRef.current?.scrollByMonth(-1);
       return;
     }
@@ -260,6 +262,7 @@ export function CalendarPanelLive({
       return;
     }
     if (viewMode === "month") {
+      if (useMobileFullLayout && drawerDate) closeDayDrawer();
       scrollRef.current?.scrollByMonth(1);
       return;
     }
@@ -290,7 +293,16 @@ export function CalendarPanelLive({
     setDrawerDate(null);
   }
 
-  const useMobileFullLayout = isMobileShell && fullPage;
+  const mobilePinnedMonth =
+    useMobileFullLayout && drawerDate
+      ? monthKeyFromDate(parseDate(drawerDate))
+      : null;
+
+  useEffect(() => {
+    if (!useMobileFullLayout || !drawerDate) return;
+    requestAnimationFrame(() => scrollRef.current?.scrollToDate(drawerDate));
+  }, [drawerDate, useMobileFullLayout]);
+
   const shellClassName = cn(
     "flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden",
     className,
@@ -350,6 +362,7 @@ export function CalendarPanelLive({
             onVisibleMonthChange={handleVisibleMonthChange}
             onMonthsChange={handleMonthsChange}
             fullPage={fullPage}
+            pinToMonth={mobilePinnedMonth}
           />
           {loading && items.length > 0 && (
             <div className="pointer-events-none absolute inset-x-0 top-10 z-20 flex justify-center">
