@@ -195,7 +195,7 @@ export function CalendarPanelLive({
     return { from: ds, to: ds, label: ds };
   }, [viewMode, loadedMonths, visibleMonth, viewYear, viewMonth, viewDay, weekAnchor, locale, t]);
 
-  const { data, isLoading: loading } = useQuery({
+  const { data, isLoading: loading, refetch } = useQuery({
     queryKey: queryKeys.calendar.range(from, to),
     queryFn: () => apiJson<{ items?: CalendarItem[] }>(`/api/calendar?from=${from}&to=${to}`),
   });
@@ -287,7 +287,7 @@ export function CalendarPanelLive({
   }
 
   return (
-    <Card className={cn("flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden", className)}>
+    <Card className={cn("flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden", className, isMobileShell && fullPage && "rounded-none border-0 shadow-none")}>
       {!fullPage && (
         <CardHeader className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 space-y-0 pb-2">
           <CardTitle className="min-w-0 truncate">{t("calendar.homeTitle")}</CardTitle>
@@ -313,13 +313,14 @@ export function CalendarPanelLive({
           fullPage ? "p-0" : "px-3 pb-3 pt-0",
         )}
       >
-        <div ref={layoutRef} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <div ref={layoutRef} className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <CalendarDayDrawer
           dateStr={drawerDate}
           items={items}
           open={drawerDate !== null}
           onClose={closeDayDrawer}
           detailExpandable={fullPage}
+          onDataChange={() => void refetch()}
           placement={isMobileShell ? "bottom" : "end"}
           push={isMobileShell}
           panelHeightClass="h-[50dvh]"

@@ -103,7 +103,7 @@ export function DrawerLayout({
               role="complementary"
               aria-labelledby="drawer-title"
               className={cn(
-                "flex min-h-0 flex-col overflow-hidden border-t border-gray-200 bg-white shadow-[0_-8px_24px_rgba(0,0,0,0.08)] dark:border-gray-800 dark:bg-gray-950 dark:shadow-[0_-8px_24px_rgba(0,0,0,0.35)]",
+                "flex min-h-0 shrink-0 flex-col overflow-hidden border-t border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950",
                 panelHeightClass,
               )}
             >

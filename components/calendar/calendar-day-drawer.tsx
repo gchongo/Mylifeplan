@@ -1,7 +1,8 @@
 "use client";
 
-import { useI18n } from "@/components/i18n/i18n-provider";
+import { CalendarMobileDaySheet } from "@/components/calendar/calendar-mobile-day-sheet";
 import { DrawerLayout, DrawerPanel, type DrawerPlacement } from "@/components/ui/drawer";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { useMobileShell } from "@/hooks/use-mobile-shell";
 import { CalendarDrawerItemList } from "@/components/calendar/calendar-drawer-item-list";
 import { CalendarDayCreateActions } from "@/components/calendar/calendar-day-create-actions";
@@ -79,6 +80,24 @@ export function CalendarDayDrawer({
   const isMobileShell = useMobileShell();
   const resolvedPlacement = placement ?? (isMobileShell ? "bottom" : "end");
   const resolvedPush = push ?? isMobileShell;
+  const useMobileSplit = isMobileShell && resolvedPlacement === "bottom" && resolvedPush;
+
+  if (useMobileSplit) {
+    return (
+      <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="min-h-0 min-w-0 flex-1 overflow-hidden">{children}</div>
+        {open && dateStr ? (
+          <CalendarMobileDaySheet
+            dateStr={dateStr}
+            items={items}
+            onClose={onClose}
+            detailExpandable={detailExpandable}
+            onDataChange={onDataChange}
+          />
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <DrawerLayout
