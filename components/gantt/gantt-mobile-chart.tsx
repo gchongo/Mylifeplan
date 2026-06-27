@@ -602,24 +602,27 @@ export function GanttMobileChart({ className }: { className?: string }) {
                   title={statusLabel}
                   aria-label={statusLabel}
                 >
-                  <div
-                    className={cn(
-                      "flex shrink-0 items-center justify-center",
-                      hasChildren ? "h-[22px] w-full" : "h-[22px] w-[22px]",
-                      getMobilePlanHeaderStatusCellClass(visual),
-                    )}
-                  >
-                    {hasChildren ? (
-                      <button
-                        type="button"
-                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-white hover:bg-white/20"
-                        onClick={() => toggleExpand(item.id)}
-                        aria-label={isExpanded ? t("gantt.collapseRow") : t("gantt.expandRow")}
-                      >
-                        <GanttRowExpandIcon expanded={isExpanded} />
-                      </button>
-                    ) : null}
-                  </div>
+                  {hasChildren ? (
+                    <button
+                      type="button"
+                      className={cn(
+                        "flex h-[22px] w-[22px] shrink-0 items-center justify-center text-white hover:brightness-110 active:brightness-95",
+                        getMobilePlanHeaderStatusCellClass(visual),
+                      )}
+                      onClick={() => toggleExpand(item.id)}
+                      aria-label={isExpanded ? t("gantt.collapseRow") : t("gantt.expandRow")}
+                    >
+                      <GanttRowExpandIcon expanded={isExpanded} />
+                    </button>
+                  ) : (
+                    <div
+                      className={cn(
+                        "h-[22px] w-[22px] shrink-0",
+                        getMobilePlanHeaderStatusCellClass(visual),
+                      )}
+                      aria-hidden
+                    />
+                  )}
                 </div>
               );
             })}
