@@ -309,15 +309,11 @@ export function CalendarPanelLive({
       setViewYear(snap.year);
       setViewMonth(snap.month);
     }
-    requestAnimationFrame(() => {
+    // Defer month-sync re-enable until layout settles after split collapse.
+    window.setTimeout(() => {
       suppressVisibleMonthSyncRef.current = false;
-    });
+    }, 220);
   }
-
-  const mobilePinnedMonth =
-    useMobileFullLayout && drawerDate
-      ? monthKeyFromDate(parseDate(drawerDate))
-      : null;
 
   if (drawerDate) lastSheetDateRef.current = drawerDate;
   const sheetDate = drawerDate ?? lastSheetDateRef.current;
@@ -381,7 +377,6 @@ export function CalendarPanelLive({
             onVisibleMonthChange={handleVisibleMonthChange}
             onMonthsChange={handleMonthsChange}
             fullPage={fullPage}
-            pinToMonth={mobilePinnedMonth}
           />
           {loading && items.length > 0 && (
             <div className="pointer-events-none absolute inset-x-0 top-10 z-20 flex justify-center">
