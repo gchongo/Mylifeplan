@@ -3,18 +3,26 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useI18n } from "@/components/i18n/i18n-provider";
+import { PlanRelationshipCard } from "@/components/plans/plan-relationship-card";
 import { TaskStatusIndicator } from "@/components/tasks/task-status-indicator";
 import { formatEventSchedule, itemAccent } from "@/lib/calendar-display";
 import { formatPlanDateTimeDisplay } from "@/lib/dates";
+import type { PlanRelationNode } from "@/lib/plan-relationship";
 import type { CalendarItem } from "@/types";
 import { getStatusStyle } from "@/lib/task-status-style";
 import { cn } from "@/lib/utils";
 
-type PlanDetail = {
+type CalendarPlanDetail = {
   id: string;
+  title: string;
+  status: string;
   description?: string | null;
   startDate?: string | null;
   endDate?: string | null;
+  actualStartDate?: string | null;
+  actualEndDate?: string | null;
+  ancestors: PlanRelationNode[];
+  subPlans: PlanRelationNode[];
 };
 
 function DrawerItemTitleBlock({
@@ -41,27 +49,66 @@ function DrawerItemTitleBlock({
   );
 }
 
-function PlanInlineDetail({ plan }: { plan: PlanDetail }) {
+function mapSubPlans(
+  subPlans: Array<{
+    id: string;
+    title: string;
+    status: string;
+    startDate?: string | null;
+    endDate?: string | null;
+    actualStartDate?: string | null;
+    actualEndDate?: string | null;
+  }>,
+): PlanRelationNode[] {
+  return subPlans.map((sp) => ({
+    id: sp.id,
+    title: sp.title,
+    status: sp.status,
+    startDate: sp.startDate,
+    endDate: sp.endDate,
+    actualStartDate: sp.actualStartDate,
+    actualEndDate: sp.actualEndDate,
+  }));
+}
+
+function PlanInlineDetail({ plan }: { plan: CalendarPlanDetail }) {
   const { t } = useI18n();
+  const currentPlan: PlanRelationNode = {
+    id: plan.id,
+    title: plan.title,
+    status: plan.status,
+    startDate: plan.startDate,
+    endDate: plan.endDate,
+    actualStartDate: plan.actualStartDate,
+    actualEndDate: plan.actualEndDate,
+  };
 
   return (
-    <div className="space-y-2 text-xs text-gray-600">
+    <div className="space-y-3">
       {plan.description ? (
-        <p className="whitespace-pre-wrap rounded-md bg-gray-50 p-2 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+        <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700 dark:text-gray-300">
           {plan.description}
         </p>
-      ) : (
-        <p className="text-gray-400">{t("common.noDescription")}</p>
-      )}
-      <dl className="grid grid-cols-2 gap-x-2 gap-y-1">
-        <dt className="text-gray-400">{t("common.start")}</dt>
+      ) : null}
+      <dl className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-xs text-gray-600 dark:text-gray-400">
+        <dt className="text-gray-400 dark:text-gray-500">{t("planDetail.planStart")}</dt>
         <dd>{formatPlanDateTimeDisplay(plan.startDate)}</dd>
-        <dt className="text-gray-400">{t("common.end")}</dt>
+        <dt className="text-gray-400 dark:text-gray-500">{t("planDetail.planEnd")}</dt>
         <dd>{formatPlanDateTimeDisplay(plan.endDate)}</dd>
+        <dt className="text-gray-400 dark:text-gray-500">{t("planDetail.actualStart")}</dt>
+        <dd>{formatPlanDateTimeDisplay(plan.actualStartDate)}</dd>
+        <dt className="text-gray-400 dark:text-gray-500">{t("planDetail.actualEnd")}</dt>
+        <dd>{formatPlanDateTimeDisplay(plan.actualEndDate)}</dd>
       </dl>
-      <Link href={`/plans/${plan.id}`} prefetch={false} className="text-sm text-brand-600 hover:underline">
-        {t("common.viewFullPlan")}
-      </Link>
+      <PlanRelationshipCard
+        flat
+        currentPlan={currentPlan}
+        ancestors={plan.ancestors}
+        childPlans={plan.subPlans}
+        onNavigatePlan={(planId) => {
+          window.location.href = `/plans/${planId}`;
+        }}
+      />
     </div>
   );
 }
@@ -76,7 +123,7 @@ function CalendarDrawerItemRow({
   const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [planDetail, setPlanDetail] = useState<PlanDetail | null>(null);
+  const [planDetail, setPlanDetail] = useState<CalendarPlanDetail | null>(null);
 
   const statusStyle = getStatusStyle(item.status, item.endDate ?? undefined);
   const accent = itemAccent(item);
@@ -93,9 +140,15 @@ function CalendarDrawerItemRow({
       if (data.plan) {
         setPlanDetail({
           id: data.plan.id,
+          title: data.plan.title,
+          status: data.plan.status,
           description: data.plan.description,
           startDate: data.plan.startDate,
           endDate: data.plan.endDate,
+          actualStartDate: data.plan.actualStartDate,
+          actualEndDate: data.plan.actualEndDate,
+          ancestors: data.plan.ancestors ?? [],
+          subPlans: mapSubPlans(data.plan.subPlans ?? []),
         });
       }
     } finally {
@@ -128,7 +181,7 @@ function CalendarDrawerItemRow({
         <button
           type="button"
           className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-          onClick={toggleExpand}
+          onClick={() => void toggleExpand()}
           aria-label={expanded ? t("calendar.drawer.collapseDetails") : t("calendar.drawer.expandDetails")}
         >
           <span className={cn("text-[10px] transition-transform", expanded && "rotate-90")}>▶</span>

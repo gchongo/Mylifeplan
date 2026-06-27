@@ -80,8 +80,8 @@ export function getMobilePlanBarLabelStyle(planColor: string): CSSProperties {
 }
 
 /** 移动端计划条：与 PC getGroupColoredBarAppearance 同色相与深浅规则 */
-export function getMobilePlanBarFillStyle(planColor: string, depth: number): CSSProperties {
-  const bar = getGroupColoredBarAppearance(planColor, depth, "", false);
+export function getMobilePlanBarFillStyle(planColor: string, depth: number, opacityPercent = 100): CSSProperties {
+  const bar = getGroupColoredBarAppearance(planColor, depth, "", false, opacityPercent);
   const isRoot = depth === 0;
   const c = normalizePlanColor(planColor);
   return {
@@ -133,10 +133,12 @@ export function getGroupColoredBarAppearance(
   depth: number,
   statusDotClass: string,
   muted = false,
+  opacityPercent = 100,
 ): PlanBarAppearance {
   const c = normalizePlanColor(groupColor);
   const isRoot = depth === 0;
-  const fillAlpha = isRoot ? 0.45 : Math.max(0.2, 0.34 - depth * 0.05);
+  const opacityScale = Math.min(100, Math.max(20, opacityPercent)) / 100;
+  const fillAlpha = (isRoot ? 0.45 : Math.max(0.2, 0.34 - depth * 0.05)) * opacityScale;
 
   return {
     shellClass: isRoot
@@ -145,7 +147,7 @@ export function getGroupColoredBarAppearance(
         ? "border border-solid shadow-sm"
         : "border border-solid shadow-sm",
     shellStyle: {
-      borderColor: planColorRgba(c, isRoot ? 0.88 : depth === 1 ? 0.82 : 0.76),
+      borderColor: planColorRgba(c, (isRoot ? 0.88 : depth === 1 ? 0.82 : 0.76) * opacityScale),
       backgroundColor: planColorRgba(c, fillAlpha),
       opacity: muted ? 0.78 : 1,
     },

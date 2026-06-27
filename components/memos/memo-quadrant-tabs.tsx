@@ -1,7 +1,7 @@
 "use client";
 
 import { useI18n } from "@/components/i18n/i18n-provider";
-import { MEMO_QUADRANT_IDS, type MemoQuadrantId } from "@/lib/memo-quadrant";
+import { MOBILE_MEMO_QUADRANT_TAB_ORDER, type MemoQuadrantId } from "@/lib/memo-quadrant";
 import { localizeMemoQuadrantOption } from "@/lib/i18n/feed-helpers";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +16,7 @@ export function MemoQuadrantTabs({
 
   return (
     <div className="mb-2 grid grid-cols-4 gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1 dark:border-gray-700 dark:bg-gray-900">
-      {MEMO_QUADRANT_IDS.map((quadrantId) => {
+      {MOBILE_MEMO_QUADRANT_TAB_ORDER.map((quadrantId) => {
         const option = localizeMemoQuadrantOption(t, quadrantId);
         const active = value === quadrantId;
         return (

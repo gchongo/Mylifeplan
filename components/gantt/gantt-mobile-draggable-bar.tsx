@@ -60,6 +60,7 @@ export function GanttMobileDraggableBar({
   onDragFailed,
   onTaskClick,
   dragEnabled = true,
+  planBarOpacity = 100,
 }: {
   item: GanttItem;
   layout: TimelineLayout;
@@ -86,6 +87,7 @@ export function GanttMobileDraggableBar({
   onDragFailed?: () => void;
   onTaskClick?: () => void;
   dragEnabled?: boolean;
+  planBarOpacity?: number;
 }) {
   const [dragging, setDragging] = useState<DragState | null>(null);
   const [preview, setPreview] = useState<{ start: string; end: string } | null>(null);
@@ -337,7 +339,7 @@ export function GanttMobileDraggableBar({
           !dragEnabled && "cursor-pointer",
         )}
         style={{
-          ...getMobilePlanBarFillStyle(color, depth),
+          ...getMobilePlanBarFillStyle(color, depth, planBarOpacity),
           touchAction: dragEnabled ? "none" : "auto",
         }}
         onClick={() => {

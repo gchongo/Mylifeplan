@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FeedPanelLive } from "@/components/home/feed-panel-live";
 import { FullPanelPage } from "@/components/home/full-panel-page";
 import { useI18n } from "@/components/i18n/i18n-provider";
+import { panelSectionTitleClass } from "@/lib/panel-title";
 import { useMobileShell } from "@/hooks/use-mobile-shell";
 
 export function FeedPageClient() {
@@ -21,7 +22,7 @@ export function FeedPageClient() {
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white dark:bg-gray-950">
       <header className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-100 px-3 py-2.5 dark:border-gray-800">
-        <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+        <h1 className={panelSectionTitleClass}>
           {t("feed.homeTitle")}
         </h1>
         <Link

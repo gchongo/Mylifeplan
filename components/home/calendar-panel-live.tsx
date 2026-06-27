@@ -47,6 +47,7 @@ import { queryKeys } from "@/lib/query/keys";
 import { localDateStr } from "@/lib/dates";
 import type { CalendarItem } from "@/types";
 import { cn } from "@/lib/utils";
+import { panelSectionTitleClass } from "@/lib/panel-title";
 
 type ViewMode = CalendarViewMode;
 
@@ -497,7 +498,7 @@ export function CalendarPanelLive({
     <>
       {showMobileTitle && useMobileFullLayout && (
         <header className="flex shrink-0 items-center border-b border-gray-100 px-3 py-2.5 dark:border-gray-800">
-          <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+          <h1 className={panelSectionTitleClass}>
             {t("calendar.homeTitle")}
           </h1>
         </header>
@@ -516,7 +517,7 @@ export function CalendarPanelLive({
                     dateStr={drawerDate}
                     items={items}
                     onClose={closeDayDrawer}
-                    detailExpandable={fullPage}
+                    detailExpandable
                     onDataChange={() => void refetch()}
                   />
                 ) : null
@@ -531,7 +532,7 @@ export function CalendarPanelLive({
             items={items}
             open={drawerDate !== null}
             onClose={closeDayDrawer}
-            detailExpandable={fullPage}
+            detailExpandable
             onDataChange={() => void refetch()}
             placement="end"
             push={false}
@@ -559,7 +560,7 @@ export function CalendarPanelLive({
     <Card className={shellClassName}>
       {!fullPage && (
         <CardHeader className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 space-y-0 pb-2">
-          <CardTitle className="min-w-0 truncate">{t("calendar.homeTitle")}</CardTitle>
+          <CardTitle className={cn("min-w-0 truncate", panelSectionTitleClass)}>{t("calendar.homeTitle")}</CardTitle>
           <div className="flex items-center gap-2">
             <CalendarToolbarControls
               viewMode={viewMode}

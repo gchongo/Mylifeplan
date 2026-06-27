@@ -86,7 +86,7 @@ const zhCN = {
     kanbanPage: "第 {current} / {total} 列",
   },
   plans: {
-    boardTitle: "看板·看计划",
+    boardTitle: "看板 · 看计划",
     loadingPlan: "加载计划…",
   },
   kanban: {
@@ -746,6 +746,8 @@ const zhCN = {
     calendarWeekDesc: "在月历网格左侧显示周数，便于对照全年进度。",
     ganttToday: "甘特图 · 今天列",
     ganttTodayDesc: "高亮时间轴上「今天」所在的整列，便于对照计划与实际进度。",
+    ganttPlanBar: "甘特图 · 计划条",
+    ganttPlanBarDesc: "调整甘特图计划条的填充透明度。",
     ganttActual: "甘特图 · 实际执行线",
     ganttActualDesc: "控制计划条内实际开始与结束连线的显示与样式。",
     timezoneOption: {
@@ -806,6 +808,10 @@ const zhCN = {
       solid: "纯色填充",
       striped: "斜纹",
       dotted: "点阵",
+    },
+    ganttPlanBarSettings: {
+      opacity: "计划条透明度",
+      hint: "数值越低，计划条越透明；移动端与 PC 甘特图同步生效。",
     },
     ganttActualSettings: {
       showLine: "显示实际执行线",

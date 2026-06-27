@@ -253,14 +253,11 @@ function KanbanArchivedDrawerPanel({
 export function PlanKanbanBoard({
   initialPlans,
   className,
-  composeOpen,
-  onComposeOpenChange,
 }: {
   initialPlans: KanbanPlan[];
   className?: string;
-  composeOpen: boolean;
-  onComposeOpenChange: (open: boolean) => void;
 }) {
+  const [composeOpen, setComposeOpen] = useState(false);
   const [archivedOpen, setArchivedOpen] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<KanbanDropZoneId | null>(null);
@@ -454,6 +451,8 @@ export function PlanKanbanBoard({
 
   const archivedAccent = getKanbanColumnAccentClass("archived");
   const archivedDropTarget = dropTarget === "archived" && draggingId !== null;
+  const kanbanToolbarButtonClass =
+    "inline-flex shrink-0 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800";
 
   return (
     <DrawerLayout
@@ -482,7 +481,14 @@ export function PlanKanbanBoard({
       }
     >
       <div className={cn("flex min-h-0 flex-1 flex-col gap-3", className)}>
-        <div className="flex shrink-0 justify-end">
+        <div className="flex shrink-0 items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => setComposeOpen(true)}
+            className={kanbanToolbarButtonClass}
+          >
+            {t("kanban.newPlanOrContribution")}
+          </button>
           <button
             type="button"
             onClick={() => setArchivedOpen(true)}
@@ -501,7 +507,7 @@ export function PlanKanbanBoard({
               if (planId && !fromArchived) void archivePlan(planId);
             }}
             className={cn(
-              "inline-flex shrink-0 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800",
+              kanbanToolbarButtonClass,
               archivedDropTarget && "ring-2 ring-gray-400 ring-offset-1",
             )}
           >
@@ -592,7 +598,7 @@ export function PlanKanbanBoard({
 
         <PlanContributionComposeModal
           open={composeOpen}
-          onClose={() => onComposeOpenChange(false)}
+          onClose={() => setComposeOpen(false)}
         />
 
         <PlanDetailModal

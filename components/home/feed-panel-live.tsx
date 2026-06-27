@@ -13,6 +13,8 @@ import type { PlanFeedChangeItem } from "@/lib/plan-feed-change";
 import type { FeedContributionDetail } from "@/lib/feed-enrich";
 import type { FeedActionType, FeedItemType } from "@prisma/client";
 import { useI18n } from "@/components/i18n/i18n-provider";
+import { useMobileShell } from "@/hooks/use-mobile-shell";
+import { panelSectionTitleClass } from "@/lib/panel-title";
 import { cn } from "@/lib/utils";
 import { apiJson } from "@/lib/client-api";
 import { queryKeys } from "@/lib/query/keys";
@@ -58,6 +60,7 @@ export function FeedPanelLive({
   scrollable?: boolean;
 }) {
   const { t } = useI18n();
+  const isMobileShell = useMobileShell();
   const pageSize = fullPage ? 50 : 20;
   const [typeFilter, setTypeFilter] = useState<FeedTypeFilterId>("all");
   const loadMoreRef = useRef<HTMLLIElement>(null);
@@ -130,7 +133,7 @@ export function FeedPanelLive({
             <li key={item.id}>
               <FeedItemCard
                 item={item}
-                logStyle={!fullPage}
+                logStyle={!fullPage && isMobileShell}
                 onContributionChanged={() => void refetch()}
               />
             </li>
@@ -152,7 +155,7 @@ export function FeedPanelLive({
     >
       {!fullPage && (
         <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-1 pb-2">
-          <CardTitle className="min-w-0 truncate text-gray-900 dark:text-gray-100">{t("feed.homeTitle")}</CardTitle>
+          <CardTitle className={cn("min-w-0 truncate", panelSectionTitleClass)}>{t("feed.homeTitle")}</CardTitle>
           <PanelExpandButton href="/feed" label={t("feed.expand")} />
         </div>
       )}

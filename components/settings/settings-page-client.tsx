@@ -5,6 +5,7 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { GanttActualLineSettings } from "@/components/settings/gantt-actual-line-settings";
+import { GanttPlanBarSettings } from "@/components/settings/gantt-plan-bar-settings";
 import { GanttTodayColumnSettings } from "@/components/settings/gantt-today-column-settings";
 import { CalendarWeekNumberSettings } from "@/components/settings/calendar-week-number-settings";
 import { SettingsProfileSection } from "@/components/settings/settings-profile-section";
@@ -35,7 +36,7 @@ function SettingsSection({
 
 export function SettingsPageClient({ userRole }: { userRole?: "user" | "admin" }) {
   const { t } = useI18n();
-  const { preferences, ready, setTimezone, setTheme, setLanguage, setGanttActualLine, setGanttTodayColumn, setCalendarWeekNumbers } =
+  const { preferences, ready, setTimezone, setTheme, setLanguage, setGanttActualLine, setGanttTodayColumn, setGanttPlanBar, setCalendarWeekNumbers } =
     useSettings();
   const effectiveTimezone = resolveTimezone(preferences.timezone);
 
@@ -109,6 +110,14 @@ export function SettingsPageClient({ userRole }: { userRole?: "user" | "admin" }
           value={preferences.ganttTodayColumn}
           disabled={!ready}
           onChange={setGanttTodayColumn}
+        />
+      </SettingsSection>
+
+      <SettingsSection title={t("settings.ganttPlanBar")} description={t("settings.ganttPlanBarDesc")}>
+        <GanttPlanBarSettings
+          value={preferences.ganttPlanBar}
+          disabled={!ready}
+          onChange={setGanttPlanBar}
         />
       </SettingsSection>
 

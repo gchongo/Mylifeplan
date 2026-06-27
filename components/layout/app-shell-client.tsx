@@ -99,6 +99,8 @@ function AppShellInner({
 
   const pathname = usePathname();
   const fullBleed = isAppShellFullBleed(pathname);
+  const hideMobileNav = isMobileShell && pathname.startsWith("/settings");
+  const mobileNavOpen = navOpen && !hideMobileNav;
 
   useEffect(() => {
     if (!fullBleed) return;
@@ -122,7 +124,7 @@ function AppShellInner({
       <TopBar title={title} navOpen={navOpen} onNavToggle={toggleNav} />
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
-        {!isDesktopSidebar && navOpen && (
+        {!isDesktopSidebar && mobileNavOpen && (
           <button
             type="button"
             className="fixed inset-0 top-14 z-40 bg-black/30 lg:hidden"
@@ -141,6 +143,7 @@ function AppShellInner({
               className={cn(
                 "sidebar-nav-drawer fixed left-0 top-14 z-50 h-[calc(100vh-3.5rem)] w-56",
                 "border-r border-gray-200 bg-white shadow-xl dark:border-gray-800 dark:bg-gray-900 lg:hidden",
+                hideMobileNav && "hidden",
               )}
             >
               <SidebarNavMenu onNavigate={closeNav} userRole={userRole} />

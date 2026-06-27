@@ -1,4 +1,5 @@
 import { centeredPageWidthClass } from "@/components/layout/centered-layout";
+import { panelSectionTitleClass } from "@/lib/panel-title";
 import { cn } from "@/lib/utils";
 
 export function FullPanelPage({
@@ -29,7 +30,7 @@ export function FullPanelPage({
           centered && centeredPageWidthClass,
         )}
       >
-        <h1 className="shrink-0 text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h1>
+        <h1 className={cn("shrink-0", panelSectionTitleClass)}>{title}</h1>
         <div
           className={cn(
             scrollable

@@ -268,11 +268,12 @@ function planBarStyle(
   groupColor: string,
   displayStatus: string,
   overdue: boolean,
+  opacityPercent: number,
 ) {
   const visual = resolveVisualStatus(item.status, item.endDate, displayStatus, overdue);
   const statusStyle = getStatusStyle(item.status, item.endDate, displayStatus, overdue);
   const muted = visual === "done" || visual === "archived";
-  return getGroupColoredBarAppearance(groupColor, depth, statusStyle.dot, muted);
+  return getGroupColoredBarAppearance(groupColor, depth, statusStyle.dot, muted, opacityPercent);
 }
 
 function dataBoundsFromItems(items: GanttItem[]) {
@@ -358,6 +359,7 @@ export const GanttChart = forwardRef<
   const actualLinePrefs = preferences.ganttActualLine;
   const contributionMarkerPrefs = preferences.ganttContributionMarkers;
   const todayColumnPrefs = preferences.ganttTodayColumn;
+  const planBarOpacity = preferences.ganttPlanBar.opacity;
   const showActualTimeline = actualLinePrefs.enabled;
   const showContributionMarkers = contributionMarkerPrefs.enabled;
   const todayColumnBg = useMemo(
@@ -1312,7 +1314,7 @@ export const GanttChart = forwardRef<
             const groupColor = resolveEffectivePlanColor(rootItem, rootItem);
             const displayStatus = itemDisplayStatus(item, items);
             const overdue = isPlanOverdue(item, planById);
-            const barStyle = planBarStyle(item, row.depth, groupColor, displayStatus, overdue);
+            const barStyle = planBarStyle(item, row.depth, groupColor, displayStatus, overdue, planBarOpacity);
             const rowContributions = contributionsForGanttRow(
               item.id,
               contributions,
@@ -1412,7 +1414,7 @@ export const GanttChart = forwardRef<
     });
     const displayStatus = itemDisplayStatus(item, items);
     const overdue = isPlanOverdue(item, planById);
-    const barStyle = planBarStyle(item, row.depth, groupColor, displayStatus, overdue);
+    const barStyle = planBarStyle(item, row.depth, groupColor, displayStatus, overdue, planBarOpacity);
     const actualNowIso = nowPlanIso();
     const actualExecutionFill =
       showActualTimeline && !item.contributionOnly

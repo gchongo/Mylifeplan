@@ -9,6 +9,7 @@ import { PanelExpandButton } from "@/components/home/panel-expand-button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import type { GanttScaleId } from "@/lib/gantt-scale";
+import { panelSectionTitleClass } from "@/lib/panel-title";
 import { cn } from "@/lib/utils";
 import { useRef, useState } from "react";
 
@@ -28,7 +29,7 @@ export function GanttPanelLive({
     return (
       <div className={cn("flex h-full min-h-0 flex-col overflow-hidden", className)}>
         <div className="shrink-0 border-b border-gray-100 px-3 py-2 dark:border-gray-800">
-          <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+          <h1 className={panelSectionTitleClass}>
             {t("gantt.homeTitle")}
           </h1>
         </div>
@@ -59,7 +60,7 @@ export function GanttPanelLive({
       )}
     >
       <div className="flex shrink-0 flex-row items-center gap-3 px-4 pb-2 pt-4">
-        <CardTitle className="shrink-0 text-base">{t("gantt.homeTitle")}</CardTitle>
+        <CardTitle className={cn("shrink-0", panelSectionTitleClass)}>{t("gantt.homeTitle")}</CardTitle>
         {toolbar}
       </div>
 

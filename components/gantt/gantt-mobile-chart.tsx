@@ -185,6 +185,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
 
   const showContributionMarkers = preferences.ganttContributionMarkers.enabled;
   const actualLinePrefs = preferences.ganttActualLine;
+  const planBarOpacity = preferences.ganttPlanBar.opacity;
   const showActualTimeline = actualLinePrefs.enabled;
 
   const fetchRange = useMemo(() => {
@@ -796,6 +797,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
                             onDragFailed={() => void refetchGanttQuery()}
                             onTaskClick={() => openPlan(item.id)}
                             dragEnabled={dragEnabled}
+                            planBarOpacity={planBarOpacity}
                           />
                           {renderActualLine(item, barCenter)}
                         </>

@@ -6,11 +6,19 @@ export const MEMO_QUADRANT_BOARD_HEIGHT = 720;
 export const MEMO_QUADRANT_IDS = [
   "urgent_important",
   "not_urgent_important",
-  "urgent_not_important",
   "not_urgent_not_important",
+  "urgent_not_important",
 ] as const;
 
 export type MemoQuadrantId = (typeof MEMO_QUADRANT_IDS)[number];
+
+/** 移动端便签页 Tab 顺序：Q1 → Q2 → Q3 → Q4 */
+export const MOBILE_MEMO_QUADRANT_TAB_ORDER: MemoQuadrantId[] = [
+  "urgent_important",
+  "not_urgent_important",
+  "not_urgent_not_important",
+  "urgent_not_important",
+];
 
 /** 经典矩阵：右上 Q1，左上 Q2，左下 Q3，右下 Q4 */
 export const MEMO_QUADRANTS: {

@@ -30,6 +30,11 @@ export interface CalendarWeekNumberPreferences {
   format: CalendarWeekNumberFormat;
 }
 
+export interface GanttPlanBarPreferences {
+  /** 20–100，计划条填充透明度 */
+  opacity: number;
+}
+
 export interface UserPreferences {
   timezone: string;
   theme: ThemePreference;
@@ -37,6 +42,7 @@ export interface UserPreferences {
   ganttActualLine: GanttActualLinePreferences;
   ganttContributionMarkers: GanttContributionMarkerPreferences;
   ganttTodayColumn: GanttTodayColumnPreferences;
+  ganttPlanBar: GanttPlanBarPreferences;
   calendarWeekNumbers: CalendarWeekNumberPreferences;
 }
 
@@ -68,6 +74,10 @@ export const DEFAULT_CALENDAR_WEEK_NUMBERS: CalendarWeekNumberPreferences = {
   format: "number",
 };
 
+export const DEFAULT_GANTT_PLAN_BAR: GanttPlanBarPreferences = {
+  opacity: 100,
+};
+
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   timezone: "auto",
   theme: "system",
@@ -75,6 +85,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   ganttActualLine: DEFAULT_GANTT_ACTUAL_LINE,
   ganttContributionMarkers: DEFAULT_GANTT_CONTRIBUTION_MARKERS,
   ganttTodayColumn: DEFAULT_GANTT_TODAY_COLUMN,
+  ganttPlanBar: DEFAULT_GANTT_PLAN_BAR,
   calendarWeekNumbers: DEFAULT_CALENDAR_WEEK_NUMBERS,
 };
 
@@ -213,6 +224,17 @@ export function normalizeGanttTodayColumnPreferences(
   };
 }
 
+export function normalizeGanttPlanBarPreferences(
+  raw: Partial<GanttPlanBarPreferences> | null | undefined,
+): GanttPlanBarPreferences {
+  const opacityRaw = raw?.opacity;
+  const opacity =
+    typeof opacityRaw === "number" && Number.isFinite(opacityRaw)
+      ? Math.min(100, Math.max(20, Math.round(opacityRaw)))
+      : DEFAULT_GANTT_PLAN_BAR.opacity;
+  return { opacity };
+}
+
 export function normalizeCalendarWeekNumberPreferences(
   raw: Partial<CalendarWeekNumberPreferences> | null | undefined,
 ): CalendarWeekNumberPreferences {
@@ -252,6 +274,7 @@ export function normalizeUserPreferences(raw: Partial<UserPreferences> | null | 
         (raw as { contributionMarker?: { enabled?: boolean } } | undefined)?.contributionMarker,
     ),
     ganttTodayColumn: normalizeGanttTodayColumnPreferences(raw?.ganttTodayColumn),
+    ganttPlanBar: normalizeGanttPlanBarPreferences(raw?.ganttPlanBar),
     calendarWeekNumbers: normalizeCalendarWeekNumberPreferences(raw?.calendarWeekNumbers),
   };
 }

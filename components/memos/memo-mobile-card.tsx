@@ -95,10 +95,10 @@ export function MemoMobileCard({
       )}
     >
       <div
-        className="flex items-center justify-between gap-2 px-3 py-1.5"
+        className="flex items-center justify-end gap-1 px-2 py-0.5"
         style={{ backgroundColor: palette.bg, borderTop: `3px solid ${palette.border}` }}
       >
-        <span className="text-[10px] opacity-60" style={{ color: palette.text }}>
+        <span className="text-[9px] leading-none opacity-60" style={{ color: palette.text }}>
           {new Date(note.updatedAt).toLocaleDateString(locale === "en-US" ? "en-US" : "zh-CN", {
             month: "numeric",
             day: "numeric",

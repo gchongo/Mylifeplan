@@ -746,6 +746,8 @@ const enUS = {
     calendarWeekDesc: "Show week numbers on the left of the month grid.",
     ganttToday: "Gantt · Today column",
     ganttTodayDesc: "Highlight the column for today on the timeline.",
+    ganttPlanBar: "Gantt · Plan bars",
+    ganttPlanBarDesc: "Adjust fill opacity of plan bars on the Gantt chart.",
     ganttActual: "Gantt · Actual timeline",
     ganttActualDesc: "Show the line between actual start and end inside plan bars.",
     timezoneOption: {
@@ -806,6 +808,10 @@ const enUS = {
       solid: "Solid",
       striped: "Striped",
       dotted: "Dotted",
+    },
+    ganttPlanBarSettings: {
+      opacity: "Plan bar opacity",
+      hint: "Lower values make plan bars more transparent on mobile and desktop Gantt.",
     },
     ganttActualSettings: {
       showLine: "Show actual execution line",
