@@ -315,10 +315,6 @@ export function CalendarPanelLive({
 
   function openDayDrawer(ds: string) {
     setSelectedDate(ds);
-    const d = parseDate(ds);
-    setViewYear(d.getUTCFullYear());
-    setViewMonth(d.getUTCMonth());
-    setViewDay(d.getUTCDate());
     setDrawerDate(ds);
   }
 
@@ -326,7 +322,7 @@ export function CalendarPanelLive({
     setDrawerDate(null);
   }
 
-  const mobilePinnedMonth = useMobileFullLayout
+  const mobileSingleMonth = useMobileFullLayout
     ? { year: viewYear, month: viewMonth }
     : null;
 
@@ -392,8 +388,8 @@ export function CalendarPanelLive({
             onVisibleMonthChange={handleVisibleMonthChange}
             onMonthsChange={handleMonthsChange}
             fullPage={fullPage}
-            pinToMonth={mobilePinnedMonth}
-            compressed={useMobileFullLayout && drawerDate !== null}
+            singleMonth={mobileSingleMonth}
+            compactCells={useMobileFullLayout && drawerDate !== null}
           />
           {loading && items.length > 0 && (
             <div className="pointer-events-none absolute inset-x-0 top-10 z-20 flex justify-center">
