@@ -1,3 +1,6 @@
+import { buildTimelineSubheaderSpans } from "@/lib/gantt-timeline-subheader";
+import type { TimelineLayout } from "@/lib/gantt-scale";
+import type { CalendarWeekNumberFormat } from "@/lib/user-preferences";
 import { isoWeekYearAndNumber } from "@/lib/calendar-week-number";
 import type { TimelineColumn } from "@/lib/gantt-scale";
 
@@ -23,7 +26,7 @@ function startOfWeekMonday(date: string): string {
   return dt.toISOString().slice(0, 10);
 }
 
-/** 按 ISO 周合并日列，供移动端甘特左侧「周」列 */
+/** 按 ISO 周合并日列（月视图等） */
 export function buildMobileWeekSpans(columns: TimelineColumn[]): MobileWeekSpan[] {
   if (columns.length === 0) return [];
 
@@ -39,4 +42,16 @@ export function buildMobileWeekSpans(columns: TimelineColumn[]): MobileWeekSpan[
     }
   }
   return spans;
+}
+
+/** 移动端甘特左侧副轴：与 PC 子表头一致（年→月，月→周，等） */
+export function buildMobileSecondaryAxisSpans(
+  layout: TimelineLayout,
+  weekFormat: CalendarWeekNumberFormat = "week-label",
+): MobileWeekSpan[] {
+  return buildTimelineSubheaderSpans(layout, weekFormat).map((span) => ({
+    key: span.key,
+    label: span.label,
+    height: span.width,
+  }));
 }

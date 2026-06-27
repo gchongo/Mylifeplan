@@ -15,6 +15,7 @@ export function GanttToolbarControls({
   onNext,
   onToday,
   className,
+  variant = "default",
 }: {
   scale: GanttScaleId;
   onScaleChange: (scale: GanttScaleId) => void;
@@ -22,6 +23,8 @@ export function GanttToolbarControls({
   onNext: () => void;
   onToday: () => void;
   className?: string;
+  /** mobile：贡献/实际居左，今天与粒度选择居右 */
+  variant?: "default" | "mobile";
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -38,8 +41,8 @@ export function GanttToolbarControls({
     return () => document.removeEventListener("mousedown", onDocClick);
   }, []);
 
-  return (
-    <div className={cn("flex shrink-0 items-center gap-2", className)}>
+  const layerToggles = (
+    <>
       <GanttLayerToggleButton
         label={t("gantt.toolbar.contribution")}
         active={showContributionMarkers}
@@ -54,7 +57,11 @@ export function GanttToolbarControls({
         onToggle={() => setGanttActualLine({ enabled: !showActualTimeline })}
         title={showActualTimeline ? t("gantt.toolbar.hideActual") : t("gantt.toolbar.showActual")}
       />
+    </>
+  );
 
+  const navAndScale = (
+    <>
       <div className="flex items-center rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
         <button
           type="button"
@@ -111,6 +118,22 @@ export function GanttToolbarControls({
           </div>
         )}
       </div>
+    </>
+  );
+
+  if (variant === "mobile") {
+    return (
+      <div className={cn("flex w-full min-w-0 items-center justify-between gap-2", className)}>
+        <div className="flex shrink-0 items-center gap-1.5">{layerToggles}</div>
+        <div className="flex shrink-0 items-center gap-1.5">{navAndScale}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn("flex shrink-0 items-center gap-2", className)}>
+      {layerToggles}
+      {navAndScale}
     </div>
   );
 }

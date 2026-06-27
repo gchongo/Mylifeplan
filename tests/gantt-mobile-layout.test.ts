@@ -62,3 +62,14 @@ describe("buildMobileWeekSpans", () => {
     expect(spans[1]!.height).toBe(10);
   });
 });
+
+describe("buildMobileSecondaryAxisSpans", () => {
+  it("shows month labels on year scale", async () => {
+    const { buildMobileSecondaryAxisSpans } = await import("@/lib/gantt-mobile-week-axis");
+    const { buildTimelineLayout } = await import("@/lib/gantt-scale");
+    const layout = buildTimelineLayout("year", "2025-06-15", null);
+    const spans = buildMobileSecondaryAxisSpans(layout);
+    expect(spans.some((s) => s.label === "6月" || s.label === "六月")).toBe(true);
+    expect(spans.every((s) => !s.label.includes("周"))).toBe(true);
+  });
+});

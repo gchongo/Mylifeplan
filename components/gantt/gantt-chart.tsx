@@ -26,7 +26,7 @@ import {
 } from "@/components/gantt/gantt-schedule-panel";
 import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribution-drawer";
 import { GanttActualExecutionLine } from "@/components/gantt/gantt-actual-execution-line";
-import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
+import { GanttRowExpandIcon } from "@/components/gantt/gantt-row-expand-icon";
 import { useSettings } from "@/components/settings/settings-provider";
 import { buildTimelineSubheaderSpans } from "@/lib/gantt-timeline-subheader";
 import { localizeTimelineSubheaderSpans } from "@/lib/i18n/timeline-helpers";
@@ -1108,9 +1108,7 @@ export const GanttChart = forwardRef<
             onClick={() => toggleExpand(item.id)}
             aria-label={isExpanded ? t("gantt.collapseRow") : t("gantt.expandRow")}
           >
-            <span className="inline-flex h-3 w-3 items-center justify-center text-[10px] leading-none">
-              {isExpanded ? "▼" : "▶"}
-            </span>
+            <GanttRowExpandIcon expanded={isExpanded} />
           </button>
         ) : (
           <span className="h-5 w-5 shrink-0" aria-hidden />

@@ -3,8 +3,8 @@
 import { getMobilePlanBarLabelStyle } from "@/lib/plan-color";
 import { cn } from "@/lib/utils";
 
-/** 标题与计划条顶部的内边距 */
-export const MOBILE_BAR_TITLE_TOP_PAD = 8;
+/** 标题与计划条顶部的内边距（避开圆角） */
+export const MOBILE_BAR_TITLE_TOP_PAD = 14;
 
 /** 移动端甘特条标题：竖排、居中叠在计划条上；sticky 时悬挂在可视区顶缘 */
 export function GanttMobileBarTitle({
@@ -37,8 +37,8 @@ export function GanttMobileBarTitle({
         "border-0 shadow-none",
         onClick && "cursor-pointer active:opacity-80",
         sticky
-          ? "sticky z-30 mx-auto block w-fit"
-          : "absolute left-1/2 z-20 -translate-x-1/2",
+          ? "sticky z-[15] mx-auto block w-fit"
+          : "absolute left-1/2 z-[15] -translate-x-1/2",
         className,
       )}
       style={{
@@ -85,7 +85,7 @@ export function GanttMobileBarTitleTrack({
   const tailHeight = Math.max(0, timelineHeight - barTop - barHeight);
 
   return (
-    <div className="pointer-events-none relative z-[25]" style={{ minHeight: timelineHeight }}>
+    <div className="pointer-events-none relative z-[15]" style={{ minHeight: timelineHeight }}>
       <div aria-hidden style={{ height: barTop }} />
       <div
         className="relative flex items-start justify-center overflow-visible"

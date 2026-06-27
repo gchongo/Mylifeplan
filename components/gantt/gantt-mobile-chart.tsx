@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { CalendarMobileSplitLayout } from "@/components/calendar/calendar-mobile-split-layout";
+import { GanttRowExpandIcon } from "@/components/gantt/gantt-row-expand-icon";
 import { GanttToolbarControls } from "@/components/gantt/gantt-toolbar-controls";
 import { GanttMobileBarTitleTrack } from "@/components/gantt/gantt-mobile-bar-title";
 import { GanttActualExecutionLineVertical } from "@/components/gantt/gantt-actual-execution-line";
@@ -32,7 +33,7 @@ import {
   mobilePlanColumnWidth,
   mobilePlanGridWidth,
 } from "@/lib/gantt-mobile-layout";
-import { buildMobileWeekSpans, mobileWeekAxisWidthPx } from "@/lib/gantt-mobile-week-axis";
+import { buildMobileSecondaryAxisSpans, mobileWeekAxisWidthPx } from "@/lib/gantt-mobile-week-axis";
 import { defaultGanttStatusFilter, filterGanttTasksByStatus } from "@/lib/gantt-task-filter";
 import {
   buildBoundGroupPreview,
@@ -231,7 +232,10 @@ export function GanttMobileChart({ className }: { className?: string }) {
     () => buildTimelineLayout(scale, anchor, dataBoundsFromItems(items)),
     [scale, anchor, items],
   );
-  const weekSpans = useMemo(() => buildMobileWeekSpans(layout.columns), [layout.columns]);
+  const weekSpans = useMemo(
+    () => buildMobileSecondaryAxisSpans(layout, preferences.calendarWeekNumbers.format),
+    [layout, preferences.calendarWeekNumbers.format],
+  );
   const timelineHeight = layout.totalWidth;
   const gridWidth = useMemo(() => mobilePlanGridWidth(rows), [rows]);
   const today = todayStr();
@@ -540,9 +544,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
                       onClick={() => toggleExpand(row.item.id)}
                       aria-label={isExpanded ? t("gantt.collapseRow") : t("gantt.expandRow")}
                     >
-                      <span className="inline-flex h-3 w-3 items-center justify-center text-[10px] leading-none">
-                        {isExpanded ? "▼" : "▶"}
-                      </span>
+                      <GanttRowExpandIcon expanded={isExpanded} />
                     </button>
                   ) : null}
                 </div>
@@ -566,7 +568,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
           style={{ minHeight: timelineHeight, minWidth: TIME_AXIS_WIDTH + gridWidth }}
         >
           <div
-            className="sticky left-0 z-20 flex shrink-0 border-r border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-950"
+            className="sticky left-0 z-30 flex shrink-0 border-r border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-950"
             style={{ width: TIME_AXIS_WIDTH }}
           >
             <div className="shrink-0 border-r border-gray-100 dark:border-gray-800" style={{ width: DAY_AXIS_WIDTH }}>
@@ -674,12 +676,12 @@ export function GanttMobileChart({ className }: { className?: string }) {
                 return (
                   <div
                     key={item.id}
-                    className="relative shrink-0 border-r border-gray-100 dark:border-gray-800"
+                    className="relative shrink-0 overflow-hidden border-r border-gray-100 dark:border-gray-800"
                     style={{ width: columnWidth, minHeight: timelineHeight }}
                   >
                     {!item.isUnscheduled && !item.contributionOnly && (
                       <div
-                        className="pointer-events-none absolute z-[25]"
+                        className="pointer-events-none absolute z-[15]"
                         style={{
                           left: barLeft,
                           width: barWidth,
@@ -795,12 +797,13 @@ export function GanttMobileChart({ className }: { className?: string }) {
           )}
         </button>
         <GanttToolbarControls
+          variant="mobile"
           scale={scale}
           onScaleChange={setScale}
           onPrev={navigatePrev}
           onNext={navigateNext}
           onToday={goToday}
-          className="min-w-0 flex-1 flex-wrap gap-1"
+          className="min-w-0 flex-1"
         />
       </div>
 
