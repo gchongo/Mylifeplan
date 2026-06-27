@@ -17,6 +17,7 @@ import { CalendarToolbar } from "@/components/calendar/calendar-toolbar";
 import { CalendarToolbarControls } from "@/components/calendar/calendar-toolbar-controls";
 import { PanelExpandButton } from "@/components/home/panel-expand-button";
 import { useI18n } from "@/components/i18n/i18n-provider";
+import { useMobileShell } from "@/hooks/use-mobile-shell";
 import { formatCalendarYearLabel } from "@/lib/i18n/calendar-helpers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState, Loading } from "@/components/ui/feedback";
@@ -97,6 +98,7 @@ export function CalendarPanelLive({
   className?: string;
 }) {
   const { t, locale } = useI18n();
+  const isMobileShell = useMobileShell();
   const today = new Date();
   const todayStr = localDateStr(today);
   const todayMonth = monthKeyFromDate(today);
@@ -318,11 +320,14 @@ export function CalendarPanelLive({
           open={drawerDate !== null}
           onClose={closeDayDrawer}
           detailExpandable={fullPage}
-          panelWidthPx={drawerWidthPx}
-          onPanelWidthPxChange={handleDrawerWidthChange}
+          placement={isMobileShell ? "bottom" : "end"}
+          push={isMobileShell}
+          panelHeightClass="h-[50dvh]"
+          panelWidthPx={isMobileShell ? undefined : drawerWidthPx}
+          onPanelWidthPxChange={isMobileShell ? undefined : handleDrawerWidthChange}
           panelMinWidthPx={CALENDAR_DRAWER_MIN_WIDTH_PX}
           panelMaxWidthPx={maxDrawerWidthPx}
-          resizable={drawerDate !== null}
+          resizable={!isMobileShell && drawerDate !== null}
         >
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             {fullPage && (

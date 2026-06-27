@@ -27,7 +27,7 @@ export function DrawerPanel({
   const showHeader = Boolean(title || onBack);
 
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {showHeader && (
         <div className="flex shrink-0 items-center gap-2 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
           {onBack ? (
@@ -47,8 +47,8 @@ export function DrawerPanel({
           </Button>
         </div>
       )}
-      <div className={cn("min-h-0 flex-1 overflow-y-auto p-4", className)}>{children}</div>
-    </>
+      <div className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain p-4", className)}>{children}</div>
+    </div>
   );
 }
 
@@ -103,7 +103,7 @@ export function DrawerLayout({
               role="complementary"
               aria-labelledby="drawer-title"
               className={cn(
-                "flex shrink-0 flex-col border-t border-gray-200 bg-white shadow-[0_-8px_24px_rgba(0,0,0,0.08)] dark:border-gray-800 dark:bg-gray-950 dark:shadow-[0_-8px_24px_rgba(0,0,0,0.35)]",
+                "flex min-h-0 flex-col overflow-hidden border-t border-gray-200 bg-white shadow-[0_-8px_24px_rgba(0,0,0,0.08)] dark:border-gray-800 dark:bg-gray-950 dark:shadow-[0_-8px_24px_rgba(0,0,0,0.35)]",
                 panelHeightClass,
               )}
             >

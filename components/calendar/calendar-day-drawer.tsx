@@ -56,7 +56,7 @@ export function CalendarDayDrawer({
   panelMaxWidthPx,
   resizable = false,
   placement,
-  push = false,
+  push,
   panelHeightClass = "h-[50dvh]",
   children,
 }: {

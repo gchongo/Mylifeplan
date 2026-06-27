@@ -26,6 +26,7 @@ import { upsertKanbanPlanInList } from "@/lib/query/merge-kanban-plan";
 import { ROLLUP_STATUS_HINT } from "@/lib/services/plan-rollup";
 import { PlanDetailModal } from "@/components/plans/plan-detail-modal";
 import { PlanContributionComposeModal } from "@/components/forms/plan-contribution-compose-modal";
+import { KanbanMobileColumnTabs } from "@/components/plans/kanban-mobile-column-tabs";
 import { DrawerLayout, DrawerPanel } from "@/components/ui/drawer";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { useMobileShell } from "@/hooks/use-mobile-shell";
@@ -279,25 +280,42 @@ export function PlanKanbanBoard({
   const [archivedPlans, setArchivedPlans] = useState<KanbanPlan[]>([]);
   const { t } = useI18n();
   const isMobileShell = useMobileShell();
-  const kanbanScrollRef = useRef<HTMLDivElement>(null);
+  const mobileTouchStart = useRef<{ x: number; y: number } | null>(null);
   const [activeColumnIndex, setActiveColumnIndex] = useState(0);
   const router = useRouter();
+
+  const activeColumnId = KANBAN_COLUMNS[activeColumnIndex]?.id ?? "unscheduled";
 
   useEffect(() => {
     setPlans(initialPlans);
   }, [initialPlans]);
 
-  useEffect(() => {
-    if (!isMobileShell) return;
-    const el = kanbanScrollRef.current;
-    if (!el) return;
-    const onScroll = () => {
-      const width = el.clientWidth || 1;
-      setActiveColumnIndex(Math.round(el.scrollLeft / width));
-    };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, [isMobileShell]);
+  function selectMobileColumn(columnId: KanbanColumnId) {
+    const index = KANBAN_COLUMNS.findIndex((col) => col.id === columnId);
+    if (index >= 0) setActiveColumnIndex(index);
+  }
+
+  function onMobileBoardTouchStart(e: React.TouchEvent) {
+    const touch = e.touches[0];
+    if (!touch) return;
+    mobileTouchStart.current = { x: touch.clientX, y: touch.clientY };
+  }
+
+  function onMobileBoardTouchEnd(e: React.TouchEvent) {
+    const start = mobileTouchStart.current;
+    mobileTouchStart.current = null;
+    if (!start) return;
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy)) return;
+    if (dx < 0) {
+      setActiveColumnIndex((index) => Math.min(KANBAN_COLUMNS.length - 1, index + 1));
+    } else {
+      setActiveColumnIndex((index) => Math.max(0, index - 1));
+    }
+  }
 
   const reloadPlans = useCallback(async () => {
     const [active, archived] = await Promise.all([
@@ -322,6 +340,14 @@ export function PlanKanbanBoard({
   );
 
   const grouped = useMemo(() => groupPlansByKanbanColumn(plans), [plans]);
+
+  const columnCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        KANBAN_COLUMNS.map((col) => [col.id, grouped[col.id]?.length ?? 0]),
+      ) as Record<KanbanColumnId, number>,
+    [grouped],
+  );
 
   const movePlan = useCallback(
     async (planId: string, targetColumn: KanbanColumnId, fromArchived: boolean) => {
@@ -503,24 +529,51 @@ export function PlanKanbanBoard({
           </p>
         )}
 
+        {isMobileShell && (
+          <KanbanMobileColumnTabs
+            activeColumnId={activeColumnId}
+            onChange={selectMobileColumn}
+            counts={columnCounts}
+          />
+        )}
+
+        {isMobileShell ? (
+          <div
+            className={cn("flex min-h-0 flex-1 flex-col touch-pan-y", moving && "pointer-events-none opacity-80")}
+            onTouchStart={onMobileBoardTouchStart}
+            onTouchEnd={onMobileBoardTouchEnd}
+          >
+            <KanbanColumn
+              columnId={activeColumnId}
+              label={t(`kanban.column.${activeColumnId}`)}
+              plans={grouped[activeColumnId]}
+              draggingId={draggingId}
+              dropTarget={dropTarget}
+              onDragStart={setDraggingId}
+              onDragEnd={() => {
+                setDraggingId(null);
+                setDropTarget(null);
+              }}
+              onDragOver={setDropTarget}
+              onDragLeave={() => setDropTarget(null)}
+              onDrop={(columnId, planId, fromArchived) => {
+                void movePlan(planId, columnId, fromArchived);
+              }}
+              onOpenPlan={setPlanModalId}
+              onCreatePlan={() => setComposeOpen(true)}
+              newPlanLabel={t("kanban.newPlanOrContribution")}
+            />
+          </div>
+        ) : (
         <div
-          ref={kanbanScrollRef}
           className={cn(
-            isMobileShell
-              ? "flex min-h-0 min-w-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-hide touch-pan-x"
-              : "grid min-h-0 flex-1 grid-cols-4 gap-3",
+            "grid min-h-0 flex-1 grid-cols-4 gap-3",
             moving && "pointer-events-none opacity-80",
           )}
         >
           {KANBAN_COLUMNS.map((col) => (
-            <div
-              key={col.id}
-              className={cn(
-                isMobileShell &&
-                  "flex h-full min-w-0 flex-[0_0_100%] snap-center snap-always flex-col px-1",
-              )}
-            >
             <KanbanColumn
+              key={col.id}
               columnId={col.id}
               label={t(`kanban.column.${col.id}`)}
               plans={grouped[col.id]}
@@ -540,9 +593,9 @@ export function PlanKanbanBoard({
               onCreatePlan={() => setComposeOpen(true)}
               newPlanLabel={t("kanban.newPlanOrContribution")}
             />
-            </div>
           ))}
         </div>
+        )}
 
         {isMobileShell && (
           <p className="shrink-0 text-center text-xs text-gray-400">
