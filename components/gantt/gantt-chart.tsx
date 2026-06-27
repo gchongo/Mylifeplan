@@ -26,6 +26,7 @@ import {
 } from "@/components/gantt/gantt-schedule-panel";
 import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribution-drawer";
 import { GanttActualExecutionLine } from "@/components/gantt/gantt-actual-execution-line";
+import { GanttDraggableBar } from "@/components/gantt/gantt-draggable-bar";
 import { GanttRowExpandIcon } from "@/components/gantt/gantt-row-expand-icon";
 import { useSettings } from "@/components/settings/settings-provider";
 import { buildTimelineSubheaderSpans } from "@/lib/gantt-timeline-subheader";
