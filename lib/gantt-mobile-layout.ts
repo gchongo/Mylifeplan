@@ -1,7 +1,13 @@
 import { ganttPlanBarHeightPx } from "@/lib/plan-color";
 
-/** 列内计划条左右留白（列宽 = 条宽 + 此值×2；只改条宽时不改此值） */
+/** 列内计划条左右留白 */
 export const MOBILE_PLAN_COLUMN_PAD_X = 4;
+
+/**
+ * 计划列最小宽度：保证时间抽屉内 YY/M/D 单行完整显示（列宽可大于条宽，条仍居中）。
+ * 日期只允许单行，禁止两行/截断布局。
+ */
+export const MOBILE_MIN_PLAN_COLUMN_WIDTH = 48;
 
 /** 一级计划组之间的水平间隙（px） */
 export const MOBILE_ROW_GROUP_GAP = 1;
@@ -19,9 +25,10 @@ export function mobilePlanBarWidthPx(depth: number): number {
   return ganttPlanBarHeightPx(depth);
 }
 
-/** 移动端计划列宽：条宽 + 左右 padding */
+/** 移动端计划列宽：max(条宽+padding, 最小列宽)；条宽始终 = PC 条高 */
 export function mobilePlanColumnWidth(depth: number): number {
-  return mobilePlanBarWidthPx(depth) + MOBILE_PLAN_COLUMN_PAD_X * 2;
+  const barColumn = mobilePlanBarWidthPx(depth) + MOBILE_PLAN_COLUMN_PAD_X * 2;
+  return Math.max(barColumn, MOBILE_MIN_PLAN_COLUMN_WIDTH);
 }
 
 /** 进度条左缘（列内居中） */

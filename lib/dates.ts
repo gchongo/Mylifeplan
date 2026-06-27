@@ -163,7 +163,7 @@ export function formatPlanLocalDateSlash(value: string | Date | null | undefined
   return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}`;
 }
 
-/** 移动端时间抽屉：YY/M/D，如 26/4/12 */
+/** 移动端时间抽屉：YY/M/D，如 26/4/12（须单行展示） */
 export function formatPlanLocalDateCompactSlash(value: string | Date | null | undefined): string {
   if (!value) return "—";
   const d = typeof value === "string" ? new Date(value) : value;

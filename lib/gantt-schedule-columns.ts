@@ -248,7 +248,7 @@ const MOBILE_COMPACT_DATE_COLUMNS = new Set<GanttScheduleColumnId>([
   "actualEnd",
 ]);
 
-/** 移动端时间抽屉：短日期 YY/M/D，其余与 PC 相同 */
+/** 移动端时间抽屉：短日期 YY/M/D（单行显示，禁止拆行） */
 export function getMobileScheduleCellValue(
   columnId: GanttScheduleColumnId,
   item: GanttItem,
