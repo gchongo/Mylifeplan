@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { CalendarMobileSplitLayout } from "@/components/calendar/calendar-mobile-split-layout";
 import { GanttRowExpandIcon } from "@/components/gantt/gantt-row-expand-icon";
+import { GanttStatusFilterMenu } from "@/components/gantt/gantt-status-filter-menu";
 import { GanttToolbarControls } from "@/components/gantt/gantt-toolbar-controls";
 import { GanttMobileBarTitleTrack } from "@/components/gantt/gantt-mobile-bar-title";
 import { GanttActualExecutionLineVertical } from "@/components/gantt/gantt-actual-execution-line";
@@ -544,10 +545,16 @@ export function GanttMobileChart({ className }: { className?: string }) {
     return (
       <div className="relative flex min-h-0 shrink-0 border-b border-gray-100 dark:border-gray-800">
         <div
-          className="flex shrink-0 border-r border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-950"
+          className="sticky left-0 z-30 flex shrink-0 items-center border-r border-gray-100 bg-white px-0.5 dark:border-gray-800 dark:bg-gray-950"
           style={{ width: TIME_AXIS_WIDTH, height: HEADER_HEIGHT }}
-          aria-hidden
-        />
+        >
+          <GanttStatusFilterMenu
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            className="w-full min-w-0"
+            buttonClassName="h-6 w-full min-w-0 px-1 py-0 text-[10px] leading-tight"
+          />
+        </div>
         <div className="relative min-w-0 flex-1 overflow-hidden">
           <div
             className="relative flex will-change-transform"
@@ -826,8 +833,6 @@ export function GanttMobileChart({ className }: { className?: string }) {
           onPrev={navigatePrev}
           onNext={navigateNext}
           onToday={goToday}
-          statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
           className="min-w-0 flex-1"
         />
       </div>

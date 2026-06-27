@@ -22,7 +22,7 @@ export function GanttRowExpandIcon({ expanded }: { expanded: boolean }) {
   );
 }
 
-/** 工具栏时间导航：与 PC 相同用 ‹ ›，竖向时间轴仅旋转方向 */
+/** 工具栏时间导航：竖向用 ▲ ▼；横向用 ‹ › */
 export function GanttToolbarNavArrow({
   direction,
   orientation = "horizontal",
@@ -30,16 +30,16 @@ export function GanttToolbarNavArrow({
   direction: "prev" | "next";
   orientation?: "horizontal" | "vertical";
 }) {
-  const glyph = direction === "prev" ? "‹" : "›";
+  if (orientation === "vertical") {
+    return (
+      <span className="inline-flex h-5 w-5 items-center justify-center text-[10px] leading-none" aria-hidden>
+        {direction === "prev" ? "▲" : "▼"}
+      </span>
+    );
+  }
   return (
-    <span
-      className={cn(
-        "inline-block text-sm leading-none",
-        orientation === "vertical" && (direction === "prev" ? "-rotate-90" : "rotate-90"),
-      )}
-      aria-hidden
-    >
-      {glyph}
+    <span className="inline-block text-sm leading-none" aria-hidden>
+      {direction === "prev" ? "‹" : "›"}
     </span>
   );
 }
