@@ -1,23 +1,26 @@
 import { ganttPlanBarHeightPx } from "@/lib/plan-color";
 
-/** 竖排标题专用列宽（与进度条分列，避免与实际线重叠） */
-export const MOBILE_TITLE_LANE_WIDTH = 15;
+/** 列内计划条左右留白（便于横向滑动） */
+export const MOBILE_PLAN_COLUMN_PAD_X = 4;
 
-/** 列内计划条右侧留白 */
-export const MOBILE_PLAN_COLUMN_PAD_X = 3;
-
-/** 移动端计划列宽：标题道 + 条宽 + 留白 */
+/** 移动端计划列宽：条宽 + 左右 padding */
 export function mobilePlanColumnWidth(depth: number): number {
-  return MOBILE_TITLE_LANE_WIDTH + mobilePlanBarWidthPx(depth) + MOBILE_PLAN_COLUMN_PAD_X;
+  return mobilePlanBarWidthPx(depth) + MOBILE_PLAN_COLUMN_PAD_X * 2;
 }
 
 export function mobilePlanBarWidthPx(depth: number): number {
   return ganttPlanBarHeightPx(depth);
 }
 
-/** 进度条在列内的 left（px），位于标题道右侧 */
+/** 进度条左缘（列内居中） */
 export function mobilePlanBarLeftPx(depth: number): number {
-  return MOBILE_TITLE_LANE_WIDTH + Math.floor(MOBILE_PLAN_COLUMN_PAD_X / 2);
+  const bar = mobilePlanBarWidthPx(depth);
+  return Math.floor((mobilePlanColumnWidth(depth) - bar) / 2);
+}
+
+/** 进度条水平中心 */
+export function mobilePlanBarCenterPx(depth: number): number {
+  return mobilePlanBarLeftPx(depth) + mobilePlanBarWidthPx(depth) / 2;
 }
 
 export function mobilePlanGridWidth(rows: { gapBefore: number; depth: number }[]): number {

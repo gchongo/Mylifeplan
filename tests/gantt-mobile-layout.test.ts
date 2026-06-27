@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  mobilePlanBarCenterPx,
   mobilePlanBarLeftPx,
   mobilePlanBarWidthPx,
   mobilePlanColumnWidth,
@@ -8,13 +9,13 @@ import {
 import { buildMobileColumnForkLines } from "@/lib/gantt-mobile-tree-lines";
 
 describe("mobilePlanColumnWidth", () => {
-  it("matches PC bar height plus title lane and padding", () => {
+  it("matches PC bar height plus padding", () => {
     expect(mobilePlanBarWidthPx(0)).toBe(30);
-    expect(mobilePlanBarWidthPx(1)).toBe(24);
-    expect(mobilePlanColumnWidth(0)).toBe(48);
-    expect(mobilePlanBarLeftPx(0)).toBe(16);
+    expect(mobilePlanColumnWidth(0)).toBe(38);
+    expect(mobilePlanBarLeftPx(0)).toBe(4);
+    expect(mobilePlanBarCenterPx(0)).toBe(19);
     expect(mobilePlanGridWidth([{ gapBefore: 0, depth: 0 }, { gapBefore: 8, depth: 0 }])).toBe(
-      48 + 8 + 48,
+      38 + 8 + 38,
     );
   });
 });

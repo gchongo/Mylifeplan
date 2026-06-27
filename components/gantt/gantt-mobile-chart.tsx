@@ -5,6 +5,7 @@ import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-quer
 import { CalendarMobileSplitLayout } from "@/components/calendar/calendar-mobile-split-layout";
 import { GanttToolbarControls } from "@/components/gantt/gantt-toolbar-controls";
 import { GanttMobileBarTitleTrack } from "@/components/gantt/gantt-mobile-bar-title";
+import { GanttActualExecutionLineVertical } from "@/components/gantt/gantt-actual-execution-line";
 import { GanttMobileDraggableBar } from "@/components/gantt/gantt-mobile-draggable-bar";
 import { GanttMobileScheduleDrawer } from "@/components/gantt/gantt-mobile-schedule-drawer";
 import { GanttPlanDrawerPanel } from "@/components/gantt/gantt-plan-drawer";
@@ -25,6 +26,7 @@ import { getPlanActualExecutionSpan, nowPlanIso } from "@/lib/gantt-actual-timel
 import { contributionsForGanttRow } from "@/lib/gantt-contribution-display";
 import { buildMobileColumnForkLines } from "@/lib/gantt-mobile-tree-lines";
 import {
+  mobilePlanBarCenterPx,
   mobilePlanBarLeftPx,
   mobilePlanBarWidthPx,
   mobilePlanColumnWidth,
@@ -167,7 +169,8 @@ export function GanttMobileChart({ className }: { className?: string }) {
   );
 
   const showContributionMarkers = preferences.ganttContributionMarkers.enabled;
-  const showActualTimeline = preferences.ganttActualLine.enabled;
+  const actualLinePrefs = preferences.ganttActualLine;
+  const showActualTimeline = actualLinePrefs.enabled;
   const todayColumnPrefs = preferences.ganttTodayColumn;
   const todayColumnBg = useMemo(
     () => ganttTodayColumnBackground(todayColumnPrefs),
@@ -385,7 +388,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
     spanStart: string,
     spanEnd: string,
     rowPlanId: string,
-    barLeft: number,
+    barCenter: number,
     barWidth: number,
   ) {
     const visible = rowContributions.filter((c) => {
@@ -414,7 +417,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
                 style={{
                   top: Math.max(0, top),
                   height: Math.max(height, 4),
-                  left: barLeft + barWidth / 2,
+                  left: barCenter,
                   width: Math.max(4, barWidth - 6),
                   transform: "translateX(-50%)",
                   ...contributionIntervalFillStyle(color),
@@ -437,7 +440,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
                 top: Math.max(0, y - CONTRIBUTION_POINT_WIDTH_PX / 2),
                 height: CONTRIBUTION_POINT_WIDTH_PX,
                 width: CONTRIBUTION_POINT_WIDTH_PX,
-                left: barLeft + barWidth / 2,
+                left: barCenter,
                 transform: "translateX(-50%)",
                 backgroundColor: color,
               }}
@@ -454,8 +457,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
     item: GanttItem,
     displayStart: string,
     displayEnd: string,
-    barWidth: number,
-    barLeft: number,
+    barCenter: number,
   ) {
     if (!showActualTimeline || item.contributionOnly || item.isUnscheduled) return null;
     const span = getPlanActualExecutionSpan(item, items, nowPlanIso());
@@ -470,14 +472,12 @@ export function GanttMobileChart({ className }: { className?: string }) {
     });
 
     return (
-      <div
-        className="pointer-events-none absolute z-[6] w-px rounded-full bg-amber-600/75 dark:bg-amber-400/80"
-        style={{
-          top: Math.max(0, top),
-          height: Math.max(height, 4),
-          left: barLeft + barWidth - 1,
-        }}
-        aria-hidden
+      <GanttActualExecutionLineVertical
+        centerX={barCenter}
+        top={Math.max(0, top)}
+        height={Math.max(height, 4)}
+        prefs={actualLinePrefs}
+        endKind={span.endKind}
       />
     );
   }
@@ -613,6 +613,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
                 const columnWidth = mobilePlanColumnWidth(row.depth);
                 const barWidth = mobilePlanBarWidthPx(row.depth);
                 const barLeft = mobilePlanBarLeftPx(row.depth);
+                const barCenter = mobilePlanBarCenterPx(row.depth);
                 const previewDates = barPreview.get(item.id);
                 const displayStart = previewDates?.start ?? item.startDate;
                 const displayEnd = previewDates?.end ?? item.effectiveEnd;
@@ -643,15 +644,25 @@ export function GanttMobileChart({ className }: { className?: string }) {
                     style={{ width: columnWidth, minHeight: timelineHeight }}
                   >
                     {!item.isUnscheduled && !item.contributionOnly && (
-                      <GanttMobileBarTitleTrack
-                        barTop={barTop}
-                        barHeight={barHeight}
-                        timelineHeight={timelineHeight}
-                        title={item.title}
-                        depth={row.depth}
-                        planColor={color}
-                        onTitleClick={() => openPlan(item.id)}
-                      />
+                      <div
+                        className="pointer-events-none absolute z-[25]"
+                        style={{
+                          left: barLeft,
+                          width: barWidth,
+                          top: 0,
+                          height: timelineHeight,
+                        }}
+                      >
+                        <GanttMobileBarTitleTrack
+                          barTop={barTop}
+                          barHeight={barHeight}
+                          timelineHeight={timelineHeight}
+                          title={item.title}
+                          depth={row.depth}
+                          planColor={color}
+                          onTitleClick={() => openPlan(item.id)}
+                        />
+                      </div>
                     )}
 
                     <div className="pointer-events-none absolute inset-0 z-[5]">
@@ -677,7 +688,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
                             onTaskClick={() => openPlan(item.id)}
                             dragEnabled={dragEnabled}
                           />
-                          {renderActualLine(item, displayStart, displayEnd, barWidth, barLeft)}
+                          {renderActualLine(item, displayStart, displayEnd, barCenter)}
                         </>
                       )}
                       {showContributionMarkers &&
@@ -688,7 +699,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
                           displayStart,
                           displayEnd,
                           item.id,
-                          barLeft,
+                          barCenter,
                           barWidth,
                         )}
                     </div>
