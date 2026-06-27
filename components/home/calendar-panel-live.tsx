@@ -322,9 +322,10 @@ export function CalendarPanelLive({
     setDrawerDate(null);
   }
 
-  const mobileSingleMonth = useMobileFullLayout
-    ? { year: viewYear, month: viewMonth }
-    : null;
+  const mobileSingleMonth = useMemo(
+    () => (useMobileFullLayout ? { year: viewYear, month: viewMonth } : null),
+    [useMobileFullLayout, viewYear, viewMonth],
+  );
 
   if (drawerDate) lastSheetDateRef.current = drawerDate;
   const sheetDate = drawerDate ?? lastSheetDateRef.current;

@@ -22,10 +22,21 @@ export function CalendarDayCreateActions({
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeMode, setComposeMode] = useState<PlanContributionComposeMode>("contribution");
 
+  const dayItemsKey = dayItems.map((i) => i.id).join(",");
+
   useEffect(() => {
     if (dayItems.length > 0) {
-      setPlanOptions(dayItems.map((i) => ({ id: i.id, title: i.title })));
-      setPlanId(dayItems[0]!.id);
+      const nextOptions = dayItems.map((i) => ({ id: i.id, title: i.title }));
+      setPlanOptions((prev) => {
+        if (
+          prev.length === nextOptions.length &&
+          prev.every((p, i) => p.id === nextOptions[i]!.id && p.title === nextOptions[i]!.title)
+        ) {
+          return prev;
+        }
+        return nextOptions;
+      });
+      setPlanId((prev) => (prev === dayItems[0]!.id ? prev : dayItems[0]!.id));
       return;
     }
 
@@ -48,7 +59,7 @@ export function CalendarDayCreateActions({
     return () => {
       cancelled = true;
     };
-  }, [dayItems, dateStr]);
+  }, [dayItems, dayItemsKey, dateStr]);
 
   if (planOptions.length === 0) {
     return (

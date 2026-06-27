@@ -59,7 +59,7 @@ function PlanInlineDetail({ plan }: { plan: PlanDetail }) {
         <dt className="text-gray-400">{t("common.end")}</dt>
         <dd>{formatPlanDateTimeDisplay(plan.endDate)}</dd>
       </dl>
-      <Link href={`/plans/${plan.id}`} className="text-sm text-brand-600 hover:underline">
+      <Link href={`/plans/${plan.id}`} prefetch={false} className="text-sm text-brand-600 hover:underline">
         {t("common.viewFullPlan")}
       </Link>
     </div>
@@ -107,6 +107,7 @@ function CalendarDrawerItemRow({
     return (
       <Link
         href={`/plans/${item.id}`}
+        prefetch={false}
         className="flex items-start gap-2.5 px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-900/40"
       >
         <span className={cn("mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full", accent.dot)} />

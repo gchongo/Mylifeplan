@@ -105,18 +105,33 @@ export const CalendarScrollView = forwardRef<
     return localizeCalendarMonthLabel(t, locale, key.month);
   }
 
+  const singleMonthKey = singleMonth ? monthKeyId(singleMonth) : null;
+
   useEffect(() => {
     if (singleMonth) {
-      setMonths([singleMonth]);
+      setMonths((prev) => {
+        if (prev.length === 1 && monthKeyId(prev[0]!) === singleMonthKey) return prev;
+        return [singleMonth];
+      });
       visibleMonthRef.current = singleMonth;
       return;
     }
-    setMonths(initialMonthWindow(visibleMonthRef.current));
-  }, [singleMonth]);
+    setMonths((prev) => {
+      const next = initialMonthWindow(visibleMonthRef.current);
+      if (
+        prev.length === next.length &&
+        prev.every((m, i) => monthKeyId(m) === monthKeyId(next[i]!))
+      ) {
+        return prev;
+      }
+      return next;
+    });
+  }, [singleMonth, singleMonthKey]);
 
   useEffect(() => {
+    if (isSingleMonth) return;
     onMonthsChange(months);
-  }, [months, onMonthsChange]);
+  }, [isSingleMonth, months, onMonthsChange]);
 
   const setMonthRef = useCallback((id: string, el: HTMLElement | null) => {
     if (el) monthRefs.current.set(id, el);
