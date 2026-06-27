@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getGanttBarStyle,
+  getMobilePlanHeaderStatusCellClass,
   normalizeStatusKey,
   resolveVisualStatus,
 } from "@/lib/task-status-style";
@@ -33,5 +34,11 @@ describe("task-status-style", () => {
   it("todo uses amber palette", () => {
     const todo = getGanttBarStyle("not_started", null, null, 0);
     expect(todo.shell).toContain("amber");
+  });
+
+  it("maps mobile plan header status cell backgrounds", () => {
+    expect(getMobilePlanHeaderStatusCellClass("in_progress")).toContain("blue");
+    expect(getMobilePlanHeaderStatusCellClass("overdue")).toContain("red");
+    expect(getMobilePlanHeaderStatusCellClass("unscheduled")).toContain("dashed");
   });
 });

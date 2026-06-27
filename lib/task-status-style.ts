@@ -337,6 +337,24 @@ export function getKanbanColumnAccentClass(visual: VisualStatusKey): string {
   return STATUS_STYLES[visual].dot.split(" ")[0] ?? "bg-gray-400";
 }
 
+/** 移动端甘特表头：计划列单元格只读状态底色（与看板标题栏同色系） */
+export function getMobilePlanHeaderStatusCellClass(visual: VisualStatusKey): string {
+  switch (visual) {
+    case "in_progress":
+      return "bg-blue-50 dark:bg-blue-950/50";
+    case "done":
+      return "bg-emerald-50 dark:bg-emerald-950/40";
+    case "archived":
+      return "bg-gray-50/90 dark:bg-gray-900/50";
+    case "overdue":
+      return "bg-red-50 dark:bg-red-950/40";
+    case "unscheduled":
+      return "border border-dashed border-violet-300/80 bg-violet-50/60 dark:border-violet-500/50 dark:bg-violet-950/30";
+    default:
+      return "bg-amber-50 dark:bg-amber-950/45";
+  }
+}
+
 export function asTaskStatusForRollup(status: string | undefined | null): TaskStatus {
   const key = normalizeStatusKey(status);
   if (key === "overdue") return "todo";

@@ -37,8 +37,14 @@ import {
   MOBILE_ROW_GROUP_GAP,
 } from "@/lib/gantt-mobile-layout";
 import { buildMobileSecondaryAxisSpans, mobileWeekAxisWidthPx } from "@/lib/gantt-mobile-week-axis";
+import { isPlanOverdue } from "@/lib/gantt-plan-status";
 import { defaultGanttStatusFilter, filterGanttTasksByStatus } from "@/lib/gantt-task-filter";
-import type { VisualStatusKey } from "@/lib/task-status-style";
+import { localizeVisualStatusLabel } from "@/lib/i18n/gantt-helpers";
+import {
+  getMobilePlanHeaderStatusCellClass,
+  resolveVisualStatus,
+  type VisualStatusKey,
+} from "@/lib/task-status-style";
 import {
   buildBoundGroupPreview,
   getPlanContributionBounds,
@@ -558,31 +564,50 @@ export function GanttMobileChart({ className }: { className?: string }) {
     return (
       <div className="relative flex min-h-0 shrink-0 border-b border-gray-100 dark:border-gray-800">
         <div
-          className="flex shrink-0 border-r border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-950"
+          className="flex shrink-0 items-center justify-center border-r border-blue-200/80 bg-blue-50/80 px-0.5 text-center text-[9px] font-medium leading-none text-gray-500 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-gray-400"
           style={{ width: TIME_AXIS_WIDTH, height: HEADER_HEIGHT }}
-          aria-hidden
-        />
+          title={t("gantt.taskList.status")}
+        >
+          {t("gantt.taskList.status")}
+        </div>
         <div className="relative min-w-0 flex-1 overflow-hidden">
           <div
             className="relative flex will-change-transform"
             style={{ transform: `translateX(-${headerScrollLeft}px)`, width: gridWidth }}
           >
             {renderPlanColumns((row) => {
-              const childCount = filteredPlans.filter((p) => p.parentId === row.item.id).length;
+              const item = row.item;
+              const childCount = filteredPlans.filter((p) => p.parentId === item.id).length;
               const hasChildren = childCount > 0;
-              const isExpanded = expanded.has(row.item.id);
+              const isExpanded = expanded.has(item.id);
               const columnWidth = mobilePlanColumnWidth(row.depth);
+              const displayStatus = itemDisplayStatus(item, items);
+              const overdue = isPlanOverdue(item, planById);
+              const visual = resolveVisualStatus(
+                item.status,
+                item.endDate,
+                displayStatus,
+                overdue,
+                item.isUnscheduled,
+              );
+              const statusLabel = localizeVisualStatusLabel(t, visual);
               return (
                 <div
-                  key={row.item.id}
-                  className={cn("flex shrink-0 items-center justify-center", MOBILE_PLAN_COLUMN_BORDER_CLASS)}
+                  key={item.id}
+                  className={cn(
+                    "flex shrink-0 items-center justify-center",
+                    MOBILE_PLAN_COLUMN_BORDER_CLASS,
+                    getMobilePlanHeaderStatusCellClass(visual),
+                  )}
                   style={{ width: columnWidth, height: HEADER_HEIGHT }}
+                  title={statusLabel}
+                  aria-label={statusLabel}
                 >
                   {hasChildren ? (
                     <button
                       type="button"
-                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-blue-500 hover:bg-blue-100/60 dark:text-blue-400 dark:hover:bg-blue-900/40"
-                      onClick={() => toggleExpand(row.item.id)}
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-blue-600 hover:bg-black/10 dark:text-blue-300 dark:hover:bg-white/10"
+                      onClick={() => toggleExpand(item.id)}
                       aria-label={isExpanded ? t("gantt.collapseRow") : t("gantt.expandRow")}
                     >
                       <GanttRowExpandIcon expanded={isExpanded} />
