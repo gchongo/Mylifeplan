@@ -16,7 +16,6 @@ import {
   constrainPlanResizeStart,
   type PlanDragConstraints,
 } from "@/lib/gantt-plan-bind";
-import { GanttMobileBarTitleInBar } from "@/components/gantt/gantt-mobile-bar-title";
 import { getMobilePlanBarFillStyle } from "@/lib/plan-color";
 import type { GanttItem } from "@/types";
 import { cn } from "@/lib/utils";
@@ -61,8 +60,6 @@ export function GanttMobileDraggableBar({
   onDragFailed,
   onTaskClick,
   dragEnabled = true,
-  showTitle = false,
-  onTitleClick,
 }: {
   item: GanttItem;
   layout: TimelineLayout;
@@ -72,8 +69,6 @@ export function GanttMobileDraggableBar({
   barLeftPx: number;
   depth?: number;
   color: string;
-  showTitle?: boolean;
-  onTitleClick?: () => void;
   previewOverride?: { start: string; end: string } | null;
   minStartDate?: string;
   minContributionDate?: string;
@@ -384,16 +379,6 @@ export function GanttMobileDraggableBar({
           </span>
         </div>
       </div>
-      {showTitle && (
-        <GanttMobileBarTitleInBar
-          title={item.title}
-          depth={depth}
-          planColor={color}
-          barWidthPx={barWidthPx}
-          barHeight={barHeight}
-          onTitleClick={onTitleClick}
-        />
-      )}
     </div>
   );
 }

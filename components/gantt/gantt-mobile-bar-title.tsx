@@ -11,16 +11,25 @@ export function mobileBarTitleTopPadPx(barWidthPx: number): number {
   return Math.ceil(barWidthPx / 2) + 12;
 }
 
-function MobileBarTitleLabel({
+/** 竖排标题：writing-mode 保证阅读方向；sticky 时悬挂在可视区顶缘 */
+export function GanttMobileBarTitle({
   title,
-  depth,
+  depth = 0,
   planColor,
+  barWidthPx,
   onClick,
+  sticky = false,
+  maxHeight,
+  className,
 }: {
   title: string;
-  depth: number;
+  depth?: number;
   planColor: string;
+  barWidthPx: number;
   onClick?: () => void;
+  sticky?: boolean;
+  maxHeight?: number;
+  className?: string;
 }) {
   const Tag = onClick ? "button" : "span";
   const labelStyle = getMobilePlanBarLabelStyle(planColor);
@@ -29,58 +38,85 @@ function MobileBarTitleLabel({
     <Tag
       type={onClick ? "button" : undefined}
       className={cn(
-        "pointer-events-auto absolute left-1/2 top-0 max-w-none -translate-x-1/2 origin-center rotate-90",
-        "whitespace-nowrap border-0 bg-transparent px-0 py-0 shadow-none",
-        "leading-none tracking-tight",
-        depth === 0 ? "text-[13px] font-bold" : "text-[12px] font-semibold",
+        "pointer-events-auto box-border w-full max-w-full bg-transparent px-0 py-0",
+        "border-0 shadow-none",
         onClick && "cursor-pointer active:opacity-80",
+        sticky ? "sticky z-[22] grid justify-items-center" : "absolute left-0 right-0 z-[22] grid justify-items-center",
+        className,
       )}
-      style={labelStyle}
+      style={{
+        ...labelStyle,
+        width: barWidthPx,
+        maxWidth: barWidthPx,
+        ...(sticky ? { top: MOBILE_BAR_TITLE_STICKY_TOP } : undefined),
+      }}
       onClick={onClick}
       onPointerDown={onClick ? (e) => e.stopPropagation() : undefined}
       title={title}
     >
-      {title}
+      <span
+        className={cn(
+          "block w-max max-w-full overflow-hidden whitespace-nowrap text-center",
+          "leading-[1.25] tracking-tight",
+          "[writing-mode:vertical-lr] [text-orientation:upright]",
+          depth === 0 ? "text-[13px] font-bold" : "text-[12px] font-semibold",
+        )}
+        style={maxHeight != null ? { maxHeight } : undefined}
+      >
+        {title}
+      </span>
     </Tag>
   );
 }
 
-/** 计划条胶囊内居中标题；sticky 在条内，滚出视口时吸顶 */
-export function GanttMobileBarTitleInBar({
+/** 与计划条同宽同位的文档流区，供 sticky 标题在条可见期间悬挂 */
+export function GanttMobileBarTitleTrack({
+  barTop,
+  barHeight,
+  barWidthPx,
+  timelineHeight,
   title,
   depth = 0,
   planColor,
-  barWidthPx,
-  barHeight,
   onTitleClick,
 }: {
+  barTop: number;
+  barHeight: number;
+  barWidthPx: number;
+  timelineHeight: number;
   title: string;
   depth?: number;
   planColor: string;
-  barWidthPx: number;
-  barHeight: number;
   onTitleClick?: () => void;
 }) {
+  const tailHeight = Math.max(0, timelineHeight - barTop - barHeight);
   const topPadPx = mobileBarTitleTopPadPx(barWidthPx);
-  const bottomPadPx = 16;
-  const titleMaxHeight = Math.max(0, barHeight - topPadPx - bottomPadPx);
+  const titleMaxHeight = Math.max(0, barHeight - topPadPx);
 
   return (
     <div
-      className="pointer-events-none absolute inset-x-0 z-[8] overflow-visible"
-      style={{ top: topPadPx, bottom: bottomPadPx }}
+      className="pointer-events-none relative z-[22] h-full w-full overflow-visible"
+      style={{ minHeight: timelineHeight }}
     >
-      <div
-        className="sticky relative w-full overflow-visible"
-        style={{ top: MOBILE_BAR_TITLE_STICKY_TOP, height: titleMaxHeight, width: barWidthPx }}
-      >
-        <MobileBarTitleLabel
-          title={title}
-          depth={depth}
-          planColor={planColor}
-          onClick={onTitleClick}
-        />
+      <div aria-hidden style={{ height: barTop }} />
+      <div className="relative overflow-visible" style={{ height: barHeight, width: barWidthPx }}>
+        <div aria-hidden className="w-full shrink-0" style={{ height: topPadPx }} />
+        <div
+          className="relative box-border overflow-visible"
+          style={{ height: Math.max(0, barHeight - topPadPx), width: barWidthPx }}
+        >
+          <GanttMobileBarTitle
+            title={title}
+            depth={depth}
+            planColor={planColor}
+            barWidthPx={barWidthPx}
+            sticky
+            maxHeight={titleMaxHeight}
+            onClick={onTitleClick}
+          />
+        </div>
       </div>
+      <div aria-hidden style={{ height: tailHeight }} />
     </div>
   );
 }
