@@ -59,6 +59,8 @@ export function DrawerLayout({
   children,
   widthClass = DEFAULT_DRAWER_WIDTH,
   placement = "end",
+  push = false,
+  panelHeightClass = "h-[50dvh]",
   panelTopOffset = 0,
   panelWidthPx,
   onPanelWidthPxChange,
@@ -78,6 +80,9 @@ export function DrawerLayout({
   panelMinWidthPx?: number;
   panelMaxWidthPx?: number;
   resizable?: boolean;
+  /** 底部抽屉：将主内容向上推，而非遮罩覆盖 */
+  push?: boolean;
+  panelHeightClass?: string;
 }) {
   const [isResizing, setIsResizing] = useState(false);
 
@@ -89,6 +94,26 @@ export function DrawerLayout({
   }, [open, onClose]);
 
   if (placement === "bottom") {
+    if (push) {
+      return (
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="min-h-0 min-w-0 flex-1 overflow-hidden">{children}</div>
+          {open && (
+            <aside
+              role="complementary"
+              aria-labelledby="drawer-title"
+              className={cn(
+                "flex shrink-0 flex-col border-t border-gray-200 bg-white shadow-[0_-8px_24px_rgba(0,0,0,0.08)] dark:border-gray-800 dark:bg-gray-950 dark:shadow-[0_-8px_24px_rgba(0,0,0,0.35)]",
+                panelHeightClass,
+              )}
+            >
+              {panel}
+            </aside>
+          )}
+        </div>
+      );
+    }
+
     return (
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {children}

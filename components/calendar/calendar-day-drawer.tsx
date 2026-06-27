@@ -56,6 +56,8 @@ export function CalendarDayDrawer({
   panelMaxWidthPx,
   resizable = false,
   placement,
+  push = false,
+  panelHeightClass = "h-[50dvh]",
   children,
 }: {
   dateStr: string | null;
@@ -70,16 +72,21 @@ export function CalendarDayDrawer({
   panelMaxWidthPx?: number;
   resizable?: boolean;
   placement?: DrawerPlacement;
+  push?: boolean;
+  panelHeightClass?: string;
   children: React.ReactNode;
 }) {
   const isMobileShell = useMobileShell();
   const resolvedPlacement = placement ?? (isMobileShell ? "bottom" : "end");
+  const resolvedPush = push ?? isMobileShell;
 
   return (
     <DrawerLayout
       open={open}
       onClose={onClose}
       placement={resolvedPlacement}
+      push={resolvedPush}
+      panelHeightClass={panelHeightClass}
       panelWidthPx={panelWidthPx}
       onPanelWidthPxChange={onPanelWidthPxChange}
       panelMinWidthPx={panelMinWidthPx}

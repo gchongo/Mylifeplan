@@ -507,7 +507,7 @@ export function PlanKanbanBoard({
           ref={kanbanScrollRef}
           className={cn(
             isMobileShell
-              ? "flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden scrollbar-hide"
+              ? "flex min-h-0 min-w-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-hide touch-pan-x"
               : "grid min-h-0 flex-1 grid-cols-4 gap-3",
             moving && "pointer-events-none opacity-80",
           )}
@@ -515,7 +515,10 @@ export function PlanKanbanBoard({
           {KANBAN_COLUMNS.map((col) => (
             <div
               key={col.id}
-              className={cn(isMobileShell && "flex h-full w-full shrink-0 snap-center snap-always flex-col px-1")}
+              className={cn(
+                isMobileShell &&
+                  "flex h-full min-w-0 flex-[0_0_100%] snap-center snap-always flex-col px-1",
+              )}
             >
             <KanbanColumn
               columnId={col.id}

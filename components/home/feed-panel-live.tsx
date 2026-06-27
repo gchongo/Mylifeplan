@@ -79,6 +79,8 @@ export function FeedPanelLive({
 
   const items = data?.pages.flatMap((page) => page.items ?? []) ?? [];
 
+  const internalListScroll = scrollable || !fullPage;
+
   useEffect(() => {
     const sentinel = loadMoreRef.current;
     if (!sentinel || !hasNextPage || isFetchingNextPage) return;
@@ -90,7 +92,7 @@ export function FeedPanelLive({
         }
       },
       {
-        root: fullPage ? null : listRef.current,
+        root: internalListScroll ? listRef.current : null,
         rootMargin: "120px",
         threshold: 0,
       },
@@ -98,7 +100,7 @@ export function FeedPanelLive({
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [fullPage, items.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [internalListScroll, items.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const emptyDescription =
     typeFilter === "all"
@@ -112,8 +114,7 @@ export function FeedPanelLive({
   return (
     <Card
       className={cn(
-        "flex min-w-0 max-w-full flex-col border-0 bg-transparent shadow-none",
-        fullPage ? "w-full" : "h-full min-h-0 overflow-hidden",
+        "flex h-full min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden border-0 bg-transparent shadow-none",
         !fullPage && "rounded-none",
         className,
       )}
@@ -125,12 +126,7 @@ export function FeedPanelLive({
         </div>
       )}
 
-      <CardContent
-        className={cn(
-          "flex flex-col gap-3 p-0",
-          !fullPage && "min-h-0 flex-1 overflow-hidden",
-        )}
-      >
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-0">
         <FeedComposer onPublished={() => void refetch()} />
         <FeedTypeFilter value={typeFilter} onChange={setTypeFilter} />
 
@@ -145,16 +141,14 @@ export function FeedPanelLive({
               ref={listRef}
               className={cn(
                 "feed-item-list scrollbar-hide pr-0.5",
+                internalListScroll && "min-h-0 flex-1 overflow-y-auto overscroll-contain",
                 fullPage
-          ? typeFilter === "contribution"
-            ? "space-y-0 px-1"
-            : "space-y-4"
-          : cn(
-              scrollable || !fullPage
-                ? "min-h-0 flex-1 overflow-y-auto overscroll-contain"
-                : "",
-              typeFilter === "contribution" ? "space-y-0 px-1" : "space-y-3",
-            ),
+                  ? typeFilter === "contribution"
+                    ? "space-y-0 px-1"
+                    : "space-y-4"
+                  : typeFilter === "contribution"
+                    ? "space-y-0 px-1"
+                    : "space-y-3",
               )}
             >
               {items.map((item) => (

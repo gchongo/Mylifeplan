@@ -7,6 +7,7 @@ import { ErrorMessage, Loading } from "@/components/ui/feedback";
 import { StickyNote, type StickyNoteData } from "@/components/memos/sticky-note";
 import { StickyNoteAssignModal } from "@/components/memos/sticky-note-assign-modal";
 import { MemoQuadrantTabs } from "@/components/memos/memo-quadrant-tabs";
+import { MemoMobileCard } from "@/components/memos/memo-mobile-card";
 import {
   MemoBoardAxisEdgeIcons,
   MemoBoardQuadrantGrid,
@@ -559,8 +560,37 @@ export function StickyNoteBoard() {
         <MemoQuadrantTabs value={activeQuadrant} onChange={setActiveQuadrant} />
       )}
 
+      {isMobileShell ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900/40">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
+            {displayNotes.length === 0 && !search.trim() && (
+              <p className="py-8 text-center text-sm text-gray-400">{t("memos.note.clickToEdit")}</p>
+            )}
+            {displayNotes.length === 0 && search.trim() && (
+              <p className="py-8 text-center text-sm text-gray-400">{t("memos.noResults")}</p>
+            )}
+            <div className="flex flex-col gap-2">
+              {displayNotes.map((note) => (
+                <MemoMobileCard
+                  key={note.id}
+                  note={note}
+                  isEditing={editingId === note.id}
+                  onStartEdit={() => {
+                    handleActivate(note.id);
+                    setEditingId(note.id);
+                  }}
+                  onEndEdit={() => setEditingId(null)}
+                  onUpdate={handleUpdate}
+                  onDelete={handleDelete}
+                  onAssign={(id) => setAssignNoteId(id)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : (
       <div className="relative min-h-0 flex-1">
-        {!isMobileShell && <MemoBoardAxisEdgeIcons />}
+        <MemoBoardAxisEdgeIcons />
 
         <div
           ref={boardRef}
@@ -584,9 +614,7 @@ export function StickyNoteBoard() {
               minHeight: "100%",
             }}
           >
-            {!isMobileShell && (
-              <MemoBoardQuadrantGrid boardWidth={boardSize.width} boardHeight={boardSize.height} />
-            )}
+            <MemoBoardQuadrantGrid boardWidth={boardSize.width} boardHeight={boardSize.height} />
 
             {displayNotes.length === 0 && search.trim() && (
               <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center text-sm text-gray-500">
@@ -615,6 +643,7 @@ export function StickyNoteBoard() {
           </div>
         </div>
       </div>
+      )}
 
       <StickyNoteAssignModal
         key={assignNoteId ?? "closed"}
