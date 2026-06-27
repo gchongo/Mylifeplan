@@ -57,6 +57,7 @@ import {
   dateToX,
   ganttPlanBarMetrics,
   getDateColumnBounds,
+  getExecutionLineSpanMetrics,
   shiftAnchor,
   todayStr,
   type GanttScaleId,
@@ -532,29 +533,21 @@ export function GanttMobileChart({ className }: { className?: string }) {
     );
   }
 
-  function renderActualLine(
-    item: GanttItem,
-    displayStart: string,
-    displayEnd: string,
-    barCenter: number,
-  ) {
+  function renderActualLine(item: GanttItem, barCenter: number) {
     if (!showActualTimeline || item.contributionOnly || item.isUnscheduled) return null;
     const span = getPlanActualExecutionSpan(item, items, nowPlanIso());
     if (!span) return null;
 
-    const clipStart = span.from < displayStart ? displayStart : span.from;
-    const clipEnd = span.to > displayEnd ? displayEnd : span.to;
-    if (clipStart > clipEnd) return null;
-
-    const { top, height } = planBarVerticalMetrics(clipStart, clipEnd, layout, {
-      isVirtualEnd: item.isVirtualEnd,
+    const lineMetrics = getExecutionLineSpanMetrics(span.from, span.to, layout, {
+      endKind: span.endKind,
+      ...(span.endKind === "open" ? { snapEndToToday: today } : {}),
     });
 
     return (
       <GanttActualExecutionLineVertical
         centerX={barCenter}
-        top={Math.max(0, top)}
-        height={Math.max(height, 4)}
+        top={Math.max(0, lineMetrics.left)}
+        height={Math.max(lineMetrics.width, 4)}
         prefs={actualLinePrefs}
         endKind={span.endKind}
       />
@@ -770,7 +763,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
                             onTaskClick={() => openPlan(item.id)}
                             dragEnabled={dragEnabled}
                           />
-                          {renderActualLine(item, displayStart, displayEnd, barCenter)}
+                          {renderActualLine(item, barCenter)}
                         </>
                       )}
                       {showContributionMarkers &&

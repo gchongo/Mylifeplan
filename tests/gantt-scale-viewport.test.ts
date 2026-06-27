@@ -64,12 +64,24 @@ describe("execution fill span metrics", () => {
     expect(metrics.left).toBe(line.left + line.width);
   });
 
-  it("snaps date-only to day end on day scale", () => {
-    const layout = buildTimelineLayout("day", "2026-06-30");
-    const dayEnd = ganttActualVisualEndX("2026-06-30T00:00:00.000Z", layout);
-    const dayStart = dateToX("2026-06-30", layout);
-    expect(dayEnd).toBeGreaterThan(dayStart);
-    expect(isDateOnlyPlanInstant("2026-06-30T14:30:00.000Z")).toBe(false);
+  it("snaps open execution line end to today column end", () => {
+    const layout = buildTimelineLayout("week", "2026-06-20");
+    const today = "2026-06-27";
+    const bounds = getDateColumnBounds(today, layout)!;
+    const planEnd = "2026-06-23T00:00:00.000Z";
+    const clippedToPlan = getExecutionLineSpanMetrics(
+      "2026-06-18T00:00:00.000Z",
+      planEnd,
+      layout,
+    );
+    const openToToday = getExecutionLineSpanMetrics(
+      "2026-06-18T00:00:00.000Z",
+      "2026-06-27T12:00:00.000Z",
+      layout,
+      { endKind: "open", snapEndToToday: today },
+    );
+    expect(clippedToPlan.left + clippedToPlan.width).toBeLessThan(bounds.left + bounds.width);
+    expect(openToToday.left + openToToday.width).toBe(bounds.left + bounds.width);
   });
 });
 
