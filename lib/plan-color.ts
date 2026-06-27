@@ -26,12 +26,31 @@ export function normalizePlanColor(color: string | null | undefined): string {
   return DEFAULT_PLAN_COLOR;
 }
 
-/** 子计划未设颜色时继承一级计划颜色 */
+/** 子计划不单独设色，颜色仅在一级计划上定义，子级继承同一色相、按层级深浅区分 */
 export function resolveEffectivePlanColor(
-  item: { color?: string | null },
+  item: { color?: string | null; parentId?: string | null; parentPlanId?: string | null },
   inherited?: { color?: string | null },
 ): string {
+  if (item.parentId || item.parentPlanId) {
+    return normalizePlanColor(inherited?.color);
+  }
   return normalizePlanColor(item.color ?? inherited?.color);
+}
+
+/** 甘特计划树统一色：始终取一级计划颜色 */
+export function resolvePlanTreeGroupColor(
+  item: { color?: string | null; parentId?: string | null; parentPlanId?: string | null; id?: string },
+  planById: Map<string, { color?: string | null; parentId?: string | null; parentPlanId?: string | null }>,
+): string {
+  let current: typeof item | undefined = item;
+  while (current?.parentId || current?.parentPlanId) {
+    const parentKey = current.parentId ?? current.parentPlanId;
+    if (!parentKey) break;
+    const parent = planById.get(parentKey);
+    if (!parent) break;
+    current = parent;
+  }
+  return normalizePlanColor(current?.color);
 }
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
@@ -60,14 +79,15 @@ export function getMobilePlanBarLabelStyle(planColor: string): CSSProperties {
   };
 }
 
-/** 移动端计划条：半透明填充 + 同色描边，接近 PC 甘特观感 */
+/** 移动端计划条：与 PC getGroupColoredBarAppearance 同色相与深浅规则 */
 export function getMobilePlanBarFillStyle(planColor: string, depth: number): CSSProperties {
-  const hex = normalizePlanColor(planColor);
+  const bar = getGroupColoredBarAppearance(planColor, depth, "", false);
   const isRoot = depth === 0;
+  const c = normalizePlanColor(planColor);
   return {
-    backgroundColor: planColorRgba(hex, isRoot ? 0.38 : 0.28),
-    border: `${isRoot ? 1.5 : 1}px solid ${planColorRgba(hex, 0.82)}`,
-    boxShadow: `inset 0 1px 0 ${planColorRgba(hex, 0.22)}`,
+    backgroundColor: bar.shellStyle?.backgroundColor,
+    border: `${isRoot ? 1.5 : 1}px solid ${bar.shellStyle?.borderColor}`,
+    boxShadow: `inset 0 1px 0 ${planColorRgba(c, 0.22)}`,
   };
 }
 

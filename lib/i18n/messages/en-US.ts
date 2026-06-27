@@ -646,6 +646,7 @@ const enUS = {
     planColor: "Plan color",
     markerColor: "Gantt marker color",
     colorHint: "Bar color on Gantt; use the status dot for status.",
+    subPlanColorHint: "Sub-plans inherit the root plan color; change it on the top-level plan.",
     colorAria: "Color {color}",
     loadingPlans: "Loading plans…",
     loadPlansFailed: "Could not load plans",

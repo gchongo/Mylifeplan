@@ -94,6 +94,7 @@ import {
   getPlanLabelAppearance,
   ganttPlanRowHeightPx,
   resolveEffectivePlanColor,
+  resolvePlanTreeGroupColor,
 } from "@/lib/plan-color";
 import { GRID_BORDER, GRID_ROW_BORDER } from "@/lib/gantt-grid-colors";
 import { deriveParentStatus } from "@/lib/services/plan-rollup";
@@ -1107,8 +1108,8 @@ export const GanttChart = forwardRef<
             onClick={() => toggleExpand(item.id)}
             aria-label={isExpanded ? t("gantt.collapseRow") : t("gantt.expandRow")}
           >
-            <span className={cn("text-[10px] transition-transform", isExpanded && "rotate-90")}>
-              ▶
+            <span className="inline-flex h-3 w-3 items-center justify-center text-[10px] leading-none">
+              {isExpanded ? "▼" : "▶"}
             </span>
           </button>
         ) : (
@@ -1381,10 +1382,8 @@ export const GanttChart = forwardRef<
       >
         {forkLineGroups.map((group) => {
           const parent = planById.get(group.parentId);
-          const rootRow = rows.find((r) => r.item.id === group.parentId);
-          const root = rootRow ? planById.get(rootRow.rootId) ?? parent : parent;
           const stroke =
-            parent != null ? resolveEffectivePlanColor(parent, root ?? parent) : "#94a3b8";
+            parent != null ? resolvePlanTreeGroupColor(parent, planById) : "#94a3b8";
           return group.lines.map((line, i) => (
             <line
               key={`fork-${group.parentId}-${i}`}

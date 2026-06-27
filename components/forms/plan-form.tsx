@@ -87,6 +87,7 @@ export function PlanForm({
   const [parentPlanId, setParentPlanId] = useState<string | null>(
     plan?.parentPlanId ?? defaultParentPlanId ?? null,
   );
+  const isSubPlan = Boolean(parentPlanId);
   const [startDate, setStartDate] = useState(
     () => toDatetimeLocalInput(plan?.startDate ?? defaultStartDate) || "",
   );
@@ -169,7 +170,7 @@ export function PlanForm({
     const fd = new FormData(e.currentTarget);
     const title = String(fd.get("title") ?? "").trim();
     const description = String(fd.get("description") ?? "").trim();
-    const color = String(fd.get("color") ?? "").trim() || null;
+    const color = isSubPlan ? null : String(fd.get("color") ?? "").trim() || null;
 
     const canEditActual = isEdit && !hasSubPlans;
 
@@ -275,7 +276,11 @@ export function PlanForm({
         onChange={setParentPlanId}
         excludePlanId={plan?.id}
       />
-      <PlanColorPicker defaultValue={plan?.color} />
+      {isSubPlan ? (
+        <p className="text-xs text-gray-500 dark:text-gray-400">{t("forms.subPlanColorHint")}</p>
+      ) : (
+        <PlanColorPicker defaultValue={plan?.color} />
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <PlanDateTimeField
           label={t("forms.planStart")}

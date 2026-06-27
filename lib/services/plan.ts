@@ -299,7 +299,7 @@ export async function createPlan(userId: string, input: CreatePlanInput): Promis
         actualEndDate: initialResolved.actualEnd,
         status: initialResolved.status,
         priority: input.priority ?? null,
-        color: input.color ?? null,
+        color: input.parentPlanId ? null : input.color ?? null,
       },
     });
 
@@ -477,7 +477,11 @@ export async function updatePlan(
         ...(!hasSubPlans && actualEndChanged ? { actualEndDate: nextActualEnd } : {}),
         ...(statusChanged && { status: nextStatus }),
         ...(input.priority !== undefined && { priority: input.priority ?? null }),
-        ...(input.color !== undefined && { color: input.color ?? null }),
+        ...(parentPlanId
+          ? { color: null }
+          : input.color !== undefined
+            ? { color: input.color ?? null }
+            : {}),
       },
     });
 

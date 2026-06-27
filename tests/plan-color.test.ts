@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   getGroupColoredBarAppearance,
+  getMobilePlanBarFillStyle,
   ganttPlanBarHeightPx,
   ganttPlanRowHeightPx,
   getPlanGroupFrameAppearance,
   normalizePlanColor,
   planColorRgba,
+  resolveEffectivePlanColor,
+  resolvePlanTreeGroupColor,
 } from "@/lib/plan-color";
 
 describe("plan-color", () => {
@@ -45,5 +48,30 @@ describe("plan-color", () => {
   it("group frame shell is neutral", () => {
     const frame = getPlanGroupFrameAppearance("#10B981");
     expect(frame.className).toContain("slate");
+  });
+
+  it("sub-plan ignores its own color and inherits root", () => {
+    expect(
+      resolveEffectivePlanColor(
+        { color: "#EF4444", parentId: "root-1" },
+        { color: "#3B82F6" },
+      ),
+    ).toBe("#3B82F6");
+  });
+
+  it("resolvePlanTreeGroupColor walks to root plan", () => {
+    const planById = new Map([
+      ["root", { color: "#10B981", parentId: null }],
+      ["mid", { color: "#EF4444", parentId: "root" }],
+      ["leaf", { color: "#EC4899", parentId: "mid" }],
+    ]);
+    expect(resolvePlanTreeGroupColor(planById.get("leaf")!, planById)).toBe("#10B981");
+  });
+
+  it("mobile bar fill matches PC group bar alpha by depth", () => {
+    const pc = getGroupColoredBarAppearance("#3B82F6", 1, "dot", false);
+    const mobile = getMobilePlanBarFillStyle("#3B82F6", 1);
+    expect(mobile.backgroundColor).toBe(pc.shellStyle?.backgroundColor);
+    expect(String(mobile.border)).toContain(String(pc.shellStyle?.borderColor));
   });
 });

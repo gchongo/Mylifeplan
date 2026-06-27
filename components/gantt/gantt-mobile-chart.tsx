@@ -56,7 +56,7 @@ import {
 } from "@/lib/gantt-scale";
 import { ganttTodayColumnBackground } from "@/lib/gantt-today-column-style";
 import type { PlanDragMode } from "@/lib/gantt-plan-drag";
-import { normalizePlanColor, resolveEffectivePlanColor } from "@/lib/plan-color";
+import { resolveEffectivePlanColor, resolvePlanTreeGroupColor } from "@/lib/plan-color";
 import { queryKeys } from "@/lib/query/keys";
 import type { GanttContribution, GanttItem } from "@/types";
 import { cn } from "@/lib/utils";
@@ -276,11 +276,9 @@ export function GanttMobileChart({ className }: { className?: string }) {
     (parentId: string) => {
       const parent = planById.get(parentId);
       if (!parent) return "#94a3b8";
-      const rootRow = rows.find((r) => r.item.id === parentId);
-      const root = rootRow ? planById.get(rootRow.rootId) ?? parent : parent;
-      return resolveEffectivePlanColor(parent, root);
+      return resolvePlanTreeGroupColor(parent, planById);
     },
-    [planById, rows],
+    [planById],
   );
 
   function renderPlanColumns(renderCell: (row: GanttRow) => ReactNode) {
@@ -542,13 +540,8 @@ export function GanttMobileChart({ className }: { className?: string }) {
                       onClick={() => toggleExpand(row.item.id)}
                       aria-label={isExpanded ? t("gantt.collapseRow") : t("gantt.expandRow")}
                     >
-                      <span
-                        className={cn(
-                          "text-[10px] leading-none transition-transform",
-                          isExpanded && "rotate-90",
-                        )}
-                      >
-                        ▶
+                      <span className="inline-flex h-3 w-3 items-center justify-center text-[10px] leading-none">
+                        {isExpanded ? "▼" : "▶"}
                       </span>
                     </button>
                   ) : null}
@@ -662,7 +655,8 @@ export function GanttMobileChart({ className }: { className?: string }) {
                 });
                 const barTop = metrics.top;
                 const barHeight = metrics.height;
-                const color = normalizePlanColor(item.color);
+                const rootItem = planById.get(row.rootId) ?? item;
+                const groupColor = resolveEffectivePlanColor(rootItem, rootItem);
                 const parentPlan = item.parentId ? planById.get(item.parentId) : null;
                 const parentPreview = parentPlan ? barPreview.get(parentPlan.id) : undefined;
                 const minStartDate = parentPreview?.start ?? parentPlan?.startDate;
@@ -699,7 +693,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
                           timelineHeight={timelineHeight}
                           title={item.title}
                           depth={row.depth}
-                          planColor={color}
+                          planColor={groupColor}
                           onTitleClick={() => openPlan(item.id)}
                         />
                       </div>
@@ -716,7 +710,7 @@ export function GanttMobileChart({ className }: { className?: string }) {
                             barWidthPx={barWidth}
                             barLeftPx={barLeft}
                             depth={row.depth}
-                            color={color}
+                            color={groupColor}
                             previewOverride={previewDates ?? null}
                             minStartDate={row.depth > 0 ? minStartDate : undefined}
                             minContributionDate={contribBounds?.min}

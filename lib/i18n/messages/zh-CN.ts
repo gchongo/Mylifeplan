@@ -646,6 +646,7 @@ const zhCN = {
     planColor: "计划颜色",
     markerColor: "甘特标记色",
     colorHint: "甘特图条颜色；状态请用标题旁圆点切换",
+    subPlanColorHint: "子计划沿用一级计划颜色，请在一级计划中修改颜色",
     colorAria: "颜色 {color}",
     loadingPlans: "加载计划…",
     loadPlansFailed: "无法加载计划列表",
