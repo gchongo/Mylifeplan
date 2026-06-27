@@ -5,9 +5,8 @@ import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-quer
 import { CalendarMobileSplitLayout } from "@/components/calendar/calendar-mobile-split-layout";
 import { GanttRowExpandIcon } from "@/components/gantt/gantt-row-expand-icon";
 import { GanttToolbarControls } from "@/components/gantt/gantt-toolbar-controls";
-import { GanttMobileBarTitleTrack } from "@/components/gantt/gantt-mobile-bar-title";
-import { GanttActualExecutionLineVertical } from "@/components/gantt/gantt-actual-execution-line";
 import { GanttMobileDraggableBar } from "@/components/gantt/gantt-mobile-draggable-bar";
+import { GanttActualExecutionLineVertical } from "@/components/gantt/gantt-actual-execution-line";
 import { GanttMobileScheduleDrawer } from "@/components/gantt/gantt-mobile-schedule-drawer";
 import { GanttPlanDrawerPanel } from "@/components/gantt/gantt-plan-drawer";
 import { GanttContributionDrawerPanel } from "@/components/gantt/gantt-contribution-drawer";
@@ -727,26 +726,6 @@ export function GanttMobileChart({ className }: { className?: string }) {
                     className={cn("relative shrink-0", MOBILE_PLAN_COLUMN_BORDER_CLASS)}
                     style={{ width: columnWidth, minHeight: timelineHeight }}
                   >
-                    {!item.isUnscheduled && !item.contributionOnly && (
-                      <div className="pointer-events-none absolute inset-0 z-[22] overflow-visible">
-                        <div
-                          className="pointer-events-none absolute top-0 overflow-visible"
-                          style={{ left: barLeft, width: barWidth, height: timelineHeight }}
-                        >
-                          <GanttMobileBarTitleTrack
-                            barTop={barTop}
-                            barHeight={barHeight}
-                            barWidthPx={barWidth}
-                            timelineHeight={timelineHeight}
-                            title={item.title}
-                            depth={row.depth}
-                            planColor={groupColor}
-                            onTitleClick={() => openPlan(item.id)}
-                          />
-                        </div>
-                      </div>
-                    )}
-
                     <div className="pointer-events-none absolute inset-0 z-[5]">
                       {!item.isUnscheduled && !item.contributionOnly && (
                         <>
@@ -769,6 +748,8 @@ export function GanttMobileChart({ className }: { className?: string }) {
                             onDragFailed={() => void refetchGanttQuery()}
                             onTaskClick={() => openPlan(item.id)}
                             dragEnabled={dragEnabled}
+                            showTitle
+                            onTitleClick={() => openPlan(item.id)}
                           />
                           {renderActualLine(item, displayStart, displayEnd, barCenter)}
                         </>
