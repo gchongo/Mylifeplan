@@ -22,10 +22,9 @@ export function GanttMobileBarTitle({
     <Tag
       type={onClick ? "button" : undefined}
       className={cn(
-        "pointer-events-auto max-w-[calc(100%+4px)]",
-        "rounded-[3px] border border-white bg-white/95 px-[2px] py-1 shadow-sm",
-        "dark:border-gray-100 dark:bg-white/90",
-        onClick && "cursor-pointer hover:bg-white active:opacity-90",
+        "pointer-events-auto max-w-[calc(100%+6px)] bg-transparent px-0 py-0",
+        "border-0 shadow-none",
+        onClick && "cursor-pointer active:opacity-80",
         sticky
           ? "sticky top-0 z-30 mx-auto block w-fit"
           : "absolute left-1/2 top-1 z-20 -translate-x-1/2",
@@ -37,10 +36,12 @@ export function GanttMobileBarTitle({
     >
       <span
         className={cn(
-          "block max-h-[5rem] overflow-hidden text-center text-gray-900",
-          "text-[9px] leading-[1.12] tracking-tight",
+          "block max-h-[7rem] overflow-hidden text-center text-gray-900 dark:text-gray-100",
+          "leading-[1.2] tracking-tight",
           "[writing-mode:vertical-rl] [text-orientation:upright]",
-          depth === 0 ? "font-semibold" : "font-medium text-gray-700",
+          "[text-shadow:0_0_4px_rgba(255,255,255,0.95),0_1px_3px_rgba(0,0,0,0.45)]",
+          "dark:[text-shadow:0_0_4px_rgba(0,0,0,0.85),0_0_2px_rgba(255,255,255,0.35)]",
+          depth === 0 ? "text-[13px] font-bold" : "text-[12px] font-semibold text-gray-800 dark:text-gray-200",
         )}
       >
         {title}
